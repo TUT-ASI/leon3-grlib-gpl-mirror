@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -49,7 +48,7 @@ begin
   inf : if not((is_unisim(tech) = 1) or (tech = axcel) or
                (tech = axdsp) or (tech = apa3) or (tech = apa3e) or 
                (tech = apa3l) or (tech = rhumc)  or (tech = igloo2) or
-               (tech = rtg4)) generate
+               (tech = rtg4) or (tech = nexus)) generate
     inf0 : gen_iddr_reg generic map (scantest,0) port map (Q1, Q2, C1, C2, CE, D, R, S, testen, testrst);
   end generate;
 
@@ -79,6 +78,10 @@ begin
 
   rhu : if (tech = rhumc) generate
     rhu0: rhumc_iddr_reg port map (Q1, Q2, C1, C2, CE, D, R, S);
+  end generate;
+
+  nxus: if (tech = nexus) generate
+    nxus0: nexus_iddrx1_reg port map (Q1, Q2, C1, CE, D, R);
   end generate;
 
 --pragma translate_off

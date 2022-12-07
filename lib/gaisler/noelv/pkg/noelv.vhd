@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,16 +25,18 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.math_real.ceil;
+
+library techmap;
+use techmap.gencomp.all;
 library grlib;
-use grlib.stdlib.all;
 use grlib.amba.all;
 use grlib.config_types.all;
 use grlib.config.all;
 library gaisler;
 use gaisler.uart.all;
 use gaisler.noelv_cfg.all;
-library techmap;
-use techmap.gencomp.all;
+
 package noelv is
 
   constant XLEN                 : integer := NV_XLEN;
@@ -56,7 +57,8 @@ package noelv is
     seip        : std_ulogic; -- Supervisor External Interrupt
     ueip        : std_ulogic; -- User External Interrupt
     heip        : std_ulogic; -- Reserved
-    hgeip       : std_logic_vector(GEILEN downto 1); -- Hypervisor Guest External Inetrrupt
+    hgeip       : std_logic_vector(GEILEN downto 1); -- Hypervisor Guest External Interrupt
+    stime       : std_logic_vector(63 downto 0);
   end record;
 
   type nv_irq_out_type is record
@@ -73,7 +75,8 @@ package noelv is
     seip        => '0',
     ueip        => '0',
     heip        => '0',
-    hgeip       => (others => '0')
+    hgeip       => (others => '0'),
+    stime       => (others => '0')
     );
 
   -- Stats --------------------------------------------------------------------
@@ -137,7 +140,7 @@ package noelv is
     istat       : nv_cstat_type;
     dstat       : nv_cstat_type;
     mcycle      : std_logic_vector(63 downto 0);
-    cap         : std_logic_vector(6 downto 0);
+    cap         : std_logic_vector(9 downto 0);
   end record;
 
   constant nv_debug_out_none    : nv_debug_out_type := (
@@ -231,12 +234,16 @@ package noelv is
     ext_zbkc      : integer;
     ext_zbkx      : integer;
     ext_sscofpmf  : integer;
+    ext_sstc      : integer;
+    ext_zicbom    : integer;
     mode_s        : integer;
     mode_u        : integer;
     fpulen        : integer;
     pmp_no_tor    : integer;
     pmp_entries   : integer;
     pmp_g         : integer;
+    asidlen       : integer;
+    vmidlen       : integer;
     perf_cnts     : integer;
     perf_evts     : integer;
     perf_bits     : integer;
@@ -264,6 +271,9 @@ package noelv is
     btbentries    : integer;
     btbsets       : integer;
   end record;
+
+
+
 
 
   type nv_dm_in_type is record
@@ -307,11 +317,11 @@ package noelv is
       mulconf           : integer                       := 0;
       -- Caches
       icen              : integer range 0  to 1         := 0;  -- I$ Cache Enable
-      iways             : integer range 1  to 4         := 1;  -- I$ Ways
+      iways             : integer range 1  to 8         := 1;  -- I$ Ways
       ilinesize         : integer range 4  to 8         := 4;  -- I$ Cache Line Size (words)
       iwaysize          : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
       dcen              : integer range 0  to 1         := 0;  -- D$ Cache Enable
-      dways             : integer range 1  to 4         := 1;  -- D$ Ways
+      dways             : integer range 1  to 8         := 1;  -- D$ Ways
       dlinesize         : integer range 4  to 8         := 4;  -- D$ Cache Line Size (words)
       dwaysize          : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
       -- BHT
@@ -347,6 +357,8 @@ package noelv is
       ext_zbkc          : integer range 0  to 1         := 0;  -- Zbkc Extension
       ext_zbkx          : integer range 0  to 1         := 0;  -- Zbkx Extension
       ext_sscofpmf      : integer range 0  to 1         := 0;  -- Sscofpmf Extension
+      ext_sstc          : integer range 0  to 2         := 0;  -- Sctc Extension (2 : only time csr impl.)  
+      ext_zicbom        : integer range 0  to 1         := 0;  -- Zicbom Extension
       mode_s            : integer range 0  to 1         := 0;  -- Supervisor Mode Support
       mode_u            : integer range 0  to 1         := 0;  -- User Mode Support
       fpulen            : integer range 0  to 128       := 0;  -- Floating-point precision

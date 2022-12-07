@@ -105,6 +105,14 @@
 #define CONFIG_PROC_LITE (0)
 #define CONFIG_PROC_S (0)
 /*
+ * VHDL debug settings       
+ */
+#undef  CONFIG_IU_DISAS
+/*
+ * NOEL-V subsystem GPL settings       
+ */
+#define CONFIG_PROC_NODBUS 1
+/*
  * L2 Cache
  */
 #undef  CONFIG_L2_ENABLE

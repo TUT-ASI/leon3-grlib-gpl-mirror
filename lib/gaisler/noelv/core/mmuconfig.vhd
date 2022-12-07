@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,7 +27,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
-use grlib.stdlib.all;
+use grlib.stdlib.log2;
+use grlib.stdlib.notx;
+use grlib.stdlib.setx;
 use grlib.amba.hsize_word;
 use grlib.amba.hsize_dword;
 library gaisler;
@@ -166,41 +167,47 @@ function ft_acc_resolve(what : va_type; at : std_logic_vector(2 downto 0);
 --
 --
 --     Sv39 PAGE TABE ENTRY (PTE) [riscv-privileged: p.72, 4.3.1, Figure 4.18]
---          10         26         9          9        2     1   1   1   1   1   1   1   1
---     +----------+----------+----------+----------+------+---+---+---+---+---+---+---+---+
---     | Reserved |   PPN2   |   PPN1   |   PPN0   | RSW  | D | A | G | U | X | W | R | V |
---     +----------+----------+----------+----------+------+---+---+---+---+---+---+---+---+
---       63    54   53    28   27    19   18    10   9  8   7   6   5   4   3   2   1   0
+--        1       2          7          26         9          9         2     1   1   1   1   1   1   1   1
+--     +-----+----------+----------+----------+----------+----------+-------+---+---+---+---+---+---+---+---+
+--     |  N  |   PBMT   | Reserved |   PPN2   |   PPN1   |   PPN0   |  RSW  | D | A | G | U | X | W | R | V |
+--     +-----+----------+----------+----------+----------+----------+-------+---+---+---+---+---+---+---+---+
+--        63   62    61   60    54   53    28   27    19   18    10   9   8   7   6   5   4   3   2   1   0
 --
 --
 --     Sv48 PAGE TABE ENTRY (PTE) [riscv-privileged: p.72, 4.3.1, Figure 4.18]
---          10         17          9          9          9       2     1   1   1   1   1   1   1   1
---     +----------+----------+----------+----------+----------+------+---+---+---+---+---+---+---+---+
---     | Reserved |   PPN3   |   PPN2   |   PPN1   |   PPN0   | RSW  | D | A | G | U | X | W | R | V |
---     +----------+----------+----------+----------+----------+------+---+---+---+---+---+---+---+---+
---       63    54   53    37   36    28   27    19   18    10   9  8   7   6   5   4   3   2   1   0
+--       1        2          7          17         9          9          9         2     1   1   1   1   1   1   1   1
+--     +-----+----------+----------+----------+----------+----------+----------+-------+---+---+---+---+---+---+---+---+
+--     |  N  |   PBMT   | Reserved |   PPN3   |   PPN2   |   PPN1   |   PPN0   |  RSW  | D | A | G | U | X | W | R | V |
+--     +-----+----------+----------+----------+----------+----------+----------+-------+---+---+---+---+---+---+---+---+
+--        63   62    61   60    54   53    37   36    28   27    19   18    10   9   8   7   6   5   4   3   2   1   0
 --
---  PPN = Physical Page Number
---  RSW = Reserved for Software
---  V : valid (rest don't care if 0)
---  R : readble    (when RWX == "000", pointer to next level of table)
---  W : writable   (RWX == "010" | "110" are reserved for future use)
---  X : executable
---  U : user mode accessible
---  G : global mapping
---  A : accessed (since cleared)
---  D : written  (since cleared)
+--  N    : NAPOT (Svnapot)
+--  PBMT : Page-Based Memory Types (Svpbmt)
+--  PPNx : Physical Page Number
+--  RSW  : Reserved for Software
+--  V    : valid (rest don't care if 0)
+--  R    : readble    (when RWX == "000", pointer to next level of table)
+--  W    : writable   (RWX == "010" | "110" are reserved for future use)
+--  X    : executable
+--  U    : user mode accessible
+--  G    : global mapping
+--  A    : accessed (since cleared)
+--  D    : written  (since cleared)
 
 
-constant rv_pte_xwr : std_logic_vector(3 downto 1) := "000";
-constant rv_pte_v   : integer := 0;  -- valid (rest don't care if 0)
-constant rv_pte_r   : integer := 1;  -- readable (RWX == "000" - pointer to next level of table)
-constant rv_pte_w   : integer := 2;  -- writable (RWX == "010" | "110" reserved)
-constant rv_pte_x   : integer := 3;  -- executable
-constant rv_pte_u   : integer := 4;  -- user mode accessible
-constant rv_pte_g   : integer := 5;  -- global mapping
-constant rv_pte_a   : integer := 6;  -- accessed (since cleared)
-constant rv_pte_d   : integer := 7;  -- written (since cleared)
+constant rv_pte_n    : integer := 63;
+constant rv_pte_pbmt : std_logic_vector(62 downto 61) := "00";
+constant rv_pte_resv : std_logic_vector(60 downto 54) := "0000000";
+constant rv_pte_rsw  : std_logic_vector( 9 downto  8) := "00";
+constant rv_pte_xwr  : std_logic_vector( 3 downto  1) := "000";
+constant rv_pte_v    : integer := 0;  -- valid (rest don't care if 0)
+constant rv_pte_r    : integer := 1;  -- readable (RWX == "000" - pointer to next level of table)
+constant rv_pte_w    : integer := 2;  -- writable (RWX == "010" | "110" reserved)
+constant rv_pte_x    : integer := 3;  -- executable
+constant rv_pte_u    : integer := 4;  -- user mode accessible
+constant rv_pte_g    : integer := 5;  -- global mapping
+constant rv_pte_a    : integer := 6;  -- accessed (since cleared)
+constant rv_pte_d    : integer := 7;  -- written (since cleared)
 
 
 
@@ -423,7 +430,17 @@ package body mmucacheconfig is
       end if;
 
       -- Reserved top bits must be zero.
-      if not all_0(data(63 downto 54)) then
+      if not all_0(data(rv_pte_resv'range)) then
+        return false;
+      end if;
+
+      -- PBMT 11 is reserved.
+      if data(rv_pte_pbmt'range) = "11" then
+        return false;
+      end if;
+
+      -- N (Svnapot) is not yet supported.
+      if data(rv_pte_n) /= '0' then
         return false;
       end if;
 
@@ -455,7 +472,17 @@ package body mmucacheconfig is
       return true;
     else
       -- Reserved top bits must be zero.
-      if not all_0(data(63 downto 54)) then
+      if not all_0(data(rv_pte_resv'range)) then
+        return false;
+      end if;
+
+      -- PBMT is reserved.
+      if data(rv_pte_pbmt'range) /= "00" then
+        return false;
+      end if;
+
+      -- N is assumed to be reserved (the standar does not appear to say).
+      if data(rv_pte_n) /= '0' then
         return false;
       end if;
 
@@ -464,6 +491,7 @@ package body mmucacheconfig is
         return false;
       end if;
 
+      
       -- PTD also has D, A and U reserved, so enforce 0 (Spike does).
       if data(rv_pte_d) = '1' or data(rv_pte_a) = '1' or data(rv_pte_u) = '1' then
         return false;
@@ -637,10 +665,11 @@ package body mmucacheconfig is
     if what = sparc then
       return data(PTE_C);
     else
-      assert false
-        report "There is no cacheability info in PTE on RISC-V!"
-        severity failure;
-      return '0';
+      case data(rv_pte_pbmt'range) is
+        when "01"   => return '0';  -- NC
+        when "10"   => return '0';  -- I/O
+        when others => return '1';  -- PMA (reserved for "11")
+      end case;
     end if;
   end;
 

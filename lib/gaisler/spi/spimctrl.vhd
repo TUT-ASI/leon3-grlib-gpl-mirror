@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,10 +33,13 @@
 -- Revision 1 added support for burst reads when sdcard = 0
 --
 -- Post revision 1: Remove support for SD card
+--
+-- Revision 2 added support for DSPI/QSPI & 4-byte addressing
 -------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
@@ -59,13 +61,21 @@ entity spimctrl is
     oepol       : integer := 0;            -- Output enable polarity
     sdcard      : integer range 0 to 0   := 0;  -- Unused
     readcmd     : integer range 0 to 255 := 16#0B#;  -- Mem. dev. READ command
-    dummybyte   : integer range 0 to 1   := 1;  -- Dummy byte after cmd
-    dualoutput  : integer range 0 to 1   := 0;  -- Enable dual output
+    dummybyte   : integer range 0 to 1   := 1;  -- Dummy byte after cmd (8 cycles)
+    dualoutput  : integer range 0 to 1   := 0;  -- Enable dual output (Data phase)
     scaler      : integer range 1 to 512 := 1; -- SCK scaler
-    altscaler   : integer range 1 to 512 := 1; -- Alternate SCK scaler 
+    altscaler   : integer range 1 to 512 := 1; -- Alternate SCK scaler
     pwrupcnt    : integer  := 0;               -- Unused
     maxahbaccsz : integer range 0 to 256 := AHBDW; -- Max AHB access size
-    offset      : integer := 0
+    offset      : integer := 0;
+    quadoutput  : integer range 0 to 1   := 0;  -- Enable quad output (Data phase)
+    dualinput   : integer range 0 to 1   := 0;  -- Enable dual input (Addr phase)
+    quadinput   : integer range 0 to 1   := 0;  -- Enable quad input (Addr phase)
+    dummycycles : integer range 0 to 15  := 0;  -- # dummy cycles after cmd (not used if dummybyte=1)
+    DSPI        : integer range 0 to 1   := 0;  -- Full Dual SPI mode (all transactins 2-2-2)
+    QSPI        : integer range 0 to 1   := 0;  -- Full Quad SPI mode (all transactins 4-4-4)
+    extaddr     : integer range 0 to 1   := 0;  -- Extended address mode (0=>3-Bytes, 1=>4-Bytes)
+    reconf      : integer range 0 to 1   := 0   -- Enables changing configuration through reg. interface
     );
   port (
     rstn    : in  std_ulogic;
@@ -79,7 +89,7 @@ end spimctrl;
 
 architecture rtl of spimctrl is
   
-  constant REVISION : amba_version_type := 1;
+  constant REVISION : amba_version_type := 2;
 
   constant HCONFIG : ahb_config_type := (
     0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPIMCTRL, 0, REVISION, hirq),
@@ -97,9 +107,11 @@ architecture rtl of spimctrl is
   -- SPI device constants
   -----------------------------------------------------------------------------
 
-  -- Length of read instruction argument-1 
-  constant SPI_ARG_LEN : integer := 2 + dummybyte;
-  
+  -- Default address length in bytes - 1 
+  constant SPI_ADDR_LENGTH : integer := 2;
+  -- Number of dummy cycles to use for the dummybyte setting
+  constant SPI_DUMMY_BYTE_CYCLES : integer := 8;
+
   -----------------------------------------------------------------------------
   -- Core constants
   -----------------------------------------------------------------------------
@@ -171,6 +183,18 @@ architecture rtl of spimctrl is
     return conv_std_logic_vector(i,w);
   end cslv;
 
+  function to_ulogic (
+    i : integer range 0 to 1
+  )
+  return std_ulogic is
+  begin
+    if i = 0 then
+      return '0';
+    else
+      return '1';
+    end if;
+  end to_ulogic;
+
   -- Description: Calculates value for spi.cnt based on AMBA HSIZE
   function calc_spi_cnt (
     hsize : std_logic_vector(2 downto 0))
@@ -184,7 +208,29 @@ architecture rtl of spimctrl is
     end loop;  -- i
     return cnt;
   end calc_spi_cnt;
-  
+
+  -- Description: Swap the order of bytes to account for endianness
+  function spimctrl_endian_swap(
+    data : std_logic_vector;
+    endian : std_ulogic)
+    return std_logic_vector is
+    variable tmp : std_logic_vector(data'length-1 downto 0) := data(data'length-1 downto 0);
+  begin
+    if endian = '1' then
+      -- Little endian
+      for i in 0 to data'length/8-1 loop
+        tmp(data'length-8*i-1 downto data'length-8*(i+1)) := data(8*(i+1)-1 downto 8*i);
+      end loop;
+
+      return tmp;
+    else
+      -- Big endian
+
+      return tmp;
+    end if;
+  end spimctrl_endian_swap;
+
+
   -----------------------------------------------------------------------------
   -- States
   -----------------------------------------------------------------------------
@@ -193,7 +239,7 @@ architecture rtl of spimctrl is
   type spimstate_type is (IDLE, AHB_RESPOND, USER_SPI, BUSY);
   
   -- SPI device FSM states
- type spistate_type is (SPI_CSWAIT,  SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA);
+ type spistate_type is (SPI_CSWAIT,  SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA, SPI_DUMMY);
   
   -----------------------------------------------------------------------------
   -- Types
@@ -240,6 +286,17 @@ architecture rtl of spimctrl is
        hold           : std_ulogic;     -- Do not shift ar
        insplit        : std_ulogic;     -- SPLIT response issued
        unsplit        : std_ulogic;     -- SPLIT complete not issued
+       --
+       readcmd        : std_logic_vector(7 downto 0); -- Mem. dev. READ command
+       dualoutput     : std_ulogic;     -- Dual mode in data phase on reads
+       quadoutput     : std_ulogic;     -- Quad mode in data phase on reads
+       dualinput      : std_ulogic;     -- Dual mode in address phase on reads
+       quadinput      : std_ulogic;     -- Quad mode in address phase on reads
+       dummybyte      : std_ulogic;     -- Dummy byte after cmd (8 cycles)
+       dummycycles    : std_logic_vector(3 downto 0); -- # dummy cylcles after cmd
+       DSPI           : std_ulogic;     -- Full Dual SPI mode (all transactins 2-2-2)
+       QSPI           : std_ulogic;     -- Full Quad SPI mode (all transactins 4-4-4)
+       extaddr        : std_ulogic;     -- Extended address mode (0 -> 3 Bytes, 1 -> 4 Bytes)
        -- SPI flash device
        spi            : spiflash_type;
        -- AHB
@@ -251,7 +308,7 @@ architecture rtl of spimctrl is
        haddr          : std_logic_vector((req_addr_bits-1) downto 0);
        hready         : std_ulogic;
        frdata         : std_logic_vector(MAXDW-1 downto 0);  -- Flash response data
-       rrdata         : std_logic_vector(7 downto 0);  -- Register response data
+       rrdata         : std_logic_vector(31 downto 0);  -- Register response data
        hresp          : std_logic_vector(1 downto 0);
        splmst         : std_logic_vector(log2(NAHBMST)-1 downto 0);  -- SPLIT:ed master
        hsplit         : std_logic_vector(NAHBMST-1 downto 0);  -- Other SPLIT:ed masters
@@ -264,6 +321,38 @@ architecture rtl of spimctrl is
        spio           : spimctrl_out_type;
   end record;
   
+  -- Description: Returns in what output mode the the SPIMCTRL should operate.
+  -- 0=serial, 1=dual, 2=quad
+  function getOutputMode(
+    r       : spim_reg_type
+  ) 
+  return integer is 
+    begin
+      if r.QSPI = '1' or (r.DSPI = '0' and r.quadoutput = '1') then
+        return 2;
+      elsif r.DSPI = '1' or r.dualoutput = '1' then
+        return 1;
+      else 
+        return 0;
+      end if;
+    end getOutputMode;
+
+  -- Description: Returns in what input mode the the SPIMCTRL should operate.
+  -- 0=serial, 1=dual, 2=quad
+  function getInputMode(
+    r       : spim_reg_type
+  ) 
+  return integer is 
+    begin
+      if r.QSPI = '1' or (r.DSPI = '0' and r.quadinput = '1') then
+        return 2;
+      elsif r.DSPI = '1' or r.dualinput = '1' then
+        return 1;
+      else 
+        return 0;
+      end if;
+    end getInputMode;
+
   -----------------------------------------------------------------------------
   -- Signals
   -----------------------------------------------------------------------------
@@ -286,6 +375,7 @@ begin  -- rtl
     variable hwdatax          : std_logic_vector(31 downto 0);
     variable hwdata           : std_logic_vector(7 downto 0);
   begin  -- process comb
+
     v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(0) & '0';
     change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1';
     regaddr := r.haddr(7 downto 2); hsplit := (others => '0');
@@ -295,14 +385,43 @@ begin  -- rtl
     read_flash := false;
     enable_altscaler := r.reg.ctrl.eas = '1';
     disable_flash := (r.reg.ctrl.usrc = '1' or r.spimstate = USER_SPI);
-    if dualoutput = 1 then
-      lastbit := andv(r.bcnt(1 downto 0)) and
-                 ((r.spio.mosioen xnor INPUT) or r.bcnt(2)); 
-    else
+
+    if ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.QSPI = '1') or 
+       (r.spi.state = SPI_ADDR and getInputMode(r) = 2) or
+       (r.spi.state = SPI_DATA and getOutputMode(r) = 2)  then
+      lastbit := r.bcnt(0);
+
+    elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.DSPI = '1') or 
+          (r.spi.state = SPI_ADDR and getInputMode(r) = 1) or
+          (r.spi.state = SPI_DATA and getOutputMode(r) = 1)  then
+      lastbit := andv(r.bcnt(1 downto 0));
+
+    elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.QSPI = '0' and r.DSPI = '0') or 
+          (r.spi.state = SPI_ADDR and getInputMode(r) = 0) or
+          (r.spi.state = SPI_DATA and getOutputMode(r) = 0)  then
+      lastbit := andv(r.bcnt);
+
+    else 
       lastbit := andv(r.bcnt);
     end if;
     v.bd := lastbit and r.sample(0); 
-    
+
+    if r.spimstate = IDLE then
+      v.spio.io2 := '1';
+      v.spio.io3 := '1';
+    end if;
+
+    if getOutputMode(r) = 0 then
+      v.spio.mosioen := OUTPUT;
+      v.spio.misooen := INPUT;
+    end if;
+    if getOutputMode(r) < 2 then
+      v.spio.iooen := OUTPUT;
+    end if;
+    if getInputMode(r) = 0 then
+      v.spio.misooen := INPUT;
+    end if;
+
     ---------------------------------------------------------------------------
     -- AHB communication
     ---------------------------------------------------------------------------
@@ -362,17 +481,27 @@ begin  -- rtl
       v.hsel := '0';
       case regaddr is
         when CONF_REG_OFF =>
-          v.rrdata := cslv(readcmd, 8);
+          v.rrdata(READCMD_RANGE)     := r.readcmd;
+          v.rrdata(DUMMYCYCLES_RANGE) := r.dummycycles;
+          v.rrdata(DSPI_INDEX)        := r.DSPI;
+          v.rrdata(QSPI_INDEX)        := r.QSPI;
+          v.rrdata(EXTADDR_INDEX)     := r.extaddr;
+          v.rrdata(DUMMYBYTE_INDEX)   := r.dummybyte;
+          v.rrdata(DUALOUT_INDEX)     := r.dualoutput;
+          v.rrdata(QUADOUT_INDEX)     := r.quadoutput;
+          v.rrdata(DUALIN_INDEX)      := r.dualinput;
+          v.rrdata(QUADIN_INDEX)      := r.quadinput;
         when CTRL_REG_OFF =>
           v.rrdata(3) := r.spio.csn;
           v.rrdata(2) := r.reg.ctrl.eas;
           v.rrdata(1) := r.reg.ctrl.ien;
           v.rrdata(0) := r.reg.ctrl.usrc;
         when STAT_REG_OFF =>
+          v.rrdata(6) := to_ulogic(reconf);
           v.rrdata(2) := '1';
           v.rrdata(1) := r.reg.stat.busy;
           v.rrdata(0) := r.reg.stat.done;
-        when RX_REG_OFF => v.rrdata := r.ar(7 downto 0);
+        when RX_REG_OFF => v.rrdata(7 downto 0) := r.ar(7 downto 0);
         when others => null;
       end case;
     end if;
@@ -380,6 +509,19 @@ begin  -- rtl
     -- Write access to core registers
     if (r.hsel and r.hmbsel(CTRL_BANK) and r.hwrite) = '1' then
       case regaddr is
+        when CONF_REG_OFF =>
+        if reconf = 1 then
+          v.readcmd     := hwdatax(READCMD_RANGE);
+          v.dummycycles := hwdatax(DUMMYCYCLES_RANGE);
+          v.DSPI        := hwdatax(DSPI_INDEX);
+          v.QSPI        := hwdatax(QSPI_INDEX);
+          v.extaddr     := hwdatax(EXTADDR_INDEX);
+          v.dummybyte   := hwdatax(DUMMYBYTE_INDEX);
+          v.dualoutput  := hwdatax(DUALOUT_INDEX);
+          v.quadoutput  := hwdatax(QUADOUT_INDEX);
+          v.dualinput   := hwdatax(DUALIN_INDEX);
+          v.quadinput   := hwdatax(QUADIN_INDEX);
+        end if;
         when CTRL_REG_OFF =>
           v.rst           := hwdata(4);
           if (r.reg.ctrl.usrc and not hwdata(0)) = '1' then
@@ -393,7 +535,8 @@ begin  -- rtl
         when STAT_REG_OFF =>
 --          v.spio.errorn := r.spio.errorn or hwdata(3);
           v.reg.stat.done := r.reg.stat.done and not hwdata(0);
-        when RX_REG_OFF => null;
+        when RX_REG_OFF => 
+          v.sreg := (others => '0');
         when TX_REG_OFF =>
           if r.reg.ctrl.usrc = '1' then
             v.sreg := hwdata(7 downto 0);
@@ -463,15 +606,46 @@ begin  -- rtl
             read_flash := true;
           elsif regaddr = TX_REG_OFF and (r.hwrite and r.reg.ctrl.usrc) = '1' then
             -- Access to core transmit register
+            -- Sends 8 bits to the flash memory
             v.spimstate := USER_SPI;
             v.go := '1';
             v.stop := '1';
             change := '1';
             v.hold := '0';
-            if dualoutput = 1 then
-              v.spio.mosioen := OUTPUT;  
+            v.bcnt := "000";
+
+            v.spio.misooen := INPUT;
+            v.spio.mosioen := OUTPUT;
+            if r.DSPI = '1' or r.QSPI = '1' then
+              v.spio.misooen := OUTPUT;
+              v.bcnt := "100";
+              if r.QSPI = '1' then
+                v.spio.iooen := OUTPUT;
+                v.bcnt := "110";
+              end if;
             end if;
-          end if;  
+
+          elsif regaddr = RX_REG_OFF and (r.hwrite and r.reg.ctrl.usrc) = '1' then
+            -- Access to core receive register
+            -- Reads 8 bits from flash memory and saves it in the RX register
+            v.spimstate := USER_SPI;
+            v.go := '1';
+            v.stop := '1';
+            change := '1';
+            v.hold := '0';
+            v.bcnt := "000";
+
+            v.spio.misooen := INPUT;
+            if r.DSPI = '1' or r.QSPI = '1' then
+              v.spio.mosioen := INPUT;
+              v.bcnt := "100";
+              if r.QSPI = '1' then
+                v.spio.iooen := INPUT;
+                v.bcnt := "110";
+              end if;
+            end if;
+
+          end if;
         end if;
     end case;
         
@@ -484,9 +658,17 @@ begin  -- rtl
           v.go := '1';
           change := '1';
         end if;
-        v.spi.cnt := cslv(SPI_ARG_LEN, r.spi.cnt'length);
+        v.spi.cnt := cslv(SPI_ADDR_LENGTH + conv_integer(r.extaddr), r.spi.cnt'length);
         if v.bd = '1' then
-          v.sreg := r.ar(23 downto 16);
+          -- Read command have been sent, prepare for address phase
+          v.sreg := r.ar(23+8*conv_integer(r.extaddr) downto 16 + 8*conv_integer(r.extaddr));
+          v.spio.mosioen := OUTPUT;
+          if getInputMode(r) > 0 then
+            v.spio.misooen := OUTPUT;
+            if getInputMode(r) = 2 then 
+              v.spio.iooen := OUTPUT;
+            end if;
+          end if;
         end if;
         if r.bd = '1' then
           v.hold := '0';
@@ -495,19 +677,80 @@ begin  -- rtl
 
       when SPI_ADDR =>
         if v.bd = '1' then
-          v.sreg := r.ar(22 downto 15);
-          if dualoutput = 1 then
-            if r.spi.cnt = zero32(r.spi.cnt'range) then
-              v.spio.mosioen := INPUT;
-            end if;
+          -- When entering ADDR phase one cycle of data has already been sent
+          -- and the ar register been shifted. Need to account for this.
+          if r.extaddr = '0' then
+            case getInputMode(r) is
+              when 0 =>       -- serial
+                v.sreg := r.ar(22 downto 15);
+              when 1 =>       -- dual
+                v.sreg := r.ar(21 downto 14);
+              when others =>  -- quad
+                v.sreg := r.ar(19 downto 12);
+            end case;
+          else 
+            case getInputMode(r) is
+              when 0 =>       -- serial
+                v.sreg := r.ar(30 downto 23);
+              when 1 =>       -- dual
+                v.sreg := r.ar(29 downto 22);
+              when others =>  -- quad
+                v.sreg := r.ar(27 downto 20);
+            end case;
           end if;
+
+          if r.spi.cnt = zero32(r.spi.cnt'range) and (r.dummybyte = '0' and r.dummycycles = "0000") then
+            v.spio.misooen := INPUT;
+            v.spio.mosioen := OUTPUT;
+            v.spio.iooen   := OUTPUT;
+            if getOutputMode(r) > 0 then
+              v.spio.mosioen := INPUT;
+              if getOutputMode(r) = 2 then
+                v.spio.iooen := INPUT;
+              end if;
+            end if;
+
+          end if;
+          
         end if;
         if r.bd = '1' then
           if r.spi.cnt = zero32(r.spi.cnt'range) then
-            v.spi.state := SPI_DATA;
-            v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+            if r.dummybyte = '0' and r.dummycycles = "0000" then
+              v.spi.state := SPI_DATA;
+              v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+            else 
+              v.spi.state := SPI_DUMMY;
+              v.hold := '1';
+              if r.dummybyte = '1' then
+                v.spi.cnt(3 downto 0) := cslv(SPI_DUMMY_BYTE_CYCLES, 4);
+              else
+                v.spi.cnt(3 downto 0) := r.dummycycles;
+              end if;
+            end if;
           else
             v.spi.cnt := r.spi.cnt - 1;
+          end if;
+        end if;
+
+      when SPI_DUMMY =>
+        if r.sample(0) = '1' then
+          v.spi.cnt := r.spi.cnt - 1;
+        end if;
+        if r.spi.cnt = zero32(r.spi.cnt'range) then
+          v.spi.state := SPI_DATA;
+          v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+          v.hold := '0';
+          v.bcnt := "000";
+        elsif r.spi.cnt = cslv(1, r.spi.cnt'length) then
+          -- Set -oen values the clock cycle before leaving dummy phase
+          v.spio.misooen := INPUT;
+          v.spio.mosioen := OUTPUT;
+          v.spio.iooen   := OUTPUT;
+          if getOutputMode(r) > 0 then
+            v.spio.mosioen := INPUT;
+            if getOutputMode(r) = 2 then
+              v.spio.iooen := INPUT;
+            end if;
           end if;
         end if;
           
@@ -536,7 +779,7 @@ begin  -- rtl
         v.spio.ready := '1';
         if read_flash then
           v.go := '1';
-          if dualoutput = 1 then
+          if getOutputMode(r) > 0 then
             v.bcnt(2) := '0';
           end if;
           if r.spio.csn = '1' then
@@ -544,10 +787,27 @@ begin  -- rtl
             v.go := '0';
             v.spio.csn := '0';
             v.spi.state := SPI_READ;
+            
+            v.spio.misooen := INPUT;
+            v.spio.mosioen := OUTPUT;
+            v.spio.iooen   := OUTPUT;
+            if r.DSPI = '1' or r.QSPI = '1' then
+              v.spio.misooen := OUTPUT;
+            end if;
+
           elsif r.seq = '1' then
             -- Continuation of burst
             v.spi.state := SPI_DATA;
             v.hold := '0';
+
+            v.spio.misooen := INPUT;
+            if getOutputMode(r) > 0 then
+              v.spio.mosioen := INPUT;
+              if getoutputmode(r) = 2 then
+                v.spio.iooen := INPUT;
+              end if;
+            end if;
+
           else
             -- Burst ended and new access
             v.stop := '1';
@@ -562,7 +822,8 @@ begin  -- rtl
             v.ar(r.haddr'range) := r.haddr;
           end if;
           v.spio.ready := '0';
-          v.sreg := cslv(readcmd, 8);
+          v.sreg := r.readcmd;
+
         end if;
         if r.spio.ready = '0' then
           case r.spi.hsize is
@@ -572,25 +833,26 @@ begin  -- rtl
               end loop;  -- i
             when HSIZE_HWORD =>
               for i in 0 to (MAXDW/16-1) loop
-                v.frdata(15+16*i downto 16*i) := r.ar(15 downto 0);
+                v.frdata(15+16*i downto 16*i) := spimctrl_endian_swap(r.ar(15 downto 0), ahbsi.endian);
               end loop;  -- i
             when HSIZE_WORD =>
               for i in 0 to (MAXDW/32-1) loop
-                v.frdata(31+32*i downto 32*i) := r.ar(31 downto 0);
+                v.frdata(31+32*i downto 32*i) := spimctrl_endian_swap(r.ar(31 downto 0), ahbsi.endian);
               end loop;  -- i
             when HSIZE_DWORD =>
               if MAXDW > 32 and AHBDW > 32 then
                 for i in 0 to (MAXDW/64-1) loop
-                  if MAXDW = 64 then
-                    v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
-                      r.ar(MAXDW-1 downto 0);
-                  elsif MAXDW = 128 then
-                    v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
-                      r.ar(MAXDW/2-1 downto 0);
-                  else
-                    v.frdata(MAXDW/4-1+MAXDW/4*i downto MAXDW/4*i) :=
-                      r.ar(MAXDW/4-1 downto 0);
-                  end if;
+                  --if MAXDW = 64 then
+                  --  v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
+                  --  spimctrl_endian_swap(r.ar(MAXDW-1 downto 0));
+                  --elsif MAXDW = 128 then
+                  --  v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
+                  --  spimctrl_endian_swap(r.ar(MAXDW/2-1 downto 0));
+                  --else
+                  --  v.frdata(MAXDW/4-1+MAXDW/4*i downto MAXDW/4*i) :=
+                  --  spimctrl_endian_swap(r.ar(MAXDW/4-1 downto 0));
+                  --end if;
+                  v.frdata(63+64*i downto 64*i) := spimctrl_endian_swap(r.ar(63 downto 0), ahbsi.endian);
                 end loop;  -- i
               else
                 null;
@@ -598,20 +860,21 @@ begin  -- rtl
             when HSIZE_4WORD =>
               if MAXDW > 64 and AHBDW > 64 then
                 for i in 0 to (MAXDW/128-1) loop
-                  if MAXDW = 128 then
-                    v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
-                      r.ar(MAXDW-1 downto 0);
-                  else
-                    v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
-                      r.ar(MAXDW/2-1 downto 0);
-                  end if;
+                  --if MAXDW = 128 then
+                  --  v.frdata(MAXDW-1+MAXDW*i downto MAXDW*i) :=
+                  --    r.ar(MAXDW-1 downto 0);
+                  --else
+                  --  v.frdata(MAXDW/2-1+MAXDW/2*i downto MAXDW/2*i) :=
+                  --    r.ar(MAXDW/2-1 downto 0);
+                  --end if;
+                  v.frdata(127+128*i downto 128*i) := spimctrl_endian_swap(r.ar(127 downto 0), ahbsi.endian);
                 end loop;  -- i
               else
                 null;
               end if;
             when others =>
               if MAXDW > 128 and AHBDW > 128 then
-                v.frdata := r.ar;
+                v.frdata := spimctrl_endian_swap(r.ar, ahbsi.endian);
               else
                 null;
               end if;
@@ -630,11 +893,17 @@ begin  -- rtl
           else
             v.spi.state := SPI_READ;
             v.spio.csn := '0';
-          end if;
-          if dualoutput = 1 then
+
             v.spio.mosioen := OUTPUT;
-            v.bcnt(2) := '0';
+            if r.DSPI = '1' or r.QSPI = '1' then
+              v.spio.misooen := OUTPUT;
+              if r.QSPI = '1' then
+                v.spio.iooen := OUTPUT;
+              end if;
+            end if;
+
           end if;
+
         end if;
     end case;
 
@@ -663,19 +932,65 @@ begin  -- rtl
     
     if r.sample(1) = '1' then
       if r.hold = '0' then
-        if dualoutput = 1 and r.spio.mosioen = INPUT then
-          v.ar := r.ar(r.ar'left-2 downto 0) & r.spii(1).miso & r.spii(1).mosi;
-        else
+
+        -- Shift ar register if in CMD or ADDR phase
+        if ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.QSPI = '1' and r.spio.mosioen = OUTPUT) or 
+           (r.spi.state = SPI_ADDR and getInputMode(r) = 2) then
+          v.ar := r.ar(r.ar'left-4 downto 0) & "1111";
+
+        elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.DSPI = '1' and r.spio.mosioen = OUTPUT) or 
+              (r.spi.state = SPI_ADDR and getInputMode(r) = 1) then
+          v.ar := r.ar(r.ar'left-2 downto 0) & "11";
+
+        elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.QSPI = '0' and r.DSPI = '0') or 
+              (r.spi.state = SPI_ADDR and getInputMode(r) = 0) then
           v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1).miso;
         end if;
+
+        -- Receive data from the memory and shift it into the ar register
+        if r.spi.state = SPI_DATA or ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.spio.mosioen = INPUT) then
+          case getOutputMode(r) is
+            when 0 =>
+              v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1).miso;
+            when 1 =>
+              v.ar := r.ar(r.ar'left-2 downto 0) & r.spii(1).miso & r.spii(1).mosi;
+            when others =>
+              v.ar := r.ar(r.ar'left-4 downto 0) & r.spii(1).io3 & r.spii(1).io2 & r.spii(1).miso & r.spii(1).mosi;
+          end case;
+        end if;
+
       end if;
     end if;
     
     if change = '1' then
-      v.spio.mosi := v.sreg(7);
-      if r.spi.state /= SPI_CSWAIT then
-        v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
+
+      -- Output data to the memory by shifting the sreg register
+      if v.spio.misooen = OUTPUT then
+        if (v.spimstate = USER_SPI  and r.QSPI = '1') or
+           (v.spimstate /= USER_SPI and getInputMode(r) = 2) then
+          v.spio.mosi := v.sreg(4);
+          v.spio.miso := v.sreg(5);
+          v.spio.io2  := v.sreg(6);
+          v.spio.io3  := v.sreg(7);
+          v.sreg(7 downto 0) := v.sreg(3 downto 0) & "1111";
+        elsif (v.spimstate = USER_SPI  and r.DSPI = '1') or
+              (v.spimstate /= USER_SPI and getInputMode(r) = 1) then
+          v.spio.mosi := v.sreg(6);
+          v.spio.miso := v.sreg(7);
+          v.sreg(7 downto 0) := v.sreg(5 downto 0) & "11";
+        else
+          v.spio.mosi := v.sreg(7);
+          v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
+        end if;
+ 
+      else 
+        v.spio.mosi := v.sreg(7);
+        if r.spi.state /= SPI_CSWAIT then
+          v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
+        end if;
+
       end if;
+     
     end if;
     
     ---------------------------------------------------------------------------
@@ -707,9 +1022,26 @@ begin  -- rtl
       --
       v.spio.sck         := '0';
       v.spio.mosi        := '1';
+      v.spio.miso        := '1';
+      v.spio.io2         := '1';
+      v.spio.io3         := '1';
       v.spio.mosioen     := OUTPUT;
+      v.spio.misooen     := INPUT;
+      v.spio.iooen       := OUTPUT;
       v.spio.csn         := '1';
 --       v.spio.errorn      := '1';
+      --
+      v.readcmd          := cslv(readcmd,8);
+      v.dualoutput       := to_ulogic(dualoutput);
+      v.quadoutput       := to_ulogic(quadoutput);
+      v.dualinput        := to_ulogic(dualinput);
+      v.quadinput        := to_ulogic(quadinput);
+      v.dummybyte        := to_ulogic(dummybyte);
+      v.dummycycles      := cslv(dummycycles,4);
+      v.DSPI             := to_ulogic(DSPI);
+      v.QSPI             := to_ulogic(QSPI);
+      v.extaddr          := to_ulogic(extaddr);
+      --
       v.spio.ready       := '0';      
     end if;
     v.spio.initialized := '1';
@@ -727,7 +1059,8 @@ begin  -- rtl
     
     ---------------------------------------------------------------------------
     -- Signal assignments
-    ---------------------------------------------------------------------------    
+    ---------------------------------------------------------------------------
+    
     -- Core registers
     rin <= v;
 
@@ -736,7 +1069,7 @@ begin  -- rtl
     ahbso.hresp   <= r.hresp;
     if r.hmbsel(CTRL_BANK) = '1' then
       for i in 0 to (MAXDW/32-1) loop 
-        hrdata(31 + 32*i downto 32*i) := zero32(31 downto 8) & r.rrdata;
+        hrdata(31 + 32*i downto 32*i) := r.rrdata;
       end loop;
     else
       hrdata := r.frdata;
@@ -766,10 +1099,5 @@ begin  -- rtl
       tost(REVISION) & ", irq " & tost(hirq));
   -- pragma translate_on
   
--- pragma translate_off
-   assert ahbsi.endian /= '1'
-      report "spimctrl: little endian systems not supported"
-      severity error;
--- pragma translate_on
 
 end rtl;

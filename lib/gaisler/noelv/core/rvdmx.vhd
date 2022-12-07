@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,13 +26,15 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library techmap;
+use techmap.gencomp.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.amba.all;
+use grlib.devices.all;
 use grlib.stdlib.log2x;
 use grlib.stdlib.orv;
-use grlib.devices.all;
 library gaisler;
 use gaisler.noelv.XLEN;
 use gaisler.noelv.nv_dm_in_type;
@@ -51,8 +52,6 @@ use gaisler.utilnv.to_bit;
 use gaisler.utilnv.u2i;
 use gaisler.utilnv.u2slv;
 use gaisler.utilnv.uadd;
-library techmap;
-use techmap.gencomp.all;
 
 entity rvdmx is
   generic (
@@ -508,7 +507,8 @@ begin
     cap(31 downto 24)           := u2slv(nharts - 1, 8);
     cap(23          )           := to_bit(nharts <= 256);
     cap(21 downto 19)           := dbgi(0).cap(2 downto 0);
-    cap( 3 downto  0)           := dbgi(0).cap(6 downto 3);
+    --cap(           7)           := RESERVED
+    cap( 6 downto  0)           := dbgi(0).cap(9 downto 3);
 
     -- Abstract Data 0 (data0, at 0x04)
 

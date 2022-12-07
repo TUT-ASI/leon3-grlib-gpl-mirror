@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -48,6 +47,18 @@ package spi is
 
   constant spi_in_none : spi_in_type := ('0', '0', '0', '0', '0', '0', '0',
                                          '0', '0');
+
+  -- Configuration register indicies constants
+  subtype READCMD_RANGE     is Natural range 7 downto 0;
+  subtype DUMMYCYCLES_RANGE is Natural range 11 downto 8;
+  constant DSPI_INDEX      : integer := 12;
+  constant QSPI_INDEX      : integer := 13;
+  constant EXTADDR_INDEX   : integer := 14;
+  constant DUMMYBYTE_INDEX : integer := 15;
+  constant DUALOUT_INDEX   : integer := 16;
+  constant QUADOUT_INDEX   : integer := 17;
+  constant DUALIN_INDEX    : integer := 18;
+  constant QUADIN_INDEX    : integer := 19;
 
   type spi_out_type is record
     miso     : std_ulogic;
@@ -216,12 +227,19 @@ package spi is
   type spimctrl_in_type is record
     miso        : std_ulogic;
     mosi        : std_ulogic;
+    io2         : std_ulogic;
+    io3         : std_ulogic;
     cd          : std_ulogic;
   end record;
 
   type spimctrl_out_type is record
     mosi        : std_ulogic;
+    miso        : std_ulogic;
+    io2         : std_ulogic;
+    io3         : std_ulogic;
     mosioen     : std_ulogic;
+    misooen     : std_ulogic;
+    iooen       : std_ulogic;
     sck         : std_ulogic;
     csn         : std_ulogic;
     cdcsnoen    : std_ulogic;
@@ -231,7 +249,7 @@ package spi is
   end record;
 
   constant spimctrl_out_none : spimctrl_out_type :=
-    ('0', '1', '0', '1', '1', '0', '0');
+    ('0', '0', '1', '1', '0', '1', '0', '0', '1', '1', '0', '0');
 
   component spimctrl
     generic (
@@ -251,7 +269,15 @@ package spi is
       altscaler   : integer range 1 to 512 := 1;
       pwrupcnt    : integer := 0;
       maxahbaccsz : integer range 0 to 256 := AHBDW;
-      offset      : integer := 0
+      offset      : integer := 0;
+      quadoutput  : integer range 0 to 1   := 0;
+      dualinput   : integer range 0 to 1   := 0;
+      quadinput   : integer range 0 to 1   := 0;
+      dummycycles : integer range 0 to 15  := 0;
+      DSPI        : integer range 0 to 1   := 0;
+      QSPI        : integer range 0 to 1   := 0;
+      extaddr     : integer range 0 to 1   := 0;
+      reconf      : integer range 0 to 1   := 0
       );
     port (
       rstn    : in  std_ulogic;
@@ -262,6 +288,32 @@ package spi is
       spio    : out spimctrl_out_type
     );
   end component;
+
+  -- Constants for (and for using) dynamic_spi_flash
+  -- List of read commands
+  constant READSINGLE : std_logic_vector(7 downto 0) := X"03";-- (1,1,1)
+  constant READFAST   : std_logic_vector(7 downto 0) := X"0B";-- (y,y,y)
+  constant READDUALO  : std_logic_vector(7 downto 0) := X"3B";-- (x,y,2)
+  constant READDUALIO : std_logic_vector(7 downto 0) := X"BB";-- (x,2,2)
+  constant READQUADO  : std_logic_vector(7 downto 0) := X"6B";-- (x,y,4)
+  constant READQUADIO : std_logic_vector(7 downto 0) := X"EB";-- (x,4,4)
+  -- (Fake) Commands (goto dual/quad/extended/statusreg etc)
+  constant READSTATUSREG  : std_logic_vector(7 downto 0) := X"45";
+  constant WRITESTATUSREG : std_logic_vector(7 downto 0) := X"67";
+  constant RESETREGSTATUS : std_logic_vector(7 downto 0) := X"CA";
+  constant GOTOESPI       : std_logic_vector(7 downto 0) := X"89";
+  constant GOTODSPI       : std_logic_vector(7 downto 0) := X"AB";
+  constant GOTOQSPI       : std_logic_vector(7 downto 0) := X"CD";
+  constant GOTOEXTADDR    : std_logic_vector(7 downto 0) := X"EF";--4-bytes addr
+  constant GOTONRMADDR    : std_logic_vector(7 downto 0) := X"23";--3-bytes addr
+  -- (Fake) Read command that doesn't overwrite the number of dummy cycles
+  constant READWITHOTHERDUMMYCYCLES : std_logic_vector(7 downto 0) := X"01";
+  -- (Fake) Commands for setting dummy cycles
+  -- the other 4 bits will indicate how many dummy cycles to use
+  constant SETDUMMYCYCLES : std_logic_vector(3 downto 0) := X"1";
+  -- (Fake) status register default value
+  constant DEFAULTSTATUS  : std_logic_vector(7 downto 0) := X"7B";-- int=123
+
 
 end;
 

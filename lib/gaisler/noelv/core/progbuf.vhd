@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,8 +27,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library gaisler;
-use gaisler.noelv.all;
-use gaisler.noelvint.all;
+use gaisler.noelvint.nv_progbuf_in_type;
+use gaisler.noelvint.nv_progbuf_out_type;
+use gaisler.nvsupport.word64;
+use gaisler.utilnv.u2i;
 
 entity progbuf is
   generic (
@@ -53,8 +54,8 @@ begin
   begin
     v := r;
 
-    idx   := to_integer(unsigned(pbi.addr(pbi.addr'high downto 1)));
-    eidx  := to_integer(unsigned(pbi.eaddr(pbi.eaddr'high downto 1)));
+    idx   := u2i(pbi.addr(pbi.addr'high downto 1));
+    eidx  := u2i(pbi.eaddr(pbi.eaddr'high downto 1));
 
     if (idx < size/2) and (size /= 0) then
       if pbi.addr(0) = '0' then

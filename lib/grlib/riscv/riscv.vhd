@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -228,6 +227,7 @@ package riscv is
 
   constant I_FENCE      : funct3_type := "000";
   constant I_FENCE_I    : funct3_type := "001";
+  constant I_CBO        : funct3_type := "010";
 
   constant I_ENV        : funct3_type := "000";
 
@@ -605,12 +605,16 @@ package riscv is
   constant CSR_SIE              : csratype := x"104";
   constant CSR_STVEC            : csratype := x"105";
   constant CSR_SCOUNTEREN       : csratype := x"106";
+  -- Supervisor Configuration
+  constant CSR_SENVCFG          : csratype := x"10a";
   -- Supervisor Trap Handling
   constant CSR_SSCRATCH         : csratype := x"140";
   constant CSR_SEPC             : csratype := x"141";
   constant CSR_SCAUSE           : csratype := x"142";
   constant CSR_STVAL            : csratype := x"143";
   constant CSR_SIP              : csratype := x"144";
+  constant CSR_STIMECMP         : csratype := x"14d";
+  constant CSR_STIMECMPH        : csratype := x"15d";
   -- Supervisor Protection and Translation
   constant CSR_SATP             : csratype := x"180";
   -- Supervisor Count Overflow
@@ -629,6 +633,9 @@ package riscv is
   constant CSR_HVIP             : csratype := x"645";
   constant CSR_HTINST           : csratype := x"64a";
   constant CSR_HGEIP            : csratype := x"e12";
+  -- Hypervisor Configuration
+  constant CSR_HENVCFG          : csratype := x"60a";
+  constant CSR_HENVCFGH         : csratype := x"61a";
   -- Hypervisor Protection and Translation
   constant CSR_HGATP            : csratype := x"680";
   -- Hypervisor Counter/Timer Virtualization Registers
@@ -645,6 +652,8 @@ package riscv is
   constant CSR_VSCAUSE          : csratype := x"242";
   constant CSR_VSTVAL           : csratype := x"243";
   constant CSR_VSIP             : csratype := x"244";
+  constant CSR_VSTIMECMP        : csratype := x"24d";
+  constant CSR_VSTIMECMPH       : csratype := x"25d";
   constant CSR_VSATP            : csratype := x"280";
 
   -- Machine Information Registers
@@ -670,6 +679,9 @@ package riscv is
   constant CSR_MIP              : csratype := x"344";
   constant CSR_MTINST           : csratype := x"34a";
   constant CSR_MTVAL2           : csratype := x"34b";
+  -- Machine Configuration
+  constant CSR_MENVCFG          : csratype := x"30a";
+  constant CSR_MENVCFGH         : csratype := x"31a";
   -- Machine Protection and Translation
   constant CSR_PMPCFG0          : csratype := x"3a0";
   constant CSR_PMPCFG1          : csratype := x"3a1";

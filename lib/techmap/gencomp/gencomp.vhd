@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,7 +37,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 67;
+constant NTECH : integer := 68;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -114,7 +113,7 @@ constant virtexup    : integer := 65;
 constant kintexup    : integer := 65;
 constant rhs28       : integer := 66;
 constant techres1    : integer := 67;
-
+constant nexus       : integer := 68;
 
 
 constant DEFMEMTECH  : integer := inferred;
@@ -130,7 +129,8 @@ constant is_fpga : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1,
-	 stratix5 => 1, ultrascale => 1, ultrascalep => 1, polarfire => 1,nx =>1, others => 0);
+	 stratix5 => 1, ultrascale => 1, ultrascalep => 1, polarfire => 1,
+         nx =>1, nexus => 1, others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
 
@@ -240,7 +240,7 @@ constant has_dpram : tech_ability_type :=
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
 	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
          dare => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1,
-         nx=>1,others => 0);
+         nx=>1, nexus => 1,others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
@@ -336,7 +336,7 @@ constant has_pads : tech_ability_type :=
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
          actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
          ut90 => 1, virtex7 => 1, kintex7 => 1, nx => 1,
-         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, nexus => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -376,7 +376,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, nexus => 1, others => 0);
 
 constant has_techbuf_triplicated : tech_ability_type :=
         ( rtg4 => 1, others => 0);
@@ -544,7 +544,8 @@ constant has_transceivers : tech_ability_type := (
   kintexu   => "ultrascale", polarfire => "polarfire ",
   nx        => "nx        ", dare65t   => "dare65t   ",
   gf22      => "gf22      ", virtexup  => "uscaleplus",
-  rhs28     => "rhs28     ", techres1  => "techres1  "
+  rhs28     => "rhs28     ", techres1  => "techres1  ",
+  nexus     => "nexus     "
   );
 
 -- pragma translate_on
@@ -2347,8 +2348,8 @@ end component;
 
 component serdes is
   generic (
-    fabtech   : integer;
-    transtech : integer
+    fabtech   : integer := 0;
+    transtech : integer := 0
   );
   port (
     clk_125     : in std_logic;

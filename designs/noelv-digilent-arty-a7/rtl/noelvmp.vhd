@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -73,6 +72,8 @@ entity noelvmp is
     btn                : in    std_logic_vector(3 downto 0);
     -- Switches
     sw                 : in    std_logic_vector(3 downto 0);
+    -- PMOD-JA
+    ja                 : inout std_logic_vector(7 downto 0);
     -- USB-RS232 interface
     uart_txd_in        : in    std_ulogic;
     uart_rxd_out       : out   std_ulogic;
@@ -120,6 +121,9 @@ architecture rtl of noelvmp is
     end if;
     return BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV;
   end;
+  constant OEPOL  : integer := padoen_polarity(padtech);
+  constant oeon   : std_logic := conv_std_logic_vector(OEPOL,1)(0);
+  constant oeoff  : std_logic := not conv_std_logic_vector(OEPOL,1)(0);
 
   -------------------------------------
   -- Misc
@@ -158,6 +162,11 @@ architecture rtl of noelvmp is
   signal gpio_oe        : std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
   -- JTAG
   signal tck, tms, tdi, tdo : std_ulogic;
+  -- RISC-V JTAG
+  signal jtag_rv_tck    : std_ulogic := '0';
+  signal jtag_rv_tms    : std_ulogic := '0';
+  signal jtag_rv_tdi    : std_ulogic := '0';
+  signal jtag_rv_tdo    : std_ulogic;
   -- Ethernet
   signal ethi : eth_in_type;
   signal etho : eth_out_type;
@@ -273,7 +282,12 @@ begin
     tck         => tck,
     tms         => tms,
     tdi         => tdi,
-    tdo         => tdo
+    tdo         => tdo,
+    -- RISC-V JTAG
+    jtag_rv_tck => jtag_rv_tck,
+    jtag_rv_tms => jtag_rv_tms,
+    jtag_rv_tdi => jtag_rv_tdi,
+    jtag_rv_tdo => jtag_rv_tdo
   );
 
   --errorn_pad : odpad
@@ -669,6 +683,47 @@ begin
     noeth0 : if CFG_GRETH = 0 generate
       -- TODO:
     end generate;
+-----------------------------------------------------------------------
+-- RISC-V JTAG
+-----------------------------------------------------------------------
+  --     PMOD-JA
+  -------------------
+  -- TDO  1 |  7  TDI
+  -- NC   2 |  8  TMS
+  -- TCK  3 |  9  NC
+  -- NC   4 | 10  NC
+  -- GND  5 | 11  GND
+  -- VCC  6 | 12  VCC
+  -------------------
+
+  rvjtag : if CFG_LOCAL_AHB_JTAG_RV = 1 generate
+    --tdo_pad : iopad generic map (tech => padtech)
+    --  port map (ja(0), jtag_rv_tdo, oeon, open);
+    tdo_pad : outpad generic map (tech => padtech)
+        port map (ja(0), jtag_rv_tdo);
+    
+    --ntrst_pad : iopad generic map (tech => padtech)
+    --  port map (ja(1), gnd, oeoff, open);
+    
+    --tck_pad : iopad generic map (tech => padtech)
+    --  port map (ja(2), gnd, oeoff, jtag_rv_tck);
+    tck_pad : clkpad generic map (tech => padtech, arch => 2)
+      port map (ja(2), jtag_rv_tck);
+    
+    --nc3_pad : iopad generic map (tech => padtech)
+    --  port map (ja(3), gnd, oeoff, open);
+    
+    tdi_pad : iopad generic map (tech => padtech)
+      port map (ja(4), gnd, oeoff, jtag_rv_tdi);
+    tms_pad : iopad generic map (tech => padtech)
+      port map (ja(5), gnd, oeoff, jtag_rv_tms);
+    
+      --nrst_pad : iopad generic map (tech => padtech)
+    --  port map (ja(6), gnd, oeoff, open);
+    --nc7_pad : iopad generic map (tech => padtech)
+    --  port map (ja(7), gnd, oeoff, open);
+
+  end generate;
 
 -----------------------------------------------------------------------
 ---  Boot message  ----------------------------------------------------

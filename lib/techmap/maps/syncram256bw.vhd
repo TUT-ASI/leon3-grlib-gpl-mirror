@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,7 +35,7 @@ use grlib.stdlib.all;
 
 entity syncram256bw is
   generic (tech : integer := 0; abits : integer := 6; testen : integer := 0;
-           custombits: integer := 1; pipeline : integer range 0 to 15);
+           custombits: integer := 1; pipeline : integer range 0 to 15 := 0);
   port (
     clk     : in  std_ulogic;
     address : in  std_logic_vector (abits -1 downto 0);

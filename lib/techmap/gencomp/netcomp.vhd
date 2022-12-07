@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -314,7 +313,7 @@ package netcomp is
       scantest        : integer range 0 to 1 := 0;
       ports           : integer range 1 to 2 := 1;
       dmachan         : integer range 1 to 4 := 1;
-      tech            : integer;
+      tech            : integer := 0;
       input_type      : integer range 0 to 6 := 0;
       output_type     : integer range 0 to 2 := 0;
       rxtx_sameclk    : integer range 0 to 1 := 0;
@@ -458,7 +457,7 @@ package netcomp is
       output_type  : integer range 0 to 2;
       rxtx_sameclk : integer range 0 to 1;
       fifosize     : integer range 16 to 2048;
-      tech         : integer;
+      tech         : integer := 0;
       scantest     : integer range 0 to 1;
       techfifo     : integer range 0 to 1;
       ft           : integer range 0 to 2;

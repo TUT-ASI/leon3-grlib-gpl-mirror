@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,31 +28,29 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
-use grlib.stdlib.all;
-use grlib.config.all;
-use grlib.config_types.all;
 use grlib.riscv.all;
+use grlib.stdlib.tost;
+use grlib.stdlib.notx;
 library gaisler;
-use gaisler.utilnv.all;
+use gaisler.noelvint.reg_t;
+use gaisler.utilnv.u2i;
+use gaisler.utilnv.s2i;
+use gaisler.utilnv.usub;
+use gaisler.utilnv.tost;
+use gaisler.utilnv.all_0;
+use gaisler.utilnv.all_1;
+use gaisler.utilnv.get_hi;
+use gaisler.utilnv.to_bit;
+use gaisler.nvsupport.word64;
+use gaisler.nvsupport.word;
+use gaisler.nvsupport.zerow;
+
 
 package fputilnv is
 
   constant fpulen : integer := 64;  -- qqq Should not be here!
 
-  subtype word8  is std_logic_vector( 7 downto 0);
---  subtype word16 is std_logic_vector(15 downto 0);
-  subtype word64 is std_logic_vector(63 downto 0);
-  subtype word   is std_logic_vector(31 downto 0);
---  subtype wordx  is std_logic_vector(XLEN - 1 downto 0);
-
-  subtype regno_t   is std_logic_vector(4 downto 0);
-  type    regno_arr is array (integer range <>) of regno_t;
-
---  constant zerow16      : word16 := (others => '0');
-  constant zerow64      : word64 := (others => '0');
---  constant onesw64      : word64 := (others => '1');
---  constant zerox        : wordx  := (others => '0');
---  constant zerow        : word   := (others => '0');
+  type     reg_arr is array (integer range <>) of reg_t;
 
   subtype  rm_t       is std_logic_vector(2 downto 0);
   constant R_NEAREST   : rm_t := "000";  -- RNE Nearest, ties to even
@@ -62,7 +59,7 @@ package fputilnv is
   constant R_PLUS_INF  : rm_t := "011";  -- RUP Up, towards positive infinity
   constant R_RMM       : rm_t := "100";  -- Nearest, ties to max magnitude
   -- The rest are illegal, except that in an instruction "111" (DYN)
-  -- means that rouding mode should be fetched from CSR register.
+  -- means that rounding mode should be fetched from CSR register.
 
   -- Floating point flags
   constant EXC_NX : integer := 0;  -- Inexact
@@ -115,16 +112,14 @@ package fputilnv is
     x"ffffffff3f800000", C_NORMAL, false, false,  -- single precision 1.0
     (others => '0'), (54 => '1', others => '0'));
 
-  subtype fpu_id is std_logic_vector(4 downto 0);
-
   type fpunv_op is record
     valid : std_ulogic;
     op    : fpuop_t;  -- std_logic_vector(4 downto 0);  -- FPU operation
     opx   : std_logic_vector(2 downto 0);  --   extension
     rm    : rm_t;                          -- Rounding mode
     sp    : std_ulogic;                    -- Single precision
-    rd    : regno_t;
-    rs    : regno_arr(1 to 3);
+    rd    : reg_t;
+    rs    : reg_arr(1 to 3);
     ren   : std_logic_vector(1 to 3);
   end record;
 
@@ -167,9 +162,10 @@ package fputilnv is
     FPEVT_EVENTS          -- Only for fpevt_t type!
   );
 
-  subtype fpevt_t is std_logic_vector(1 to fpuevent_t'pos(FPEVT_EVENTS));
+  subtype fpevt_t is std_logic_vector(0 to fpuevent_t'pos(FPEVT_EVENTS)-1);
   function fpu_event(evt : fpuevent_t) return integer;
   procedure fpu_event(events : inout fpevt_t; evt : fpuevent_t);
+
 
   function is_signan(op : float) return boolean;
   function is_inf(op : float) return boolean;
@@ -178,25 +174,6 @@ package fputilnv is
   function is_one(op : float) return boolean;
   function is_normal(op : float) return boolean;
   function is_neg(op : float) return boolean;
-
-  function to_float(data : std_logic_vector; fmt : std_logic_vector) return float;
-  function to_float_ext(data : std_logic_vector) return float;
-
-  function tost(op : fpuop_t) return string;
-
--- pragma translate_off
-  function tost(f : float) return string;
-  function fpreg2st(v : std_logic_vector) return string;
-  procedure show_float(text : string; reg : std_logic_vector; v : std_logic_vector);
--- pragma translate_on
-
-  function truncate(v : real) return integer;
-  function log2(v : real) return integer;
-  function r2u(f_in : real; bits : integer) return unsigned;
-  function s2r(data : std_logic_vector) return real;
-  function u2r(data : std_logic_vector) return real;
-
-  function has_decimals(f_in : real) return std_ulogic;
 
   function inf_mul(a : float; b : float) return float;
   function inf_neg(a : float) return float;
@@ -207,12 +184,6 @@ package fputilnv is
   function NaN(dp : boolean) return std_logic_vector;
   function Inf(fmt : std_logic_vector) return std_logic_vector;
   function Inf(dp : boolean) return std_logic_vector;
-
--- pragma translate_off
-  function from_real(f_in : real; fmt : std_logic_vector) return std_logic_vector;
-  function from_real_ext(f : real; fmt : std_logic_vector) return std_logic_vector;
-  function from_float(v : float; fmt : std_logic_vector) return std_logic_vector;
--- pragma translate_on
 
   procedure fpu_gen(inst        : in  word;
                     csr_frm     : in  rm_t;
@@ -226,12 +197,6 @@ package fputilnv is
   function is_mul(op : fpuop_t) return boolean;
   function is_fromint(op : fpuop_t) return boolean;
   function fd_gen(op : fpuop_t) return boolean;
-
-  function is_fpu(inst : word) return boolean;
-  function is_fpu_mem(inst : word) return boolean;
-  function is_fpu_from_int(inst : word) return boolean;
-  function is_fpu_rd(inst : word) return boolean;
-  function is_fpu_modify(inst : word) return boolean;
 
   function find_normadj(op     : float;
                         limdp  : boolean; limsp : boolean;
@@ -250,14 +215,22 @@ package fputilnv is
   procedure roundup(op2 : float; dp : boolean; rm : rm_t;
                     rndup_out : out boolean; rndbits_out : out std_logic_vector(2 downto 0));
 
+
+  function to_float_ext(data : std_logic_vector) return float;
+  function to_float(data : std_logic_vector; fmt : std_logic_vector) return float;
+-- pragma translate_off
+  function fpreg2st(v : std_logic_vector) return string;
+  procedure show_float(text : string; reg : std_logic_vector; v : std_logic_vector);
+-- pragma translate_on
 end;
 
 package body fputilnv is
 
   function fpu_event(evt : fpuevent_t) return integer is
   begin
-    return fpuevent_t'pos(evt) + 1;
+    return fpuevent_t'pos(evt);
   end;
+
 
   procedure fpu_event(events : inout fpevt_t; evt : fpuevent_t) is
   begin
@@ -283,7 +256,7 @@ package body fputilnv is
   begin
     return is_normal(op) and not is_neg(op) and s2i(op.exp) = 0 and
            op.mant(op.mant'high downto op.mant'high - 1) = "01" and
-           u2i(op.mant(op.mant'high - 1 downto 0)) = 0;
+           all_0(op.mant(op.mant'high - 1 downto 0));
   end;
 
   function is_nan(op : float) return boolean is
@@ -302,357 +275,7 @@ package body fputilnv is
     return is_nan(op) and op.snan;
   end;
 
-  -- Binary (IEEE754) to float conversion
-  -- Does not provide infinity, NaN and such in real component.
-  function to_float(data : std_logic_vector; fmt : std_logic_vector) return float is
-    -- Non-constant
-    variable bits       : integer;
-    variable frac_bits  : integer := 23;  -- Assume single precision
-    variable exp_bits   : integer := 8;
-    variable exp_max    : integer;
-    variable exp        : integer;
-    variable frac       : integer;
-    variable sign       : real;
--- pragma translate_off
-    variable f          : real;
--- pragma translate_on
-    variable r          : float   := float_none;
-  begin
-    r.w          := data;
--- pragma translate_off
-    r.v          := 12345.6789;  -- Dummy
--- pragma translate_on
-    if fpulen = 64 and fmt = "01" then
-      frac_bits  := 52;
-      exp_bits   := 11;
-    -- Improper NaN boxing of 32 bit float?
-    elsif fpulen = 64 and data'length = 64 and not all_1(data(63 downto 32)) then
-      r.class    := C_NAN;
-      r.w        := (others => '1');
-      r.w(frac_bits - 2 downto 0) := (others => '0');
-      r.w(exp_bits + frac_bits)   := '0';
-      return r;
-    end if;
-
-    bits    := 1 + exp_bits + frac_bits;
-    exp_max := 2 ** exp_bits - 1;
-
--- pragma translate_off
-    sign    := 1.0;
--- pragma translate_on
-    if data(frac_bits + exp_bits) = '1' then
--- pragma translate_off
-      sign  := -1.0;
--- pragma translate_on
-      r.neg := true;
-    end if;
-
-    exp     := u2i(data(bits - 2 downto bits - exp_bits - 1));
-
-    --  Exponent all 1 - infinity (frac 0) or NaN
-    if exp = exp_max then
-      if all_0(data(frac_bits - 1 downto 0)) then
-        r.class  := C_INF;
-        return r;
-      else
-        r.class  := C_NAN;
-        if data(frac_bits - 1) = '0' then   -- Signaling NaN?
-          r.snan := true;
-        end if;
-        return r;
-      end if;
-    end if;
-
-    frac        := u2i(data(frac_bits - 1 downto frac_bits - 23));
-    if frac = 0 then
-      r.class   := C_ZERO;
-    end if;
--- pragma translate_off
-    f           := real(frac) / 2.0 ** 23;
--- pragma translate_on
-    if frac_bits > 23 then
-      frac      := u2i(data(frac_bits - 23 - 1 downto 0));
-      if frac /= 0 then
-        r.class := C_NORMAL;
-      end if;
--- pragma translate_off
-      f         := f + real(frac) / 2.0 ** frac_bits;
--- pragma translate_on
-    end if;
-
-    -- Exponent all 0 - subnormal
-    if exp = 0 then
--- pragma translate_off
-      f       := f * 2.0 ** (1 - (exp_max - 1) / 2);
--- pragma translate_on
-      r.exp   := to_signed(-(exp_max - 1) / 2, r.exp'length);
-      r.mant  := (others => '0');
-      r.mant(53 downto 53 - frac_bits + 1) := data(frac_bits - 1 downto 0);
-      if notx(r.mant) and not all_0(r.mant) then
-        loop
-          if r.mant(54) = '1' then
-            exit;
-          end if;
-          r.exp  := r.exp - 1;
-          r.mant := r.mant(r.mant'high - 1 downto 0) & '0';
-        end loop;
-      end if;
-    else
-      r.class := C_NORMAL;
--- pragma translate_off
-      -- ModelSim does not like assigmnents outside -1e308 and 1e308,
-      -- but a real can actually be there...
-      if (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2) > 1.0e308 then
-        f := 1.0e308;
-      elsif (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2) < -1.0e308 then
-        f := -1.0e308;
-      else
-        f       := (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2);
-      end if;
--- pragma translate_on
-      r.exp   := to_signed(u2i(data(frac_bits + exp_bits - 1 downto frac_bits)) -
-                           (exp_max - 1) / 2, r.exp'length);
-      r.mant  := (others => '0');
-      r.mant(54) := '1';
-      r.mant(53 downto 53 - frac_bits + 1) := data(frac_bits - 1 downto 0);
-    end if;
-
--- pragma translate_off
-    f := sign * f;
-
-    r.v := f;
--- pragma translate_on
-
-    return r;
-  end;
-
-  -- Remove NaN boxing and create float from binary (IEEE754)
-  function to_float_ext(data : std_logic_vector) return float is
-    -- Non-constant
-    variable res : word64;
-  begin
-    if all_1(data(63 downto 32)) then
-      return to_float(data, "00");
-    else
-      return to_float(data, "01");
-    end if;
-  end;
-
-  function tost(op : fpuop_t) return string is
-  begin
-    case op is
-    when FPU_UNKNOWN => return "unknown";
-    when FPU_ADD     => return "add";
-    when FPU_SUB     => return "sub";
-    when FPU_MIN     => return "min";
-    when FPU_SGN     => return "sgn";
-    when FPU_CVT_S_D => return "cvt.s.d";
-    when FPU_MUL     => return "mul";
-    when FPU_STORE   => return "store";
-    when FPU_CVT_W_S => return "cvt.w.s";
-    when FPU_MV_X_W  => return "mv.x.w";
-    when FPU_CMP     => return "cmp";
-    when FPU_LOAD    => return "load";
-    when FPU_CVT_S_W => return "cvt.s.w";
-    when FPU_MV_W_X  => return "mv.w.x";
-    when FPU_MADD    => return "madd";
-    when FPU_MSUB    => return "msub";
-    when FPU_NMSUB   => return "nmsub";
-    when FPU_NMADD   => return "nmadd";
-    when FPU_DIV     => return "div";
-    when FPU_SQRT    => return "sqrt";
-    end case;
-  end;
-
--- pragma translate_off
-  function tost(f : float) return string is
-  begin
-    if is_inf(f) then
-      if f.neg then
-        return "-inf";
-      else
-        return "inf";
-      end if;
-    end if;
-    if is_signan(f) then
-      return "sNaN";
-    end if;
-    if is_nan(f) then
-      return "qNaN";
-    end if;
-    if is_zero(f) then
-      if f.neg then
-        return "-0";
-      else
-        return "0";
-      end if;
-    end if;
-
-    return tost(f.v);
-  end;
-
-  function fpreg2st(v : std_logic_vector) return string is
-    variable reg : regno_t;
-  begin
-    reg := v;
-    case reg(4 downto 0) is
-      when FPU_FT0      => return("ft0");
-      when FPU_FT1      => return("ft1");
-      when FPU_FT2      => return("ft2");
-      when FPU_FT3      => return("ft3");
-      when FPU_FT4      => return("ft4");
-      when FPU_FT5      => return("ft5");
-      when FPU_FT6      => return("ft6");
-      when FPU_FT7      => return("ft7");
-      when FPU_FS0      => return("fs0");
-      when FPU_FS1      => return("fs1");
-      when FPU_FA0      => return("fa0");
-      when FPU_FA1      => return("fa1");
-      when FPU_FA2      => return("fa2");
-      when FPU_FA3      => return("fa3");
-      when FPU_FA4      => return("fa4");
-      when FPU_FA5      => return("fa5");
-      when FPU_FA6      => return("fa6");
-      when FPU_FA7      => return("fa7");
-      when FPU_FS2      => return("fs2");
-      when FPU_FS3      => return("fs3");
-      when FPU_FS4      => return("fs4");
-      when FPU_FS5      => return("fs5");
-      when FPU_FS6      => return("fs6");
-      when FPU_FS7      => return("fs7");
-      when FPU_FS8      => return("fs8");
-      when FPU_FS9      => return("fs9");
-      when FPU_FS10     => return("fs10");
-      when FPU_FS11     => return("fs11");
-      when FPU_FT8      => return("ft8");
-      when FPU_FT9      => return("ft9");
-      when FPU_FT10     => return("ft10");
-      when FPU_FT11     => return("ft11");
-      when others       => return("XXXX");
-    end case;
-  end;
-
-  procedure show_float(text : string; reg : std_logic_vector; v : std_logic_vector) is
-  variable f : float := to_float_ext(v);
-  begin
-    case f.class is
-      when C_NORMAL =>
-        if f.v > 1.0e307 then
-          report text & " " & tost(reg) & " " & tost(v) & " > 1.0e307";
-        elsif f.v < -1.0e307 then
-          report text & " " & tost(reg) & " " & tost(v) & " < -1.0e307";
-        else
-          report text & " " & tost(reg) & " " & tost(v) & " " & tost(f.v);
-        end if;
-      when others   =>
-        report text & " " & tost(reg) & " " & tost(v);
-    end case;
-  end;
--- pragma translate_on
-
-
-  function truncate(v : real) return integer is
-  begin
-    return integer(ieee.math_real.trunc(v));
-  end;
-
-  function log2(v : real) return integer is
-    variable t : integer;
-  begin
-    t   := truncate(ieee.math_real.log2(v));
-    if 2.0 ** t > v then
-      t := t - 1;
-    end if;
-    if 2.0 ** (t + 1) <= v then
-      t := t + 1;
-    end if;
-
-    return t;
-  end;
-
-  -- Real to unsigned conversion
-  function r2u(f_in : real; bits : integer) return unsigned is
-    -- Non-constant
-    variable f    : real                        := ieee.math_real.trunc(f_in);
-    variable fd2  : real;
-    variable data : unsigned(bits - 1 downto 0) := (others => '0');
-  begin
-    assert f >= 0.0 report "Bad r2u - negative" severity failure;
-    convert : for i in 0 to bits - 1 loop
-      fd2       := ieee.math_real.trunc(f / 2.0);
-      if fd2 * 2.0 /= f then
-        data(i) := '1';
-        if fd2 = 0.0 then
-          f     := fd2;
-          exit convert;
-        end if;
-      end if;
-      f         := fd2;
-    end loop;
-
-    assert f = 0.0 report "Bad r2u - large" severity failure;
-
-    return data;
-  end;
-
-  -- Signed to real conversion
-  function s2r(data : std_logic_vector) return real is
-    variable res : real;
-    variable fx  : word64;
-  begin
-    if data'length = 32 then
-      if data(31) = '0' then
-        res := real(u2i(data(30 downto 0)));
-      else
-        res := -real(u2i(not data(31 downto 0)) + 1);
-      end if;
-    elsif data'length = 64 then
-      fx  := data;
-      if data(63) = '1' then
-        fx  := std_logic_vector(unsigned(not data) + 1);
-      end if;
-      res := real(u2i(fx(30 downto 0)));
-      res := res + real(u2i(fx(61 downto 31))) * 2.0 ** 31;
-      res := res + real(u2i(fx(63 downto 62))) * 2.0 ** 62;
-      if data(63) = '1' then
-        res := -res;
-      end if;
-    else
-      assert false report "Bad data size!" severity failure;
-    end if;
-
-    return res;
-  end;
-
-  -- Unsigned to real conversion
-  function u2r(data : std_logic_vector) return real is
-    variable res : real;
-  begin
-    res := real(u2i(data(30 downto 0)));
-    if data'length = 32 then
-      if data(31) = '1' then
-        res := res + 2.0 ** 31;
-      end if;
-    else
-      res := res + real(u2i(data(61 downto 31))) * 2.0 ** 31;
-      res := res + real(u2i(data(63 downto 62))) * 2.0 ** 62;
-    end if;
-
-    return res;
-  end;
-
-  function has_decimals(f_in : real) return std_ulogic is
-    -- Non-constant
-    variable f : real := ieee.math_real.trunc(f_in);
-  begin
-    if f /= f_in then
-      return '1';
-    end if;
-
-    return '0';
-  end;
-
-    -- Helper functions to simplify illegality checks
+  -- Helper functions to simplify illegality checks
   function inf_mul(a : float; b : float) return float is
     variable v : float := a;
   begin
@@ -660,6 +283,7 @@ package body fputilnv is
       v.class := C_INF;
     end if;
     v.neg := a.neg xor b.neg;
+
     return v;
   end;
 
@@ -667,6 +291,7 @@ package body fputilnv is
     variable v : float := a;
   begin
     v.neg := not v.neg;
+
     return v;
   end;
 
@@ -709,133 +334,6 @@ package body fputilnv is
   begin
     return Inf("0" & to_bit(dp));
   end;
-
--- pragma translate_off
-  -- Real to binary (IEEE754) conversion
-  -- Does not deal with infinity, NaN and such.
-  function from_real(f_in : real; fmt : std_logic_vector) return std_logic_vector is
-    -- Non-constant
-    variable f         : real    := f_in;
-    variable bits      : integer;
-    variable frac_bits : integer := 23;  -- Assume single precision
-    variable exp_bits  : integer := 8;
-    variable exp_max   : integer;
-    variable mant_max  : real;
-    variable exp       : integer;
-    variable frac      : integer;
-    variable sign      : std_ulogic;
-    variable data      : word64;
-  begin
-    if fpulen = 64 and fmt = "01" then
-      frac_bits  := 52;
-      exp_bits   := 11;
-    end if;
-
-    bits     := 1 + exp_bits + frac_bits;
-    exp_max  := 2 ** exp_bits - 1;
-    mant_max := 2.0 ** (frac_bits + 1) - 1.0;
-
-    sign     := '0';
-    if f < 0.0 then
-      f      := -f;
-      sign   := '1';
-    end if;
-
-    data(bits - 1) := sign;
-
-    -- Too large to represent?
-    if f > mant_max * 2.0 ** ((exp_max - 1) / 2 - frac_bits) then
-      data(bits - 2 downto frac_bits) := (others => '1');
-      data(frac_bits - 1 downto 0)    := (others => '0');
-      return data(bits - 1 downto 0);
-    elsif f = 0.0 then
-      data(bits - 2 downto 0)         := (others => '0');
-      return data(bits - 1 downto 0);
-    -- Too small to represent, even as subnormal?
-    elsif f < 2.0 ** (-((exp_max - 1) / 2 + frac_bits)) then
-      data(bits - 2 downto 0)         := (others => '0');
-      return data(bits - 1 downto 0);
-    end if;
-
-    exp   := log2(f);
-    -- Subnormal?
-    if exp < 1 - (exp_max - 1) / 2 then
-      data(bits - 2 downto frac_bits) := (others => '0');
-      exp := 1 - (exp_max - 1) / 2;
-      f   := f / 2.0 ** exp;
-    else
-      data(bits - 2 downto frac_bits) := std_logic_vector(to_unsigned(exp + (exp_max - 1) / 2, exp_bits));
-      f   := f / 2.0 ** exp - 1.0;
-    end if;
-
-    frac := truncate(f * 2.0 ** 23);
-    data(frac_bits - 1 downto frac_bits - 23) := std_logic_vector(to_unsigned(frac, 23));
-    f    := f - real(frac) / 2.0 ** 23;
-    if frac_bits > 23 then
-      frac := truncate(f * 2.0 ** frac_bits);
-      data(frac_bits - 23 - 1 downto 0) := std_logic_vector(to_unsigned(frac, frac_bits - 23));
-    else
-      f := f * 2.0 ** 23;
-      if f > 0.5 then
-        data(bits - 1 downto 0) := std_logic_vector(unsigned(data(bits - 1 downto 0)) + 1);
-      end if;
-    end if;
-
-    return data(bits - 1 downto 0);
-  end;
-
-  -- Real to binary (IEEE754) conversion with NaN boxing for single precision
-  function from_real_ext(f : real; fmt : std_logic_vector) return std_logic_vector is
-    -- Non-constant
-    variable bits : integer := 32;  -- Assume single precision
-    variable res  : word64;
-  begin
-    if fpulen = 64 and fmt = "01" then
-      bits := 64;
-    end if;
-
-    res                    := (others => '1');
-    res(bits - 1 downto 0) := from_real(f, fmt);
-
-    return res;
-  end;
-
-  -- Float to binary (IEEE754) conversion
-  -- (only used for double <-> single precision.)
-  function from_float(v : float; fmt : std_logic_vector) return std_logic_vector is
-    -- Non-constant
-    variable bits : integer    := 32;  -- Assume single precision
-    variable snan : word64     := x"ffffffff7f800001";  -- Correct signaling NaN?
-    variable frac : integer;
-    variable data : word64     := x"ffffffff00000000";
-    variable sign : std_ulogic := '0';
-  begin
-    if fpulen = 64 and fmt = "01" then
-      bits := 64;
-      snan := x"7ff0000000000001";
-      data := (others => '0');
-    end if;
-
-    if v.neg then
-      sign := '1';
-    end if;
-
-    if is_inf(v) then
-      data           := Inf(fmt);
-      data(bits - 1) := sign;
-      return data;
-    elsif is_signan(v) then
-      return snan;
-    elsif is_nan(v) then
-      return NaN(fmt);
-    elsif is_zero(v) then
-      data(bits - 1) := sign;
-      return data;
-    end if;
-
-    return from_real_ext(v.v, fmt);
-  end;
--- pragma translate_on
 
   -- FPU Signals Generation
 
@@ -1003,41 +501,6 @@ package body fputilnv is
            op /= FPU_MV_X_W  and op /= FPU_CVT_W_S;
   end;
 
-  -- FPU instruction that does not touch memory?
-  function is_fpu(inst : word) return boolean is
-    variable op : fpuop_t := fpuop(inst);
-  begin
-    return op /= FPU_UNKNOWN and op /= FPU_LOAD and op /= FPU_STORE;
-  end;
-
-  -- FPU instruction that touches memory?
-  function is_fpu_mem(inst : word) return boolean is
-    variable op : fpuop_t := fpuop(inst);
-  begin
-    return op = FPU_LOAD or op = FPU_STORE;
-  end;
-
-  -- FPU instruction with data from integer pipeline?
-  function is_fpu_from_int(inst : word) return boolean is
-    variable op : fpuop_t := fpuop(inst);
-  begin
-    return is_fromint(op);
-  end;
-
-  -- FPU instruction with FPU destination register?
-  function is_fpu_rd(inst : word) return boolean is
-    variable op : fpuop_t := fpuop(inst);
-  begin
-    return fd_gen(op);
-  end;
-
-  -- FPU instruction can modify FPU state (including flags)?
-  function is_fpu_modify(inst : word) return boolean is
-    variable op : fpuop_t := fpuop(inst);
-  begin
-    return op /= FPU_UNKNOWN and op /= FPU_STORE and op /= FPU_MV_X_W;
-  end;
-
   -- Find shift amount for normalization.
   function find_normadj(op     : float;
                         limdp  : boolean; limsp : boolean;
@@ -1091,6 +554,7 @@ package body fputilnv is
 
   -- Convert single/double precision floating point value to internal format.
   function unpack(opu : word64; dp  : boolean) return float is
+    -- Non-constant
     variable r : float := float_none;
 -- pragma translate_off
     variable f : float := to_float_ext(opu);
@@ -1099,8 +563,8 @@ package body fputilnv is
     r.w            := opu;
     if not dp then
       r.neg        := opu(31) = '1';
-      r.exp        := signed(sub(std_logic_vector'("00000" & opu(30 downto 23)), 127));
-      r.mant       := "01" & opu(22 downto 0) & zerow64(30 downto 0);
+      r.exp        := signed(usub(std_logic_vector'("00000" & opu(30 downto 23)), 127));
+      r.mant       := "01" & opu(22 downto 0) & zerow(30 downto 0);
       if all_0(opu(30 downto 23)) then                       -- Denormal?
         r.exp      := to_signed(-126, 13);
         r.mant(54) := '0';
@@ -1122,7 +586,7 @@ package body fputilnv is
     else
       r.neg        := opu(63) = '1';
       r.mant       := "01" & opu(51 downto 0) & "00";
-      r.exp        := signed(sub(std_logic_vector'("00" & opu(62 downto 52)), 1023));
+      r.exp        := signed(usub(std_logic_vector'("00" & opu(62 downto 52)), 1023));
       if all_0(opu(62 downto 52)) then                       -- Denormal?
         r.exp      := to_signed(-1022, 13);
         r.mant(54) := '0';
@@ -1155,15 +619,26 @@ package body fputilnv is
 
   -- Convert internal format to IEEE754 single/double precision value.
   function pack(op : float; dp : boolean) return std_logic_vector is
-    variable r : word64;
+    -- Non-constant
+    variable r      : word64;
+    variable op_exp : signed(op.exp'range) := op.exp;
   begin
     r                   := (others => '0');
     r(63)               := to_bit(op.neg);
     r(51 downto 0)      := op.mant(53 downto 2);
+--pragma translate_off
+    if is_normal(op) and is_x(std_logic_vector(op_exp)) then
+      op_exp := (others => '0');
+    end if;
+--pragma translate_on
     if dp then
-      assert (op.exp > -1023 and op.exp < 1024) or not is_normal(op);
-      r(62 downto 52)   := std_logic_vector(op.exp(10 downto 0) + 1023);
-      if op.exp = -1022 then
+--pragma translate_off
+      assert not is_normal(op) or (op_exp > -1023 and op_exp < 1024)
+        report "Bad pack op " & tost(op_exp) & " " & tost(is_normal(op))
+        severity failure;
+--pragma translate_on
+      r(62 downto 52)   := std_logic_vector(op_exp(10 downto 0) + 1023);
+      if op_exp = -1022 then
         r(52)           := op.mant(54);
       end if;
       if is_nan(op) or is_inf(op) then
@@ -1181,9 +656,13 @@ package body fputilnv is
         r(63)           := '0';
       end if;
     else
-      assert (op.exp > -127 and op.exp < 128) or not is_normal(op);
-      r(62 downto 55)   := std_logic_vector(op.exp(7 downto 0) + 127);
-      if op.exp = -126 then
+--pragma translate_off
+      assert not is_normal(op) or (op_exp > -127 and op_exp < 128)
+        report "Bad pack op " & tost(op_exp) & " " & tost(is_normal(op))
+        severity failure;
+--pragma translate_on
+      r(62 downto 55)   := std_logic_vector(op_exp(7 downto 0) + 127);
+      if op_exp = -126 then
         r(55)           := op.mant(54);
       end if;
       if is_nan(op) or is_inf(op) then
@@ -1215,11 +694,12 @@ package body fputilnv is
                        manthi_out : out std_logic_vector(65 downto 56);
                        mant_out   : out std_logic_vector(55 downto 0);
                        mant0b_out : out std_logic_vector(0 to 1)) is
+    variable neg   : boolean                       := get_hi(vadj) = '1';
+    -- Non-constant
     variable mant0 : std_logic_vector(55 downto 0) := (others => '0');
     variable xhi   : std_logic_vector( 9 downto 0) := (others => '0');
     variable xant  : std_logic_vector(55 downto 0) := mant_in;
     variable xadj  : signed(6 downto 0)            := vadj;
-    variable neg   : boolean                       := get_hi(vadj) = '1';
     variable low1  : boolean                       := false;
   begin
     if get_hi(vadj) = '0' then
@@ -1311,6 +791,7 @@ package body fputilnv is
 
   procedure roundup(op2 : float; dp : boolean; rm : rm_t;
                     rndup_out : out boolean; rndbits_out : out std_logic_vector(2 downto 0)) is
+    -- Non-constant
     variable rndbits : std_logic_vector(2 downto 0) := op2.mant(2 downto 0);
     variable rndup   : boolean                      := false;
   begin
@@ -1337,4 +818,199 @@ package body fputilnv is
     rndbits_out := rndbits;
   end;
 
+  -- Binary (IEEE754) to float conversion
+  -- Does not provide infinity, NaN and such in real component.
+  function to_float(data : std_logic_vector; fmt : std_logic_vector) return float is
+    -- Non-constant
+    variable bits       : integer;
+    variable frac_bits  : integer := 23;  -- Assume single precision
+    variable exp_bits   : integer := 8;
+    variable exp_max    : integer;
+    variable exp        : integer;
+    variable frac       : integer;
+    variable sign       : real;
+-- pragma translate_off
+    variable f          : real;
+-- pragma translate_on
+    variable r          : float   := float_none;
+  begin
+    r.w(data'range) := data;
+-- pragma translate_off
+    r.v          := 12345.6789;  -- Dummy
+-- pragma translate_on
+    if fpulen = 64 and fmt = "01" then
+      frac_bits  := 52;
+      exp_bits   := 11;
+    -- Improper NaN boxing of 32 bit float?
+    elsif fpulen = 64 and data'length = 64 and not all_1(data(63 downto 32)) then
+      r.class    := C_NAN;
+      r.w        := (others => '1');
+      r.w(frac_bits - 2 downto 0) := (others => '0');
+      r.w(exp_bits + frac_bits)   := '0';
+      return r;
+    end if;
+
+    bits    := 1 + exp_bits + frac_bits;
+    exp_max := 2 ** exp_bits - 1;
+
+-- pragma translate_off
+    sign    := 1.0;
+-- pragma translate_on
+    if data(frac_bits + exp_bits) = '1' then
+-- pragma translate_off
+      sign  := -1.0;
+-- pragma translate_on
+      r.neg := true;
+    end if;
+
+    exp     := u2i(data(bits - 2 downto bits - exp_bits - 1));
+
+    --  Exponent all 1 - infinity (frac 0) or NaN
+    if exp = exp_max then
+      if all_0(data(frac_bits - 1 downto 0)) then
+        r.class  := C_INF;
+        return r;
+      else
+        r.class  := C_NAN;
+        if data(frac_bits - 1) = '0' then   -- Signaling NaN?
+          r.snan := true;
+        end if;
+        return r;
+      end if;
+    end if;
+
+    frac        := u2i(data(frac_bits - 1 downto frac_bits - 23));
+    if frac = 0 then
+      r.class   := C_ZERO;
+    end if;
+-- pragma translate_off
+    f           := real(frac) / 2.0 ** 23;
+-- pragma translate_on
+    if frac_bits > 23 then
+      frac      := u2i(data(frac_bits - 23 - 1 downto 0));
+      if frac /= 0 then
+        r.class := C_NORMAL;
+      end if;
+-- pragma translate_off
+      f         := f + real(frac) / 2.0 ** frac_bits;
+-- pragma translate_on
+    end if;
+
+    -- Exponent all 0 - subnormal
+    if exp = 0 then
+-- pragma translate_off
+      f       := f * 2.0 ** (1 - (exp_max - 1) / 2);
+-- pragma translate_on
+      r.exp   := to_signed(-(exp_max - 1) / 2, r.exp'length);
+      r.mant  := (others => '0');
+      r.mant(53 downto 53 - frac_bits + 1) := data(frac_bits - 1 downto 0);
+      if notx(r.mant) and not all_0(r.mant) then
+        loop
+          if r.mant(54) = '1' then
+            exit;
+          end if;
+          r.exp  := r.exp - 1;
+          r.mant := r.mant(r.mant'high - 1 downto 0) & '0';
+        end loop;
+      end if;
+    else
+      r.class := C_NORMAL;
+-- pragma translate_off
+      -- ModelSim does not like assigmnents outside -1e308 and 1e308,
+      -- but a real can actually be there...
+      if (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2) > 1.0e308 then
+        f := 1.0e308;
+      elsif (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2) < -1.0e308 then
+        f := -1.0e308;
+      else
+        f       := (1.0 + f) * 2.0 ** (exp - (exp_max - 1) / 2);
+      end if;
+-- pragma translate_on
+      r.exp   := to_signed(u2i(data(frac_bits + exp_bits - 1 downto frac_bits)) -
+                           (exp_max - 1) / 2, r.exp'length);
+      r.mant  := (others => '0');
+      r.mant(54) := '1';
+      r.mant(53 downto 53 - frac_bits + 1) := data(frac_bits - 1 downto 0);
+    end if;
+
+-- pragma translate_off
+    f := sign * f;
+
+    r.v := f;
+-- pragma translate_on
+
+    return r;
+  end;
+
+  -- Remove NaN boxing and create float from binary (IEEE754)
+  function to_float_ext(data : std_logic_vector) return float is
+    -- Non-constant
+    variable res : word64;
+  begin
+    if all_1(data(63 downto 32)) then
+      return to_float(data, "00");
+    else
+      return to_float(data, "01");
+    end if;
+  end;
+
+-- pragma translate_off
+  function fpreg2st(v : std_logic_vector) return string is
+    variable reg : reg_t := v;
+  begin
+    case reg(4 downto 0) is
+      when FPU_FT0      => return "ft0";
+      when FPU_FT1      => return "ft1";
+      when FPU_FT2      => return "ft2";
+      when FPU_FT3      => return "ft3";
+      when FPU_FT4      => return "ft4";
+      when FPU_FT5      => return "ft5";
+      when FPU_FT6      => return "ft6";
+      when FPU_FT7      => return "ft7";
+      when FPU_FS0      => return "fs0";
+      when FPU_FS1      => return "fs1";
+      when FPU_FA0      => return "fa0";
+      when FPU_FA1      => return "fa1";
+      when FPU_FA2      => return "fa2";
+      when FPU_FA3      => return "fa3";
+      when FPU_FA4      => return "fa4";
+      when FPU_FA5      => return "fa5";
+      when FPU_FA6      => return "fa6";
+      when FPU_FA7      => return "fa7";
+      when FPU_FS2      => return "fs2";
+      when FPU_FS3      => return "fs3";
+      when FPU_FS4      => return "fs4";
+      when FPU_FS5      => return "fs5";
+      when FPU_FS6      => return "fs6";
+      when FPU_FS7      => return "fs7";
+      when FPU_FS8      => return "fs8";
+      when FPU_FS9      => return "fs9";
+      when FPU_FS10     => return "fs10";
+      when FPU_FS11     => return "fs11";
+      when FPU_FT8      => return "ft8";
+      when FPU_FT9      => return "ft9";
+      when FPU_FT10     => return "ft10";
+      when FPU_FT11     => return "ft11";
+      when others       => return "XXXX";
+    end case;
+  end;
+
+  procedure show_float(text : string; reg : std_logic_vector; v : std_logic_vector) is
+  variable f : float := to_float_ext(v);
+  begin
+    case f.class is
+      when C_NORMAL =>
+        if f.v > 1.0e307 then
+          report text & " " & tost(reg) & " " & tost(v) & " > 1.0e307";
+        elsif f.v < -1.0e307 then
+          report text & " " & tost(reg) & " " & tost(v) & " < -1.0e307";
+        else
+          report text & " " & tost(reg) & " " & tost(v) & " " & tost(f.v);
+        end if;
+      when others   =>
+        report text & " " & tost(reg) & " " & tost(v);
+    end case;
+  end;
+
+-- pragma translate_on
 end;

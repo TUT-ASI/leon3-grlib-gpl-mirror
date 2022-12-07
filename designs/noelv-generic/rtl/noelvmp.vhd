@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -389,6 +388,7 @@ begin
     end generate;
   end generate prom_gen;
 
+  -- pragma translate_off
   sim_prom_gen : if (SIMULATION = 1) generate
     mig_ahbram : ahbram_sim
       generic map (
@@ -406,6 +406,7 @@ begin
         ahbsi   => rom_ahbsi1,
         ahbso   => rom_ahbso1);
   end generate sim_prom_gen;
+  -- pragma translate_on
 
 -----------------------------------------------------------------------
 -- GPIO                                                                

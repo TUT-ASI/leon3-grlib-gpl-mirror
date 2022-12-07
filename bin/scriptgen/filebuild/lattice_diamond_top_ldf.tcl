@@ -1,5 +1,5 @@
 set TOP_ldf_contents ""
-proc create_lattice_top_ldf {} {
+proc create_lattice_diamond_top_ldf {} {
 	global TOP PART SPEED PACKAGE
 	upvar TOP_ldf_contents tlc
 	append tlc "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -10,7 +10,7 @@ proc create_lattice_top_ldf {} {
 	return
 }
 
-proc append_file_lattice_top_ldf {f finfo} {
+proc append_file_lattice_diamond_top_ldf {f finfo} {
 	set i [dict get $finfo i]
 	set bn [dict get $finfo bn]
 	switch $i {
@@ -82,7 +82,7 @@ proc append_file_lattice_top_ldf {f finfo} {
 	return
 }
 
-proc eof_lattice_top_ldf {} {
+proc eof_lattice_diamond_top_ldf {} {
 	global UCF SDCFILE TOP
 	upvar TOP_ldf_contents tlc
 	append tlc "        <Source name=\"$UCF\" type=\"Logic Preference\" type_short=\"LPF\">\n"

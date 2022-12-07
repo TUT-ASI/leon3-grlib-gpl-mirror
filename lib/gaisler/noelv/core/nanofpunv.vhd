@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,13 +31,32 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
-use grlib.stdlib.all;
 use grlib.config.all;
 use grlib.config_types.all;
-library gaisler;
-use gaisler.utilnv.all;
-use gaisler.fputilnv.all;
 use grlib.riscv.all;
+use grlib.stdlib.tost;
+use grlib.stdlib.tost_bits;
+use grlib.stdlib.notx;
+use grlib.stdlib.setx;
+library gaisler;
+use gaisler.fputilnv.all;
+use gaisler.utilnv.log;
+use gaisler.utilnv.notx;
+use gaisler.utilnv.uadd;
+use gaisler.utilnv.usub;
+use gaisler.utilnv.uaddx;
+use gaisler.utilnv.usubx;
+use gaisler.utilnv.s2i;
+use gaisler.utilnv.uext;
+use gaisler.utilnv.all_0;
+use gaisler.utilnv.all_1;
+use gaisler.utilnv.get_hi;
+use gaisler.utilnv.to_bit;
+use gaisler.noelvint.fpu_id;
+use gaisler.noelvint.reg_t;
+use gaisler.nvsupport.word64;
+use gaisler.nvsupport.word;
+use gaisler.nvsupport.zerow64;
 
 entity nanofpunv is
   generic (
@@ -154,6 +172,7 @@ architecture rtl of nanofpunv is
 
 
     last_unissued : boolean;
+    last_valid    : boolean;
 
     events      : fpevt_t;
     events_pipe : fpevt_t;
@@ -237,6 +256,7 @@ architecture rtl of nanofpunv is
     fpu_holdn   => '1',
     readyflop   => '0',
     last_unissued => true,
+    last_valid    => false,
     events      => (others => '0'),
     events_pipe => (others => '0'),
     rm          => R_NEAREST,
@@ -455,8 +475,11 @@ begin
 
     -- Only a single valid per new issue_id!
     valid := e_valid;
-    if r.id = issue_id and not r.last_unissued then
+    if r.id = issue_id and r.last_valid then
       valid := '0';
+    end if;
+    if r.id /= issue_id then
+      v.last_valid := false;
     end if;
     fpu_gen(e_inst, csrfrm, valid and not e_nullify, issue_op);
     issue_cmd := issue_op.valid;
@@ -813,6 +836,7 @@ begin
         if issue_cmd = '1' and holdn = '1' then
           v.id        := issue_id;
           v.last_unissued := false;
+          v.last_valid    := true;
           fpu_event(evt, FPEVT_ISSUE);
           v.committed := commit;
           if issue_op.op = FPU_LOAD or issue_op.op = FPU_MV_W_X then
@@ -1244,7 +1268,7 @@ begin
               v.res2int(31)        := r.op2.mant(33);
             end if;
             roundchk               := v.res2int(31);
-            v.res2int(31 downto 0)   := v.res2int(31 downto 0) + roundadd;
+            v.res2int(31 downto 0)   := uadd(v.res2int(31 downto 0),  roundadd);
             -- When modified due to rounding, ensure that we do not
             -- get any overflow.
             if r.rs2(0) = '0' then   -- _W
@@ -1269,7 +1293,7 @@ begin
             v.res2int(51 downto 0)   := r.op2.mant(53 downto 2);
             v.res2int(63 downto 52)  := r.op1.mant(53 downto 42);
             roundchk                 := v.res2int(63);
-            v.res2int                := v.res2int + roundadd;
+            v.res2int                := uadd(v.res2int, roundadd);
             if roundadd = 1 and roundchk = '1' and v.res2int(31) = '0' then
               v.res2int              := (others => '1');
             end if;
@@ -2655,7 +2679,12 @@ begin
     if notx(v.res) then
       stdata     <= v.res;
     else
-      stdata     <= (others => '0');
+      stdata     <= r.res;
+      for i in stdata'range loop
+        if r.res(i) /= '0' and r.res(i) /= '1' then 
+          stdata(i) <= '0';
+        end if;
+      end loop;
     end if;
     flags_wen    <= r.flags_wen;
     flags        <= r.exc;

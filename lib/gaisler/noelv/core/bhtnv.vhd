@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,19 +27,17 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-
 library techmap;
 use techmap.gencomp.all;
 use techmap.allmem.all;
-
 library grlib;
-use grlib.stdlib.all;
-use grlib.config_types.all;
-use grlib.config.all;
-
+use grlib.stdlib.log2ext;
+use grlib.stdlib.notx;
+use grlib.stdlib.setx;
 library gaisler;
 use gaisler.noelv.all;
 use gaisler.noelvint.all;
+use gaisler.utilnv.u2i;
 
 entity bhtnv is
   generic (
@@ -58,7 +55,7 @@ entity bhtnv is
     holdn        : in  std_ulogic;
     bhti         : in  nv_bht_in_type;
     bhto         : out nv_bht_out_type;
-    testin       : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+    testin       : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end bhtnv;
 
@@ -150,7 +147,7 @@ architecture rtl of bhtnv is
   signal pht_raddr, pht_waddr : std_logic_vector(log2ext(nentries) - 1 downto 0);
   signal pht_rdata, pht_wdata : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
 
-  signal r, rin : reg_type := RES;
+  signal r, rin : reg_type;
 
 begin  -- rtl
 
@@ -212,7 +209,7 @@ begin  -- rtl
     if r.ren = '1' and r.write_forwarded = '0' then
       pht_rdatav       := pht_rdata;
       if notx(r.rindex_reg) then
-        if r.valid(to_integer(unsigned(r.rindex_reg))) = '0' then
+        if r.valid(u2i(r.rindex_reg)) = '0' then
           pht_rdatav   := (others => '0');
         end if;
       else
@@ -226,9 +223,9 @@ begin  -- rtl
 
     bhistory            := r.bhist_data_hold;
     if r.ren = '1' then
-      bhistory          := r.bhttable(conv_integer(r.rindex_reg));
+      bhistory          := r.bhttable(u2i(r.rindex_reg));
 
-      if r.valid(to_integer(unsigned(r.rindex_reg))) = '0' then
+      if r.valid(u2i(r.rindex_reg)) = '0' then
         bhistory        := (others => '0');
       end if;
       v.bhist_data_hold := bhistory;
@@ -275,7 +272,7 @@ begin  -- rtl
           bhti_phistory_temp(i * 2 + 1 downto i * 2) := wdata;
         end if;
       end loop;
-      v.valid(to_integer(unsigned(pht_waddrv)))      := '1';
+      v.valid(u2i(pht_waddrv)) := '1';
 
       if pht_waddrv = r.rindex_reg then
         -- Write forwarding
@@ -294,28 +291,28 @@ begin  -- rtl
     
     bhistory_new := bhti.taken & bhti.bhistory(hlength - 1 downto 1);
     if bhti.wen = '1' then
-      v.bhttable(conv_integer(windex))(hlength - 1)          := bhti.taken;
-      v.bhttable(conv_integer(windex))(hlength - 2 downto 0) := bhti.bhistory(hlength - 1 downto 1);
+      v.bhttable(u2i(windex))(hlength - 1)          := bhti.taken;
+      v.bhttable(u2i(windex))(hlength - 2 downto 0) := bhti.bhistory(hlength - 1 downto 1);
 
       -- Update btb taken for the upcoming history
       -- For "0000" and "1111", the next history might correspond to an updated value
       -- on this cycle, hence use the updated phistory.
       for i in 0 to 2 ** hlength - 1 loop
         if i = unsigned(bhistory_new) then
-          v.taken(conv_integer(windex)) := bhti_phistory_temp(i * 2 + 1);
+          v.taken(u2i(windex)) := bhti_phistory_temp(i * 2 + 1);
         end if;
       end loop;
       
     end if;                
           
-    taken(0)   := r.taken(conv_integer(r.rindex_bhist_reg));
-    taken(1)   := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
+    taken(0)   := r.taken(u2i(r.rindex_bhist_reg));
+    taken(1)   := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
     taken(2)   := '0';
     taken(3)   := '0';
     if ext_c /= 0 and dissue /= 0 then
-      taken(1) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "01"));
-      taken(2) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "10"));
-      taken(3) := r.taken(conv_integer(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "11"));
+      taken(1) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "01"));
+      taken(2) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "10"));
+      taken(3) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "11"));
     end if;
   
     if bhti.flush = '1' then
@@ -344,11 +341,7 @@ begin  -- rtl
   begin
     if rising_edge(clk) then
       if rstn = '0' then
-        r.pht_rdata_hold  <= (others => '0');
-        r.bhist_data_hold <= (others => '0');
-        r.valid           <= (others => '0');
-        r.ren             <= '0';
-        r.write_forwarded <= '0';
+        r <= RES;
       else
         r <= rin;
       end if;

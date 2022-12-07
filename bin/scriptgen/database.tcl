@@ -127,7 +127,7 @@ proc librarieslist {} {
 proc generatefilelists {filetree fileinfo} {
     global GRLIB EXTRALIBS DIRADD TECHLIBS XLIBSKIP GRLIB_LEON3_VERSION XDIRSKIP \
         FILEADD XFILESKIP GRLIB_CONFIG VHDLSYNFILES VHDLIPFILES VHDLOPTSYNFILES VHDLSIMFILES \
-        VERILOGSYNFILES VERILOGOPTSYNFILES VERILOGSIMFILES GRLIB_SIMULATOR TOP SIMTOP
+        VERILOGSYNFILES VERILOGOPTSYNFILES VERILOGSIMFILES GRLIB_SIMULATOR TOP SIMTOP LATTICE_IP BOARD
     upvar $filetree ft
     upvar $fileinfo fi
 
@@ -271,6 +271,18 @@ proc generatefilelists {filetree fileinfo} {
         if {[file exists $fname] } {
             lappend flist $fname
             set conffiledict [dict create bn "work" l "local" i "vlogsim" q $fname fattr $fattr]
+            dict set fi $fname $conffiledict
+        }
+    }
+
+    foreach f $LATTICE_IP  {
+	set info [regsub {[ \t]*#.*} $f ""]
+	set infolist [regexp -all -inline {\S+} $info]
+	set fname [lindex $infolist 0]
+	set fattr [lreplace $infolist 0 0]
+        if {[file exists "$GRLIB/boards/$BOARD/$fname"] } {
+            lappend flist $fname
+            set conffiledict [dict create bn "work" l "local" i "latticeipx" q $fname fattr $fattr]
             dict set fi $fname $conffiledict
         }
     }

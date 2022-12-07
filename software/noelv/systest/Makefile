@@ -26,7 +26,8 @@ else
 	RISCV_ABI ?= ilp$(XLEN)
 endif	
 RISCV_ARCH ?= rv$(XLEN)ima
-RISCV_PREFIX ?= riscv-gaisler-elf-
+#RISCV_PREFIX ?= riscv-gaisler-elf-
+RISCV_PREFIX ?= riscv64-unknown-elf-
 
 XCC = $(RISCV_PREFIX)gcc $(XINC)
 XAS = $(RISCV_PREFIX)gcc -c -I. $(XINC)

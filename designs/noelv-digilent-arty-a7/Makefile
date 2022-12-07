@@ -36,6 +36,7 @@ XDC  =
 XDC += $(BOARDDIR)/Arty-$(PART).xdc
 XDC += $(BOARDDIR)/voltage_config.xdc
 XDC += $(BOARDDIR)/mig-$(PART)/mig-$(PART).xdc
+XDC += $(BASE_DIR)/noelvmp_jtag.xdc
 
 #SDCFILE=$(BOARDDIR)/default.sdc
 FDCFILE=$(BOARDDIR)/default.fdc

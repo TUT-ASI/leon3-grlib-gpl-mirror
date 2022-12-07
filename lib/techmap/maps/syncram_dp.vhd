@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -414,6 +413,12 @@ begin
 
   nanex : if tech = nx generate
     x0 : nx_syncram_dp generic map (abits, dbits)
+      port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
+                clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
+  end generate;
+
+  nxs : if tech = nexus generate
+    x0 : nexus_syncram_dp generic map (abits, dbits)
       port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
                 clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;

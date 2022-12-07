@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -70,7 +69,7 @@ architecture rtl of tbufmemnv is
   --constant ADDRBITS     : integer := 10 + log2(tbuf) - 4 - proc;
   constant ADDRBITS     : integer := 4 + log2(tbuf);
   constant nrams        : integer := getnrams;
-  constant TRACE_CELLS  : integer := 7;
+  constant TRACE_CELLS  : integer := 8;
   
   -- Types ------------------------------------------------------------------
   

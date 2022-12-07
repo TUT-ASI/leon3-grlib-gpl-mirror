@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -46,8 +45,10 @@ package riscv_disas is
   ----------------------------------------------------------------------------
 
   function tostf(v : std_logic_vector) return string;
+  function csr2str(reg : csratype) return string;
 
   function fpreg2st(reg : fpu_type) return string;
+  function reg2st(reg : gpr_type) return string;
 
   function insn2st(pc           : std_logic_vector;
                    insn         : std_logic_vector(31 downto 0);
@@ -121,7 +122,6 @@ package riscv_disas is
                                 comp       : std_ulogic;
                                 prv        : std_logic_vector(1 downto 0);
                                 trap       : std_ulogic;
-                                trap_taken : std_ulogic;
                                 cause      : std_logic_vector;
                                 tval       : std_logic_vector);
 
@@ -683,6 +683,21 @@ package body riscv_disas is
     end case;
   end;
 
+  function cbo2str(v : funct12_type; rd : gpr_type) return string is
+  begin
+    if rd = GPR_X0 then
+      case v is
+        when "000000000000" => return "cbo.inval";
+        when "000000000001" => return "cbo.clean";
+        when "000000000010" => return "cbo.flush";
+        when "000000000100" => return "cbo.zero";
+        when others  => return "cbo.xxx";
+      end case;
+    else
+      return "cbo.xxx";
+    end if;
+  end;
+
   -- General Purpose Register ----------------------------------------
   function reg2st(reg : gpr_type) return string is
   begin
@@ -877,7 +892,7 @@ package body riscv_disas is
       when CSR_MCAUSE           => return "mcause";
       when CSR_MTVAL            => return "mtval";
       when CSR_MIP              => return "mip";
-      when CSR_MTINST           => return "minst";
+      when CSR_MTINST           => return "mtinst";
       when CSR_MTVAL2           => return "mtval2";
       -- Machine Protection and Translation
       when CSR_PMPCFG0          => return "pmpcfg0";
@@ -1298,6 +1313,8 @@ package body riscv_disas is
                 disas := strpad("sext.b " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
               when F12_SEXTH =>
                 disas := strpad("sext.h " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+              when F12_ZIP=>
+                disas := strpad("zip " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
               when others =>
                 case funct7 is
                   when F7_BASE | F7_SUB | F7_BASE_RV64 | F7_SUB_RV64 =>
@@ -1322,6 +1339,8 @@ package body riscv_disas is
                 disas := strpad("brev8 " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
               when F12_ORCB =>
                 disas := strpad("orc.b " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+              when F12_ZIP =>
+                disas := strpad("unzip " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
               when others =>
                 case funct7 is
                   when F7_BASE | F7_SUB | F7_BASE_RV64 | F7_SUB_RV64 =>
@@ -1347,10 +1366,6 @@ package body riscv_disas is
         -- Special case of PACK? (Really only on RV32.)
         if funct12 = F12_ZEXTH and funct3 = R_XOR then
           disas := strpad("zext.h " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
-        elsif funct12 = F12_ZIP and funct3 = R_SRL then
-          disas := strpad("unzip " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
-        elsif funct12 = F12_ZIP and funct3 = R_SLL then
-          disas := strpad("zip " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
         else
           case funct7 is
             when F7_BASE | F7_SUB =>
@@ -1409,6 +1424,7 @@ package body riscv_disas is
         case funct3 is
           when "000" => return insn2string(insn, pc, strpad("fence", disas'length), cinsn, comp);
           when "001" => return insn2string(insn, pc, strpad("fence.i", disas'length), cinsn, comp);
+          when "010" => return insn2string(insn, pc, strpad(cbo2str(funct12, rd) & " 0(" & reg2st(rs1) & ")", disas'length), cinsn, comp);
           when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
         end case;
 
@@ -1667,6 +1683,7 @@ package body riscv_disas is
     variable ipc        : real := 0.0;
     variable dual       : real := 0.0;
     variable vcause     : std_logic_vector(cause'range);
+    variable vwrdata    : std_logic_vector(wrdata'range);
     variable vtval      : std_logic_vector(tval'range);
   begin
 
@@ -1683,26 +1700,29 @@ package body riscv_disas is
     end if;
 
     -- Mask exception cause and value in case of no exception
+    vwrdata     := wrdata;
     vcause      := (others => '0');
     vtval       := (others => '0');
     if trap = '1' then
+      vwrdata   := (others => '0');
       vcause    := cause;
       vtval     := tval;
     end if;
 
-    if PRINT_ALL or valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or trap = '1' then
+--    if PRINT_ALL or valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or trap = '1' then
+    if PRINT_ALL or valid = '1' or trap = '1' then
 
       -- Print Instruction
       grlib.testlib.print ("C" & tost(hndx) & " I" & tost(way) & " : " & strpad(tost(cycle), 8) & " [" &
                            tost(valid) & "] " & insn2st(pc, inst, cinst, comp) &
                            print_str(not wren_f,  "W[" & strpad(reg2st(rd),   3)) &
                            print_str(    wren_f, "WF[" & strpad(fpreg2st(rd), 4)) & "=" &
-                           print_str(fsd, tost(fsd_hi & wrdata)) & print_str(not fsd, tost(wrdata)) &
+                           print_str(fsd, tost(fsd_hi & vwrdata)) & print_str(not fsd, tost(vwrdata)) &
                            "][" & tost(wren) & "]" &
-                           " W[" & strpad(csr2str(csr), 13) & "=" & tost(wcdata) & "][" & tost(wcen) & "]" &
+                           " W[" & strpad(csr2str(csr), 14) & "=" & tost(wcdata) & "][" & tost(wcen) & "]" &
                            " IPC = " & tost(ipc) & " Dual = " & tost(dual) &
                            " E[cause =" & tost(vcause) & "] E[tval =" & tost(vtval) & "][" & tost(trap) & "]" &
-                           " PRV[" & tost(prv) & "]");
+                           " PRV[" & tost(prv) & "]" & " Instruction Count = " & tost(instret));
     end if;
 
   end;
@@ -1723,7 +1743,6 @@ package body riscv_disas is
     comp       : std_ulogic;
     prv        : std_logic_vector(1 downto 0);
     trap       : std_ulogic;
-    trap_taken : std_ulogic;
     cause      : std_logic_vector;
     tval       : std_logic_vector) is
     variable finst : std_logic_vector(31 downto 0);
@@ -1757,7 +1776,8 @@ package body riscv_disas is
       end loop;
     end if;
 
-    if valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or (trap_taken = '1' and trap = '1') then
+--    if valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or (trap_taken = '1' and trap = '1') then
+    if valid = '1' or trap = '1' then
       -- More difference depending on wren_f would perhaps be useful.
       -- Also, high part of fsd (see other prinouts) would be good to have.
       grlib.testlib.print(tost(pc) & " " & tost(finst) & " " &
@@ -1799,6 +1819,7 @@ package body riscv_disas is
     --variable ipc        : real := 0.0;
     --variable dual       : real := 0.0;
     variable vcause     : std_logic_vector(cause'range);
+    variable vwrdata    : std_logic_vector(wrdata'range);
     variable vtval      : std_logic_vector(tval'range);
     variable ls         : std_logic;
   begin
@@ -1816,16 +1837,19 @@ package body riscv_disas is
     --end if;
 
     -- Mask exception cause and value in case of no exception
+    vwrdata     := wrdata;
     vcause      := (others => '0');
     vtval       := (others => '0');
     if trap = '1' then
+      vwrdata   := (others => '0');
       vcause    := cause;
       vtval     := tval;
     end if;
 
     ls := is_ld_sd(inst);
 
-    if PRINT_ALL or valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or trap = '1' then
+--    if PRINT_ALL or valid = '1' or wren = '1' or wren_f = '1' or wcen = '1' or trap = '1' then
+    if PRINT_ALL or valid = '1' or trap = '1' then
 
       -- Print Instruction
       grlib.testlib.print (
@@ -1835,12 +1859,12 @@ package body riscv_disas is
         & " : " & strpad(tost(cycle), 8)
         & " [" & tost(valid) & "] "
         & insn2st(pc, inst, cinst, comp)
-        --& "W[" & strpad(reg2st(rd), 3) & "=" & tost(wrdata) & "][" & tost(wren) & "]"
+        --& "W[" & strpad(reg2st(rd), 3) & "=" & tost(vwrdata) & "][" & tost(wren) & "]"
         & print_str(not wren_f, print_str((wren   or ls), "[" &
-                                          print_str(not fsd, tost(wrdata)) &
-                                          print_str(    fsd, tost(fsd_hi & wrdata)) & "]"))
+                                          print_str(not fsd, tost(vwrdata)) &
+                                          print_str(    fsd, tost(fsd_hi & vwrdata)) & "]"))
         & print_str(    wren_f, print_str((wren_f or ls), "[" & tost(wrdata) & "]"))
-        --& " W[" & strpad(csr2str(csr), 13) & "=" & tost(wcdata) & "][" & tost(wcen) & "]"
+        --& " W[" & strpad(csr2str(csr), 14) & "=" & tost(wcdata) & "][" & tost(wcen) & "]"
         & print_str((wcen or ls), "[" & tost(wcdata) & "]")
         --& " IPC = " & tost(ipc) & " Dual = " & tost(dual)
         --& " E[cause =" & tost(vcause) & "] E[tval =" & tost(vtval) & "][" & tost(trap) & "]"

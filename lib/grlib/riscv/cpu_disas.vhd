@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,10 +35,11 @@ library grlib;
 use grlib.stdlib.all;
 use grlib.riscv.all;
 use grlib.riscv_disas.all;
-
 entity cpu_disas is
+
+
 generic (
-  disasg : in integer range 0 to 3 := 1
+  disasg : in integer range 0 to 4 := 1
   );
 port (
   clk           : in  std_ulogic;
@@ -62,13 +62,13 @@ port (
   prv           : in  std_logic_vector(1 downto 0);     -- Privileged Level
   v             : in  std_ulogic;                       -- Virtualization mode
   trap          : in  std_ulogic;                       -- Exception
-  trap_taken    : in  std_ulogic;
   cause         : in  std_logic_vector;                 -- Exception Cause
   tval          : in  std_logic_vector;                 -- Exception Value
   cycle         : in  std_logic_vector(63 downto 0);    -- Cycle Counter
   instret       : in  std_logic_vector(63 downto 0);    -- Inst Committed
   dual          : in  std_logic_vector(63 downto 0);    -- Dual Instruction Counter
-  disas         : in  std_ulogic);                      -- Disassembly Enabled
+  disas         : in  std_ulogic                        -- Disassembly Enabled
+  );
 end;
 
 architecture behav of cpu_disas is
@@ -131,24 +131,23 @@ begin
     if disasg = 2 then
       if rising_edge(clk) and (rstn = '1') then
         print_spike_special(
-          valid => ivalid,
-          pc => pc,
-          csr => csr,
+          valid  => ivalid,
+          pc     => pc,
+          csr    => csr,
           wrdata => wregdata,
-          fsd => fsd,
+          fsd    => fsd,
           fsd_hi => fsd_hi,
-          wren => wregen,
+          wren   => wregen,
           wren_f => wregen_f,
-          wcen => wcsren,
+          wcen   => wcsren,
           wcdata => wcsrdata,
-          inst => inst,
-          cinst => cinst,
-          comp => comp,
-          prv => prv,
-          trap => trap,
-          trap_taken => trap_taken,
-          cause => cause,
-          tval => tval);
+          inst   => inst,
+          cinst  => cinst,
+          comp   => comp,
+          prv    => prv,
+          trap   => trap,
+          cause  => cause,
+          tval   => tval);
       end if;
     end if;
 
@@ -184,7 +183,6 @@ begin
         end if;
       end if;
     end if;
-
   end process;
 
 end;

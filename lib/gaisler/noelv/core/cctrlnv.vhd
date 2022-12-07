@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,44 +30,54 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-library techmap;
-use techmap.gencomp.all;
 library grlib;
 use grlib.amba.all;
+use grlib.config.all;
+use grlib.config_types.all;
+use grlib.devices.VENDOR_GAISLER;
+use grlib.devices.GAISLER_RV64GC;
+use grlib.sparc.ASI_UDATA;
+use grlib.sparc.ASI_SDATA;
 use grlib.stdlib.log2;
 use grlib.stdlib.log2x;
 use grlib.stdlib.orv;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
-use grlib.devices.all;
-use grlib.sparc.all;
-use grlib.config.all;
-use grlib.config_types.all;
 library gaisler;
-use gaisler.noelvint.nv_icache_in_type;
-use gaisler.noelvint.nv_icache_out_type;
-use gaisler.noelvint.nv_dcache_in_type;
-use gaisler.noelvint.nv_dcache_out_type;
-use gaisler.noelvint.nv_cdatatype;
-use gaisler.noelvint.amo_math_op;
-use gaisler.noelvint.all;
-use gaisler.mmucacheconfig.rv_pte_u;
-use gaisler.mmucacheconfig.rv_pte_x;
-use gaisler.mmucacheconfig.rv_pte_r;
-use grlib.riscv.PRIV_LVL_M;
-use grlib.riscv.PRIV_LVL_S;
-use grlib.riscv.PRIV_LVL_U;
-use gaisler.noelvint.PMP_ACCESS_R;
-use gaisler.noelvint.PMP_ACCESS_W;
-use gaisler.noelvint.PMP_ACCESS_X;
-use gaisler.noelvint.pmp_unit;
 use gaisler.noelvint.PMPPRECALCRES;
+use gaisler.noelvint.MAXWAYS;
+use gaisler.noelvint.NOELV_VERSION;
+use gaisler.noelvint.nv_cram_in_type;
+use gaisler.noelvint.nv_cram_out_type;
+use gaisler.noelvint.cram_tags;
+use gaisler.noelvint.nv_csr_in_type;
+use gaisler.noelvint.nv_csr_in_type_none;
+use gaisler.noelvint.nv_csr_out_type;
 use gaisler.noelvint.nv_csr_out_type;
 use gaisler.noelvint.nv_csr_out_type_none;
 use gaisler.noelvint.nv_intreg_miso_type;
 use gaisler.noelvint.nv_intreg_mosi_type;
 use gaisler.noelvint.nv_intreg_miso_none;
 use gaisler.noelvint.nv_intreg_mosi_none;
+use gaisler.noelvint.nv_icache_in_type;
+use gaisler.noelvint.nv_icache_out_type;
+use gaisler.noelvint.nv_dcache_in_type;
+use gaisler.noelvint.nv_dcache_out_type;
+use gaisler.noelvint.nv_cdatatype;
+use gaisler.mmucacheconfig.rv_pte_u;
+use gaisler.mmucacheconfig.rv_pte_x;
+use gaisler.mmucacheconfig.rv_pte_r;
+use grlib.riscv.PRIV_LVL_M;
+use grlib.riscv.PRIV_LVL_S;
+use grlib.riscv.PRIV_LVL_U;
+use gaisler.nvsupport.PMP_ACCESS_R;
+use gaisler.nvsupport.PMP_ACCESS_W;
+use gaisler.nvsupport.PMP_ACCESS_X;
+use gaisler.nvsupport.pmp_unit;
+use gaisler.nvsupport.pmp_mmuu;
+use gaisler.nvsupport.lru_3way_table;
+use gaisler.nvsupport.lru_4way_table;
+use gaisler.nvsupport.amo_math_op;
 use gaisler.utilnv.minimum;
 use gaisler.utilnv.maximum;
 use gaisler.utilnv.to_bit;
@@ -85,6 +94,7 @@ use gaisler.utilnv.uadd_range;
 use gaisler.utilnv.lo_h;
 use gaisler.utilnv.hi_h;
 use gaisler.utilnv.log;
+use gaisler.utilnv.uext;
 
 entity cctrlnv is
   generic (
@@ -92,10 +102,10 @@ entity cctrlnv is
     -- Core
     physaddr   : integer range 32 to 56;   -- Physical Addressing
     -- Caches
-    iways      : integer range 1 to   4;   -- I$ ways
+    iways      : integer range 1 to   8;   -- I$ ways
     ilinesize  : integer range 4 to   8;   --    cache line size (32 bit words)
     iwaysize   : integer range 1 to 256;   --    way size (KiB)
-    dways      : integer range 1 to   4;   -- D$ ways
+    dways      : integer range 1 to   8;   -- D$ ways
     dlinesize  : integer range 4 to   8;   --    cache line size (32 bit words)
     dwaysize   : integer range 1 to 256;   --    way size (KiB)
     dtagconf   : integer range 0 to   2;
@@ -116,6 +126,7 @@ entity cctrlnv is
     vmidlen    : integer range 0 to  14;   -- Max 7 for Sv32
     ext_a      : integer range 0 to   1;   -- Support for Atomic operations
     ext_h      : integer range 0 to   1;   -- Support for Hypervisor, needs tlb_pmp if any PMP.
+    ext_zicbom : integer range 0 to   1;   -- Support for Zicbom extension
     tlb_pmp    : integer range 0 to   1;   -- Do PMP via TLB
     -- Misc
     cached     : integer;                  -- Mask indexed by 4 MSB of address regarding cacheability when no TLB used
@@ -126,8 +137,9 @@ entity cctrlnv is
     icrepl     : integer;                  -- Address replication for TLB lookup
     dcrepl     : integer;
     hrepl      : integer;
-    addr_check : integer range 0 to 255 := 223;  -- Instruction PMP (7 TLB, 6 acc), high bits (5 physical, 4 virtual)
+    addr_check : integer range 0 to 255 := 255;  -- Instruction PMP (7 TLB, 6 acc), high bits (5 physical, 4 virtual)
     mmu_debug  : boolean := false;               --   Data      PMP (3 TLB, 2 acc), high bits (1 physical, 0 virtual)
+    walk_state : boolean := true;         -- Decouple page walk start using a separate state.
     mmuen      : integer range 0 to 1;
     endian     : integer range 0 to 1      -- LEON5 is big endian, NOEL-V little endian
     );
@@ -146,7 +158,7 @@ entity cctrlnv is
     cramo      : in  nv_cram_out_type;
     sclk       : in  std_ulogic;                    -- sclk for snoop (not gated)
     csro       : in  nv_csr_out_type := nv_csr_out_type_none;
-    csri       : out nv_csr_in_type := nv_csr_in_type_none;
+    csri       : out nv_csr_in_type  := nv_csr_in_type_none;
     fpc_mosi   : out nv_intreg_mosi_type;
     fpc_miso   : in  nv_intreg_miso_type;
     c2c_mosi   : out nv_intreg_mosi_type;
@@ -287,11 +299,10 @@ architecture rtl of cctrlnv is
   type    gvaddr_repl_type is array(integer range <>) of gvaddr_type;
 
   -- The maximum bits that are required to hold an address (physical or virtual).
-  -- One bit longer than the actual address, since we need to keep track of
+  -- Two bits longer than the actual address, since we need to keep track of
   -- whether higher bits are the same or not (not same - bad address).
   -- These are what is really passed from iunv!
-  subtype addr_type      is std_logic_vector(addr_bits downto 0);
-  type    addr_repl_type is array(integer range <>) of addr_type;
+  subtype addr_type      is std_logic_vector(addr_bits + 1 downto 0);
 
 
   function pte_hsize return std_logic_vector is
@@ -458,9 +469,11 @@ architecture rtl of cctrlnv is
     -- Non-constant
     variable paddr  : paddr_type := (others => '0');
     variable ahbo_t : ahb_mst_out_type;
+    variable tmp_paddr : word64;
   begin
     if is_riscv then
-      paddr(ppn'range) := pte_paddr(data)(ppn'length-1+10 downto 10);
+      tmp_paddr := uext(pte_paddr(data), 64);
+      paddr(ppn'range) := tmp_paddr(ppn'length-1 downto 0);
       return ahb_slv_dec_cache(paddr(ahbo_t.haddr'range), ahbso, cached);
     else
       return gaisler.mmucacheconfig.pte_cached(riscv_mmu, data);
@@ -490,8 +503,10 @@ architecture rtl of cctrlnv is
     -- Non-constant
     variable paddr  : paddr_type := (others => '0');
     variable ahbo_t : ahb_mst_out_type;
+    variable tmp_paddr : word64;
   begin
-    paddr(ppn'range) := pte_paddr(data)(ppn'length-1+10 downto 10);
+    tmp_paddr := uext(pte_paddr(data), 64);
+    paddr(ppn'range) := tmp_paddr(ppn'length-1 downto 0);
 
     return dec_wbmask_fixed(paddr(ahbo_t.haddr'high downto 2), wbmask);
   end;
@@ -691,14 +706,17 @@ architecture rtl of cctrlnv is
     -- Non-constant
     variable tlb : tlbentarr(0 to size - 1) := (others => tlbent_empty);
   begin
-    tlb(0) := tlbent_defmap;
+    if not is_riscv then
+      tlb(0) := tlbent_defmap;
+    end if;
 
     return tlb;
   end;
 
   constant tlb_def : tlbentarr(0 to TLBNUMMAX - 1) := create_tlb_def(TLBNUMMAX);
 
-  subtype lruent is std_logic_vector(4 downto 0);
+--  subtype lruent is std_logic_vector(4 downto 0);
+  subtype lruent is std_logic_vector(8 * 3 - 1 downto 0);  -- Only 4-0 needed without 8 ways
   type    lruarr is array(natural range <>) of lruent;
 
   type stbufent is record
@@ -733,13 +751,14 @@ architecture rtl of cctrlnv is
                         as_getlock, as_parked, as_mmuprobe2, as_mmuprobe3, as_mmuflush2,
                         as_regflush,
                         as_ifailkind, as_dfailkind,
+                        as_start_walk,
                         as_mmu_pt1addr_chk, as_mmuwalk, as_mmu_pte1_hchk, as_mmu_pte1_pmpchk,
                         as_mmuwalk_lock,    as_xmmuwalk_lock, as_xwpte,
                         as_mmuwalk_pterr,   as_mmuwalk_pmperr,
                         as_mmu_pt2addr_pmpchk, as_hmmuwalk, as_mmu_pte2_pmpchk,
                         as_hmmuwalk_lock,      as_hmmuwalk_done, as_hwpte,
                         as_hmmuwalk_pterr,     as_hmmuwalk_pmperr,
-                        as_amo);
+                        as_amo, as_cbo);
 
   type nv_cctrltype is record
     dfrz    : std_ulogic;                             -- dcache freeze enable
@@ -780,6 +799,12 @@ architecture rtl of cctrlnv is
 
   constant mmctrl_fs_zero : mmctrl_fs_type :=
     ('0', '0', "000", '0', '0', '0', "00", "00000000");
+
+  -- CBO TYPE
+  type cbo_type is record
+    d1type    : std_logic_vector(2 downto 0);
+    d2type    : std_logic_vector(2 downto 0);
+  end record;
 
   -- AMO TYPE
   type amo_type is record
@@ -1064,6 +1089,8 @@ architecture rtl of cctrlnv is
     perf        : word32;
     -- Atomic instruction interface (RISC-V)
     amo         : amo_type;
+    -- Cache Block Operation interface (RISC-V)
+    cbo         : cbo_type;
   end record;
 
 
@@ -1168,6 +1195,8 @@ architecture rtl of cctrlnv is
     v.amo.s4hit    := (others => '0');
     v.amo.s4tag    := (others => '0');
     v.amo.s4offs   := (others => '0');
+    v.cbo.d1type   := (others => '0');
+    v.cbo.d2type   := (others => '0');
 
     return v;
   end cctrlnv_regs_res;
@@ -1876,7 +1905,7 @@ begin
       variable cfg : word64;
     begin
       cfg := (others => '0');
-      --cfg(63        60) := RESERVED (verison)
+      cfg(63 downto 60) := u2vec(NOELV_VERSION, 4);
       --cfg(55        44) := RESERVED (used in IU)
       --cfg(          43) := RESERVED
       cfg(42 downto 38) := u2vec(dtcmabits*dtcmen, 5);
@@ -1991,7 +2020,8 @@ begin
     variable dhit      : std_ulogic;
     variable dvalid    : std_ulogic;
     variable dtcmhit   : std_ulogic;
-    variable dway      : std_logic_vector(1 downto 0);
+--    variable dway      : std_logic_vector(1 downto 0);
+    variable dway      : std_logic_vector(2 downto 0);  -- XXXXX
     --variable dasi      : std_logic_vector(7 downto 0);
     --variable dsu       : std_ulogic;
     variable dlock     : std_ulogic;
@@ -2018,7 +2048,8 @@ begin
     variable rdb64v    : std_ulogic;
     variable vneedwb   : std_ulogic;
     variable vneedwblock : std_ulogic;
-    variable vway      : unsigned(1 downto 0);
+--    variable vway      : unsigned(1 downto 0);
+    variable vway      : unsigned(2 downto 0);
     variable vhit      : std_ulogic;
     variable vtmp2     : std_logic_vector(1 downto 0);
     variable vtmp3     : std_logic_vector(2 downto 0);
@@ -2083,6 +2114,10 @@ begin
     variable part_mask : gpaddr_type;
     variable part      : gpaddr_type;
 
+    variable done         : boolean;
+    variable store_done   : boolean;
+    variable do_pte1_hchk : boolean;
+
     -- Get cache control parameters
     function get_ccr(r : cctrlnv_regs; rs : cctrlnv_snoop_regs) return std_logic_vector is
       -- Non-constant
@@ -2133,23 +2168,46 @@ begin
       return r;
     end;
 
-    function calc_lruent(oent : lruent; hway : unsigned(1 downto 0); nways : integer) return lruent is
+    function lruent_compact(oent : lruent; way : std_logic_vector; ways : integer) return lruent is
+      variable size  : integer := log2(ways);
       -- Non-constant
-      variable nent : lruent;
+      variable found : boolean := false;
+      variable ent   : lruent  := (others => '0');
+    begin
+      for i in 0 to ways - 2 loop
+        if not found then
+          set(ent, (i + 1) * size, get(oent, i * size, size));
+        else
+          set(ent, i * size, get(oent, i * size, size));
+        end if;
+
+        found := found or way = get(oent, i * size, size);
+      end loop;
+
+      return ent;
+    end;
+
+    function calc_lruent(oent : lruent; hway : unsigned; nways : integer) return lruent is
+      -- Non-constant
+      variable nent : lruent := (others => '0');
     begin
       nent := (others => '0');
       case nways is
         when 1 =>
-          nent             := "00000";
+--          nent             := "00000";
         when 2 =>
-          nent(4)          := '0';
+--          nent(4)          := '0';
           nent(3)          := not hway(0);
-          nent(2 downto 0) := "000";
+--          nent(2 downto 0) := "000";
         when 3 =>
           nent(4 downto 2) := lru_3way_table(u2i(oent(4 downto 2)))(u2i(hway));
-          nent(1 downto 0) := "00";
+--          nent(1 downto 0) := "00";
+        when 8 =>
+--          nent(8 * 3 - 1 downto 3) := lruent_compact(oent, std_logic_vector(hway), nways);
+          nent             := lruent_compact(oent, std_logic_vector(hway), nways);
+          nent(hway'range) := std_logic_vector(hway);
         when others =>
-          nent             := lru_4way_table(u2i(oent))(u2i(hway));
+          nent(4 downto 0) := lru_4way_table(u2i(oent))(u2i(hway));
       end case;
 
       return nent;
@@ -2241,7 +2299,12 @@ begin
         hitv(0)   := '1';
       end if;
       if all_1(validv) then                           -- LRU
-        vtmp4i    := decwrap(lruent(4 downto 3), validv'length);
+        if MAXWAYS <= 4 then
+          vtmp4i  := decwrap(lruent(4 downto 3), validv'length);
+        else
+          vtmp4i  := (others => '0');
+          vtmp4i(u2i(lruent(23 downto 21))) := '1';
+        end if;
         hitv      := hitv or vtmp4i(hitv'range);
       end if;
 
@@ -2305,6 +2368,10 @@ begin
     v          := r;
     vs         := rs;
 
+    done         := false;
+    store_done   := false;
+    do_pte1_hchk := false;
+
     -- Ensure proper PMP setup in TLB if there is no PMP.
     if not pmpen then
       v.newent.pmp_r     := '1';
@@ -2328,7 +2395,7 @@ begin
     daddr_ok  := true;
 
     oico.data      := cramo.idatadout;
-    oico.way       := "00";
+    oico.way       := (others => '0');
     oico.mexc      := '0';
     oico.exctype   := '0';
     oico.exchyper  := '0';     -- Default to non-hypervisor fault
@@ -2347,7 +2414,7 @@ begin
     oico.parked    := '0';
 
     odco.data   := cramo.ddatadout;
-    odco.way       := "00";
+    odco.way       := (others => '0');
     odco.mexc      := '0';
     odco.exctype   := '0';
     odco.exchyper  := '0';     -- Default to non-hypervisor fault
@@ -2663,7 +2730,7 @@ begin
 
     if r.irdbufen = '1' then
       -- Mux out buffer data
-      oico.way           := "00";
+      oico.way           := (others => '0');
       for x in 0 to LINESZMAX / 2 - 1 loop
         if (r.imisspend = '1' and u2i(r.i2.pc(BUF_HIGH downto 3)) = x) or
            (r.imisspend = '0' and u2i(r.i1.pc(BUF_HIGH downto 3)) = x) then
@@ -2701,12 +2768,12 @@ begin
       setx(ilruent);
     end if;
     if r.holdn = '1' then
-      vway     := "00";
+      vway     := (others => '0');
       vhit     := '0';
       for x in r.i2hitv'range loop
         if r.i2hitv(x) = '1' then
           vhit := '1';
-          vway := vway or to_unsigned(x, 2);
+          vway := vway or u2vec(x, vway);
         end if;
       end loop;
       if vhit = '1' then
@@ -2795,7 +2862,7 @@ begin
       v.i1cont := '0';
     end if;
     if icont = '1' and (r.i1ten = '1' or r.i1cont = '1') then
-      ocrami.itagen := "0000";
+      ocrami.itagen := (others => '0');
     end if;
     if icont = '1' and r.i1cont = '1' then
       ocrami.idataen(i_ways'range) := ocrami.idataen(i_ways'range) and r.i2hitv;
@@ -2891,7 +2958,7 @@ begin
     -- Tag compare logic
     dhitv             := (others => '0');
     dhit              := '0';
-    dway              := "00";
+    dway              := (others => '0');
     dvalid            := '0';
     dvalidv           := (others => '0');
     for i in d_ways'range loop
@@ -2921,7 +2988,7 @@ begin
         dtcmhit      := '1';
         dhit         := '1';
         dhitv        := (others => '0');
-        dway         := "00";
+        dway         := (others => '0');
         odco.data(0) := cramo.dtcmdout;
         if r.holdn = '1' then
           if (dci.read  = '1' and r.d1.su = '0' and r.dtcmperm(0) = '0') or
@@ -3014,12 +3081,12 @@ begin
       setx(dlruent);
     end if;
     if r.holdn = '1' then
-      vway     := "00";
+      vway     := (others => '0');
       vhit     := '0';
       for x in r.d2hitv'range loop
         if r.d2hitv(x) = '1' then
           vhit := '1';
-          vway := vway or to_unsigned(x, 2);
+          vway := vway or u2vec(x, vway);
         end if;
       end loop;
       if vhit = '1' then
@@ -3078,7 +3145,7 @@ begin
         -- Set dcmiss pending bit for load cache miss
         if (dci.nullify = '0' or dci.dsuen = '1') and
            not (dhit = '1' and dforcemiss = '0' and dspecialasi = '0' and dci.lock = '0') and
-           dci.read = '1' then
+           dci.read = '1' and r.cbo.d1type(2) = '0' then
           v.dmisspend := '1';
         end if;
 
@@ -3086,7 +3153,7 @@ begin
         if (dci.nullify = '0' or dci.dsuen = '1') then
           -- D-cache access
           v.perf(7) := '1';
-          if dci.read = '1' then
+          if dci.read = '1' and r.cbo.d1type(2) = '0' then
             -- D-cache read access
             v.perf(6) := '1';
             if (dhit = '1' and dforcemiss = '0' and dspecialasi = '0' and dci.lock = '0') then
@@ -3094,7 +3161,7 @@ begin
               v.perf(5) := '1';
             end if;
           end if;
-          if dci.write = '1' then
+          if dci.write = '1' and r.cbo.d1type(2) = '0' then
             -- D-cache write access
             v.perf(9) := '1';
             if (dhit = '1' and dspecialasi = '0' and r.amo.d1type(5) = '0') then
@@ -3107,19 +3174,21 @@ begin
         -- Cache update for writes
         --   generate ocrami.ddatawrite independently of dci.nullify to avoid
         --     nullify -> ddatawrite -> ddatain path via data loopback
-        if dci.nullify = '0' and r.d1ten = '1' and dci.write = '1' and r.d1.specialasi = '0' and r.amo.d1type(5) = '0' then
+        if dci.nullify = '0' and r.d1ten = '1' and dci.write = '1' and r.d1.specialasi = '0' and
+           r.amo.d1type(5) = '0' and r.cbo.d1type(2) = '0' then
           ocrami.ddataen(d_ways'range) := dhitv;
         end if;
-        if dci.nullify = '0' and r.d1tcmen = '1' and dci.write = '1' and r.d1.specialasi = '0' then
+        if dci.nullify = '0' and r.d1tcmen = '1' and dci.write = '1' and r.d1.specialasi = '0' and r.cbo.d1type(2) = '0' then
           ocrami.dtcmen := dtcmhit;
         end if;
-        if (r.d1ten = '1' or r.d1tcmen = '1') and dci.write = '1' and r.d1.specialasi = '0' and r.amo.d1type(5) = '0' then
+        if (r.d1ten = '1' or r.d1tcmen = '1') and dci.write = '1' and r.d1.specialasi = '0' and
+           r.amo.d1type(5) = '0' and r.cbo.d1type(2) = '0' then
           dwriting := '1';
           ocrami.ddatawrite := getdmask64(r.d1vaddr, dci.size, ENDIAN_B);
         end if;
 
         -- Store buffer update for writes
-        if (dci.nullify = '0' or dci.dsuen = '1') and dci.write = '1' and dtcmhit = '0' then
+        if (dci.nullify = '0' or dci.dsuen = '1') and dci.write = '1' and dtcmhit = '0' and r.cbo.d1type(2) = '0' then
           dbg(1) <= '1';
           if v.d2paddrv = '1' and v.d2busw = '1' and v.d2tlbmod = '1' and r.fastwr_rdy = '1' and
             dspecialasi = '0' and dci.lock = '0' then
@@ -3132,6 +3201,11 @@ begin
             dbg(2)       <= '1';
             v.slowwrpend := '1';
           end if;
+        end if;
+
+        -- Set slowwrpend for CBO to handle MMU the same way
+        if dci.nullify = '0' and r.cbo.d1type(2) = '1' then
+          v.slowwrpend := '1';
         end if;
 
         if dci.dsuen = '1' and r.holdn = '1' then
@@ -3229,6 +3303,21 @@ begin
       end if;
     end if;
 
+
+    --------------------------------------------------------------------------
+    -- CBO operations
+    --------------------------------------------------------------------------
+    if ext_zicbom /= 0 then
+      if r.holdn = '1' then
+        if dci.eenaddr = '1' then
+          v.cbo.d1type := dci.cbo;
+        else
+          v.cbo.d1type := (others => '0');
+        end if;
+        v.cbo.d2type(2)           := r.cbo.d1type(2) and (not dci.nullify);
+        v.cbo.d2type(1 downto 0)  := r.cbo.d1type(1 downto 0);
+      end if;
+    end if;
 
     --------------------------------------------------------------------------
     -- Atomic operations
@@ -4016,6 +4105,7 @@ begin
           -- Both TLB misses and permission fails go here!
           else
             start_walk    := true;   -- See more after case.
+--            v.s           := as_start_walk;
             if not is_riscv then
               v.ahb.haddr := r.mmctrl1.ctxp(25 downto 4) & v.i2.ctx & "00";
             end if;
@@ -4067,6 +4157,7 @@ begin
               v.ahb.haddr := mmu_base(r, csro);
             end if;
             start_walk    := true;   -- See more after case.
+--            v.s           := as_start_walk;
             v.perf(3)     := '1';
           -- Special reads
           else
@@ -4074,8 +4165,10 @@ begin
           end if;
         -- Non-fast write?
         elsif v.slowwrpend = '1' then
-          if v.amo.d2type(5) = '0' or ext_a = 0 then
+          if (v.amo.d2type(5) = '0' or ext_a = 0) and (v.cbo.d2type(2) = '0' or ext_zicbom = 0) then
             v.s := as_slowwr;
+          elsif v.cbo.d2type(2) = '1' then
+            v.s := as_cbo;
           else
             -- Lock change?
             if v.d2lock /= r.ahb.hlock then
@@ -4089,6 +4182,8 @@ begin
               v.s := as_amo;
             end if;
           end if;
+        --elsif v.cbo.d2type(2) = '1' then
+        --  v.s := as_cbo;
         elsif ici.parkreq = '1' then
           v.s := as_parked;
         end if;
@@ -4342,7 +4437,7 @@ begin
         ocrami.idataoffs            := (others => '0');
         ocrami.itagdin              := itags_default;
         if r.flushpart(1) = '1' then
-          ocrami.itagen             := "1111";
+          ocrami.itagen             := (others => '1');
           ocrami.itagwrite          := '1';
         end if;
         if r.flushpart(0) = '1' and r.dtflushdone = '0' then
@@ -4478,7 +4573,7 @@ begin
         if r.ahb3.error = '1' and r.dcignerr = '0' then
           v.dflushpend := '1';
         end if;
-        odco.way := "00";
+        odco.way := (others => '0');
         for x in 0 to LINESZMAX / 2 - 1 loop
           if r.d2vaddr(BUF_HIGH downto 3) = u2vec(x, BUF_HIGH - 2) then
             if not ENDIAN_B then
@@ -4530,7 +4625,7 @@ begin
             end if;
           end if;
         end loop;
-        odco.way  := "00";
+        odco.way  := (others => '0');
         odco.mds  := '0';
         d_mexc    := r.ahb3.error;
         d_exctype := r.ahb3.error;  -- Count AHB error as access fault.
@@ -4585,11 +4680,7 @@ begin
 
         v.newent.paddr  := fit0ext(pte_paddr(rdb64), v.newent.paddr);
 
-        if not is_riscv or csro.pte_nocache = '0' then
-          v.newent.cached := pte_cached(ahbso, rdb64);
-        else
-          v.newent.cached := not rdb64(8);
-        end if;
+        v.newent.cached := pte_cached(ahbso, rdb64);
         v.newent.busw   := pte_busw(rdb64);
         if rdb32v = '1' then
           if is_riscv then
@@ -4938,11 +5029,7 @@ begin
 
           v.hnewent.paddr  := fit0ext(pte_paddr(rdb64), v.hnewent.paddr);
 
-          if csro.pte_nocache = '0' then
-            v.hnewent.cached := pte_cached(ahbso, rdb64);
-          else
-            v.hnewent.cached := not rdb64(8);
-          end if;
+          v.hnewent.cached := pte_cached(ahbso, rdb64);
           v.hnewent.busw   := pte_busw(rdb64);
           if rdb32v = '1' then
             v.hnewent.modified := v.hnewent.modified or rdb32(7);
@@ -5437,14 +5524,15 @@ begin
       -- Write back supervisor PTE
       when as_xwpte =>
         if is_riscv and (ext_h = 1 or pmpen) then
+          done           := false;
           if r.ahb.htrans = HTRANS_IDLE and r.ahb2.inacc = '0' then
-            v.s := as_normal;   -- Just to mark finish - see below!
+            done         := true;
           elsif ahbi.hready = '1' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '0' then
             -- Done!
-            v.s := as_normal;   -- Just to mark finish - see below!
+            done         := true;
             if ahbi.hresp(0) = '1' then
               -- PTE writeback error
-              v.werr := '1';
+              v.werr     := '1';
             end if;
           elsif ahbi.hready = '0' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '1' then
             v.ahb.htrans := HTRANS_IDLE;
@@ -5454,7 +5542,7 @@ begin
             v.ahb.htrans := HTRANS_IDLE;
           end if;
 
-          if v.s = as_normal then
+          if done then
             -- Check PTE range with hypervisor page tables, if applicable.
             if hmmu_enabled(r, csro, r.h_v) = '1' then
                 if r.mmusel(0) = '0' then
@@ -5520,14 +5608,15 @@ begin
       -- Write back hypervisor PTE
       when as_hwpte =>
         if ext_h = 1 then
+          done           := false;
           if r.ahb.htrans = HTRANS_IDLE and r.ahb2.inacc = '0' then
-            v.s := as_hmmuwalk_done;
+            done         := true;
           elsif ahbi.hready = '1' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '0' then
             -- Done!
-            v.s := as_hmmuwalk_done;
+            done         := true;
             if ahbi.hresp(0) = '1' then
               -- PTE writeback error
-              v.werr := '1';
+              v.werr     := '1';
             end if;
           elsif ahbi.hready = '0' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '1' then
             v.ahb.htrans := HTRANS_IDLE;
@@ -5537,15 +5626,16 @@ begin
             v.ahb.htrans := HTRANS_IDLE;
           end if;
 
-          if v.s = as_hmmuwalk_done then
+          if done then
             -- Check PMP permission error, if applicable.
             if pmpen then
               v.pmp_mask := pt_mask(r.hnewent.mask)(v.pmp_mask'range);
               v.pmp_low  := fit0ext(r.hnewent.paddr & x"000", v.pmp_low) and v.pmp_mask;
-              v.pmp_do     := '1';
-              v.s          := as_mmu_pte2_pmpchk;
+              v.pmp_do   := '1';
+              v.s        := as_mmu_pte2_pmpchk;
             else
-              v.h2tlbupd   := '1';
+              v.h2tlbupd := '1';
+              v.s        := as_hmmuwalk_done;
             end if;
           end if;
         end if;
@@ -5602,16 +5692,17 @@ begin
 
       when as_wptectag2 =>
         -- Write PTE and recheck tags stage 2 - tag check
-        v.s   := as_wptectag3;
+        done           := false;
+        v.s            := as_wptectag3;
         -- Continue PTE writeback
         if r.ahb.htrans = HTRANS_IDLE and r.ahb2.inacc = '0' then
-          v.s := as_normal;
+          done         := true;
         elsif ahbi.hready = '1' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '0' then
           -- Done!
-          v.s := as_normal;
+          done         := true;
           if ahbi.hresp(0) = '1' then
             -- PTE writeback error
-            v.werr := '1';
+            v.werr     := '1';
           end if;
         elsif ahbi.hready = '0' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '1' then
           v.ahb.htrans := HTRANS_IDLE;
@@ -5665,17 +5756,21 @@ begin
         v.d1ten           := r.d1chk and dcache_active(r);
         v.d1tcmen         := r.d1chk and dtcmact;
         v.ramreload       := '1';
+        if done then
+          v.s            := as_normal;
+        end if;
 
       when as_wptectag3 =>
         -- Write PTE and recheck tags stage 3 - finish writeback
+        done           := false;
         if r.ahb.htrans = HTRANS_IDLE and r.ahb2.inacc = '0' then
-          v.s := as_normal;
+          done         := true;
         elsif ahbi.hready = '1' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '0' then
           -- Done!
-          v.s := as_normal;
+          done         := true;
           if ahbi.hresp(0) = '1' then
             -- PTE writeback error
-            v.werr := '1';
+            v.werr     := '1';
           end if;
         elsif ahbi.hready = '0' and r.ahb2.inacc = '1' and ahbi.hresp(1) = '1' then
           v.ahb.htrans := HTRANS_IDLE;
@@ -5683,6 +5778,9 @@ begin
           v.ahb.htrans := HTRANS_NONSEQ;
         elsif ahbi.hready = '1' and r.granted = '1' then
           v.ahb.htrans := HTRANS_IDLE;
+        end if;
+        if done then
+          v.s        := as_normal;
         end if;
 
       -- Stay in this state until store buffer is empty.
@@ -5729,10 +5827,11 @@ begin
         end if;
 
         if fastwr = '0' and r.stbuffull = '0' and r.d2stbd = r.d2stbw then
-          v.s      := as_normal;
-          v.d2stbw := "00";
-          v.d2stba := "00";
-          v.d2stbd := "00";
+          v.s        := as_normal;
+          v.d2stbw   := "00";
+          v.d2stba   := "00";
+          v.d2stbd   := "00";
+          store_done := true;
         end if;
 
       when as_slowwr =>
@@ -5751,6 +5850,7 @@ begin
             v.ahb.haddr   := mmu_base(r, csro);
           end if;
           start_walk      := true;   -- See more after case.
+--          v.s             := as_start_walk;
         -- 64 bit write on 32 bit bus?
         elsif r.d2size = "11" and r.d2busw = '0' then
           v.ahb.hbusreq   := '1';
@@ -5803,6 +5903,7 @@ begin
           elsif r.ahb.htrans(1) = '0' then
             v.s             := as_normal;
             v.slowwrpend    := '0';
+            store_done      := true;
             if r.d1ten = '1' then
               v.ramreload   := '1';
             end if;
@@ -5817,9 +5918,21 @@ begin
         v.s           := as_wrasi2;
         -- For next state in case of ASI 0xC-0xF
         v.flushctr    := r.d2vaddr(d_index'range);
-        vtmp4i        := decwrap(get(r.d2vaddr, DOFFSET_HIGH + 1, 2), DWAYS);
+        if MAXWAYS <= 4 then
+          vtmp4i      := decwrap(get(r.d2vaddr, DOFFSET_HIGH + 1, 2), DWAYS);
+        else
+          -- qqq Is this right?
+          vtmp4i      := (others => '0');
+          vtmp4i(u2i(get(r.d2vaddr, DOFFSET_HIGH + 1, 3))) := '1';
+        end if;
         v.d2hitv      := vtmp4i(d_ways'range);
-        vtmp4i        := decwrap(get(r.d2vaddr, DOFFSET_HIGH + 1, 2), IWAYS);
+        if MAXWAYS <= 4 then
+          vtmp4i      := decwrap(get(r.d2vaddr, DOFFSET_HIGH + 1, 2), IWAYS);
+        else
+          -- qqq Is this right?
+          vtmp4i      := (others => '0');
+          vtmp4i(u2i(get(r.d2vaddr, DOFFSET_HIGH + 1, 3))) := '1';
+        end if;
         v.i2hitv      := vtmp4i(i_ways'range);
         for x in 0 to LINESZMAX / 2 - 1 loop
           v.ahb3.rdbuf(x * 64 + 63 downto x * 64) := r.d2data;
@@ -5989,10 +6102,10 @@ begin
           when x"25" =>                 -- 0x25 Cache LRU diagnostic interface
             if r.d2vaddr(31) = '1' then
               v.ilru(u2i(r.d2vaddr(i_index'range))) :=
-                r.d2data(32+4 downto 32+0);
+                r.d2data(32 + v.ilru(0)'high downto 32 + 0);
             else
               v.dlru(u2i(r.d2vaddr(d_index'range))) :=
-                r.d2data(32+4 downto 32+0);
+                r.d2data(32 + v.dlru(0)'high downto 32 + 0);
             end if;
 
           when x"26" =>                 -- 0x26 Instruction TCM access
@@ -6154,6 +6267,7 @@ begin
             else
               -- Fall back to MMU walk
               start_walk := true;
+--              v.s        := as_start_walk;
               v.mmusel   := "101";
               if not is_riscv then
                 v.ahb.haddr := mmu_base(r, csro);
@@ -6240,9 +6354,9 @@ begin
 
           when x"25" =>                 -- 0x25 Cache LRU diagnostic interface
             if r.d2vaddr(31) = '1' then
-              v.dregval(4 downto 0) := ilruent;
+              v.dregval(ilruent'range) := ilruent;
             else
-              v.dregval(4 downto 0) := dlruent;
+              v.dregval(dlruent'range) := dlruent;
             end if;
             v.s := as_rdasi2;
 
@@ -6283,7 +6397,7 @@ begin
 
       when as_rdasi3 =>
         odco.data(0) := r.ahb3.rdbuf(LINESZMAX * 32 - 1 downto LINESZMAX * 32 - 64);
-        odco.way     := "00";
+        odco.way     := (others => '0');
         odco.mds     := '0';
         d_mexc       := r.ahb3.error;
         v.dmisspend  := '0';
@@ -6293,8 +6407,8 @@ begin
         ocrami.iindex(i_sets'range)       := r.irdbufvaddr(i_index'range);
         ocrami.idataoffs(i_offset'range)  := r.iramaddr;
         ocrami.ifulladdr                  := r.d2vaddr(ocrami.ifulladdr'range);
-        ocrami.itagen                     := "1111";
-        ocrami.idataen                    := "1111";
+        ocrami.itagen                     := (others => '1');
+        ocrami.idataen                    := (others => '1');
         ocrami.itcmen                     := '1';
         ocrami.dtagcindex(d_sets'range)   := r.d2vaddr(d_index'range);
         ocrami.ddataindex(d_sets'range)   := r.d2vaddr(d_index'range);
@@ -6399,6 +6513,7 @@ begin
               v.ahb.haddr   := mmu_base(r, csro);
             end if;
             start_walk      := true;   -- See more after case.
+--            v.s             := as_start_walk;
           -- SC:
           elsif r.amo.d2type(1 downto 0) = "11" then -- SC
             v.amo.d2type    := (others => '0');
@@ -6435,7 +6550,39 @@ begin
         else
           v.s := as_normal;
         end if;
-
+      when as_cbo =>
+        if ext_zicbom /= 0 then
+          -- Miss before.
+          v.mmusel          := "011";
+          if r.d2paddrv = '0' then
+            if not is_riscv then
+              v.ahb.haddr   := mmu_base(r, csro);
+            end if;
+            start_walk      := true;   -- See more after case.
+          else
+            if rs.dtwrite = '0' or all_0(r.d2hitv) then
+              if not all_0(r.d2hitv) then
+                vs.dtwrite     := '1';
+                vs.dtaccidx    := r.d2paddr(d_sets'range);
+                vs.dtaccways   := r.d2hitv;
+                vs.dtacctagmod := '1';
+                -- reuse same tags
+                for x in d_ways'range loop
+                  vs.dtacctagmsb(2 * x + 1 downto 2 * x) := 
+                   r.dtagpipe(x)(TAG_HIGH - DTAG_LOW + 1 downto TAG_HIGH - DTAG_LOW);
+                end loop;
+                --vs.dtacctagmsb := r.untagd;
+                vs.dtacctaglsb := (others => '0');
+              end if;
+              v.cbo.d2type(2) := '0';
+              v.s           := as_normal;
+              v.slowwrpend  := '0';
+            end if;
+          end if;
+        else
+          v.s           := as_normal;
+          v.slowwrpend  := '0';
+        end if;
       when as_parked =>
         oico.parked := '1';
         -- Check on hready to ensure r.granted status is up to date in case we were
@@ -6454,6 +6601,7 @@ begin
         else
           -- Fall back to MMU walk
           start_walk    := true;
+--          v.s           := as_start_walk;
           v.mmusel      := "101";
           if not is_riscv then
             v.ahb.haddr := mmu_base(r, csro);
@@ -6593,12 +6741,150 @@ begin
         end if;
 
 
+      when as_start_walk =>
+       if walk_state then
+        -- Ensure PTE writes get snooped
+        if r.mmusel(2) = '0' then
+          v.ahb.snoopmask := (others => '0');
+        end if;
+        v.ahb.hsize       := pte_hsize;
+        if not is_riscv then
+          v.ahb.htrans    := HTRANS_NONSEQ;
+          v.s             := as_mmuwalk;
+        else
+          -- Need to go via another state, to split PMP dependency chain.
+          v.ahb.htrans    := HTRANS_IDLE;
+  
+          -- First TLB level.
+          v.newent.mask                    := (others => '0');
+  
+          -- Assume supervisor page tables need to be checked
+          v.h_x    := '0';
+          v.h_ls   := '0';
+          v.h_mxr  := '0';
+          v.h_vmxr := '0';
+          v.h_hx   := '0';
+          v.s      := as_mmu_pt1addr_chk;
+  
+          -- On RISC-V, the base is indexed directly for the first level.
+          -- Return physical address for next level of page table.
+          -- mask - pre-shift (ie before new 1 at bit 1 (first)) page table mask
+          -- code - mask recoded as position for first 0 (from 1)
+          -- Also, remember the V flag and perhaps set up a fake entry if hypervisor.
+          mmu_data                                  := (others => '0');
+--          case v.mmusel(1 downto 0) is
+          case r.mmusel(1 downto 0) is
+          when "00"   =>
+            mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.i2.mode(0))(gpn'range);
+            haddr                                   := pt_addr(mmu_data, v.newent.mask, r.i2.pc, "00");
+            v.h_v               := r.i2.mode(0);
+            -- Actually hypervisor but no supervisor page tables?
+            if hmmu_only(r, csro, r.i2.mode(0)) = '1' then
+              v.newent.ctx      := r.i2.ctx;
+              v.newent.mode     := r.i2.mode;
+              v.newent.vaddr    := r.i2.pc(vpn'range);
+              v.mmuerr.at_ls    := '0';        -- Load/Execute
+              v.mmuerr.at_id    := '1';        -- Instruction space
+              v.mmuerr.at_su    := r.i2.su;
+              v.h_mxr           := '0';
+              v.h_vmxr          := '0';
+              v.h_hx            := '0';
+              do_pte1_hchk      := true;
+            end if;
+          when "01"   =>
+            mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.d2.mode(0))(gpn'range);
+            haddr                                   := pt_addr(mmu_data, v.newent.mask, r.d2vaddr, "00");
+            v.h_v               := r.d2.mode(0);
+            -- Actually hypervisor but no supervisor page tables?
+            if hmmu_only(r, csro, r.d2.mode(0)) = '1' then
+              v.newent.ctx      := mmu_ctx(r, csro);
+              v.newent.mode     := r.d2.mode;
+              v.newent.vaddr    := r.d2vaddr(vpn'range);
+              v.mmuerr.at_ls    := r.mmusel(1);
+              v.mmuerr.at_id    := '0';
+              v.mmuerr.at_su    := r.d2.su;
+              v.h_mxr           := r.d2.mxr;
+              v.h_vmxr          := r.d2.vmxr;
+              v.h_hx            := r.d2.hx;
+              -- Treat atomic access as store to avoid store phase of atomic
+              -- causing mmu fault.
+              if r.d2lock = '1' then
+                v.mmuerr.at_ls  := '1';
+              end if;
+              do_pte1_hchk      := true;
+            end if;
+          -- Really "11", since "10" is unused.
+          when others =>
+            mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.d2.mode(0))(gpn'range);
+            haddr                                   := pt_addr(mmu_data, v.newent.mask, r.d2vaddr, "00");
+            v.h_v               := r.d2.mode(0);
+            -- Actually hypervisor but no supervisor page tables?
+            if hmmu_only(r, csro, r.d2.mode(0)) = '1' then
+              v.newent.ctx      := mmu_ctx(r, csro);
+              v.newent.vaddr    := r.d2vaddr(vpn'range);
+              v.newent.mode     := r.d2.mode;
+              v.mmuerr.at_ls    := '1';
+              v.mmuerr.at_id    := '0';
+              v.mmuerr.at_su    := r.d2.su;
+              v.h_mxr           := r.d2.mxr;
+              v.h_vmxr          := r.d2.vmxr;
+              v.h_hx            := r.d2.hx;
+              do_pte1_hchk      := true;
+            end if;
+          end case;
+
+          v.ahb.haddr := haddr(v.ahb.haddr'range);
+          if ext_h = 1 then
+            v.h_addr  := haddr(v.h_addr'range);
+          end if;
+          v.pmp_low   := fit0ext(mmu_data & "00", v.pmp_low);
+
+          -- First level page table accessibility
+          if hmmu_enabled(r, csro, v.h_v) = '1' then
+            v.h_do                         := '1';
+            v.h_x                          := '0';
+            v.h_ls                         := '0';
+            -- Possible L1 PT read fault due to L2 PT.
+            -- Instruction or data access.
+            v.itypehyper                 := v.h_x       & '0';
+            v.dtypehyper                 := (not v.h_x) & '0';
+          elsif actual_tlb_pmp then
+            v.pmp_do                       := '1';
+          end if;
+  
+          -- Prepare for second TLB level.
+          v.newent.mask(v.newent.mask'low) := '1';
+  
+          if do_pte1_hchk then
+            v.s               := as_mmu_pte1_hchk;
+            v.newent.perm     := (others => '1');
+            v.newent.modified := v.mmuerr.at_ls;
+  
+            -- Check PTE range with hypervisor page tables, if applicable.
+--            v.newent.paddr    := fit0ext(pte_paddr(rdb64), v.newent.paddr);
+            v.h_addr          := fit0ext(v.newent.vaddr & x"000", v.h_addr);
+            v.h_ls            := v.mmuerr.at_ls;
+            v.h_x             := v.mmuerr.at_id;
+            -- Possible access fault due to L2 PT.
+            -- Instruction or data access.
+            v.itypehyper    := '0' & v.h_x;
+            v.dtypehyper    := '0' & not v.h_x;
+          end if;
+        end if;
+       else
+         -- This can never happen!
+         v.s := as_normal;
+       end if;
+
     end case;
 
     -- There really should never be a table walk with MMU disabled.
     -- Ensure this!
 
-    if start_walk then
+  if start_walk then
+    if walk_state then
+      v.s := as_start_walk;
+    else
       -- Ensure PTE writes get snooped
       if r.mmusel(2) = '0' then
         v.ahb.snoopmask := (others => '0');
@@ -6644,7 +6930,7 @@ begin
             v.h_mxr           := '0';
             v.h_vmxr          := '0';
             v.h_hx            := '0';
-            v.s               := as_mmu_pte1_hchk;
+            do_pte1_hchk      := true;
           end if;
         when "01"   =>
           mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, v.d2.mode(0))(gpn'range);
@@ -6666,7 +6952,7 @@ begin
             if v.d2lock = '1' then
               v.mmuerr.at_ls  := '1';
             end if;
-            v.s               := as_mmu_pte1_hchk;
+            do_pte1_hchk      := true;
           end if;
         -- Really "11", since "10" is unused.
         when others =>
@@ -6684,7 +6970,7 @@ begin
             v.h_mxr           := r.d2.mxr;
             v.h_vmxr          := r.d2.vmxr;
             v.h_hx            := r.d2.hx;
-            v.s               := as_mmu_pte1_hchk;
+            do_pte1_hchk      := true;
           end if;
         end case;
 
@@ -6710,7 +6996,8 @@ begin
         -- Prepare for second TLB level.
         v.newent.mask(v.newent.mask'low) := '1';
 
-        if v.s = as_mmu_pte1_hchk then
+        if do_pte1_hchk then
+          v.s               := as_mmu_pte1_hchk;
           v.newent.perm     := (others => '1');
           v.newent.modified := v.mmuerr.at_ls;
 
@@ -6726,6 +7013,7 @@ begin
         end if;
       end if;
     end if;
+  end if;
 
     if is_riscv and not actual_tlb_pmp then
       -- PMP check page table address, if pmp_mmu.
@@ -6758,7 +7046,7 @@ begin
     end if;
 
     -- AMO: extend hold until store is executed
-    if (r.amo.hold = '1' and v.s = as_normal) or ext_a = 0 then
+    if (r.amo.hold = '1' and store_done) or ext_a = 0 then
       v.amo.hold := '0';
       v.amo.sc   := '0';
     end if;
@@ -6965,6 +7253,9 @@ begin
         v.amo.store      := RRES.amo.store;
         v.amo.sc         := RRES.amo.sc;
         v.amo.s4hit      := RRES.amo.s4hit;
+        -- Cache block Operations
+        v.cbo.d1type     := RRES.cbo.d1type;
+        v.cbo.d2type     := RRES.cbo.d2type;
         -- RISC-V does not use a default TLB, so must invalidate.
         if is_riscv then
           for x in v.itlb'range loop
@@ -6999,34 +7290,44 @@ begin
     case DWAYS is
       when 1 =>
         for w in r.dlru'range loop
-          v.dlru(w)             := (others => '0');
+          v.dlru(w)                          := (others => '0');
         end loop;
       when 2 =>
         for w in r.dlru'range loop
-          v.dlru(w)(4)          := '0';
-          v.dlru(w)(2 downto 0) := "000";
+          v.dlru(w)(v.dlru(0)'high downto 4) := (others => '0');
+          v.dlru(w)(2 downto 0)              := "000";
         end loop;
       when 3 =>
         for w in r.dlru'range loop
-          v.dlru(w)(1 downto 0) := "00";
+          v.dlru(w)(v.dlru(0)'high downto 5) := (others => '0');
+          v.dlru(w)(1 downto 0)              := "00";
         end loop;
-      when 4 => null;
+      when 4 =>
+        for w in r.dlru'range loop
+          v.dlru(w)(v.dlru(0)'high downto 5)   := (others => '0');
+        end loop;
+      when others => null;
     end case;
     case IWAYS is
       when 1 =>
         for w in r.ilru'range loop
-          v.ilru(w)             := (others => '0');
+          v.ilru(w)                          := (others => '0');
         end loop;
       when 2 =>
         for w in r.ilru'range loop
-          v.ilru(w)(4)          := '0';
-          v.ilru(w)(2 downto 0) := "000";
+          v.ilru(w)(v.ilru(0)'high downto 4) := (others => '0');
+          v.ilru(w)(2 downto 0)              := "000";
         end loop;
       when 3 =>
         for w in r.ilru'range loop
-          v.ilru(w)(1 downto 0) := "00";
+          v.ilru(w)(v.ilru(0)'high downto 5) := (others => '0');
+          v.ilru(w)(1 downto 0)              := "00";
         end loop;
-      when 4 => null;
+      when 4 =>
+        for w in r.dlru'range loop
+          v.ilru(w)(v.ilru(0)'high downto 5)   := (others => '0');
+        end loop;
+      when others => null;
     end case;
     for x in 31 downto 16 loop
       if (x <= 2 + itcmabits) or itcmen = 0 then

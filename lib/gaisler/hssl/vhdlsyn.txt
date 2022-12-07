@@ -7,5 +7,8 @@ grhssl_wizl.vhd
 grhssl_dma.vhd
 grhssl.vhd
 grhssl_ahb.vhd
+grhssl_axi.vhd
 grspfi_ahb.vhd
+grspfi_axi.vhd
 grwizl_ahb.vhd
+grwizl_axi.vhd

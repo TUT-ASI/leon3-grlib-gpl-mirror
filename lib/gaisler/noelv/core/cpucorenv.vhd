@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,16 +25,15 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library techmap;
+use techmap.gencomp.all;
+use techmap.netcomp.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.amba.all;
-use grlib.stdlib.all;
-use ieee.numeric_std.all;
-use grlib.riscv.all;
-library techmap;
-use techmap.gencomp.all;
-use techmap.netcomp.all;
+use grlib.stdlib.log2;
 library gaisler;
 use gaisler.noelv.XLEN;
 use gaisler.noelv.nv_irq_in_type;
@@ -46,6 +44,8 @@ use gaisler.noelv.nv_counter_out_type;
 use gaisler.noelv.nv_etrace_out_type;
 use gaisler.noelvint.all;
 use gaisler.utilnv.u2vec;
+use gaisler.utilnv.b2i;
+use gaisler.utilnv.cond;
 
 entity cpucorenv is
   generic (
@@ -65,11 +65,11 @@ entity cpucorenv is
     mulconf             : integer                       := 0;
     -- Caches
     icen                : integer range 0  to 1         := 0;  -- I$ Cache Enable
-    iways               : integer range 1  to 4         := 1;  -- I$ Sets/Ways
+    iways               : integer range 1  to 8         := 1;  -- I$ Sets/Ways
     ilinesize           : integer range 4  to 8         := 4;  -- I$ Cache Line Size (words)
     iwaysize            : integer range 1  to 256       := 1;  -- I$ Cache Way Size (KiB)
     dcen                : integer range 0  to 1         := 0;  -- D$ Cache Enable
-    dways               : integer range 1  to 4         := 1;  -- D$ Sets/Ways
+    dways               : integer range 1  to 8         := 1;  -- D$ Sets/Ways
     dlinesize           : integer range 4  to 8         := 4;  -- D$ Cache Line Size (words)
     dwaysize            : integer range 1  to 256       := 1;  -- D$ Cache Way Size (KiB)
     -- BHT
@@ -105,6 +105,8 @@ entity cpucorenv is
     ext_zbkc            : integer range 0  to 1         := 0;  -- Zbkc Extension
     ext_zbkx            : integer range 0  to 1         := 0;  -- Zbkx Extension
     ext_sscofpmf        : integer range 0  to 1         := 0;  -- Sscofpmf Extension
+    ext_sstc            : integer range 0  to 2         := 0;  -- Sctc Extension (2 : only time csr impl.)  
+    ext_zicbom          : integer range 0  to 1         := 0;  -- Zicbom Extension
     mode_s              : integer range 0  to 1         := 0;  -- Supervisor Mode Support
     mode_u              : integer range 0  to 1         := 0;  -- User Mode Support
     fpulen              : integer range 0  to 128       := 0;  -- Floating-point precision
@@ -131,8 +133,8 @@ entity cpucorenv is
     endian              : integer
     );
   port (
-    clk      : in  std_ulogic; -- cpu clock
-    gclk     : in  std_ulogic; -- gated cpu clock
+    clk         : in  std_ulogic; -- cpu clock
+    gclk        : in  std_ulogic; -- gated cpu clock
     rstn        : in  std_ulogic;
     ahbi        : in  ahb_mst_in_type;
     ahbo        : out ahb_mst_out_type;
@@ -152,14 +154,12 @@ architecture rtl of cpucorenv is
   constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
   constant MEMTECH_MOD : integer := memtech mod 65536;
 
-  constant IRFBITS      : integer := 5;
-  constant IREGNUM      : integer := 2 ** IRFBITS;
   constant WRT          : integer := 1;	-- enable write-through RAM
 
-  constant dtcmen    : integer := boolean'pos( (tcmconf mod 32) /= 0);
-  constant dtcmabits : integer := (1-dtcmen) + (tcmconf mod 32);
-  constant itcmen    : integer := boolean'pos( ((tcmconf/256) mod 32) /= 0 );
-  constant itcmabits : integer := (1-itcmen) + ((tcmconf/256) mod 32);
+  constant dtcmen    : integer := b2i((tcmconf mod 32) /= 0);
+  constant dtcmabits : integer := (1 - dtcmen) + (tcmconf mod 32);
+  constant itcmen    : integer := b2i(((tcmconf / 256) mod 32) /= 0);
+  constant itcmabits : integer := (1 - itcmen) + ((tcmconf / 256) mod 32);
 
   constant iidxwidth    : integer := (log2(iwaysize) + 10) - (log2(ilinesize) + 2);
   constant itagwidth    : integer := physaddr - (log2(iwaysize) + 10) + 1;
@@ -169,6 +169,7 @@ architecture rtl of cpucorenv is
   constant dusebw       : integer := (cmemconf / 4) mod 2;
   constant mulconf_int  : integer := mulconf mod 4;
   constant mulconf_fpu  : integer := (mulconf / 16) mod 4;
+
   function regen_fpuconf return integer is
   begin
     if hw_fpu = 3 then
@@ -177,14 +178,16 @@ architecture rtl of cpucorenv is
       return 0;
     end if;
   end;
+
   constant fpuconf      : integer := regen_fpuconf;
   function gen_capability return std_logic_vector is
-    variable cap : std_logic_vector(6 downto 0) := (others => '0');
+    variable cap : std_logic_vector(9 downto 0) := (others => '0');
   begin
-    cap(6 downto 3) := u2vec(NOELV_VERSION,4);
+    cap(9 downto 7) := u2vec(NOELV_TRACE_VERSION, 3);
+    cap(6 downto 3) := u2vec(NOELV_VERSION, 4);
     return cap;
   end;
-  constant capability : std_logic_vector(6 downto 0) := gen_capability;
+  constant capability   : std_logic_vector(9 downto 0) := gen_capability;
   constant dtagwidth    : integer := physaddr - (log2(dwaysize) + 10) + 1;
   constant cdataw       : integer := 64;
 
@@ -204,19 +207,28 @@ architecture rtl of cpucorenv is
 
   constant actual_riscv_mmu : integer := constrain_riscv_mmu;
 
-  -- Returns how many bits are needed for PC.
-  function max_pc_bits return integer is
+  -- Returns how many bits are needed to represent an address (virtual or "physical").
+  -- Not quite the same as in MMU/cache, since there it needs to deal with
+  -- an actual address (which may be larger than XLEN) after translation.
+  -- In the pipeline, the length is limited to max XLEN bits.
+  function max_addr_bits return integer is
+    constant pa : std_logic_vector := gaisler.mmucacheconfig.pa(actual_riscv_mmu);
     constant va : std_logic_vector := gaisler.mmucacheconfig.va(actual_riscv_mmu);
+    constant ga : std_logic_vector := gaisler.mmucacheconfig.ga(actual_riscv_mmu);
   begin
-    if actual_riscv_mmu = gaisler.mmucacheconfig.sv32 or
-       va'length > physaddr then
-      return va'length;
+    if ext_h = 0 then
+      if mode_s = 0 then
+        return gaisler.utilnv.minimum(XLEN, physaddr);
+      else
+        return gaisler.utilnv.maximum(va'length, gaisler.utilnv.minimum(physaddr, pa'length));
+      end if;
+    else
+      return gaisler.utilnv.minimum(XLEN, ga'length);
     end if;
-
-    return physaddr;
   end;
 
-  constant pcbits       : integer := max_pc_bits;
+  constant addr_bits    : integer := max_addr_bits;
+  constant pcaddr_bits  : integer := cond(addr_bits = XLEN, addr_bits, addr_bits + 2);
 
   -- Misc
   signal gnd            : std_ulogic;
@@ -282,12 +294,14 @@ architecture rtl of cpucorenv is
 
 
   signal rff_fd         : std_logic_vector(fpulen - 1 downto 0);
-  signal rff_rs1        : std_logic_vector(4 downto 0);
-  signal rff_rs2        : std_logic_vector(4 downto 0);
-  signal rff_rs3        : std_logic_vector(4 downto 0);
+  signal rff_rs1        : reg_t;
+  signal rff_rs2        : reg_t;
+  signal rff_rs3        : reg_t;
   signal rff_ren        : std_logic_vector(1 to 3);
---  signal rff_rd         : std_logic_vector(4 downto 0);
+--  signal rff_rd         : reg_t;
   signal rff_wen        : std_ulogic;
+
+  signal rff_rdummy     : std_logic_vector(fpulen - 1 downto 0);
 
   signal fs1_word64     : word64;
   signal fs2_word64     : word64;
@@ -296,9 +310,13 @@ architecture rtl of cpucorenv is
 
   signal mtesti_none    : std_logic_vector(memtest_vlen - 1 downto 0);
 
+  signal etrace         : nv_etrace_out_type;
+
   attribute sync_set_reset : string;
   attribute sync_set_reset of rst : signal is "true";
 
+  signal itracei : itrace_in_type;
+  signal itraceo : itrace_out_type;
 begin
 
   -- Signal Assignments -----------------------------------------------------
@@ -306,6 +324,33 @@ begin
   vcc                   <= '1';
   holdn                 <= ico.hold and dco.hold;
   mtesti_none           <= (others => '0');
+  eto                   <= etrace;
+
+  itrace : entity work.itracenv
+    generic map (
+      hindex        => hindex,
+      fabtech       => fabtech,
+      memtech       => memtech,
+      single_issue  => single_issue,
+      dmen          => dmen,
+      tbuf          => tbuf,
+      disas         => disas,
+      scantest      => scantest
+    )
+    port map (
+      clk        => gclk,
+      rstn       => rstx,
+      itracei    => itracei,
+      itraceo    => itraceo,
+      fpo        => fpo,
+      testen     => ahbsi.testen,
+      testrst    => ahbsi.testrst
+    );
+
+  tbi.addr   <= itraceo.taddr;
+  tbi.data   <= itraceo.idata;
+  tbi.enable <= itraceo.enable;
+  tbi.write  <= itraceo.write;
 
   -- Pipeline ---------------------------------------------------------------
   iu0 : iunv
@@ -315,9 +360,8 @@ begin
       memtech       => memtech,
       -- Core
       physaddr      => physaddr,
-      pcbits        => pcbits,
+      addr_bits     => addr_bits,
       rstaddr       => rstaddr,
-      disas         => disas,
       perf_cnts     => perf_cnts,
       perf_evts     => perf_evts,
       perf_bits     => perf_bits,
@@ -348,6 +392,8 @@ begin
       ext_zbkc      => ext_zbkc,
       ext_zbkx      => ext_zbkx,
       ext_sscofpmf  => ext_sscofpmf,
+      ext_sstc      => ext_sstc,
+      ext_zicbom    => ext_zicbom,
       mode_s        => mode_s,
       mode_u        => mode_u,
       dmen          => dmen,
@@ -390,13 +436,14 @@ begin
       fpui          => fpi,
       fpuo          => fpo,
       cnt           => iu_cnt,
+      itracei       => itracei,
+      itraceo       => itraceo,
       csr_mmu       => csr_mmu,
       mmu_csr       => mmu_csr,
       cap           => capability,
       perf          => c_perf,
       tbo           => tbo,
-      tbi           => tbi,
-      eto           => eto,
+      eto           => etrace,
       sclk          => clk,
       testen        => ahbsi.testen,
       testrst       => ahbsi.testrst
@@ -480,6 +527,7 @@ begin
       vmidlen       => vmidlen,
       ext_a         => ext_a,
       ext_h         => ext_h,
+      ext_zicbom    => ext_zicbom,
       tlb_pmp       => tlb_pmp,
       -- Misc
       cached        => cached,
@@ -513,8 +561,8 @@ begin
       c2c_mosi      => c2c_mosi,
       c2c_miso      => c2c_miso,
       freeze        => dbgi.freeze,
-      bootword      => zero32,
-      smpflush      => zero32(1 downto 0),
+      bootword      => zerow,
+      smpflush      => zerow(1 downto 0),
       --fpuholdn      => fpo.holdn,
       perf          => c_perf
       );
@@ -551,7 +599,7 @@ begin
   btb0 : btbdmnv
     generic map (
       nentries          => btbentries,
-      pcbits            => pcbits,
+      pcbits            => pcaddr_bits,
       dissue            => 1 - single_issue
       )
     port map (
@@ -565,7 +613,7 @@ begin
   ras0 : rasnv
     generic map (
       depth             => 8,
-      pcbits            => pcbits
+      pcbits            => pcaddr_bits
       )
     port map (
       clk               => gclk,
@@ -579,9 +627,6 @@ begin
     rf0 : regfile64sramnv
       generic map (
         tech            => memtech,
-        abits           => IRFBITS,
-        dbits           => XLEN,
-        numregs         => IREGNUM,
         dissue          => 1 - single_issue,
         testen          => scantest
         )
@@ -589,10 +634,10 @@ begin
         clk             => gclk,
         rstn            => rstx,
         rdhold          => rfi.rdhold,
-        waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
+        waddr1          => rfi.waddr1,
         wdata1          => rfi.wdata1,
         we1             => rfi.wen1,
-        waddr2          => rfi.waddr2(IRFBITS-1 downto 0),
+        waddr2          => rfi.waddr2,
         wdata2          => rfi.wdata2,
         we2             => rfi.wen2,
         raddr1          => rfi.raddr1,
@@ -615,19 +660,16 @@ begin
     rf0 : regfile64dffnv
       generic map (
         tech            => memtech,
-        abits           => IRFBITS,
-        dbits           => XLEN,
-        wrfst           => WRT,
-        numregs         => IREGNUM
+        wrfst           => WRT
         )
       port map (
         clk             => gclk,
         rstn            => rstx,
         rdhold          => rfi.rdhold,
-        waddr1          => rfi.waddr1(IRFBITS-1 downto 0),
+        waddr1          => rfi.waddr1,
         wdata1          => rfi.wdata1,
         we1             => rfi.wen1,
-        waddr2          => rfi.waddr2(IRFBITS-1 downto 0),
+        waddr2          => rfi.waddr2,
         wdata2          => rfi.wdata2,
         we2             => rfi.wen2,
         raddr1          => rfi.raddr1,
@@ -651,9 +693,6 @@ begin
     rf1 : regfile64sramnv
       generic map (
         tech            => memtech,
-        abits           => 5,
-        dbits           => fpulen,
-        numregs         => 32,
         reg0write       => 1,
         testen          => scantest
         )
@@ -678,7 +717,7 @@ begin
         rdata3          => fs3_data,
         raddr4          => rff_rs3,     -- Dummy
         re4             => '0',
-        rdata4          => open,
+        rdata4          => rff_rdummy,  -- Dummy
         testin          => ahbi.testin
         );
    end generate;
@@ -687,10 +726,7 @@ begin
     rf1 : regfile64dffnv
       generic map (
         tech            => memtech,
-        abits           => 5,
-        dbits           => fpulen,
         wrfst           => WRT,
-        numregs         => 32,
         reg0write       => 1
         )
       port map (
@@ -714,7 +750,7 @@ begin
         rdata3          => fs3_data,
         raddr4          => rff_rs3,     -- Dummy
         re4             => '0',
-        rdata4          => open
+        rdata4          => rff_rdummy   -- Dummy
         );
    end generate;
 
@@ -778,9 +814,9 @@ begin
   end generate;
 
   sp_fpu: if fpulen = 32 generate
-    fs1_word64 <= onesw64(63 downto 32) & fs1_data;
-    fs2_word64 <= onesw64(63 downto 32) & fs2_data;
-    fs3_word64 <= onesw64(63 downto 32) & fs3_data;
+    fs1_word64 <= (not zerow) & fs1_data;
+    fs2_word64 <= (not zerow) & fs2_data;
+    fs3_word64 <= (not zerow) & fs3_data;
   end generate;
 
   dp_fpu: if fpulen = 64 generate
@@ -788,7 +824,6 @@ begin
     fs2_word64 <= fs2_data;
     fs3_word64 <= fs3_data;
   end generate;
-
 
   fpu_gen : if fpulen /= 0 and hw_fpu = 1 generate
     nano : nanofpunv

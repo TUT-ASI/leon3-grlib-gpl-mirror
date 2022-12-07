@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,12 +26,12 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library techmap;
+use techmap.gencomp.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
-use grlib.stdlib.all;
-library techmap;
-use techmap.gencomp.all;
+use grlib.stdlib.tost;
 library gaisler;
 use gaisler.noelv.all;
 use gaisler.noelvint.all;
@@ -151,36 +150,36 @@ begin
            rstn    when ASYNC_RESET else '1';
 
   comb : process (r, divi)
-    variable v           : regtype;
-    variable sign        : std_ulogic;
-    variable divisor     : divtype;
-    variable op1         : divtype;
-    variable op2         : divtype;
-    variable result      : divtype;
-    variable start       : std_ulogic;
-    variable dshift      : integer range 0 to bits - 1;
-    variable dushift     : integer range 0 to bits - 1;
-    variable ddshift     : integer range 0 to bits - 1;
-    variable neg         : std_ulogic;
-    variable divi_ctrl   : std_logic_vector(2 downto 0);
-    variable divi_op1    : divtype;
-    variable divi_op2    : divtype;
+    variable v         : regtype;
+    variable sign      : std_ulogic;
+    variable divisor   : divtype;
+    variable op1       : divtype;
+    variable op2       : divtype;
+    variable result    : divtype;
+    variable start     : std_ulogic;
+    variable dshift    : integer range 0 to bits - 1;
+    variable dushift   : integer range 0 to bits - 1;
+    variable ddshift   : integer range 0 to bits - 1;
+    variable neg       : std_ulogic;
+    variable divi_ctrl : std_logic_vector(2 downto 0);
+    variable divi_op1  : divtype;
+    variable divi_op2  : divtype;
   begin
     v := r;
 
     -- Latch input signals
-    start      := '0';
-    v.latch_in := '0';
+    start          := '0';
+    v.latch_in     := '0';
     if (r.ready and not divi.flush) = '1' then
-      v.ctrl := divi.ctrl;
+      v.ctrl       := divi.ctrl;
       if in_pipe /= 0 then
         v.ready    := '0';
         v.latch_in := '1';
-        v.op1 := unsigned(divi.op1);
-        v.op2 := unsigned(divi.op2);
-        v.sign_in := not divi.ctrl(0);
+        v.op1      := unsigned(divi.op1);
+        v.op2      := unsigned(divi.op2);
+        v.sign_in  := not divi.ctrl(0);
       else
-        start  := '1';
+        start      := '1';
       end if;
     end if;
 
@@ -189,12 +188,12 @@ begin
     end if;
 
     -- Add signed operations
-    op1       := unsigned(divi.op1);
-    op2       := unsigned(divi.op2);
-    sign      := not divi.ctrl(0);
-    divi_ctrl := divi.ctrl;
-    divi_op1  := unsigned(divi.op1);
-    divi_op2  := unsigned(divi.op2);
+    op1         := unsigned(divi.op1);
+    op2         := unsigned(divi.op2);
+    sign        := not divi.ctrl(0);
+    divi_ctrl   := divi.ctrl;
+    divi_op1    := unsigned(divi.op1);
+    divi_op2    := unsigned(divi.op2);
     if in_pipe /= 0 then
       op1       := r.op1;
       op2       := r.op2;

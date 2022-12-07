@@ -10,3 +10,4 @@ grcanfd_pl.vhd
 grcanfd_codec.vhd
 grcanfd.vhd
 grcanfd_ahb.vhd
+grcanfd_axi.vhd

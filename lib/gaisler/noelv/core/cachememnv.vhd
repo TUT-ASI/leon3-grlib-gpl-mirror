@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,25 +27,29 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-library grlib;
-use grlib.config_types.all;
-use grlib.config.all;
-use grlib.stdlib.all;
-library gaisler;
-use gaisler.noelvint.all;
 library techmap;
 use techmap.gencomp.all;
+library grlib;
+use grlib.stdlib.log2;
+use grlib.stdlib.notx;
+use grlib.stdlib.setx;
+use grlib.stdlib.tost_bits;
+library gaisler;
+use gaisler.noelvint.nv_cram_in_type;
+use gaisler.noelvint.nv_cram_out_type;
+use gaisler.noelvint.TAGMAX;
+use gaisler.utilnv.b2i;
 
 entity cachememnv is
   generic (
     tech      : integer range 0 to NTECH;
-    iways     : integer range 1 to 4;
+    iways     : integer range 1 to 8;
     ilinesize : integer range 4 to 8;
     iidxwidth : integer range 1 to 10;
     itagwidth : integer range 1 to 32;
     itcmen    : integer range 0 to 1;
     itcmabits : integer range 1 to 20;
-    dways     : integer range 1 to 4;
+    dways     : integer range 1 to 8;
     dlinesize : integer range 4 to 8;
     didxwidth : integer range 1 to 10;
     dtagwidth : integer range 1 to 32;
@@ -535,11 +538,11 @@ begin
   end generate;
 
 
-  unusediloop: for s in iways to 3 generate
+  unusediloop: for s in iways to 7 generate
     cramo.itagdout(s)  <= (others => '0');
     cramo.idatadout(s) <= (others => '0');
   end generate;
-  unuseddloop: for s in dways to 3 generate
+  unuseddloop: for s in dways to 7 generate
     cramo.dtagcdout(s) <= (others => '0');
     cramo.dtagsdout(s) <= (others => '0');
     cramo.ddatadout(s) <= (others => '0');

@@ -1,16 +1,13 @@
 sim.vhd
 sram.vhd
 sramft.vhd
-ata_device.vhd
 sram16.vhd
-phy_sgmii.vhd
 phy.vhd
 ser_phy.vhd
 ahbrep.vhd
 ulpi.vhd
 utmi.vhd
 delay_wire.vhd
-spi_flash.vhd
 pwm_check.vhd
 usbsim.vhd
 grusbdcsim.vhd
@@ -30,8 +27,9 @@ aximem.vhd
 axirep.vhd
 axixmem.vhd
 sramtestmod.vhd
+canfdsim.vhd
+tlk2711_sim.vhd
 
 uartprint.vhd
 dfi_phy_sim.vhd
 dfi_phy_sim_fr.vhd
-

@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -279,40 +278,6 @@ package sim is
     );
   end component;
 
-  component phy_sgmii is
-    generic (
-      INSTANCE_NUMBER          : integer := 0
-    );
-    port (
-      -- Physical Interface (Transceiver)
-      --------------------------------
-      txp                     : in  std_logic;
-      txn                     : in  std_logic;
-      rxp                     : out std_logic;
-      rxn                     : out std_logic;
-      -- GMII Interface
-      -----------------
-      gmii_tx_clk             : out std_logic;
-      gmii_rx_clk             : in std_logic;
-      gmii_txd                : out std_logic_vector(7 downto 0);
-      gmii_tx_en              : out std_logic;
-      gmii_tx_er              : out std_logic;
-      gmii_rxd                : in std_logic_vector(7 downto 0);
-      gmii_rx_dv              : in std_logic;
-      gmii_rx_er              : in std_logic;
-      -- Test bench speed selection
-      -----------------------------
-      speed_is_10_100         : in std_logic;
-      speed_is_100            : in std_logic;
-      -- Test Bench Semaphores
-      ------------------------
-      configuration_finished  : in  boolean;
-      tx_monitor_finished     : out boolean;
-      rx_monitor_finished     : out boolean
-      );
-  end component;
-
-
   procedure leon3_subtest(subtest : integer);
   procedure mctrl_subtest(subtest : integer);
   procedure gptimer_subtest(subtest : integer);
@@ -493,12 +458,17 @@ package sim is
       readcmd    : integer := 16#0B#;          -- SPI memory device read command
       dummybyte  : integer := 1;
       dualoutput : integer := 0;
+      quadoutput : integer := 0;
+      dualinput  : integer := 0;
+      quadinput  : integer := 0;
       memoffset  : integer := 0);
     port (
       sck : in    std_ulogic;
       di  : inout std_logic;
       do  : inout std_logic;
       csn : inout std_logic;
+      io2 : inout std_logic;
+      io3 : inout std_logic;
       -- Test control inputs
       sd_cmd_timeout  : in std_ulogic := '0';
       sd_data_timeout : in std_ulogic := '0'
@@ -798,6 +768,70 @@ component spwtrace is
       txd: in std_ulogic
       );
   end component;
+
+  component canfdsim is
+    port(
+      -- Timing parameters
+      nom_syn_seg         : in  time;
+      nom_ph1_seg         : in  time;
+      nom_ph2_seg         : in  time;
+      data_syn_seg        : in  time;
+      data_ph1_seg        : in  time;
+      data_ph2_seg        : in  time;
+      -- Frame control
+      start               : in  std_ulogic;                    -- Start TX/RX
+      mode                : in  std_ulogic;                    -- TX(1); RX(0)
+      -- Frame description
+      id                  : in  std_logic_vector(28 downto 0);
+      ide                 : in  std_ulogic;
+      rtr                 : in  std_ulogic;
+      fdf                 : in  std_ulogic;
+      brs                 : in  std_ulogic;
+      esi                 : in  std_ulogic;
+      dlc                 : in  std_logic_vector(3 downto 0);
+      data                : in  std_logic_vector(511 downto 0);
+      -- Exception generation (only as a RX for GRCANFD)
+      srr_dom             : in  std_ulogic;                    -- SRR transmitted dominant
+      rrs_rec             : in  std_ulogic;                    -- RRS transmitted recessive
+      r0_rec              : in  std_ulogic;                    -- r0 transmitted recessive
+      res_rec             : in  std_ulogic;                    -- res transmitted recessive
+      -- Exception generation (only as a TX for GRCANFD)
+      ack_long            : in  std_ulogic;                    -- ACK 2 bit times long
+      -- Error insertion (only for TX)
+      crc_err_msk         : in  std_logic_vector(20 downto 0); -- CRC error mask
+      bstuff_err_sel      : in  std_logic_vector(2 downto 0);  -- Field with stuff errors
+      stuffcnt_err_msk    : in  std_logic_vector(3 downto 0);  -- Stuff cnt error mask
+      fxdstuff_err_sel    : in  std_logic_vector(2 downto 0);  -- Fixed stuff err sel
+      -- TX/RX outputs
+      frm_completed       : out std_ulogic;                    -- End of TX/RX
+      tx_frm_ackd         : out std_ulogic;                    -- TX frame acknowledged
+      tx_arb_lost         : out std_ulogic;                    -- Arbitration lost
+      err_frm_gen         : out std_ulogic;                    -- EF generated
+      -- CAN interface
+      can_rx_bit          : in  std_ulogic;
+      can_tx_bit          : out std_ulogic
+      );
+  end component canfdsim;
+
+  component tlk2711_sim is
+    port (
+      -- Control interface
+      enable    : in  std_ulogic;
+      loop_en   : in  std_ulogic;
+      -- Host interface
+      tx_clk    : in  std_ulogic;
+      tx_data   : in  std_logic_vector(15 downto 0);
+      tx_kflags : in  std_logic_vector(1 downto 0);
+      rx_clk    : out std_ulogic;
+      rx_data   : out std_logic_vector(15 downto 0);
+      rx_kflags : out std_logic_vector(1 downto 0);
+      -- Serial interface
+      dout_txp  : out std_ulogic;
+      dout_txn  : out std_ulogic;
+      din_rxp   : in  std_ulogic;
+      din_rxn   : in  std_ulogic
+      );
+  end component tlk2711_sim;
 
   component dfi_phy_sim is
     generic (

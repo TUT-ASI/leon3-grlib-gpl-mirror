@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -104,7 +103,12 @@ entity noelvcore is
     tck         : in std_ulogic;
     tms         : in std_ulogic;
     tdi         : in std_ulogic;
-    tdo         : out std_ulogic
+    tdo         : out std_ulogic;
+    -- RISC-V JTAG
+    jtag_rv_tck : in std_ulogic := '0';
+    jtag_rv_tms : in std_ulogic := '0';
+    jtag_rv_tdi : in std_ulogic := '0';
+    jtag_rv_tdo : out std_ulogic
   );
 end;
 
@@ -122,7 +126,7 @@ architecture rtl of noelvcore is
 -- pragma translate_on
   ;
 
-  constant ndbgmst  : integer := 3
+  constant ndbgmst  : integer := 3 + CFG_LOCAL_AHB_JTAG_RV
   ;
 
   constant mig_hindex : integer := 2
@@ -309,6 +313,46 @@ begin
                dbgmi(JTAG_DM_HMINDEX), dbgmo(JTAG_DM_HMINDEX),
                open, open, open, open, open, open, open, gnd, trst, open,
                gnd, open, open, open);
+  end generate;
+
+  -----------------------------------------------------------------------------
+  -- RISC-V JTAG debug link ---------------------------------------------------
+  -----------------------------------------------------------------------------
+
+  ahbjtagrvgen0 : if CFG_LOCAL_AHB_JTAG_RV = 1 generate
+    ahbjtag0 : ahbjtagrv
+      generic map(
+        tech    => 0,
+        hindex  => JTAG_RV_DM_HMINDEX,
+        idcode  => 1,
+        ainst   => 16,
+        dinst   => 17)
+      port map(
+        rst       => rstn,
+        clk       => clkm,
+        tck       => jtag_rv_tck,
+        tms       => jtag_rv_tms,
+        tdi       => jtag_rv_tdi,
+        tdo       => jtag_rv_tdo,
+        ahbi      => dbgmi(JTAG_RV_DM_HMINDEX),
+        ahbo      => dbgmo(JTAG_RV_DM_HMINDEX),
+        tapo_tck  => open,
+        tapo_tdi  => open,
+        tapo_inst => open,
+        tapo_rst  => open,
+        tapo_capt => open,
+        tapo_shft => open,
+        tapo_upd  => open,
+        tapi_tdo  => gnd,
+        trst      => rstn,
+        tdoen     => open,
+        tckn      => open,
+        tapo_tckn => open,
+        tapo_ninst=> open,
+        tapo_iupd => open); 
+  end generate;
+  no_ahbjtagrvgen0 : if CFG_LOCAL_AHB_JTAG_RV = 0 generate
+    jtag_rv_tdo <= '0';
   end generate;
 
   -----------------------------------------------------------------------

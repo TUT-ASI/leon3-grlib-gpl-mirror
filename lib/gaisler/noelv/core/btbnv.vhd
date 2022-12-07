@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,16 +25,13 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-
 library grlib;
-use grlib.stdlib.all;
-use grlib.config_types.all;
-use grlib.config.all;
-
+use grlib.stdlib.log2ext;
 library gaisler;
---use gaisler.noelv.all;
 use gaisler.noelvint.nv_btb_in_type;
 use gaisler.noelvint.nv_btb_out_type;
+use gaisler.utilnv.u2i;
+use gaisler.utilnv.u2vec;
 
 entity btbnv is
   generic (
@@ -162,7 +158,7 @@ begin  -- rtl
     end if;
 
     -- Search the tree in order to know the set to replace
-    wtree               := r.tree(conv_integer(r.windex));
+    wtree               := r.tree(u2i(r.windex));
     wline               := (others => '0');
     if r.update = '1' then
       case NSETS is
@@ -171,32 +167,32 @@ begin  -- rtl
           null;
 
         when 2 =>
-          wline                                 := not(wtree);
-          v.tree(conv_integer(r.windex))        := wline;
+          wline                        := not(wtree);
+          v.tree(u2i(r.windex))        := wline;
 
         when 4 =>
           if wtree(0) = '0' then
             if wtree(1) = '0' then
-              wline                             := conv_std_logic_vector(0, log2ext(NSETS));
-              v.tree(conv_integer(r.windex))(0) := '1';
-              v.tree(conv_integer(r.windex))(1) := '1';
+              wline                    := u2vec(0, wline);
+              v.tree(u2i(r.windex))(0) := '1';
+              v.tree(u2i(r.windex))(1) := '1';
             else
-              wline                             := conv_std_logic_vector(1, log2ext(NSETS));
-              v.tree(conv_integer(r.windex))(0) := '1';
-              v.tree(conv_integer(r.windex))(1) := '0';
+              wline                    := u2vec(1, wline);
+              v.tree(u2i(r.windex))(0) := '1';
+              v.tree(u2i(r.windex))(1) := '0';
             end if;
           else
             if wtree(2) = '0' then
-              wline                             := conv_std_logic_vector(2, log2ext(NSETS));
-              v.tree(conv_integer(r.windex))(0) := '0';
-              v.tree(conv_integer(r.windex))(2) := '1';
+              wline                    := u2vec(2, wline);
+              v.tree(u2i(r.windex))(0) := '0';
+              v.tree(u2i(r.windex))(2) := '1';
             else
-              wline                             := conv_std_logic_vector(3, log2ext(NSETS));
-              v.tree(conv_integer(r.windex))(0) := '0';
-              v.tree(conv_integer(r.windex))(2) := '0';
+              wline                    := u2vec(3, wline);
+              v.tree(u2i(r.windex))(0) := '0';
+              v.tree(u2i(r.windex))(2) := '0';
             end if;
           end if;
-          way             := conv_integer(wline);
+          way                          := u2i(wline);
 
         when others =>
           null;
@@ -205,41 +201,41 @@ begin  -- rtl
     end if;
 
     if r.update = '1' then
-      v.valid(conv_integer(r.windex & wline))           := '1';
-      v.tagtable(conv_integer(r.windex & wline))        := r.wtag;
-      v.datatable(conv_integer(r.windex & wline))       := r.wdata;
-      v.update                                          := '0';
+      v.valid(u2i(r.windex & wline))     := '1';
+      v.tagtable(u2i(r.windex & wline))  := r.wtag;
+      v.datatable(u2i(r.windex & wline)) := r.wdata;
+      v.update                           := '0';
     end if;
 
     -- Generate comparators
     rline               := (others => '0');
     for i in 0 to NSETS-1 loop
       if NSETS > 1 then
-        rline           := conv_std_logic_vector(i, log2ext(NSETS));
+        rline           := u2vec(i, rline);
       end if;
-      valid(i)          := r.valid(conv_integer(rindex & rline));
-      data(i)           := r.datatable(conv_integer(rindex & rline));
-      tag(i)            := r.tagtable(conv_integer(rindex & rline));
+      valid(i)          := r.valid(u2i(rindex & rline));
+      data(i)           := r.datatable(u2i(rindex & rline));
+      tag(i)            := r.tagtable(u2i(rindex & rline));
     end loop;
 
     -- Generate Output Signals
-    hit                 := '0';
-    align               := '0';
-    target              := (others => '0');
-    way                 := 0;
+    hit             := '0';
+    align           := '0';
+    target          := (others => '0');
+    way             := 0;
     for i in 0 to NSETS-1 loop
       -- Check for TAG
-      tagcheck(i)       := '0';
+      tagcheck(i)   := '0';
       --if ((tag(i)(rtag'high downto 1) = rtag(rtag'high downto 1) and NSETS /= 1 and (tag(i)(0) = rtag(0) or (rtag(0) = '0' and tag(i)(0) = '1'))) or
       if (tag(i)(BTBTAG_HIGH - BTBTAG_LOW + 1 downto 1) = rtag(BTBTAG_HIGH - BTBTAG_LOW + 1 downto 1) and (tag(i)(0) = rtag(0) or (rtag(0) = '0' and tag(i)(0) = '1'))) then
       --if (rtag(0) = '1' and tag(i) = rtag) or (rtag(0) = '0' and tag(i)(BTBTAG_HIGH - BTBTAG_LOW + 1 downto 1) = rtag(BTBTAG_HIGH - BTBTAG_LOW + 1 downto 1) and tag(i)(0) = '1') then
-        tagcheck(i)     := '1';
+        tagcheck(i) := '1';
       end if;
       if tagcheck(i) = '1' and valid(i) = '1' and hit = '0' then
-        hit                             := '1';
-        target(PCBITS-1 downto 0)       := data(i);
-        way                             := i;
-        align                           := tag(i)(0);
+        hit                       := '1';
+        target(PCBITS-1 downto 0) := data(i);
+        way                       := i;
+        align                     := tag(i)(0);
       end if;
     end loop;
 
@@ -251,22 +247,22 @@ begin  -- rtl
           null;
 
         when 2 =>
-          v.tree(conv_integer(rindex))        := conv_std_logic_vector(way, log2ext(NSETS));
+          v.tree(u2i(rindex))        := u2vec(way, v.tree(0));
 
         when 4 =>
           case way is
             when 0 =>
-              v.tree(conv_integer(rindex))(0)         := '1';
-              v.tree(conv_integer(rindex))(1)         := '1';
+              v.tree(u2i(rindex))(0) := '1';
+              v.tree(u2i(rindex))(1) := '1';
             when 1 =>
-              v.tree(conv_integer(rindex))(0)         := '1';
-              v.tree(conv_integer(rindex))(1)         := '0';
+              v.tree(u2i(rindex))(0) := '1';
+              v.tree(u2i(rindex))(1) := '0';
             when 2 =>
-              v.tree(conv_integer(rindex))(0)         := '0';
-              v.tree(conv_integer(rindex))(2)         := '1';
+              v.tree(u2i(rindex))(0) := '0';
+              v.tree(u2i(rindex))(2) := '1';
             when 3 =>
-              v.tree(conv_integer(rindex))(0)         := '0';
-              v.tree(conv_integer(rindex))(2)         := '0';
+              v.tree(u2i(rindex))(0) := '0';
+              v.tree(u2i(rindex))(2) := '0';
             when others =>
               null;
           end case; -- i

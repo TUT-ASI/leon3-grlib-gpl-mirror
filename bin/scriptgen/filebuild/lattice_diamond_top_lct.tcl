@@ -1,4 +1,4 @@
-proc create_lattice_top_lct {} {
+proc create_lattice_diamond_top_lct {} {
 	global ISPLIB PART SPEED PACKAGE ISPPACKAGE TOP
 	set tlc ""
 	append tlc "\[Device\]\n"

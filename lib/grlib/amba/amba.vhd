@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -449,7 +448,6 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     qos    : std_logic_vector (3 downto 0);              -- arqos 
   end record;
 
-
 -- AXI interfaces (Combined AXI3/4)
   type axix_mosi_type is record -- Master Output Slave Input
     aw  : axix_aw_mosi_type;
@@ -468,7 +466,6 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     r   : axi_r_mosi_type;
   end record;
 
-
 -- AXI interfaces (Dedicated AXI4)
   type axi4_mosi_type is record -- Master Output Slave Input
     aw  : axi4_aw_mosi_type;
@@ -478,7 +475,12 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     r   : axi_r_mosi_type;
   end record;
 
-
+-- array types
+  type axi_mosi_vector_type is array (natural range <>) of axi_mosi_type;
+  type axi_somi_vector_type is array (natural range <>) of axi_somi_type;
+  type axix_mosi_vector_type is array (natural range <>) of axix_mosi_type;
+  type axi3_mosi_vector_type is array (natural range <>) of axi3_mosi_type;
+  type axi4_mosi_vector_type is array (natural range <>) of axi4_mosi_type;
 
 -- AXI constants
   constant XBURST_FIXED:          std_logic_vector(1 downto 0) := "00";
@@ -538,9 +540,6 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   constant amba_stat_none : amba_stat_type :=
     ('0', '0', '0', '0', '0', '0', (others => '0'),
      '0', '0', '0', '0', '0', (others => '0'));
-
-
-
 
 -------------------------------------------------------------------------------
 -- Subprograms

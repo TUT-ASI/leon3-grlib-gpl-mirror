@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,16 +27,13 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-
 library grlib;
-use grlib.stdlib.all;
-use grlib.config_types.all;
-use grlib.config.all;
-
+use grlib.stdlib.log2ext;
 library gaisler;
---use gaisler.noelv.all;
 use gaisler.noelvint.nv_btb_in_type;
 use gaisler.noelvint.nv_btb_out_type;
+use gaisler.utilnv.u2i;
+use gaisler.nvsupport.to0x;
 
 entity btbdmnv is
   generic (
@@ -127,9 +123,9 @@ begin  -- rtl
     hit := '0';
     target := (others=>'0');
 
-    rtag  := r.tags(to_integer(unsigned(rindex)));
-    valid := r.valid(to_integer(unsigned(rindex)));
-    lpc   := r.lpc(to_integer(unsigned(rindex)));
+    rtag  := r.tags(u2i(rindex));
+    valid := r.valid(u2i(rindex));
+    lpc   := r.lpc(u2i(rindex));
 
 
     if valid = '1' then
@@ -141,10 +137,10 @@ begin  -- rtl
     end if;
 
     if btbi.wen = '1' then
-      v.valid(to_integer(unsigned(windex)))   := '1';
-      v.tags(to_integer(unsigned(windex)))    := btbi.waddr(PCBITS-1 downto INDEX_HIGH+1);
-      v.targets(to_integer(unsigned(windex))) := btbi.wdata(PCBITS-1 downto 0);
-      v.lpc(to_integer(unsigned(windex)))     := btbi.waddr(2 downto 1);
+      v.valid(u2i(windex))   := '1';
+      v.tags(u2i(windex))    := btbi.waddr(PCBITS-1 downto INDEX_HIGH+1);
+      v.targets(u2i(windex)) := btbi.wdata(PCBITS-1 downto 0);
+      v.lpc(u2i(windex))     := btbi.waddr(2 downto 1);
     end if;
 
     -- Flush BTB
@@ -157,12 +153,12 @@ begin  -- rtl
       v.valid   := (others => '0');
     end if;
 
-    target(PCBITS-1 downto 0) := r.targets(to_integer(unsigned(rindex)));
+    target(PCBITS-1 downto 0) := r.targets(u2i(rindex));
 
     rin         <= v;
 
     btbo.hit        <= hit;
-    btbo.rdata      <= target;
+    btbo.rdata      <= to0x(target);
     btbo.lpc        <= lpc;
     btbo.ralign     <= '0';
 

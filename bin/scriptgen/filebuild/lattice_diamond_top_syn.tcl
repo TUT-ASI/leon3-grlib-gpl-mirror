@@ -1,4 +1,4 @@
-proc create_lattice_top_syn {} {
+proc create_lattice_diamond_top_syn {} {
 	global PART SPEED PACKAGE TOP
 	set tsc ""
 	append tsc "JDF B\n"

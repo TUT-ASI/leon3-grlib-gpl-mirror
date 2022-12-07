@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -64,6 +63,7 @@ package devices is
   constant VENDOR_JHUAPL_SER : amba_vendor_type := 16#26#;
   constant VENDOR_JHUAPL_SES : amba_vendor_type := 16#27#;
   constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
+  constant VENDOR_NEC        : amba_vendor_type := 16#29#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
@@ -281,6 +281,8 @@ package devices is
   constant GAISLER_HSSL          : amba_device_type := 16#0C8#;
   constant GAISLER_GRWATCHDOG    : amba_device_type := 16#0C9#;
   constant GAISLER_ETRACE        : amba_device_type := 16#0CA#;
+  constant GAISLER_LEON5ADSU     : amba_device_type := 16#0CB#;
+  constant GAISLER_LEON5DMAB     : amba_device_type := 16#0CC#;
   constant GAISLER_L2CL          : amba_device_type := 16#0D0#;
 
 -- Sun Microsystems
@@ -708,6 +710,8 @@ package devices is
     GAISLER_HSSL          => "GRHSSL SpaceFibre + WizardLink  ",
     GAISLER_GRWATCHDOG    => "Watchdog unit with sep clock    ",
     GAISLER_ETRACE        => "RISC-V E-trace encoder          ",
+    GAISLER_LEON5ADSU     => "LEON5 Advanced Debug Unit       ",
+    GAISLER_LEON5DMAB     => "LEON5 IOMMU and DMA bridge      ",
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
     others                => "Unknown Device                  ");
 
@@ -1130,6 +1134,17 @@ package devices is
     vendorid     => VENDOR_SEMIBLOCKS,
     vendordesc   => SEMIBLOCKS_DESC,
     device_table => semiblocks_device_table
+    );
+
+  constant NEC_DESC : vendor_description := "NEC Corporation         ";
+
+  constant nec_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+  
+  constant nec_lib : vendor_library_type := (
+    vendorid     => VENDOR_NEC,
+    vendordesc   => NEC_DESC,
+    device_table => nec_device_table
     );
 
   constant NASA_GSFC_DESC : vendor_description := "NASA GSFC               ";

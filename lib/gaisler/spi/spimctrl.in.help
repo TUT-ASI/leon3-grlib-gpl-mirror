@@ -11,11 +11,42 @@ CONFIG_SPIMCTRL_READCMD
 
 Dummy byte
 CONFIG_SPIMCTRL_DUMMYBYTE
-  Output dummy byte after address when issuing read instruction.
+  Output 8 dummy cycles after address when issuing read instruction.
 
 Dual output
 CONFIG_SPIMCTRL_DUALOUTPUT
   Memory device supports dual output when reading data.
+
+Quad output
+CONFIG_SPIMCTRL_QUADOUTPUT
+  Memory device supports quad output when reading data.
+
+Dual input
+CONFIG_SPIMCTRL_DUALINPUT
+  Memory device supports dual input when reading data.
+
+Quad input
+CONFIG_SPIMCTRL_QUADINPUT
+  Memory device supports quad input when reading data.
+
+DSPI
+CONFIG_SPIMCTRL_DSPI
+  Enables DSPI (Dual SPI) mode. All communication with
+  the device will happen using two data lines.
+
+QSPI
+CONFIG_SPIMCTRL_QSPI
+  Enables QSPI (Quad SPI) mode. All communication with
+  the device will happen using four data lines.
+
+Dummy cycles
+CONFIG_SPIMCTRL_DUMMYCYCLES
+  Determines number of dummy cycles to be used. 
+  (Not used if DUMMYBYTE is set, then 8 cycles are always used)
+
+Extended Address
+CONFIG_SPIMCTRL_EXTADDR
+  Use 4 bytes of address instead of 3 for memory reads.
 
 Address offset
 CONFIG_SPIMCTRL_OFFSET
@@ -35,3 +66,6 @@ CONFIG_SPIMCTRL_ASCALER
   divisor used is two to the power of the specified value. This
   value must be at least 1.
 
+Reconfigurable configuration
+CONFIG_SPIMCTRL_RECONF
+  Enables writing to the configuration register.

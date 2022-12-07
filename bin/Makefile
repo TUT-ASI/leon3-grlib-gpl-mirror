@@ -1,5 +1,5 @@
-VER=$(VNAME)2022.2
-BID=4274
+VER=$(VNAME)2022.4
+BID=4280
 CC=gcc
 SED=sed
 
@@ -8,7 +8,7 @@ ASICLIBS = ihp25 sgb25vrh ut025crh virage rh_lib18t rh_lib18t_io2 rh_lib13t\
 	tm65gplus st65lp st65gp cmos9sf nextreme2 gf65g saed32 gf22fdx
 FPGALIBS = apa proasic3 axcelerator ec fusion unisim virtex virtex5 secureip unimacro altera altera_mf \
 	 stratixii eclipsee cycloneiii stratixiii synplify simprim stratixiv \
-	proasic3e proasic3l smartfusion2 rtg4 polarfire nx
+	proasic3e proasic3l smartfusion2 rtg4 polarfire nx nexus
 
 ifeq ("$(GRLIB_CONFIG)","")
 GRLIB_CONFIG = dummy
@@ -62,7 +62,7 @@ ACTELLIBS = apa apa3 axcelerator proasic3 proasic3e proasic3l fusion smartfusion
 XILINXLIBS = unisim simprim unimacro virtex virtex5
 ALTERALIBS = altera_mf stratixii altera cycloneiii stratixiii
 ALTERAFILES = $(ALTERALIBS:%=lib/techmap/%) $(RMCOMLIBS:%=lib/tech/%) netlists/altera
-LATTICELIBS = ec
+LATTICELIBS = ec nexus
 
 
 
@@ -155,6 +155,7 @@ help:
 	@echo "   make planahead-launch     : start PlanAhead project navigator"
 	@echo "   make quartus-launch       : start Quartus for current project"
 	@echo "   make quartus-launch-synp  : start Quartus for synplify project"
+	@echo "   make radiant-launch       : start Lattice Radiant"
 	@echo "   make synplify-launch      : start Synplify"
 	@echo "   make vivado-launch        : start Vivado project navigator"
 	@echo "   make nanoxmap-launch      : start NanoXmap GUI"
@@ -522,9 +523,70 @@ xncsim xncsim/done : compile.ncsim
 ncsim-clean:
 	-rm -rf xncsim nc*.log ncsim.key
 
+### Lattice targets ###
+
+GRLIB_LATTICE_RADIANT_PERFORMANCE?="9_High-Performance_1.0"
+GRLIB_LATTICE_RADIANT_SYNTHESIS?="synplify"
+GRLIB_LATTICE_RADIANT_SIM_DEVICE?=all
+export FOUNDRY=$(GRLIB_LATTICE_RADIANT)/ispfpga
+#Setting Modelsim path by checking where vsim is, unless already set
+GRLIB_LATTICE_RADIANT_SIM_PATH?=$(dir $(shell which vsim))
+
+$(TOP)_radiant.rdf: $(TOP)_radiant.tcl
+	@for ipx in ${LATTICE_IP}; do \
+		echo "Copying IP $${ipx} from boards/$(BOARD)"; \
+		cp -r "$(GRLIB)/boards/$(BOARD)/$${ipx}" . ; \
+	done;
+	@mkdir -p $(TOP)_radiant
+	@echo "Calling radiant in CLI mode to create project"
+	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiantc"; then \
+		radiantc $(TOP)_radiant.tcl; \
+	elif test -r "$(GRLIB_LATTICE_RADIANT)/bin/nt64/pnmainc.exe"; then \
+		pnmainc.exe $(TOP)_radiant.tcl; \
+	else \
+		echo "radiant executable not found"; \
+	fi;
+	@echo "radiant finished"
+
+radiant-launch: $(TOP)_radiant.rdf
+	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiant"; then \
+		radiant $(TOP)_radiant.rdf; \
+	elif test -r "$(GRLIB_LATTICE_RADIANT)/bin/nt64/pnmain.exe"; then \
+		pnmain.exe $(TOP)_radiant.rdf; \
+	else \
+		echo "radiant executable not found"; \
+	fi;
+
+install-radiant-simlibs:
+ifeq ("$(GRLIB_LATTICE_RADIANT)","")
+	@echo "GRLIB_LATTICE_RADIANT env variable needs to be set to radiant installation directory"
+else
+	@echo "Using simulator at $(GRLIB_LATTICE_RADIANT_SIM_PATH)"
+	@echo "The simulator can be set via"
+	@echo "Building simulation libraries for $(GRLIB_LATTICE_RADIANT_SIM_DEVICE)"
+	@echo "Calling cmpl_libs.tcl to build libraries in $(GRLIB)/lib/tech/lattice/"
+	tclsh $(GRLIB_LATTICE_RADIANT)/cae_library/simulation/scripts/cmpl_libs.tcl \
+	-sim_path $(GRLIB_LATTICE_RADIANT_SIM_PATH) \
+	-target_path $(GRLIB)/lib/tech/lattice \
+	-device $(GRLIB_LATTICE_RADIANT_SIM_DEVICE)
+endif
+
+map-radiant-simlibs: modelsim.ini
+	@echo "Mapping radiant libs"
+	@for d in lifcl lfd2nx lfcpnx ; do \
+		if [ -d $(GRLIB)/lib/tech/lattice/$$d ]; then \
+			vmap $$d $(GRLIB)/lib/tech/lattice/$$d ; \
+		fi; \
+	done;
+
+remove-radiant-simlibs:
+	@echo "Removing simulation libraries under $(GRLIB)/lib/tech/lattice/"
+	@-rm -rf $(GRLIB)/lib/tech/lattice/{ice40up*,lfd2nx*,lfcpnx*,lfmxo5*,lifcl*,modelsim.ini,tplus.f,uaplatform.f,vmap.log}
+
+radiant-clean:
+	-rm -rf $(TOP)_radiant* reportview.xml .recovery .setting.ini .ng_run_manager.ini
+
 #########   Lattice ISPLEVER targets   ############
-
-
 
 isp-synp: $(TOP)_synplify.prj synplify/$(TOP).edf
 	$(GRLIB)/bin/route_lattice $(TOP) $(UCF) $(PART) synplify $(ISPLIB) $(ISPPACKAGE) $(BITGEN)
@@ -1844,7 +1906,8 @@ scriptgendone: scriptgen_variable_values.tcl
 
 work-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
 	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean \
-	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean nanoxmap-clean
+	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean nanoxmap-clean \
+	radiant-clean
 	-rm -rf verilog.txt tkparse.exe main.tk ahbrom outdata ahbrom.bin
 
 scripts-clean:

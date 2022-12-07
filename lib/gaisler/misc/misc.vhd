@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -1082,10 +1081,10 @@ package misc is
 
   component ahb_mst_iface is
     generic(
-      hindex      : integer;
-      vendor      : integer;
-      device      : integer;
-      revision    : integer;
+      hindex      : integer := 0;
+      vendor      : integer := 0;
+      device      : integer := 0;
+      revision    : integer := 0;
       scantest    : integer := 0);
     port(
       rst         : in  std_ulogic;
@@ -1263,8 +1262,8 @@ package misc is
 
   component ahbswba is
     generic (
-      hindex: integer;
-      ahbbits: integer;
+      hindex: integer := 0;
+      ahbbits: integer := 0;
       blocksz: integer := 16
       );
     port (
@@ -1279,9 +1278,9 @@ package misc is
 
   component ahbswbav is
     generic (
-      slvmask: integer;
-      ahbbits: integer;
-      blocksz: integer
+      slvmask: integer := 0;
+      ahbbits: integer := 0;
+      blocksz: integer := 0
       );
     port (
       clk: in std_ulogic;
@@ -1360,8 +1359,8 @@ package misc is
 
   component ahbpls is
     generic (
-      hindex: integer;
-      ahbbits: integer;
+      hindex: integer := 0;
+      ahbbits: integer := 32;
       blocksz: integer := 16;
       prefmask: integer := 16#ffff#
       );
@@ -1646,7 +1645,7 @@ package misc is
 
   component apb3cdc is
     generic (
-      tech: integer;
+      tech: integer := 0;
       nsync: integer := 2;
       skew: integer := 1;
       pindex: integer := 0

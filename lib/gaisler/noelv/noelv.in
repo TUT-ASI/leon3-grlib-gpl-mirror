@@ -69,6 +69,7 @@ bool 'Enable NOELV RISC-V Processor' CONFIG_NOELV
     else
       define_int  CONFIG_PROC_NOFPU 1
     fi
+   fi
  
 #   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
 #   fi

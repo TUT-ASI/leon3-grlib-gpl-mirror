@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,62 +24,63 @@
 ------------------------------------------------------------------------------
 
 library ieee;
-library techmap;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use techmap.gencomp.all;
-use techmap.allmem.all;
-
 library grlib;
-use grlib.stdlib.all;
-
+use grlib.stdlib.notx;
 library gaisler;
-use gaisler.noelv.all;
+use gaisler.utilnv.u2i;
+use gaisler.noelvint.reg_t;
 
 entity regfile64dffnv is
   generic (
     tech        : integer;
-    abits       : integer;
-    dbits       : integer;
     wrfst       : integer;
-    numregs     : integer;
     reg0write   : integer := 0
     );
   port (
     clk      : in  std_ulogic;
     rstn     : in  std_ulogic;
     rdhold   : in  std_ulogic;
-    waddr1   : in  std_logic_vector((abits -1) downto 0);
-    wdata1   : in  std_logic_vector((dbits -1) downto 0);
+    waddr1   : in  reg_t;
+    wdata1   : in  std_logic_vector;
     we1      : in  std_ulogic;
-    waddr2   : in  std_logic_vector((abits -1) downto 0);
-    wdata2   : in  std_logic_vector((dbits -1) downto 0);
+    waddr2   : in  reg_t;
+    wdata2   : in  std_logic_vector;
     we2      : in  std_ulogic;
-    raddr1   : in  std_logic_vector((abits -1) downto 0);
+    raddr1   : in  reg_t;
     re1      : in  std_ulogic;
-    rdata1   : out std_logic_vector((dbits -1) downto 0);
-    raddr2   : in  std_logic_vector((abits -1) downto 0);
+    rdata1   : out std_logic_vector;
+    raddr2   : in  reg_t;
     re2      : in  std_ulogic;
-    rdata2   : out std_logic_vector((dbits -1) downto 0);
-    raddr3   : in  std_logic_vector((abits -1) downto 0);
+    rdata2   : out std_logic_vector;
+    raddr3   : in  reg_t;
     re3      : in  std_ulogic;
-    rdata3   : out std_logic_vector((dbits -1) downto 0);
-    raddr4   : in  std_logic_vector((abits -1) downto 0);
+    rdata3   : out std_logic_vector;
+    raddr4   : in  reg_t;
     re4      : in  std_ulogic;
-    rdata4   : out std_logic_vector((dbits -1) downto 0)
+    rdata4   : out std_logic_vector
     );
+begin
+  assert wdata1'length = wdata2'length and
+         rdata1'length = rdata2'length and
+         rdata3'length = rdata4'length and
+         rdata1'length = rdata3'length and
+         wdata1'length = rdata1'length report "Bad register data size" severity failure;
 end regfile64dffnv;
 
 architecture rtl of regfile64dffnv is
 
-  type entry_type is array(0 to 2**abits-1) of std_logic_vector(dbits-1 downto 0);
-  
+  subtype data_t is std_logic_vector(wdata1'range);
+
+  type entry_type is array(0 to 2 ** reg_t'length - 1) of data_t;
+
   type reg_type is record
     entry   : entry_type;
-    raddr1  : std_logic_vector((abits - 1) downto 0);
-    raddr2  : std_logic_vector((abits - 1) downto 0);
-    raddr3  : std_logic_vector((abits - 1) downto 0);
-    raddr4  : std_logic_vector((abits - 1) downto 0);
+    raddr1  : reg_t;
+    raddr2  : reg_t;
+    raddr3  : reg_t;
+    raddr4  : reg_t;
   end record;
 
   signal r, rin : reg_type;
@@ -89,10 +89,10 @@ begin  -- rtl
 
   comb : process(r, rstn, waddr1, we1, waddr2, we2, re1, raddr1, re2, raddr2, re3, raddr3, re4, raddr4, wdata1, wdata2, rdhold)
     variable v       : reg_type;
-    variable rdata1v : std_logic_vector(dbits-1 downto 0);
-    variable rdata2v : std_logic_vector(dbits-1 downto 0);
-    variable rdata3v : std_logic_vector(dbits-1 downto 0);
-    variable rdata4v : std_logic_vector(dbits-1 downto 0);
+    variable rdata1v : data_t;
+    variable rdata2v : data_t;
+    variable rdata3v : data_t;
+    variable rdata4v : data_t;
   begin
 
     v := r;
@@ -115,21 +115,21 @@ begin  -- rtl
     end if;
 
     if we1 = '1' then
-      v.entry(to_integer(unsigned(waddr1))) := wdata1;
+      v.entry(u2i(waddr1)) := wdata1;
     end if;
 
     if we2 = '1' then
-      v.entry(to_integer(unsigned(waddr2))) := wdata2;
+      v.entry(u2i(waddr2)) := wdata2;
     end if;
 
-    rdata1v := (others=>'0');
-    rdata2v := (others=>'0');
-    rdata3v := (others=>'0');
-    rdata4v := (others=>'0');
+    rdata1v := (others => '0');
+    rdata2v := (others => '0');
+    rdata3v := (others => '0');
+    rdata4v := (others => '0');
 
     if (r.raddr1 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr1) then
-        rdata1v := r.entry(to_integer(unsigned(r.raddr1)));
+        rdata1v := r.entry(u2i(r.raddr1));
       end if;
       
       if (waddr1 = r.raddr1) and we1 = '1' then
@@ -144,7 +144,7 @@ begin  -- rtl
     
     if (r.raddr2 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr2) then
-        rdata2v := r.entry(to_integer(unsigned(r.raddr2)));
+        rdata2v := r.entry(u2i(r.raddr2));
       end if;
       
       if (waddr1 = r.raddr2) and we1 = '1' then
@@ -159,7 +159,7 @@ begin  -- rtl
 
     if (r.raddr3 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr3) then
-        rdata3v := r.entry(to_integer(unsigned(r.raddr3)));
+        rdata3v := r.entry(u2i(r.raddr3));
       end if;
       
       if (waddr1 = r.raddr3) and we1 = '1' then
@@ -174,7 +174,7 @@ begin  -- rtl
     
     if (r.raddr4 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr4) then
-        rdata4v := r.entry(to_integer(unsigned(r.raddr4)));
+        rdata4v := r.entry(u2i(r.raddr4));
       end if;
       
       if (waddr1 = r.raddr4) and we1 = '1' then

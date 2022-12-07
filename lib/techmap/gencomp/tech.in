@@ -13,9 +13,8 @@
 	Actel-SmartFusion2 	CONFIG_SYN_SF2 \
 	Actel-RTG4 	        CONFIG_SYN_RTG4 \
 	Actel-PolarFire         CONFIG_SYN_POLARFIRE \
-	Aeroflex-UT025CRH	CONFIG_SYN_UT025CRH \
 	Aeroflex-UT130HBD	CONFIG_SYN_UT130HBD \
-	Aeroflex-UT90NHBD	CONFIG_SYN_UT90NHBD \
+	Aeroflex-UT90RHBD	CONFIG_SYN_UT90NHBD \
 	Altera-CycloneIII      	CONFIG_SYN_CYCLONEIII \
 	Altera-Stratix        	CONFIG_SYN_STRATIX \
 	Altera-StratixII      	CONFIG_SYN_STRATIXII \
@@ -28,6 +27,7 @@
 	Custom1        		CONFIG_SYN_CUSTOM1 \
 	DARE      		CONFIG_SYN_DARE \
 	IBM-CMOS9SF    		CONFIG_SYN_CMOS9SF \
+	Lattice-Nexus		CONFIG_SYN_NEXUS \
         NanoXplore-BraveMed     CONFIG_SYN_BRAVEMED \
         Quicklogic-Eclipse  	CONFIG_SYN_ECLIPSE \
 	RH-LIB18T  		CONFIG_SYN_RH_LIB18T \

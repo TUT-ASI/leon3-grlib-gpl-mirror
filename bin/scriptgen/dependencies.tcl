@@ -41,6 +41,7 @@ foreach tool $tools {
 		}
 		"lattice" {
 			append toolsstring "$TOP\.ldf "
+			append toolsstring "$TOP\_radiant.tcl "
 			continue
 		}
 		"mentor" {

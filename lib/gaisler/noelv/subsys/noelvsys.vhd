@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,12 +25,12 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
 library grlib;
 use grlib.amba.all;
 use grlib.config.all;
 use grlib.config_types.all;
-library techmap;
-use techmap.gencomp.all;
 library gaisler;
 use gaisler.uart.all;
 use gaisler.misc.all;
@@ -99,9 +98,7 @@ entity noelvsys is
     testsig  : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
     );
 end;
-
 architecture hier of noelvsys is
-
   signal cpumi   : ahb_mst_in_type;
   signal cpumo   : ahb_mst_out_vector;
   signal cpusi   : ahb_slv_in_type;
@@ -132,7 +129,6 @@ architecture hier of noelvsys is
   signal trace_ahbsiv     : ahb_slv_in_vector_type(0 to 1);
   signal trace_ahbmiv     : ahb_mst_in_vector_type(0 to 1);
   signal eto              : nv_etrace_out_vector(ncpu-1 downto 0);
-
   signal dsui           : nv_dm_in_type;
   signal dsuo           : nv_dm_out_type;
   signal nolock         : ahb2ahb_ctrl_type;
@@ -342,6 +338,7 @@ begin
         cnt   => cnt(c)
       );
   end generate;
+
   cpu0errn <= not dbgo(0).error;
 
   ----------------------------------------------------------------------------

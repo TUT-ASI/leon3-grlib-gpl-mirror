@@ -1346,8 +1346,8 @@ proc update_menu3 {} {
 	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_GP == 1 || $CONFIG_NOELV_MC == 1)} then {configure_entry .menu3.config.f.x4 normal {x l}} else {configure_entry .menu3.config.f.x4 disabled {x l}}
 	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_GP == 1)} then {configure_entry .menu3.config.f.x5 normal {x l}} else {configure_entry .menu3.config.f.x5 disabled {x l}}
 	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {configure_entry .menu3.config.f.x6 normal {x l}} else {configure_entry .menu3.config.f.x6 disabled {x l}}
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {configure_entry .menu3.config.f.x7 normal {m}} else {configure_entry .menu3.config.f.x7 disabled {m}}
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {configure_entry .menu3.config.f.x8 normal {m}} else {configure_entry .menu3.config.f.x8 disabled {m}}
+	if {($CONFIG_NOELV == 1)} then {configure_entry .menu3.config.f.x7 normal {m}} else {configure_entry .menu3.config.f.x7 disabled {m}}
+	if {($CONFIG_NOELV == 1)} then {configure_entry .menu3.config.f.x8 normal {m}} else {configure_entry .menu3.config.f.x8 disabled {m}}
 }
 
 
@@ -1500,9 +1500,8 @@ proc menu4 {w title} {
 
 proc update_menu4 {} {
 	global CONFIG_NOELV
-	global CONFIG_NOELV_MC
 	global CONFIG_IU_DISAS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {
+	if {($CONFIG_NOELV == 1)} then {
 	configure_entry .menu4.config.f.x0 normal {n l y}} else {configure_entry .menu4.config.f.x0 disabled {y n l}}
 }
 
@@ -1511,9 +1510,8 @@ proc update_define_menu4 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
 	global CONFIG_NOELV
-	global CONFIG_NOELV_MC
 	global CONFIG_IU_DISAS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {
+	if {($CONFIG_NOELV == 1)} then {
 	set CONFIG_IU_DISAS [expr $CONFIG_IU_DISAS&15]} else {set CONFIG_IU_DISAS [expr $CONFIG_IU_DISAS|16]}
 }
 
@@ -1608,9 +1606,8 @@ proc menu5 {w title} {
 
 proc update_menu5 {} {
 	global CONFIG_NOELV
-	global CONFIG_NOELV_MC
 	global CONFIG_PROC_NODBUS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {
+	if {($CONFIG_NOELV == 1)} then {
 	configure_entry .menu5.config.f.x0 normal {n l y}} else {configure_entry .menu5.config.f.x0 disabled {y n l}}
 }
 
@@ -1619,9 +1616,8 @@ proc update_define_menu5 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
 	global CONFIG_NOELV
-	global CONFIG_NOELV_MC
 	global CONFIG_PROC_NODBUS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {
+	if {($CONFIG_NOELV == 1)} then {
 	set CONFIG_PROC_NODBUS [expr $CONFIG_PROC_NODBUS&15]} else {set CONFIG_PROC_NODBUS [expr $CONFIG_PROC_NODBUS|16]}
 }
 
@@ -1757,47 +1753,16 @@ proc menu6 {w title} {
 }
 
 proc update_menu6 {} {
-	global CONFIG_NOELV
-	global CONFIG_L2_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x0 normal {n l y}} else {configure_entry .menu6.config.f.x0 disabled {y n l}}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu6.config.f.x1 normal {x l}} else {configure_entry .menu6.config.f.x1 disabled {x l}}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu6.config.f.x2 normal {x l}} else {configure_entry .menu6.config.f.x2 disabled {x l}}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu6.config.f.x3 normal {x l}} else {configure_entry .menu6.config.f.x3 disabled {x l}}
-	global CONFIG_L2_HPROT
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x4 normal {n l y}} else {configure_entry .menu6.config.f.x4 disabled {y n l}}
-	global CONFIG_L2_PEN
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x5 normal {n l y}} else {configure_entry .menu6.config.f.x5 disabled {y n l}}
-	global CONFIG_L2_WT
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x6 normal {n l y}} else {configure_entry .menu6.config.f.x6 disabled {y n l}}
-	global CONFIG_L2_RAN
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x7 normal {n l y}} else {configure_entry .menu6.config.f.x7 disabled {y n l}}
 	global CONFIG_L2_ASSO1
 	global CONFIG_L2_SHARE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_L2_ASSO1 != "1")} then {
+	if {($CONFIG_L2_ASSO1 != "1")} then {
 	configure_entry .menu6.config.f.x8 normal {n l y}} else {configure_entry .menu6.config.f.x8 disabled {y n l}}
-	global CONFIG_L2_MAP
-	if {($CONFIG_NOELV == 1)} then {.menu6.config.f.x9.x configure -state normal -foreground [ cget .ref -foreground ]; .menu6.config.f.x9.l configure -state normal; } else {.menu6.config.f.x9.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu6.config.f.x9.l configure -state disabled}
-	global CONFIG_L2_MTRR
-	if {($CONFIG_NOELV == 1)} then {.menu6.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu6.config.f.x10.l configure -state normal; } else {.menu6.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu6.config.f.x10.l configure -state disabled}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu6.config.f.x11 normal {x l}} else {configure_entry .menu6.config.f.x11 disabled {x l}}
-	global CONFIG_L2_AXI
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu6.config.f.x12 normal {n l y}} else {configure_entry .menu6.config.f.x12 disabled {y n l}}
 }
 
 
 proc update_define_menu6 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
-	global CONFIG_L2_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_ENABLE [expr $CONFIG_L2_ENABLE&15]} else {set CONFIG_L2_ENABLE [expr $CONFIG_L2_ENABLE|16]}
 	global tmpvar_9
 	global CONFIG_L2_ASSO1
 	if {$tmpvar_9 == "1"} then {set CONFIG_L2_ASSO1 1} else {set CONFIG_L2_ASSO1 0}
@@ -1833,25 +1798,9 @@ proc update_define_menu6 {} {
 	if {$tmpvar_11 == "32"} then {set CONFIG_L2_LINE32 1} else {set CONFIG_L2_LINE32 0}
 	global CONFIG_L2_LINE64
 	if {$tmpvar_11 == "64"} then {set CONFIG_L2_LINE64 1} else {set CONFIG_L2_LINE64 0}
-	global CONFIG_L2_HPROT
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_HPROT [expr $CONFIG_L2_HPROT&15]} else {set CONFIG_L2_HPROT [expr $CONFIG_L2_HPROT|16]}
-	global CONFIG_L2_PEN
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_PEN [expr $CONFIG_L2_PEN&15]} else {set CONFIG_L2_PEN [expr $CONFIG_L2_PEN|16]}
-	global CONFIG_L2_WT
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_WT [expr $CONFIG_L2_WT&15]} else {set CONFIG_L2_WT [expr $CONFIG_L2_WT|16]}
-	global CONFIG_L2_RAN
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_RAN [expr $CONFIG_L2_RAN&15]} else {set CONFIG_L2_RAN [expr $CONFIG_L2_RAN|16]}
 	global CONFIG_L2_SHARE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_L2_ASSO1 != "1")} then {
+	if {($CONFIG_L2_ASSO1 != "1")} then {
 	set CONFIG_L2_SHARE [expr $CONFIG_L2_SHARE&15]} else {set CONFIG_L2_SHARE [expr $CONFIG_L2_SHARE|16]}
-	global CONFIG_L2_MAP
-	if {($CONFIG_NOELV == 1)} then {validate_hex CONFIG_L2_MAP "$CONFIG_L2_MAP" 00F0}
-	global CONFIG_L2_MTRR
-	if {($CONFIG_NOELV == 1)} then {validate_int CONFIG_L2_MTRR "$CONFIG_L2_MTRR" 0}
 	global tmpvar_12
 	global CONFIG_L2_EDAC_NONE
 	if {$tmpvar_12 == "None"} then {set CONFIG_L2_EDAC_NONE 1} else {set CONFIG_L2_EDAC_NONE 0}
@@ -1859,9 +1808,6 @@ proc update_define_menu6 {} {
 	if {$tmpvar_12 == "Yes"} then {set CONFIG_L2_EDAC_YES 1} else {set CONFIG_L2_EDAC_YES 0}
 	global CONFIG_L2_EDAC_TECHSPEC
 	if {$tmpvar_12 == "TechSpec"} then {set CONFIG_L2_EDAC_TECHSPEC 1} else {set CONFIG_L2_EDAC_TECHSPEC 0}
-	global CONFIG_L2_AXI
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_L2_AXI [expr $CONFIG_L2_AXI&15]} else {set CONFIG_L2_AXI [expr $CONFIG_L2_AXI|16]}
 }
 
 
@@ -1962,68 +1908,26 @@ proc menu7 {w title} {
 }
 
 proc update_menu7 {} {
-	global CONFIG_NOELV
-	global CONFIG_AHB_DEFMST
-	if {($CONFIG_NOELV == 1)} then {.menu7.config.f.x0.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x0.l configure -state normal; } else {.menu7.config.f.x0.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x0.l configure -state disabled}
-	global CONFIG_AHB_RROBIN
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu7.config.f.x1 normal {n l y}} else {configure_entry .menu7.config.f.x1 disabled {y n l}}
-	global CONFIG_AHB_SPLIT
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu7.config.f.x2 normal {n l y}} else {configure_entry .menu7.config.f.x2 disabled {y n l}}
-	global CONFIG_AHB_FPNPEN
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu7.config.f.x3 normal {n l y}} else {configure_entry .menu7.config.f.x3 disabled {y n l}}
-	global CONFIG_AHB_IOADDR
-	if {($CONFIG_NOELV == 1)} then {.menu7.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x4.l configure -state normal; } else {.menu7.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x4.l configure -state disabled}
-	global CONFIG_APB_HADDR
-	if {($CONFIG_NOELV == 1)} then {.menu7.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu7.config.f.x5.l configure -state normal; } else {.menu7.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu7.config.f.x5.l configure -state disabled}
 	global CONFIG_AHB_MON
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu7.config.f.x6 normal {n l y}} else {configure_entry .menu7.config.f.x6 disabled {y n l}}
 	global CONFIG_AHB_MONERR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {
+	if {($CONFIG_AHB_MON == 1)} then {
 	configure_entry .menu7.config.f.x7 normal {n l y}} else {configure_entry .menu7.config.f.x7 disabled {y n l}}
 	global CONFIG_AHB_MONWAR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {
+	if {($CONFIG_AHB_MON == 1)} then {
 	configure_entry .menu7.config.f.x8 normal {n l y}} else {configure_entry .menu7.config.f.x8 disabled {y n l}}
-	global CONFIG_AHB_DTRACE
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu7.config.f.x9 normal {n l y}} else {configure_entry .menu7.config.f.x9 disabled {y n l}}
 }
 
 
 proc update_define_menu7 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
-	global CONFIG_AHB_DEFMST
-	if {($CONFIG_NOELV == 1)} then {validate_int CONFIG_AHB_DEFMST "$CONFIG_AHB_DEFMST" 0}
-	global CONFIG_AHB_RROBIN
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHB_RROBIN [expr $CONFIG_AHB_RROBIN&15]} else {set CONFIG_AHB_RROBIN [expr $CONFIG_AHB_RROBIN|16]}
-	global CONFIG_AHB_SPLIT
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHB_SPLIT [expr $CONFIG_AHB_SPLIT&15]} else {set CONFIG_AHB_SPLIT [expr $CONFIG_AHB_SPLIT|16]}
-	global CONFIG_AHB_FPNPEN
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHB_FPNPEN [expr $CONFIG_AHB_FPNPEN&15]} else {set CONFIG_AHB_FPNPEN [expr $CONFIG_AHB_FPNPEN|16]}
-	global CONFIG_AHB_IOADDR
-	if {($CONFIG_NOELV == 1)} then {validate_hex CONFIG_AHB_IOADDR "$CONFIG_AHB_IOADDR" FFF}
-	global CONFIG_APB_HADDR
-	if {($CONFIG_NOELV == 1)} then {validate_hex CONFIG_APB_HADDR "$CONFIG_APB_HADDR" 800}
 	global CONFIG_AHB_MON
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHB_MON [expr $CONFIG_AHB_MON&15]} else {set CONFIG_AHB_MON [expr $CONFIG_AHB_MON|16]}
 	global CONFIG_AHB_MONERR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {
+	if {($CONFIG_AHB_MON == 1)} then {
 	set CONFIG_AHB_MONERR [expr $CONFIG_AHB_MONERR&15]} else {set CONFIG_AHB_MONERR [expr $CONFIG_AHB_MONERR|16]}
 	global CONFIG_AHB_MONWAR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {
+	if {($CONFIG_AHB_MON == 1)} then {
 	set CONFIG_AHB_MONWAR [expr $CONFIG_AHB_MONWAR&15]} else {set CONFIG_AHB_MONWAR [expr $CONFIG_AHB_MONWAR|16]}
-	global CONFIG_AHB_DTRACE
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHB_DTRACE [expr $CONFIG_AHB_DTRACE&15]} else {set CONFIG_AHB_DTRACE [expr $CONFIG_AHB_DTRACE|16]}
 }
 
 
@@ -2132,31 +2036,24 @@ proc menu8 {w title} {
 }
 
 proc update_menu8 {} {
-	global CONFIG_NOELV
-	global CONFIG_DSU_UART
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu8.config.f.x0 normal {n l y}} else {configure_entry .menu8.config.f.x0 disabled {y n l}}
-	global CONFIG_DSU_JTAG
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu8.config.f.x1 normal {n l y}} else {configure_entry .menu8.config.f.x1 disabled {y n l}}
 	global CONFIG_GRETH_ENABLE
 	global CONFIG_DSU_ETH
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	configure_entry .menu8.config.f.x2 normal {n l y}} else {configure_entry .menu8.config.f.x2 disabled {y n l}}
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {configure_entry .menu8.config.f.x3 normal {x l}} else {configure_entry .menu8.config.f.x3 disabled {x l}}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {configure_entry .menu8.config.f.x3 normal {x l}} else {configure_entry .menu8.config.f.x3 disabled {x l}}
 	global CONFIG_DSU_IPMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x4.l configure -state normal; } else {.menu8.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x4.l configure -state disabled}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x4.l configure -state normal; } else {.menu8.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x4.l configure -state disabled}
 	global CONFIG_DSU_IPLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x5.l configure -state normal; } else {.menu8.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x5.l configure -state disabled}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x5.l configure -state normal; } else {.menu8.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x5.l configure -state disabled}
 	global CONFIG_DSU_ETHMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x6.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x6.l configure -state normal; } else {.menu8.config.f.x6.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x6.l configure -state disabled}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x6.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x6.l configure -state normal; } else {.menu8.config.f.x6.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x6.l configure -state disabled}
 	global CONFIG_DSU_ETHLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x7.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x7.l configure -state normal; } else {.menu8.config.f.x7.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x7.l configure -state disabled}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {.menu8.config.f.x7.x configure -state normal -foreground [ cget .ref -foreground ]; .menu8.config.f.x7.l configure -state normal; } else {.menu8.config.f.x7.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu8.config.f.x7.l configure -state disabled}
 	global CONFIG_DSU_ETH_PROG
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
 	configure_entry .menu8.config.f.x8 normal {n l y}} else {configure_entry .menu8.config.f.x8 disabled {y n l}}
 	global CONFIG_DSU_ETH_DIS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {
 	configure_entry .menu8.config.f.x9 normal {n l y}} else {configure_entry .menu8.config.f.x9 disabled {y n l}}
 }
 
@@ -2164,16 +2061,9 @@ proc update_menu8 {} {
 proc update_define_menu8 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
-	global CONFIG_DSU_UART
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_DSU_UART [expr $CONFIG_DSU_UART&15]} else {set CONFIG_DSU_UART [expr $CONFIG_DSU_UART|16]}
-	global CONFIG_DSU_JTAG
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_DSU_JTAG [expr $CONFIG_DSU_JTAG&15]} else {set CONFIG_DSU_JTAG [expr $CONFIG_DSU_JTAG|16]}
 	global CONFIG_GRETH_ENABLE
 	global CONFIG_DSU_ETH
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	set CONFIG_DSU_ETH [expr $CONFIG_DSU_ETH&15]} else {set CONFIG_DSU_ETH [expr $CONFIG_DSU_ETH|16]}
 	global tmpvar_13
 	global CONFIG_DSU_ETHSZ1
@@ -2187,18 +2077,18 @@ proc update_define_menu8 {} {
 	global CONFIG_DSU_ETHSZ16
 	if {$tmpvar_13 == "16"} then {set CONFIG_DSU_ETHSZ16 1} else {set CONFIG_DSU_ETHSZ16 0}
 	global CONFIG_DSU_IPMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPMSB "$CONFIG_DSU_IPMSB" C0A8}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPMSB "$CONFIG_DSU_IPMSB" C0A8}
 	global CONFIG_DSU_IPLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPLSB "$CONFIG_DSU_IPLSB" 0033}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_IPLSB "$CONFIG_DSU_IPLSB" 0033}
 	global CONFIG_DSU_ETHMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 020000}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHMSB "$CONFIG_DSU_ETHMSB" 020000}
 	global CONFIG_DSU_ETHLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" 000000}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {validate_hex CONFIG_DSU_ETHLSB "$CONFIG_DSU_ETHLSB" 000000}
 	global CONFIG_DSU_ETH_PROG
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
 	set CONFIG_DSU_ETH_PROG [expr $CONFIG_DSU_ETH_PROG&15]} else {set CONFIG_DSU_ETH_PROG [expr $CONFIG_DSU_ETH_PROG|16]}
 	global CONFIG_DSU_ETH_DIS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {
 	set CONFIG_DSU_ETH_DIS [expr $CONFIG_DSU_ETH_DIS&15]} else {set CONFIG_DSU_ETH_DIS [expr $CONFIG_DSU_ETH_DIS|16]}
 }
 
@@ -2293,10 +2183,6 @@ proc menu9 {w title} {
 }
 
 proc update_menu9 {} {
-	global CONFIG_NOELV
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu9.config.f.x0 normal {m}} else {configure_entry .menu9.config.f.x0 disabled {m}}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu9.config.f.x1 normal {m}} else {configure_entry .menu9.config.f.x1 disabled {m}}
-	if {($CONFIG_NOELV == 1)} then {configure_entry .menu9.config.f.x2 normal {m}} else {configure_entry .menu9.config.f.x2 disabled {m}}
 }
 
 
@@ -2396,24 +2282,18 @@ proc menu10 {w title} {
 }
 
 proc update_menu10 {} {
-	global CONFIG_NOELV
 	global CONFIG_AHBSTAT_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu10.config.f.x0 normal {n l y}} else {configure_entry .menu10.config.f.x0 disabled {y n l}}
 	global CONFIG_AHBSTAT_NFTSLV
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHBSTAT_ENABLE == 1)} then {.menu10.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu10.config.f.x1.l configure -state normal; } else {.menu10.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu10.config.f.x1.l configure -state disabled}
+	if {($CONFIG_AHBSTAT_ENABLE == 1)} then {.menu10.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu10.config.f.x1.l configure -state normal; } else {.menu10.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu10.config.f.x1.l configure -state disabled}
 }
 
 
 proc update_define_menu10 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
 	global CONFIG_AHBSTAT_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_AHBSTAT_ENABLE [expr $CONFIG_AHBSTAT_ENABLE&15]} else {set CONFIG_AHBSTAT_ENABLE [expr $CONFIG_AHBSTAT_ENABLE|16]}
 	global CONFIG_AHBSTAT_NFTSLV
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHBSTAT_ENABLE == 1)} then {validate_int CONFIG_AHBSTAT_NFTSLV "$CONFIG_AHBSTAT_NFTSLV" 1}
+	if {($CONFIG_AHBSTAT_ENABLE == 1)} then {validate_int CONFIG_AHBSTAT_NFTSLV "$CONFIG_AHBSTAT_NFTSLV" 1}
 }
 
 
@@ -2518,31 +2398,25 @@ proc menu11 {w title} {
 }
 
 proc update_menu11 {} {
-	global CONFIG_NOELV
 	global CONFIG_GRETH_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu11.config.f.x0 normal {n l y}} else {configure_entry .menu11.config.f.x0 disabled {y n l}}
 	global CONFIG_GRETH_GIGA
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	configure_entry .menu11.config.f.x1 normal {n l y}} else {configure_entry .menu11.config.f.x1 disabled {y n l}}
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {configure_entry .menu11.config.f.x2 normal {x l}} else {configure_entry .menu11.config.f.x2 disabled {x l}}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {configure_entry .menu11.config.f.x2 normal {x l}} else {configure_entry .menu11.config.f.x2 disabled {x l}}
 	global CONFIG_GRETH_FMC_MODE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	configure_entry .menu11.config.f.x3 normal {n l y}} else {configure_entry .menu11.config.f.x3 disabled {y n l}}
 	global CONFIG_GRETH_PHY_ADDR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {.menu11.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu11.config.f.x4.l configure -state normal; } else {.menu11.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu11.config.f.x4.l configure -state disabled}
+	if {($CONFIG_GRETH_ENABLE == 1)} then {.menu11.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu11.config.f.x4.l configure -state normal; } else {.menu11.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu11.config.f.x4.l configure -state disabled}
 }
 
 
 proc update_define_menu11 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
 	global CONFIG_GRETH_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_GRETH_ENABLE [expr $CONFIG_GRETH_ENABLE&15]} else {set CONFIG_GRETH_ENABLE [expr $CONFIG_GRETH_ENABLE|16]}
 	global CONFIG_GRETH_GIGA
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA&15]} else {set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA|16]}
 	global tmpvar_14
 	global CONFIG_GRETH_FIFO4
@@ -2556,10 +2430,10 @@ proc update_define_menu11 {} {
 	global CONFIG_GRETH_FIFO64
 	if {$tmpvar_14 == "64"} then {set CONFIG_GRETH_FIFO64 1} else {set CONFIG_GRETH_FIFO64 0}
 	global CONFIG_GRETH_FMC_MODE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
 	set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE&15]} else {set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE|16]}
 	global CONFIG_GRETH_PHY_ADDR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {validate_int CONFIG_GRETH_PHY_ADDR "$CONFIG_GRETH_PHY_ADDR" 1}
+	if {($CONFIG_GRETH_ENABLE == 1)} then {validate_int CONFIG_GRETH_PHY_ADDR "$CONFIG_GRETH_PHY_ADDR" 1}
 }
 
 
@@ -2654,28 +2528,22 @@ proc menu12 {w title} {
 }
 
 proc update_menu12 {} {
-	global CONFIG_NOELV
 	global CONFIG_GRGPIO_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu12.config.f.x0 normal {n l y}} else {configure_entry .menu12.config.f.x0 disabled {y n l}}
 	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {.menu12.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x1.l configure -state normal; } else {.menu12.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x1.l configure -state disabled}
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu12.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x1.l configure -state normal; } else {.menu12.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x1.l configure -state disabled}
 	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {.menu12.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x2.l configure -state normal; } else {.menu12.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x2.l configure -state disabled}
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu12.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x2.l configure -state normal; } else {.menu12.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x2.l configure -state disabled}
 }
 
 
 proc update_define_menu12 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
 	global CONFIG_GRGPIO_ENABLE
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_GRGPIO_ENABLE [expr $CONFIG_GRGPIO_ENABLE&15]} else {set CONFIG_GRGPIO_ENABLE [expr $CONFIG_GRGPIO_ENABLE|16]}
 	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
 	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
 }
 
 
@@ -2768,30 +2636,16 @@ proc menu13 {w title} {
 }
 
 proc update_menu13 {} {
-	global CONFIG_NOELV
-	global CONFIG_DEBUG_UART
-	if {($CONFIG_NOELV == 1)} then {
-	configure_entry .menu13.config.f.x0 normal {n l y}} else {configure_entry .menu13.config.f.x0 disabled {y n l}}
 }
 
 
 proc update_define_menu13 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_NOELV
-	global CONFIG_DEBUG_UART
-	if {($CONFIG_NOELV == 1)} then {
-	set CONFIG_DEBUG_UART [expr $CONFIG_DEBUG_UART&15]} else {set CONFIG_DEBUG_UART [expr $CONFIG_DEBUG_UART|16]}
 }
 
 
 proc update_mainmenu {}  {
-	global CONFIG_NOELV
-	if {($CONFIG_NOELV == 1)} then {.f0.x6 configure -state normal } else { .f0.x6 configure -state disabled }
-	if {($CONFIG_NOELV == 1)} then {.f0.x7 configure -state normal } else { .f0.x7 configure -state disabled }
-	if {($CONFIG_NOELV == 1)} then {.f0.x8 configure -state normal } else { .f0.x8 configure -state disabled }
-	if {($CONFIG_NOELV == 1)} then {.f0.x9 configure -state normal } else { .f0.x9 configure -state disabled }
-	if {($CONFIG_NOELV == 1)} then {.f0.x13 configure -state normal } else { .f0.x13 configure -state disabled }
 }
 
 
@@ -3219,23 +3073,23 @@ proc writeconfig {file1 file2} {
 	global CONFIG_NOELV_FPU
 	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1) && ($CONFIG_NOELV_FPU == 1)} then {write_int $cfg $autocfg CONFIG_PROC_NOFPU 0 $notmod }
 	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1) && ($CONFIG_NOELV_FPU != 1)} then {write_int $cfg $autocfg CONFIG_PROC_NOFPU 1 $notmod }
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {write_comment $cfg $autocfg "VHDL debug settings       "}
+	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "VHDL debug settings       "}
 	global CONFIG_IU_DISAS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_DISAS $CONFIG_IU_DISAS [list $notmod] 2 }
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {write_comment $cfg $autocfg "NOEL-V subsystem GPL settings       "}
+	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_IU_DISAS $CONFIG_IU_DISAS [list $notmod] 2 }
+	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "NOEL-V subsystem GPL settings       "}
 	global CONFIG_PROC_NODBUS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_NOELV_MC == 1)} then {write_tristate $cfg $autocfg CONFIG_PROC_NODBUS $CONFIG_PROC_NODBUS [list $notmod] 2 }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "L2 Cache"}
+	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_PROC_NODBUS $CONFIG_PROC_NODBUS [list $notmod] 2 }
+	write_comment $cfg $autocfg "L2 Cache"
 	global CONFIG_L2_ENABLE
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_ENABLE $CONFIG_L2_ENABLE [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_L2_ENABLE $CONFIG_L2_ENABLE [list $notmod] 2
 	global tmpvar_9
-	if {($CONFIG_NOELV == 1)} then {
+	
 	if { $tmpvar_9 == "1" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 0 [list $notmod] 2 }
 	if { $tmpvar_9 == "2" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO2 0 [list $notmod] 2 }
 	if { $tmpvar_9 == "3" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO3 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO3 0 [list $notmod] 2 }
-	if { $tmpvar_9 == "4" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO4 0 [list $notmod] 2 }}
+	if { $tmpvar_9 == "4" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO4 0 [list $notmod] 2 }
 	global tmpvar_10
-	if {($CONFIG_NOELV == 1)} then {
+	
 	if { $tmpvar_10 == "1" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ1 0 [list $notmod] 2 }
 	if { $tmpvar_10 == "2" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ2 0 [list $notmod] 2 }
 	if { $tmpvar_10 == "4" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ4 0 [list $notmod] 2 }
@@ -3245,112 +3099,112 @@ proc writeconfig {file1 file2} {
 	if { $tmpvar_10 == "64" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ64 0 [list $notmod] 2 }
 	if { $tmpvar_10 == "128" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ128 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ128 0 [list $notmod] 2 }
 	if { $tmpvar_10 == "256" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ256 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ256 0 [list $notmod] 2 }
-	if { $tmpvar_10 == "512" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ512 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ512 0 [list $notmod] 2 }}
+	if { $tmpvar_10 == "512" } then { write_tristate $cfg $autocfg CONFIG_L2_SZ512 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_SZ512 0 [list $notmod] 2 }
 	global tmpvar_11
-	if {($CONFIG_NOELV == 1)} then {
+	
 	if { $tmpvar_11 == "32" } then { write_tristate $cfg $autocfg CONFIG_L2_LINE32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_LINE32 0 [list $notmod] 2 }
-	if { $tmpvar_11 == "64" } then { write_tristate $cfg $autocfg CONFIG_L2_LINE64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_LINE64 0 [list $notmod] 2 }}
+	if { $tmpvar_11 == "64" } then { write_tristate $cfg $autocfg CONFIG_L2_LINE64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_LINE64 0 [list $notmod] 2 }
 	global CONFIG_L2_HPROT
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_HPROT $CONFIG_L2_HPROT [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_L2_HPROT $CONFIG_L2_HPROT [list $notmod] 2
 	global CONFIG_L2_PEN
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_PEN $CONFIG_L2_PEN [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_L2_PEN $CONFIG_L2_PEN [list $notmod] 2
 	global CONFIG_L2_WT
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_WT $CONFIG_L2_WT [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_L2_WT $CONFIG_L2_WT [list $notmod] 2
 	global CONFIG_L2_RAN
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_RAN $CONFIG_L2_RAN [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_L2_RAN $CONFIG_L2_RAN [list $notmod] 2
 	global CONFIG_L2_SHARE
 	global CONFIG_L2_ASSO1
-	if {($CONFIG_NOELV == 1) && ($CONFIG_L2_ASSO1 != "1")} then {write_tristate $cfg $autocfg CONFIG_L2_SHARE $CONFIG_L2_SHARE [list $notmod] 2 }
+	if {($CONFIG_L2_ASSO1 != "1")} then {write_tristate $cfg $autocfg CONFIG_L2_SHARE $CONFIG_L2_SHARE [list $notmod] 2 }
 	global CONFIG_L2_MAP
-	if {($CONFIG_NOELV == 1)} then {write_hex $cfg $autocfg CONFIG_L2_MAP $CONFIG_L2_MAP $notmod }
+	write_hex $cfg $autocfg CONFIG_L2_MAP $CONFIG_L2_MAP $notmod
 	global CONFIG_L2_MTRR
-	if {($CONFIG_NOELV == 1)} then {write_int $cfg $autocfg CONFIG_L2_MTRR $CONFIG_L2_MTRR $notmod }
+	write_int $cfg $autocfg CONFIG_L2_MTRR $CONFIG_L2_MTRR $notmod
 	global tmpvar_12
-	if {($CONFIG_NOELV == 1)} then {
+	
 	if { $tmpvar_12 == "None" } then { write_tristate $cfg $autocfg CONFIG_L2_EDAC_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_EDAC_NONE 0 [list $notmod] 2 }
 	if { $tmpvar_12 == "Yes" } then { write_tristate $cfg $autocfg CONFIG_L2_EDAC_YES 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_EDAC_YES 0 [list $notmod] 2 }
-	if { $tmpvar_12 == "TechSpec" } then { write_tristate $cfg $autocfg CONFIG_L2_EDAC_TECHSPEC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_EDAC_TECHSPEC 0 [list $notmod] 2 }}
+	if { $tmpvar_12 == "TechSpec" } then { write_tristate $cfg $autocfg CONFIG_L2_EDAC_TECHSPEC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_EDAC_TECHSPEC 0 [list $notmod] 2 }
 	global CONFIG_L2_AXI
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_L2_AXI $CONFIG_L2_AXI [list $notmod] 2 }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "AMBA configuration"}
+	write_tristate $cfg $autocfg CONFIG_L2_AXI $CONFIG_L2_AXI [list $notmod] 2
+	write_comment $cfg $autocfg "AMBA configuration"
 	global CONFIG_AHB_DEFMST
-	if {($CONFIG_NOELV == 1)} then {write_int $cfg $autocfg CONFIG_AHB_DEFMST $CONFIG_AHB_DEFMST $notmod }
+	write_int $cfg $autocfg CONFIG_AHB_DEFMST $CONFIG_AHB_DEFMST $notmod
 	global CONFIG_AHB_RROBIN
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_RROBIN $CONFIG_AHB_RROBIN [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_AHB_RROBIN $CONFIG_AHB_RROBIN [list $notmod] 2
 	global CONFIG_AHB_SPLIT
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_SPLIT $CONFIG_AHB_SPLIT [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_AHB_SPLIT $CONFIG_AHB_SPLIT [list $notmod] 2
 	global CONFIG_AHB_FPNPEN
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_FPNPEN $CONFIG_AHB_FPNPEN [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_AHB_FPNPEN $CONFIG_AHB_FPNPEN [list $notmod] 2
 	global CONFIG_AHB_IOADDR
-	if {($CONFIG_NOELV == 1)} then {write_hex $cfg $autocfg CONFIG_AHB_IOADDR $CONFIG_AHB_IOADDR $notmod }
+	write_hex $cfg $autocfg CONFIG_AHB_IOADDR $CONFIG_AHB_IOADDR $notmod
 	global CONFIG_APB_HADDR
-	if {($CONFIG_NOELV == 1)} then {write_hex $cfg $autocfg CONFIG_APB_HADDR $CONFIG_APB_HADDR $notmod }
+	write_hex $cfg $autocfg CONFIG_APB_HADDR $CONFIG_APB_HADDR $notmod
 	global CONFIG_AHB_MON
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MON $CONFIG_AHB_MON [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_AHB_MON $CONFIG_AHB_MON [list $notmod] 2
 	global CONFIG_AHB_MONERR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONERR $CONFIG_AHB_MONERR [list $notmod] 2 }
+	if {($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONERR $CONFIG_AHB_MONERR [list $notmod] 2 }
 	global CONFIG_AHB_MONWAR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONWAR $CONFIG_AHB_MONWAR [list $notmod] 2 }
+	if {($CONFIG_AHB_MON == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_MONWAR $CONFIG_AHB_MONWAR [list $notmod] 2 }
 	global CONFIG_AHB_DTRACE
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHB_DTRACE $CONFIG_AHB_DTRACE [list $notmod] 2 }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "Debug Link           "}
+	write_tristate $cfg $autocfg CONFIG_AHB_DTRACE $CONFIG_AHB_DTRACE [list $notmod] 2
+	write_comment $cfg $autocfg "Debug Link           "
 	global CONFIG_DSU_UART
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_UART $CONFIG_DSU_UART [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_DSU_UART $CONFIG_DSU_UART [list $notmod] 2
 	global CONFIG_DSU_JTAG
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_JTAG $CONFIG_DSU_JTAG [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_DSU_JTAG $CONFIG_DSU_JTAG [list $notmod] 2
 	global CONFIG_DSU_ETH
 	global CONFIG_GRETH_ENABLE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH $CONFIG_DSU_ETH [list $notmod] 2 }
+	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH $CONFIG_DSU_ETH [list $notmod] 2 }
 	global tmpvar_13
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {
 	if { $tmpvar_13 == "1" } then { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ1 0 [list $notmod] 2 }
 	if { $tmpvar_13 == "2" } then { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ2 0 [list $notmod] 2 }
 	if { $tmpvar_13 == "4" } then { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ4 0 [list $notmod] 2 }
 	if { $tmpvar_13 == "8" } then { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ8 0 [list $notmod] 2 }
 	if { $tmpvar_13 == "16" } then { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_DSU_ETHSZ16 0 [list $notmod] 2 }}
 	global CONFIG_DSU_IPMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_IPMSB $CONFIG_DSU_IPMSB $notmod }
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_IPMSB $CONFIG_DSU_IPMSB $notmod }
 	global CONFIG_DSU_IPLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_IPLSB $CONFIG_DSU_IPLSB $notmod }
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_IPLSB $CONFIG_DSU_IPLSB $notmod }
 	global CONFIG_DSU_ETHMSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_ETHMSB $CONFIG_DSU_ETHMSB $notmod }
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_ETHMSB $CONFIG_DSU_ETHMSB $notmod }
 	global CONFIG_DSU_ETHLSB
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_ETHLSB $CONFIG_DSU_ETHLSB $notmod }
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_hex $cfg $autocfg CONFIG_DSU_ETHLSB $CONFIG_DSU_ETHLSB $notmod }
 	global CONFIG_DSU_ETH_PROG
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH_PROG $CONFIG_DSU_ETH_PROG [list $notmod] 2 }
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH_PROG $CONFIG_DSU_ETH_PROG [list $notmod] 2 }
 	global CONFIG_DSU_ETH_DIS
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH_DIS $CONFIG_DSU_ETH_DIS [list $notmod] 2 }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "Peripherals             "}
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "Memory controller             "}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_DSU_ETH == 1) && ($CONFIG_DSU_ETH_PROG == 1)} then {write_tristate $cfg $autocfg CONFIG_DSU_ETH_DIS $CONFIG_DSU_ETH_DIS [list $notmod] 2 }
+	write_comment $cfg $autocfg "Peripherals             "
+	write_comment $cfg $autocfg "Memory controller             "
 	global CONFIG_AHBSTAT_ENABLE
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_AHBSTAT_ENABLE $CONFIG_AHBSTAT_ENABLE [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_AHBSTAT_ENABLE $CONFIG_AHBSTAT_ENABLE [list $notmod] 2
 	global CONFIG_AHBSTAT_NFTSLV
-	if {($CONFIG_NOELV == 1) && ($CONFIG_AHBSTAT_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_AHBSTAT_NFTSLV $CONFIG_AHBSTAT_NFTSLV $notmod }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "Ethernet             "}
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_ENABLE $CONFIG_GRETH_ENABLE [list $notmod] 2 }
+	if {($CONFIG_AHBSTAT_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_AHBSTAT_NFTSLV $CONFIG_AHBSTAT_NFTSLV $notmod }
+	write_comment $cfg $autocfg "Ethernet             "
+	write_tristate $cfg $autocfg CONFIG_GRETH_ENABLE $CONFIG_GRETH_ENABLE [list $notmod] 2
 	global CONFIG_GRETH_GIGA
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_GIGA $CONFIG_GRETH_GIGA [list $notmod] 2 }
+	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_GIGA $CONFIG_GRETH_GIGA [list $notmod] 2 }
 	global tmpvar_14
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
 	if { $tmpvar_14 == "4" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 0 [list $notmod] 2 }
 	if { $tmpvar_14 == "8" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 0 [list $notmod] 2 }
 	if { $tmpvar_14 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
 	if { $tmpvar_14 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
 	if { $tmpvar_14 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
 	global CONFIG_GRETH_FMC_MODE
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_FMC_MODE $CONFIG_GRETH_FMC_MODE [list $notmod] 2 }
+	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_FMC_MODE $CONFIG_GRETH_FMC_MODE [list $notmod] 2 }
 	global CONFIG_GRETH_PHY_ADDR
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRETH_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRETH_PHY_ADDR $CONFIG_GRETH_PHY_ADDR $notmod }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "UARTs, timers and irq control         "}
+	if {($CONFIG_GRETH_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRETH_PHY_ADDR $CONFIG_GRETH_PHY_ADDR $notmod }
+	write_comment $cfg $autocfg "UARTs, timers and irq control         "
 	global CONFIG_GRGPIO_ENABLE
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_GRGPIO_ENABLE $CONFIG_GRGPIO_ENABLE [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_GRGPIO_ENABLE $CONFIG_GRGPIO_ENABLE [list $notmod] 2
 	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRGPIO_WIDTH $CONFIG_GRGPIO_WIDTH $notmod }
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRGPIO_WIDTH $CONFIG_GRGPIO_WIDTH $notmod }
 	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_NOELV == 1) && ($CONFIG_GRGPIO_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_GRGPIO_IMASK $CONFIG_GRGPIO_IMASK $notmod }
-	if {($CONFIG_NOELV == 1)} then {write_comment $cfg $autocfg "VHDL Debugging        "}
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_GRGPIO_IMASK $CONFIG_GRGPIO_IMASK $notmod }
+	write_comment $cfg $autocfg "VHDL Debugging        "
 	global CONFIG_DEBUG_UART
-	if {($CONFIG_NOELV == 1)} then {write_tristate $cfg $autocfg CONFIG_DEBUG_UART $CONFIG_DEBUG_UART [list $notmod] 2 }
+	write_tristate $cfg $autocfg CONFIG_DEBUG_UART $CONFIG_DEBUG_UART [list $notmod] 2
 	close $cfg
 	close $autocfg
 }

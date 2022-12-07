@@ -26,5 +26,6 @@ package config_local is
   constant CFG_LOCAL_JTAG_AINST   : integer := 2; 
   constant CFG_LOCAL_JTAG_DINST   : integer := 3; 
   constant CFG_LOCAL_JTAG_VERSEL  : integer := 1; 
+  constant CFG_LOCAL_AHB_JTAG_RV  : integer := 0;
   constant CFG_LOCAL_L2C_BBWIDTH  : integer := AHBDW; 
 end;

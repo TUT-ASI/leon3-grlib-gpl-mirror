@@ -6,8 +6,7 @@
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; either version 2 of the License, or
---  (at your option) any later version.
+--  the Free Software Foundation; version 2.
 --
 --  This program is distributed in the hope that it will be useful,
 --  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,13 +30,18 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
-use grlib.stdlib.all;
 use grlib.config.all;
 use grlib.config_types.all;
+use grlib.stdlib.tost;
+use grlib.stdlib.tost_bits;
+use grlib.stdlib.notx;
+use grlib.stdlib.setx;
 library gaisler;
-use gaisler.utilnv.all;
 use gaisler.fputilnv.all;
-use grlib.riscv.all;
+use gaisler.utilnv.log;
+use gaisler.utilnv.all_0;
+use gaisler.utilnv.to_bit;
+use gaisler.nvsupport.word64;
 
 entity mulfp is
   generic (

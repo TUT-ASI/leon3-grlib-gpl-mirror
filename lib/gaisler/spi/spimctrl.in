@@ -5,8 +5,16 @@
       hex 'Read instruction    ' CONFIG_SPIMCTRL_READCMD 0B
       bool 'Read instruction requires dummy byte  ' CONFIG_SPIMCTRL_DUMMYBYTE
       bool 'Enable dual output for reads  ' CONFIG_SPIMCTRL_DUALOUTPUT
+      bool 'Enable quad output for reads  ' CONFIG_SPIMCTRL_QUADOUTPUT
+      bool 'Enable dual input for reads  ' CONFIG_SPIMCTRL_DUALINPUT
+      bool 'Enable quad input for reads  ' CONFIG_SPIMCTRL_QUADINPUT
+      bool 'Enable DSPI mode  ' CONFIG_SPIMCTRL_DSPI
+      bool 'Enable QSPI mode  ' CONFIG_SPIMCTRL_QSPI
+      int 'Number of dummy cycles  ' CONFIG_SPIMCTRL_DUMMYCYCLES 0
+      bool 'Use 4 byte address instead of 3  ' CONFIG_SPIMCTRL_EXTADDR
       hex  'Address offset     ' CONFIG_SPIMCTRL_OFFSET 0
       int 'Clock divisor for device clock' CONFIG_SPIMCTRL_SCALER 1
       int 'Clock divisor for alt. device clock' CONFIG_SPIMCTRL_ASCALER 8
+      bool 'Enables writes for configuration register  ' CONFIG_SPIMCTRL_RECONF
     fi
   endmenu

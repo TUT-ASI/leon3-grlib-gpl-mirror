@@ -1,3 +1,20 @@
+----------------------- Release 2022.4-b4280 ---------------------------
+
+2022-12-07	NOEL-V: Updated NOEL-V release.
+		- Added support for TIME CSR
+		- Added support for Sstc extension
+		- Added support for Zicbom extension
+		- Improved instruction trace
+		- Fixed issue that could case FPU instruction to lockup.
+		- Fixed issue regarding IRQ (priority and delegation)
+		- Fixed issue with annulled TLB fence instructions
+		- Fixed issue with instruction paired with xTVEC CSR writes
+		- Corrected reset state of TLBs
+
+2022-09-05	SPIMCTRL: Added little-endian support.
+
+2022-08-25	Updated the license header to refer to version 2.
+
 ----------------------- Release 2022.2-b4274 ---------------------------
 
 2022-06-21	SYNCFIFO_2P: Various fixes and updates to inferred FIFO:

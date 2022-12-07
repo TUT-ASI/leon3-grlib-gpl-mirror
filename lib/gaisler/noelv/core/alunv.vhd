@@ -3,22 +3,14 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library grlib;
-library gaisler;
-use gaisler.utilnv.all;
+use grlib.riscv.all;
 use grlib.stdlib.log2;
 use grlib.stdlib.tost;
-use grlib.riscv.all;
-use gaisler.noelvint.word64;
-use gaisler.noelvint.word8;
-use gaisler.noelvint.word;
-use gaisler.noelvint.wordx;
-use gaisler.noelvint.zerox;
+library gaisler;
+use gaisler.utilnv.all;
+use gaisler.nvsupport.all;
 
 package alunv is
-
-  subtype word2  is std_logic_vector(1 downto 0);
-  subtype word3  is std_logic_vector(2 downto 0);
-  subtype wordx1 is std_logic_vector(wordx'high + 1 downto 0);
 
   type alu_ctrl is record
     sel   : word2;         -- Operation
@@ -106,6 +98,7 @@ package alunv is
                     ctrl   : word3;
                     ctrlx  : word3) return wordx;
 
+  function reverse(op_in : std_logic_vector) return std_logic_vector;
   function clz(op_in : std_logic_vector) return unsigned;
   function pop(op_in : std_logic_vector) return unsigned;
   function clmul_div(op1 : wordx;
@@ -1071,11 +1064,19 @@ package body alunv is
 
   function xperm4(data : wordx; sel : wordx; clear : wordx) return wordx is
     -- Non-constant
-    variable res : wordx := (others => '0');
+    variable res      : wordx := (others => '0');
+    subtype  word4   is std_logic_vector(3 downto 0);
+    type     w4_arr  is array (integer range <>) of word4;
+    variable nybbles  : w4_arr(0 to 15) := (others => x"0");
   begin
+    -- Create all possible nybbles
+    for i in 0 to data'length / 4 - 1 loop
+      nybbles(i) := get(data, i * 4, 4);
+    end loop;
+    -- Select nybbles
     for i in 0 to data'length / 4 - 1 loop
       if clear(i) = '0' then
-        set(res, i * 4, get(data, u2i(get(sel, i * 4, 4)) * 4, 4));
+        set(res, i * 4, nybbles(u2i(get(sel, i * 4, 4))));
       end if;
     end loop;
 
