@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -151,7 +152,7 @@ architecture rtl of noelvcore is
   signal stati      : ahbstat_in_type;
 
   -- APB
-  signal apbi       : apb_slv_in_vector;
+  signal apbi       : apb_slv_in_type;
   signal apbo       : apb_slv_out_vector := (others => apb_none);
 
   -- AHB
@@ -219,6 +220,8 @@ begin
       nextslv   => nextslv,
       nextapb   => 7,
       ndbgmst   => ndbgmst,
+      nintdom   => CFG_APLIC_NDOM,
+      neiid     => CFG_NEIID,
       cached    => 0,
       wbmask    => CFG_LOCAL_WBMASK,
       busw      => AHBDW,
@@ -279,7 +282,7 @@ begin
         clkm,
         dui,
         duo,
-        apbi(AHBUART_PINDEX),
+        apbi,
         apbo(AHBUART_PINDEX),
         dbgmi(UART_DM_HMINDEX),
         dbgmo(UART_DM_HMINDEX));
@@ -502,7 +505,7 @@ begin
       mem_ahbsi0          <= ahbsi;
       ahbso(L2C_HSINDEX)  <= mem_ahbso0;
     end generate;
-    mem_apbi0         <= apbi(MEM_PINDEX);
+    mem_apbi0         <= apbi;
     apbo(MEM_PINDEX)  <= mem_apbo0;
   end generate;
 
@@ -532,7 +535,7 @@ begin
         ahbmi,
         ahbsi,
         stati,
-        apbi(AHBSTAT_PINDEX),
+        apbi,
         apbo(AHBSTAT_PINDEX));
   end generate;
 
@@ -549,7 +552,7 @@ begin
       port map(
         rst   => rstn,
         clk   => clkm,
-        apbi  => apbi(GRGPIO_PINDEX),
+        apbi  => apbi,
         apbo  => apbo(GRGPIO_PINDEX),
         gpioi => gpioi,
         gpioo => gpioo);
@@ -574,7 +577,7 @@ begin
     port map(
       rstn  => rstn,
       clk   => clkm,
-      apbi  => apbi(GRVER_PINDEX),
+      apbi  => apbi,
       apbo  => apbo(GRVER_PINDEX));
 
 
@@ -597,7 +600,7 @@ begin
       port map( rst => rstn, clk => clkm, 
                 ahbmi => ahbmi, ahbmo => ahbmo(GRETH_HMINDEX),
                 ahbmi2 => dbgmi(GRETH_DM_HMINDEX), ahbmo2 => dbgmo(GRETH_DM_HMINDEX),
-                apbi => apbi(GRETH_PINDEX), apbo => apbo(GRETH_PINDEX), ethi => ethi_int, etho => etho);
+                apbi => apbi, apbo => apbo(GRETH_PINDEX), ethi => ethi_int, etho => etho);
     
     eth_in_sig : process (ethi)
     begin
@@ -606,7 +609,7 @@ begin
     end process;
 
     -- ETH PHY interface
-    eth_apbi  <= apbi(GRETH_PHY_PINDEX);
+    eth_apbi  <= apbi;
     apbo(GRETH_PHY_PINDEX)  <= eth_apbo;
 
   end generate;

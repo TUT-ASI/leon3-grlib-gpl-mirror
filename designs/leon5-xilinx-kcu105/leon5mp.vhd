@@ -4,7 +4,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +33,6 @@ use techmap.allclkgen.all;
 
 library gaisler;
 use gaisler.memctrl.all;
-use gaisler.leon3.all;
 use gaisler.leon5.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
@@ -40,7 +40,6 @@ use gaisler.i2c.all;
 use gaisler.net.all;
 use gaisler.jtag.all;
 use gaisler.l2cache.all;
-use gaisler.subsys.all;
 use gaisler.axi.all;
 
 -- pragma translate_off
@@ -287,14 +286,6 @@ architecture rtl of leon5mp is
   -----------------------------------------------------
   -- Signals ------------------------------------------
   -----------------------------------------------------
-
-  signal irqi : irq_in_vector(0 to CFG_NCPU - 1);
-  signal irqo : irq_out_vector(0 to CFG_NCPU - 1);
-
-  signal sysi : leon_dsu_stat_base_in_type;
-  signal syso : leon_dsu_stat_base_out_type;
-
-  signal perf : l3stat_in_type;
 
   signal ndsuact : std_ulogic;
 
@@ -884,9 +875,22 @@ begin
 -----------------------------------------------------------------------
 
   bpromgen : if CFG_AHBROMEN /= 0 or (simulation = true) generate
-    brom : entity work.ahbrom128
-      generic map (hindex => hsidx_ahbrom, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
-      port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbrom));
+
+    rom128: if AHBDW = 128 generate
+      brom128 : entity work.ahbrom128
+        generic map (hindex => hsidx_ahbrom, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
+        port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbrom));
+    end generate;
+    rom64: if AHBDW = 64 generate
+      brom64 : entity work.ahbrom64
+        generic map (hindex => hsidx_ahbrom, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
+        port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbrom));
+    end generate;
+    rom32: if AHBDW = 32 generate
+      brom32 : entity work.ahbrom
+        generic map (hindex => hsidx_ahbrom, haddr => CFG_AHBRODDR, pipe => CFG_AHBROPIP)
+        port map (rstn, clkm, ahbsi, ahbso(hsidx_ahbrom));
+    end generate;
   end generate;
 
 

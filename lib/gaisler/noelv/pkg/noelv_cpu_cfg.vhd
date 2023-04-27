@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -36,6 +37,7 @@ package noelv_cpu_cfg is
     ext_a         => 1,
     ext_c         => 1,
     ext_h         => 1,
+    ext_zcb       => 1,
     ext_zba       => 1,
     ext_zbb       => 1,
     ext_zbc       => 1,
@@ -45,7 +47,18 @@ package noelv_cpu_cfg is
     ext_zbkx      => 1,
     ext_sscofpmf  => 1,
     ext_sstc      => 1,
+    ext_smaia     => 1,
+    ext_ssaia     => 1,
+    ext_smstateen => 1,
+    ext_smepmp    => 1,
+    imsic         => 1,
     ext_zicbom    => 1,
+    ext_zicond    => 1,
+    ext_zimops    => 1,
+    ext_zfa       => 1,
+    ext_zfh       => 1,
+    ext_zfhmin    => 1,
+    ext_zfbfmin   => 0,
     mode_s        => 1,
     mode_u        => 1,
     fpulen        => 64,

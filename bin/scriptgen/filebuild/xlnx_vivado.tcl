@@ -53,6 +53,9 @@ proc append_file_xlnx_vivado {f finfo} {
 			append vc "\n$VIVADOVHDL $bn $f"
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}
@@ -116,7 +119,7 @@ proc eof_xlnx_vivado {} {
 	VIVADO_SYNTH_FLOW VIVADO_SYNTH_STRATEGY VIVADO_IMPL_STRATEGY VIVADO_INCL_DIRS
 	upvar vivado_contents vc
 
-	append vc "\nadd_files -fileset $VIVADO_SIMSET prom.srec ram.srec"
+	append vc "\nadd_files -quiet -fileset $VIVADO_SIMSET prom.srec ram.srec"
 	if {![string equal $GRLIB_XIL_Vivado_sim_verilog_define ""]} {
 		append vc "\nset_property verilog_define {$GRLIB_XIL_Vivado_sim_verilog_define} \[get_filesets $VIVADO_SIMSET\]"
 	}

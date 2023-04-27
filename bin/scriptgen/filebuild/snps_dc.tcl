@@ -43,6 +43,9 @@ proc append_file_snps_dc {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

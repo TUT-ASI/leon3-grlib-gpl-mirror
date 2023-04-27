@@ -21,6 +21,8 @@ proc append_file_snps_synp {f finfo} {
 		}
 		"vhdlxile" {
 		}
+		"vhdlxise" {
+		}
 		"vhdlfpro" {
 		}
 		"vhdlprec" {

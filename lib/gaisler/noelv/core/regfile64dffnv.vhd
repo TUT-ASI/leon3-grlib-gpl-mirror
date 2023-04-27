@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,9 +29,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
 use grlib.stdlib.notx;
+use grlib.riscv.reg_t;
 library gaisler;
 use gaisler.utilnv.u2i;
-use gaisler.noelvint.reg_t;
 
 entity regfile64dffnv is
   generic (
@@ -62,11 +63,6 @@ entity regfile64dffnv is
     rdata4   : out std_logic_vector
     );
 begin
-  assert wdata1'length = wdata2'length and
-         rdata1'length = rdata2'length and
-         rdata3'length = rdata4'length and
-         rdata1'length = rdata3'length and
-         wdata1'length = rdata1'length report "Bad register data size" severity failure;
 end regfile64dffnv;
 
 architecture rtl of regfile64dffnv is

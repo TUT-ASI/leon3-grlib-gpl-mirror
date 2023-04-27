@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,6 +47,7 @@ use gaisler.sim.all;
 --pragma translate_on
 
 use work.config.all;
+use work.config_local.all;
 use work.rev.REVISION;
 use work.cfgmap.all;
 
@@ -124,6 +126,8 @@ architecture rtl of noelvmp is
   constant OEPOL        : integer := padoen_polarity(padtech);
   constant BOARD_FREQ   : integer := 300000; -- input frequency in KHz
   constant CPU_FREQ     : integer := BOARD_FREQ * CFG_CLKMUL / CFG_CLKDIV; -- cpu frequency in KHz
+  constant oeon         : std_logic := conv_std_logic_vector(OEPOL,1)(0);
+  constant oeoff        : std_logic := not conv_std_logic_vector(OEPOL,1)(0);
 
   -------------------------------------
   -- Misc
@@ -163,6 +167,11 @@ architecture rtl of noelvmp is
   signal gpio_oe        : std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
   -- JTAG
   signal tck, tms, tdi, tdo : std_ulogic;
+  -- RISC-V JTAG
+  signal jtag_rv_tck    : std_ulogic := '0';
+  signal jtag_rv_tms    : std_ulogic := '0';
+  signal jtag_rv_tdi    : std_ulogic := '0';
+  signal jtag_rv_tdo    : std_ulogic;
   -- Ethernet
   signal ethi : eth_in_type;
   signal etho : eth_out_type;
@@ -343,7 +352,12 @@ begin
     tck         => tck,
     tms         => tms,
     tdi         => tdi,
-    tdo         => tdo
+    tdo         => tdo,
+    -- RISC-V JTAG
+    jtag_rv_tck => jtag_rv_tck,
+    jtag_rv_tms => jtag_rv_tms,
+    jtag_rv_tdi => jtag_rv_tdi,
+    jtag_rv_tdo => jtag_rv_tdo
   );
 
   --errorn_pad : odpad
@@ -636,6 +650,48 @@ begin
       gpio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x12v, strength => 8)
         port map (gpio(i), gpio_o(i+8), gpio_oe(i+8), gpio_i(i+8));
     end generate;
+
+  end generate;
+
+-----------------------------------------------------------------------
+-- RISC-V JTAG
+-----------------------------------------------------------------------
+  --     PMOD1-J53
+  -------------------
+  -- TDO  1 |  7  TDI
+  -- NC   2 |  8  TMS
+  -- TCK  3 |  9  NC
+  -- NC   4 | 10  NC
+  -- GND  5 | 11  GND
+  -- VCC  6 | 12  VCC
+  -------------------
+
+  rvjtag : if CFG_LOCAL_AHB_JTAG_RV = 1 generate
+    --tdo_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(8), jtag_rv_tdo, oeon, open);
+    tdo_pad : outpad generic map (tech => padtech, level => cmos, voltage => x12v, strength => 8)
+        port map (gpio(8), jtag_rv_tdo);
+    
+    --ntrst_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(9), gnd, oeoff, open);
+    
+    --tck_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(10), gnd, oeoff, jtag_rv_tck);
+    tck_pad : clkpad generic map (tech => padtech, level => cmos, voltage => x12v, arch => 2)
+      port map (gpio(10), jtag_rv_tck);
+    
+    --nc3_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(11), gnd, oeoff, open);
+    
+    tdi_pad : iopad generic map (tech => padtech, level => cmos, voltage => x12v, strength => 8)
+      port map (gpio(12), gnd, oeoff, jtag_rv_tdi);
+    tms_pad : iopad generic map (tech => padtech, level => cmos, voltage => x12v, strength => 8)
+      port map (gpio(13), gnd, oeoff, jtag_rv_tms);
+    
+      --nrst_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(14), gnd, oeoff, open);
+    --nc7_pad : iopad generic map (tech => padtech)
+    --  port map (gpio(15), gnd, oeoff, open);
 
   end generate;
 

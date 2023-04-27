@@ -32,9 +32,6 @@ Design specifics
 * Synthesis should be done using Vivado 2019.2 or newer. For newer versions,
   the MIG and SGMII projects may need to be updated.
 
-* This design has GRFPU enabled by default. If your release doesn't contain
-  GRFPU, it has to be disabled in order to build the design.
-
 * The DDR4 controller is implemented with Xilinx MIG IP and 
   runs off the 300 MHz clock. The DDR4 memory runs at 1200 MHz.
   The calibration procedures are handled by a Microblaze
@@ -44,6 +41,14 @@ Design specifics
   controller, and can be controlled via Vivado. When the 
   MIG DDR4 controller isn't present, the AHB clock is generated
   from CLKGEN.
+
+* To change the AHB data width of the design, change the constant AHB-WIDTH
+  in the Makefile (Default 128) and the constants CFG_AHBDW in the file
+  grlib_config_leon5.vhe and CFG_AHBDW in config.vhd
+  NOTE: To use AHBWIDTH = 32 it is necessary to set  also the following
+  constant in config.vhd:
+  +  constant CFG_BWMASK : integer := 16#0000#;
+
 
 * System reset is mapped to the CPU RESET button.
 

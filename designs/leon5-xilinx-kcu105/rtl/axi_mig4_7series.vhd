@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -232,8 +233,8 @@ architecture rtl of axi_mig4_7series is
       s_axi_awqos : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
       s_axi_awvalid : IN STD_LOGIC;
       s_axi_awready : OUT STD_LOGIC;
-      s_axi_wdata : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
-      s_axi_wstrb : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+      s_axi_wdata : IN STD_LOGIC_VECTOR(AHBDW-1 DOWNTO 0);
+      s_axi_wstrb : IN STD_LOGIC_VECTOR(AHBDW/8-1 DOWNTO 0);
       s_axi_wlast : IN STD_LOGIC;
       s_axi_wvalid : IN STD_LOGIC;
       s_axi_wready : OUT STD_LOGIC;
@@ -254,7 +255,7 @@ architecture rtl of axi_mig4_7series is
       s_axi_arvalid : IN STD_LOGIC;
       s_axi_arready : OUT STD_LOGIC;
       s_axi_rid : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-      s_axi_rdata : OUT STD_LOGIC_VECTOR(127 DOWNTO 0);
+      s_axi_rdata : OUT STD_LOGIC_VECTOR(AHBDW-1 DOWNTO 0);
       s_axi_rresp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
       s_axi_rlast : OUT STD_LOGIC;
       s_axi_rvalid : OUT STD_LOGIC;

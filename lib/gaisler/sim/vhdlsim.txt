@@ -29,6 +29,7 @@ axixmem.vhd
 sramtestmod.vhd
 canfdsim.vhd
 tlk2711_sim.vhd
+delay_wire2.vhd
 
 uartprint.vhd
 dfi_phy_sim.vhd

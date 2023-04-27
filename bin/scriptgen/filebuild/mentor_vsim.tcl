@@ -30,6 +30,9 @@ proc append_file_mentor_vsim {f finfo} {
 	"vhdlxile" {
 	    return
 	}
+	"vhdlxise" {
+	    return
+	}
 	"vhdlfpro" {
 	    return
 	}
@@ -103,6 +106,12 @@ proc append_file_mentor_vsim {f finfo} {
             append cvc "\t$VLOG -sv -work $bn $f\n"
             return
         }
+	"latticeipcfg" {
+	    global VLOG
+	    upvar compile_vsim_contents cvc
+	    set q [dict get $finfo q]
+	    append cvc "\t$VLOG -sv -work nexus_sim lattice_ips/$fattr/$q/rtl/$q.v\n"
+	}
     }
     return
 }

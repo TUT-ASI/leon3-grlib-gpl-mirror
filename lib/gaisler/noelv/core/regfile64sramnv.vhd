@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,10 +32,10 @@ use techmap.gencomp.all;
 use techmap.allmem.all;
 library grlib;
 use grlib.stdlib.log2x;
+use grlib.riscv.reg_t;
 library gaisler;
 use gaisler.utilnv.u2i;
 use gaisler.utilnv.b2i;
-use gaisler.noelvint.reg_t;
 
 entity regfile64sramnv is
   generic (
@@ -68,11 +69,6 @@ entity regfile64sramnv is
     testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
 begin
-  assert wdata1'length = wdata2'length and
-         rdata1'length = rdata2'length and
-         rdata3'length = rdata4'length and
-         rdata1'length = rdata3'length and
-         wdata1'length = rdata1'length report "Bad register data size" severity failure;
 end regfile64sramnv;
 
 architecture rtl of regfile64sramnv is
@@ -269,11 +265,6 @@ begin  -- rtl
       v.lwrite4(u2i(waddr2)) := "1";
     end if;
 
---GAISLER_INTERNAL_BEGIN
-    --It is possible that a new data can be written during rdhold which is not
-    --handled by techmap, since a combinatorial write can happen during end of
-    --cycle wrfst functionality of SRAM is disabled and handled manually here
---GAISLER_INTERNAL_END
     
     -- PORT1
     if we1 = '1' and rdhold = '0' then

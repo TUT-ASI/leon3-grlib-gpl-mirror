@@ -28,6 +28,9 @@ proc append_file_aldec_asim {f finfo} {
         "vhdlxile" {
             return
         }
+	"vhdlxise" {
+	    return
+	}
         "vhdlfpro" {
             return
         }

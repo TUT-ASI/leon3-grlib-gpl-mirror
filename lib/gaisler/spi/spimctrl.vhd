@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -661,7 +662,11 @@ begin  -- rtl
         v.spi.cnt := cslv(SPI_ADDR_LENGTH + conv_integer(r.extaddr), r.spi.cnt'length);
         if v.bd = '1' then
           -- Read command have been sent, prepare for address phase
-          v.sreg := r.ar(23+8*conv_integer(r.extaddr) downto 16 + 8*conv_integer(r.extaddr));
+          if r.extaddr = '1' then
+            v.sreg := r.ar((23+8) downto (16 + 8));
+          else
+            v.sreg := r.ar(23 downto 16);
+          end if;
           v.spio.mosioen := OUTPUT;
           if getInputMode(r) > 0 then
             v.spio.misooen := OUTPUT;

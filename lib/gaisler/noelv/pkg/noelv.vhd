@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,6 +47,9 @@ package noelv is
 
   constant GEILEN               : integer := 16;
 
+  constant AIA_SUPPORT          : integer := 0;   -- 0 = AIA support is disabled in GRLIB
+  constant ZISSLPCFI_SUPPORT    : integer := 0;   -- 0 = ZISSLPCFI support is disabled in GRLIB
+
   -- Types --------------------------------------------------------------------
 
 
@@ -53,6 +57,7 @@ package noelv is
   type nv_irq_in_type is record
     mtip        : std_ulogic; -- Machine Timer Interrupt
     msip        : std_ulogic; -- Machine Software Interrupt
+    ssip        : std_ulogic; -- Supervisor Software Interrupt
     meip        : std_ulogic; -- Machine External Interrupt
     seip        : std_ulogic; -- Supervisor External Interrupt
     ueip        : std_ulogic; -- User External Interrupt
@@ -71,12 +76,78 @@ package noelv is
   constant nv_irq_in_none : nv_irq_in_type := (
     mtip        => '0',
     msip        => '0',
+    ssip        => '0',
     meip        => '0',
     seip        => '0',
     ueip        => '0',
     heip        => '0',
     hgeip       => (others => '0'),
     stime       => (others => '0')
+    );
+
+  subtype nv_nirq_in_type is std_logic_vector(5 downto 0);
+  type nv_nirq_in_vector is array (natural range <>) of nv_nirq_in_type;
+
+  -- Message signaled interrupt controler --------------------------------------
+  type imsic_in_type is record
+    mtopei_w  : std_ulogic;                              -- Machine top external interrupt write
+    stopei_w  : std_ulogic;                              -- Supervisor top external interrupt write
+    vstopei_w : std_ulogic;                              -- Virtual Supervisor top external interrupt write
+    
+    miselect  : std_logic_vector(XLEN-1 downto 0);       -- Machine indirect register select value
+    siselect  : std_logic_vector(XLEN-1 downto 0);       -- Supervisor indirect register select value
+    vsiselect : std_logic_vector(XLEN-1 downto 0);       -- Virtual Supervisor indirect register select value
+    
+    mireg     : std_logic_vector(XLEN-1 downto 0);       -- Machine indirect register alias value
+    sireg     : std_logic_vector(XLEN-1 downto 0);       -- Supervisor indirect register alias value
+    vsireg    : std_logic_vector(XLEN-1 downto 0);       -- Virtual Supervisor indirect register alias value
+    
+    mireg_w   : std_ulogic;                              -- Machine indirect register alias write
+    sireg_w   : std_ulogic;                              -- Supervisor indirect register alias write
+    vsireg_w  : std_ulogic;                              -- Virtual Supervisor indirect register alias write
+    vgein     : std_logic_vector(5 downto 0);            -- Current HSTATUS.VGEIN CSR value
+  end record;
+
+  type imsic_out_type is record
+    mtopei   : std_logic_vector(XLEN-1 downto 0);        -- Machine top external interrupt register value
+    stopei   : std_logic_vector(XLEN-1 downto 0);        -- Supervisor top external interrupt register value
+    vstopei  : std_logic_vector(XLEN-1 downto 0);        -- Virtual top external interrupt register value
+    
+    mireg    : std_logic_vector(XLEN-1 downto 0);        -- Machine indirect register alias value
+    sireg    : std_logic_vector(XLEN-1 downto 0);        -- Supervisor indirect register alias value
+    vsireg   : std_logic_vector(XLEN-1 downto 0);        -- Virtual indirect register alias value
+  end record;
+
+  type imsic_in_vector is array (natural range <>) of imsic_in_type;
+  type imsic_out_vector is array (natural range <>) of imsic_out_type;
+
+  constant imsic_in_none : imsic_in_type := (
+    mtopei_w  => '0',
+    stopei_w  => '0',
+    vstopei_w => '0',
+    
+    miselect  => (others => '0'),
+    siselect  => (others => '0'),
+    vsiselect => (others => '0'),
+
+    mireg     => (others => '0'),
+    sireg     => (others => '0'),
+    vsireg    => (others => '0'),
+    
+    mireg_w   => '0',
+    sireg_w   => '0',
+    vsireg_w  => '0',
+    vgein     => (others => '0')
+    );
+
+  constant imsic_out_none : imsic_out_type := (
+    mtopei   => (others => '0'),
+    stopei   => (others => '0'),
+    vstopei  => (others => '0'),
+
+    mireg    => (others => '0'),
+    sireg    => (others => '0'),
+    vsireg   => (others => '0')
     );
 
   -- Stats --------------------------------------------------------------------
@@ -226,6 +297,7 @@ package noelv is
     ext_a         : integer;
     ext_c         : integer;
     ext_h         : integer;
+    ext_zcb       : integer;
     ext_zba       : integer;
     ext_zbb       : integer;
     ext_zbc       : integer;
@@ -235,7 +307,18 @@ package noelv is
     ext_zbkx      : integer;
     ext_sscofpmf  : integer;
     ext_sstc      : integer;
+    ext_smaia     : integer;
+    ext_ssaia     : integer;
+    ext_smstateen : integer;
+    ext_smepmp    : integer;
+    imsic         : integer;
     ext_zicbom    : integer;
+    ext_zicond    : integer;
+    ext_zimops    : integer;
+    ext_zfa       : integer;
+    ext_zfh       : integer;
+    ext_zfhmin    : integer;
+    ext_zfbfmin   : integer;
     mode_s        : integer;
     mode_u        : integer;
     fpulen        : integer;
@@ -344,11 +427,15 @@ package noelv is
       pmp_g             : integer range 0  to 10        := 0;  -- PMP grain is 2^(pmp_g + 2) bytes
       asidlen           : integer range 0 to  16        := 0;  -- Max 9 for Sv32
       vmidlen           : integer range 0 to  14        := 0;  -- Max 7 for Sv32
+      -- Interrupts
+      imsic             : integer range 0  to 1         := 0;  -- IMSIC implemented
       -- Extensions
+      ext_noelv         : integer range 0  to 1         := 1;  -- NOEL-V Extensions
       ext_m             : integer range 0  to 1         := 1;  -- M Base Extension Set
       ext_a             : integer range 0  to 1         := 0;  -- A Base Extension Set
       ext_c             : integer range 0  to 1         := 0;  -- C Base Extension Set
       ext_h             : integer range 0  to 1         := 0;  -- H Extension
+      ext_zcb           : integer range 0  to 1         := 0;  -- Zcb Extension
       ext_zba           : integer range 0  to 1         := 0;  -- Zba Extension
       ext_zbb           : integer range 0  to 1         := 0;  -- Zbb Extension
       ext_zbc           : integer range 0  to 1         := 0;  -- Zbc Extension
@@ -358,7 +445,17 @@ package noelv is
       ext_zbkx          : integer range 0  to 1         := 0;  -- Zbkx Extension
       ext_sscofpmf      : integer range 0  to 1         := 0;  -- Sscofpmf Extension
       ext_sstc          : integer range 0  to 2         := 0;  -- Sctc Extension (2 : only time csr impl.)  
+      ext_smaia         : integer range 0  to 1         := 0;  -- Smaia Extension
+      ext_ssaia         : integer range 0  to 1         := 0;  -- Ssaia Extension 
+      ext_smstateen     : integer range 0  to 1         := 0;  -- Sstateeen Extension 
+      ext_smepmp        : integer range 0  to 1         := 0;  -- Smepmp Extension
       ext_zicbom        : integer range 0  to 1         := 0;  -- Zicbom Extension
+      ext_zicond        : integer range 0  to 1         := 0;  -- Zicond Extension
+      ext_zimops        : integer range 0  to 1         := 0;  -- Zimops Extension
+      ext_zfa           : integer range 0  to 1         := 0;  -- Zfa Extension
+      ext_zfh           : integer range 0  to 1         := 0;  -- Zfh Extension
+      ext_zfhmin        : integer range 0  to 1         := 0;  -- Zfhmin Extension
+      ext_zfbfmin       : integer range 0  to 1         := 0;  -- Zfbfmin Extension
       mode_s            : integer range 0  to 1         := 0;  -- Supervisor Mode Support
       mode_u            : integer range 0  to 1         := 0;  -- User Mode Support
       fpulen            : integer range 0  to 128       := 0;  -- Floating-point precision
@@ -392,8 +489,11 @@ package noelv is
       ahbo        : out ahb_mst_out_type;
       ahbsi       : in  ahb_slv_in_type;
       ahbso       : in  ahb_slv_out_vector;
+      imsici      : out imsic_in_type;    -- IMSIC In Port
+      imsico      : in  imsic_out_type;   -- IMSIC Out Port
       irqi        : in  nv_irq_in_type;   -- irq in
       irqo        : out nv_irq_out_type;  -- irq out
+      nirqi       : in  nv_nirq_in_type;  -- RNM irq in
       dbgi        : in  nv_debug_in_type; -- debug in
       dbgo        : out nv_debug_out_type;-- debug out
       eto         : out nv_etrace_out_type;
@@ -421,18 +521,21 @@ package noelv is
       scantest : integer
       );
     port (
-      clk   : in  std_ulogic;
-      rstn  : in  std_ulogic;
-      ahbi  : in  ahb_mst_in_type;
-      ahbo  : out ahb_mst_out_type;
-      ahbsi : in  ahb_slv_in_type;
-      ahbso : in  ahb_slv_out_vector;
-      irqi  : in  nv_irq_in_type;
-      irqo  : out nv_irq_out_type;
-      dbgi  : in  nv_debug_in_type;
-      dbgo  : out nv_debug_out_type;
-      eto   : out nv_etrace_out_type;
-      cnt   : out nv_counter_out_type
+      clk    : in  std_ulogic;
+      rstn   : in  std_ulogic;
+      ahbi   : in  ahb_mst_in_type;
+      ahbo   : out ahb_mst_out_type;
+      ahbsi  : in  ahb_slv_in_type;
+      ahbso  : in  ahb_slv_out_vector;
+      imsici : out imsic_in_type;       
+      imsico : in  imsic_out_type;     
+      irqi   : in  nv_irq_in_type;
+      irqo   : out nv_irq_out_type;
+      nirqi  : in  nv_nirq_in_type;
+      dbgi   : in  nv_debug_in_type;
+      dbgo   : out nv_debug_out_type;
+      eto    : out nv_etrace_out_type;
+      cnt    : out nv_counter_out_type
       );
   end component;
 
@@ -446,6 +549,8 @@ package noelv is
       nextslv  : integer;
       nextapb  : integer;
       ndbgmst  : integer;
+      nintdom  : integer := 4;
+      neiid    : integer := 63;
       cached   : integer;
       wbmask   : integer;
       busw     : integer;
@@ -475,7 +580,7 @@ package noelv is
       dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
       dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
       -- APB interface for external APB slaves
-      apbi     : out apb_slv_in_vector;
+      apbi     : out apb_slv_in_type;
       apbo     : in  apb_slv_out_vector;
       -- Bootstrap signals
       dsuen    : in  std_ulogic;
@@ -495,6 +600,46 @@ package noelv is
       scanen  : in  std_ulogic := '0';
       testoen : in  std_ulogic := '1';
       testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+      );
+  end component;
+
+  component dmnv is
+    generic (
+      fabtech   : integer;
+      memtech   : integer;
+      ncpu      : integer;
+      ndbgmst   : integer;
+      -- Conventional bus
+      cbmidx    : integer;
+      -- PnP
+      dmhaddr   : integer;
+      dmhmask   : integer;
+      pnpaddrhi : integer;
+      pnpaddrlo : integer;
+      dmslvidx  : integer;
+      dmmstidx  : integer;
+      -- trace
+      tbits     : integer;
+      --
+      scantest  : integer;
+      -- Pipelining
+      plmdata   : integer
+      );
+    port (
+      clk      : in  std_ulogic;
+      rstn     : in  std_ulogic;
+      -- Debug-link interface
+      dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
+      dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
+      -- Conventional AHB bus interface
+      cbmi    : in  ahb_mst_in_type;
+      cbmo    : out ahb_mst_out_type;
+      cbsi    : in  ahb_slv_in_type;
+      -- 
+      dbgi   : in  nv_debug_out_vector(0 to ncpu-1);
+      dbgo   : out nv_debug_in_vector(0 to ncpu-1);
+      dsui   : in  nv_dm_in_type;
+      dsuo   : out nv_dm_out_type
       );
   end component;
 
@@ -559,6 +704,34 @@ package noelv is
       ahbo        : out ahb_slv_out_type;
       halt        : in  std_ulogic;
       irqi        : in  std_logic_vector(ncpu*4-1 downto 0);
+      irqo        : out nv_irq_in_vector(0 to ncpu-1)
+      );
+  end component;
+
+  component aclint_ahb is
+    generic (
+      hindex  : integer range 0 to NAPBSLV-1  := 0;
+      haddr   : integer range 0 to 16#FFF#    := 0;
+      hmask   : integer range 0 to 16#FFF#    := 16#FFF#;
+      hirq1   : integer range 0 to NAHBSLV-1  := 0;
+      hirq2   : integer range 0 to NAHBSLV-1  := 0;
+      ncpu    : integer range 0 to 4096       := 4;
+      -- ACLINT devices
+      mswi    : integer range 0 to 1          := 1;
+      mtimer  : integer range 0 to 1          := 1;
+      sswi    : integer range 0 to 1          := 1;
+      -- Watchdog
+      watchdog    : integer range 0 to 1      := 1;  
+      wdtickbit   : integer range 0 to 63     := 4   
+      );
+    port (
+      rst         : in  std_ulogic;
+      clk         : in  std_ulogic;
+      rtc         : in  std_ulogic;
+      ahbi        : in  ahb_slv_in_type;
+      ahbo        : out ahb_slv_out_type;
+      halt        : in  std_ulogic;
+      irqi        : in  nv_irq_in_vector(0 to ncpu-1);
       irqo        : out nv_irq_in_vector(0 to ncpu-1)
       );
   end component;

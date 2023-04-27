@@ -3,7 +3,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +33,7 @@ library grlib;
 use grlib.riscv.all;
 use grlib.stdlib.tost;
 use grlib.stdlib.notx;
+use grlib.riscv.reg_t;
 library gaisler;
 --use gaisler.fputilnv.all;
 use gaisler.fputilnv.fpuop_t;
@@ -42,7 +44,7 @@ use gaisler.fputilnv.is_nan;
 use gaisler.fputilnv.is_zero;
 use gaisler.fputilnv.Inf;
 use gaisler.fputilnv.NaN;
-use gaisler.noelvint.reg_t;
+--use gaisler.noelvint.reg_t;
 use gaisler.utilnv.u2vec;
 use gaisler.utilnv.u2i;
 use gaisler.utilnv.s2i;

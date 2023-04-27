@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -886,7 +887,10 @@ constant TT_M010     : integer := 13;
       piperead : integer := 0;    -- add full pipeline stage on read side (ping pong buffer)
       ft : integer := 0;
       custombits : integer := 1;
-      rdhold: integer := 0
+      rdhold: integer := 0;
+      scantest: integer := 0;
+      arstr: integer := 0;  -- Async reset read domain
+      arstw: integer := 0   -- Async reset write domain
     );
     port (
       rclk    : in std_logic;
@@ -907,6 +911,7 @@ constant TT_M010     : integer := 13;
       datain  : in std_logic_vector(dbits-1 downto 0);
       dynsync : in std_ulogic := '0';
       testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+      testrst : in std_ulogic := '0';
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
       );

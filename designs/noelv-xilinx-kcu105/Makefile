@@ -15,11 +15,11 @@ include $(CFG_DIR)/.config
 
 #32-bit NOEL-V
 ifeq ($(CONFIG_NOELV_RV32),y)
-DIRADD = noelv/pkg_32 noelv noelv/core noelv/subsys noelv/grfpunv
+DIRADD = noelv/pkg_32 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 32
 else
 #64-bit NOEL-V
-DIRADD = noelv/pkg_64 noelv noelv/core noelv/subsys noelv/grfpunv
+DIRADD = noelv/pkg_64 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 64
 endif
 
@@ -30,7 +30,8 @@ BOARD=xilinx-kcu105-xcku040
 DESIGN=noelv-xilinx-kcu105
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)-$(PACKAGE)-$(SPEED)
-XDC=$(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
+XDC  = $(GRLIB)/boards/$(BOARD)/$(BOARD).xdc
+XDC += $(BASE_DIR)/noelvmp_jtag.xdc
 
 ############  Project  ########################
 

@@ -748,7 +748,7 @@ static void do_source( const char * filename )
     const char * old_file;
     int old_lineno;
     int offset;
-    static first = 0, first2 = 0, first3 = 0;
+    static int first = 0, first2 = 0, first3 = 0;
 
     strcpy(buffer, filename);
 

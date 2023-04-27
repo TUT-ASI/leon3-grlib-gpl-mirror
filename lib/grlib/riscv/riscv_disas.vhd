@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,13 +48,16 @@ package riscv_disas is
   function tostf(v : std_logic_vector) return string;
   function csr2str(reg : csratype) return string;
 
-  function fpreg2st(reg : fpu_type) return string;
-  function reg2st(reg : gpr_type) return string;
+  function fpreg2st(reg : reg_t) return string;
+  function reg2st(reg : reg_t) return string;
+  function prv2string(prv : std_logic_vector(1 downto 0); v : std_ulogic) return string;
 
   function insn2st(pc           : std_logic_vector;
                    insn         : std_logic_vector(31 downto 0);
                    cinsn        : std_logic_vector(15 downto 0);
                    comp         : std_ulogic) return string;
+
+  function cause2string(cause : std_logic_vector) return string;
 
   procedure print_insn(hndx     : integer;
                        way      : integer;
@@ -62,7 +66,7 @@ package riscv_disas is
                        cdual    : integer;
                        valid    : std_ulogic;
                        pc       : std_logic_vector;
-                       rd       : gpr_type;
+                       rd       : reg_t;
                        csr      : csratype;
                        wrdata   : std_logic_vector;
                        fsd      : std_ulogic;
@@ -87,7 +91,7 @@ package riscv_disas is
     cdual    : integer;
     valid    : std_ulogic;
     pc       : std_logic_vector;
-    rd       : gpr_type;
+    rd       : reg_t;
     csr      : csratype;
     wrdata   : std_logic_vector;
     fsd      : std_ulogic;
@@ -311,17 +315,27 @@ package body riscv_disas is
     constant XC_INST_INST_PAGE_FAULT      : wordx := x"000000000000000C"; --12
     constant XC_INST_LOAD_PAGE_FAULT      : wordx := x"000000000000000D"; --13
     constant XC_INST_STORE_PAGE_FAULT     : wordx := x"000000000000000F"; --15
+    constant XC_INST_INST_G_PAGE_FAULT    : wordx := x"0000000000000014"; --20
+    constant XC_INST_LOAD_G_PAGE_FAULT    : wordx := x"0000000000000015"; --21
+    constant XC_INST_VIRTUAL_INST         : wordx := x"0000000000000016"; --22
+    constant XC_INST_STORE_G_PAGE_FAULT   : wordx := x"0000000000000017"; --23
+    constant XC_INST_RFFT                 : wordx := x"000000000000001F"; --31
 
     -- Interrupt Codes
     constant IRQ_U_SOFTWARE               : wordx := x"0000000000000000"; --0
     constant IRQ_S_SOFTWARE               : wordx := x"0000000000000001"; --1
+    constant IRQ_VS_SOFTWARE              : wordx := x"0000000000000002"; --2
     constant IRQ_M_SOFTWARE               : wordx := x"0000000000000003"; --3
     constant IRQ_U_TIMER                  : wordx := x"0000000000000004"; --4
     constant IRQ_S_TIMER                  : wordx := x"0000000000000005"; --5
+    constant IRQ_VS_TIMER                 : wordx := x"0000000000000006"; --6
     constant IRQ_M_TIMER                  : wordx := x"0000000000000007"; --7
     constant IRQ_U_EXTERNAL               : wordx := x"0000000000000008"; --8
     constant IRQ_S_EXTERNAL               : wordx := x"0000000000000009"; --9
+    constant IRQ_VS_EXTERNAL              : wordx := x"000000000000000A"; --10
     constant IRQ_M_EXTERNAL               : wordx := x"000000000000000B"; --11
+    constant IRQ_SG_EXTERNAL              : wordx := x"000000000000000C"; --12
+    constant IRQ_LCOF                     : wordx := x"000000000000000D"; --13
   begin
     tmp(cause'left - 1 downto cause'right) := cause(cause'left - 1 downto cause'right);
     if cause(cause'left) = '0' then
@@ -340,19 +354,29 @@ package body riscv_disas is
         when XC_INST_INST_PAGE_FAULT       => return " FETCH_PAGE_FAULT ";
         when XC_INST_LOAD_PAGE_FAULT       => return " LOAD_PAGE_FAULT  ";
         when XC_INST_STORE_PAGE_FAULT      => return " STORE_PAGE_FAULT ";
+        when XC_INST_INST_G_PAGE_FAULT     => return " FTC_G_PAGE_FAULT ";
+        when XC_INST_LOAD_G_PAGE_FAULT     => return " LD_G_PAGE_FAULT  ";
+        when XC_INST_VIRTUAL_INST          => return "  VIRTUAL_INST    ";
+        when XC_INST_STORE_G_PAGE_FAULT    => return " ST_G_PAGE_FAULT  ";
+        when XC_INST_RFFT                  => return "       RFFT       ";
         when others => return "TRAP: " & tost(tmp);
       end case;
     else
       case tmp is
         when IRQ_U_SOFTWARE                => return "     MIP_USIP     ";
         when IRQ_S_SOFTWARE                => return "     MIP_SSIP     ";
+        when IRQ_VS_SOFTWARE               => return "     MIP_VSSIP    ";
         when IRQ_M_SOFTWARE                => return "     MIP_MSIP     ";
         when IRQ_U_TIMER                   => return "     MIP_UTIP     ";
         when IRQ_S_TIMER                   => return "     MIP_STIP     ";
+        when IRQ_VS_TIMER                  => return "     MIP_VSTIP    ";
         when IRQ_M_TIMER                   => return "     MIP_MTIP     ";
         when IRQ_U_EXTERNAL                => return "     MIP_UEIP     ";
         when IRQ_S_EXTERNAL                => return "     MIP_SEIP     ";
+        when IRQ_VS_EXTERNAL               => return "     MIP_VSEIP    ";
         when IRQ_M_EXTERNAL                => return "     MIP_MEIP     ";
+        when IRQ_SG_EXTERNAL               => return "     MIP_SGEIP    ";
+        when IRQ_LCOF                      => return "     MIP_LCOF     ";
         when others => return "MIP: " & tost(tmp);
       end case;
     end if;
@@ -667,23 +691,25 @@ package body riscv_disas is
     end if;
 
     case v is
-      when x"0" => return "diag."&t&".ict";
-      when x"1" => return "diag."&t&".icd";
-      when x"2" => return "diag."&t&".dct";
-      when x"3" => return "diag."&t&".dcd";
-      when x"4" => return "diag."&t&".mmup";
-      when x"5" => return "diag."&t&".byp";
-      when x"6" => return "diag."&t&".dst";
-      when x"7" => return "diag."&t&".tlb";
-      when x"8" => return "diag."&t&".bra";
-      when x"9" => return "diag."&t&".lru";
-      when x"a" => return "diag."&t&".itcm";
-      when x"b" => return "diag."&t&".dtcm";
-      when others => return "diag."&t&".xxx";
+      when x"0" => return "diag." & t & ".ict";
+      when x"1" => return "diag." & t & ".icd";
+      when x"2" => return "diag." & t & ".dct";
+      when x"3" => return "diag." & t & ".dcd";
+      when x"4" => return "diag." & t & ".mmup";
+      when x"5" => return "diag." & t & ".byp";
+      when x"6" => return "diag." & t & ".dst";
+      when x"7" => return "diag." & t & ".tlb";
+      when x"8" => return "diag." & t & ".bra";
+      when x"9" => return "diag." & t & ".lru";
+      when x"a" => return "diag." & t & ".itcm";
+      when x"b" => return "diag." & t & ".dtcm";
+      when x"c" => return "diag." & t & ".pmp";
+      when x"d" => return "diag." & t & ".xtnd";
+      when others => return "diag." & t & ".xxx";
     end case;
   end;
 
-  function cbo2str(v : funct12_type; rd : gpr_type) return string is
+  function cbo2str(v : funct12_type; rd : reg_t) return string is
   begin
     if rd = GPR_X0 then
       case v is
@@ -699,7 +725,7 @@ package body riscv_disas is
   end;
 
   -- General Purpose Register ----------------------------------------
-  function reg2st(reg : gpr_type) return string is
+  function reg2st(reg : reg_t) return string is
   begin
     case reg is
       when GPR_X0       => return "x0";
@@ -738,6 +764,10 @@ package body riscv_disas is
     end case;
   end;
 
+  -- GRLIB_INTERNAL_BEGIN
+  -- Use the following command to see if there are CSRs which lack a string but are defined.
+  -- diff <(grep -ioP "CSR_\w*" riscv.vhd) <(grep -iPo "(?<=when )CSR_\w*" riscv_disas.vhd)
+  -- GRLIB_INTERNAL_END
   -- Control Status Register ----------------------------------------
   function csr2str(reg : csratype) return string is
   begin
@@ -829,12 +859,32 @@ package body riscv_disas is
       when CSR_SIE              => return "sie";
       when CSR_STVEC            => return "stvec";
       when CSR_SCOUNTEREN       => return "scounteren";
+      -- Supervisor Configuration
+      when CSR_SENVCFG          => return "senvcfg";
       -- Supervisor Trap Handling
       when CSR_SSCRATCH         => return "sscratch";
       when CSR_SEPC             => return "sepc";
       when CSR_SCAUSE           => return "scause";
       when CSR_STVAL            => return "stval";
       when CSR_SIP              => return "sip";
+
+      -- Supervisor AIA (Smaia or Ssaia)
+      when CSR_SISELECT         => return "siselect";
+      when CSR_SIREG            => return "sireg";
+      when CSR_STOPEI           => return "stopei";
+      when CSR_STOPI            => return "stopi";
+      -- High (RV32)
+      when CSR_SIEH             => return "sieh";
+      when CSR_SIPH             => return "siph";
+
+      -- Supervisor State Enable (Smstateen)
+      when CSR_SSTATEEN0        => return "sstateen0";
+      when CSR_SSTATEEN1        => return "sstateen1";
+      when CSR_SSTATEEN2        => return "sstateen2";
+      when CSR_SSTATEEN3        => return "sstateen3";
+ 
+      when CSR_STIMECMP         => return "stimecmp";
+      when CSR_STIMECMPH        => return "stimecmph";
       -- Supervisor Protection and Translation
       when CSR_SATP             => return "satp";
       -- Supervisor Count Overflow
@@ -853,6 +903,10 @@ package body riscv_disas is
       when CSR_HVIP             => return "hvip";
       when CSR_HTINST           => return "htinst";
       when CSR_HGEIP            => return "hgeip";
+      -- Hypervisor Configuration
+      when CSR_HENVCFG          => return "henvcfg";
+      -- High (RV32)
+      when CSR_HENVCFGH         => return "henvcfgh";
       -- Hypervisor Protection and Translation
       when CSR_HGATP            => return "hgatp";
       -- Hypervisor Counter/Timer Virtualization Registers
@@ -869,13 +923,46 @@ package body riscv_disas is
       when CSR_VSCAUSE          => return "vscause";
       when CSR_VSTVAL           => return "vstval";
       when CSR_VSIP             => return "vsip";
+      when CSR_VSTIMECMP        => return "vstimecmp";
+      when CSR_VSTIMECMPH       => return "vstimecmph";
       when CSR_VSATP            => return "vsatp";
+
+      -- Virtual Supervisor AIA (Smaia or Ssaia)
+      when CSR_HVIEN            => return "hvien";
+      when CSR_HVICTL           => return "hvictl";
+      when CSR_HVIPRIO1         => return "hviprio1";
+      when CSR_HVIPRIO2         => return "hviprio2";
+      when CSR_VSISELECT        => return "vsiselect";
+      when CSR_VSIREG           => return "vsireg";
+      when CSR_VSTOPEI          => return "vstopei";
+      when CSR_VSTOPI           => return "vstopi";
+      -- High (RV32)
+      when CSR_HIDELEGH         => return "hidelegh";
+      when CSR_HVIENH           => return "hvienh";
+      when CSR_HVIPH            => return "hviph";
+      when CSR_HVIPRIO1H        => return "hviprio1h";
+      when CSR_HVIPRIO2H        => return "hviprio2h";
+      when CSR_VSIEH            => return "vsieh";
+      when CSR_VSIPH            => return "vsiph";
+
+      -- Hypervisor State Enable (Smstateen)
+      when CSR_HSTATEEN0        => return "hstateen0";
+      when CSR_HSTATEEN1        => return "hstateen1";
+      when CSR_HSTATEEN2        => return "hstateen2";
+      when CSR_HSTATEEN3        => return "hstateen3";
+      -- High (RV32)
+      when CSR_HSTATEEN0H       => return "hstateen0h";
+      when CSR_HSTATEEN1H       => return "hstateen1h";
+      when CSR_HSTATEEN2H       => return "hstateen2h";
+      when CSR_HSTATEEN3H       => return "hstateen3h";
+
 
       -- Machine Information Registers
       when CSR_MVENDORID        => return "mvendorid";
       when CSR_MARCHID          => return "marchid";
       when CSR_MIMPID           => return "mimpid";
       when CSR_MHARTID          => return "mhartid";
+      when CSR_MCONFIGPTR       => return "mconfigptr";
       -- Machine Trap Setup
       when CSR_MSTATUS          => return "mstatus";
       when CSR_MISA             => return "misa";
@@ -894,6 +981,39 @@ package body riscv_disas is
       when CSR_MIP              => return "mip";
       when CSR_MTINST           => return "mtinst";
       when CSR_MTVAL2           => return "mtval2";
+
+      -- Machine AIA (Smaia)
+      when CSR_MISELECT         => return "miselect";
+      when CSR_MIREG            => return "mireg";
+      when CSR_MTOPEI           => return "mtopei";
+      when CSR_MTOPI            => return "mtopi";
+      when CSR_MVIEN            => return "mvien";
+      when CSR_MVIP             => return "mvip";
+      -- High (RV32)
+      when CSR_MIDELEGH         => return "midelegh";
+      when CSR_MIEH             => return "mieh";
+      when CSR_MVIENH           => return "mvienh";
+      when CSR_MVIPH            => return "mviph";
+      when CSR_MIPH             => return "miph";
+  
+      -- Machine State Enable (Smstateen)
+      when CSR_MSTATEEN0        => return "mstateen0";
+      when CSR_MSTATEEN1        => return "mstateen1";
+      when CSR_MSTATEEN2        => return "mstateen2";
+      when CSR_MSTATEEN3        => return "mstateen3";
+      -- High (RV32)
+      when CSR_MSTATEEN0H        => return "mstateen0h";
+      when CSR_MSTATEEN1H        => return "mstateen1h";
+      when CSR_MSTATEEN2H        => return "mstateen2h";
+      when CSR_MSTATEEN3H        => return "mstateen3h";
+
+      -- Machine Configuration
+      when CSR_MENVCFG          => return "menvcfg";
+      when CSR_MSECCFG          => return "mseccfg";
+      -- High (RV32)
+      when CSR_MENVCFGH         => return "menvcfgh";
+      when CSR_MSECCFGH         => return "mseccfgh";
+
       -- Machine Protection and Translation
       when CSR_PMPCFG0          => return "pmpcfg0";
       when CSR_PMPCFG1          => return "pmpcfg1";
@@ -1044,6 +1164,10 @@ package body riscv_disas is
       when CSR_TDATA1           => return "tdata1";
       when CSR_TDATA2           => return "tdata2";
       when CSR_TDATA3           => return "tdata3";
+      when CSR_TINFO            => return "tinfo";
+      when CSR_TCONTROL         => return "tcontrol";
+      when CSR_MCONTEXT         => return "mcontext";
+      when CSR_SCONTEXT         => return "scontext";
       -- Debug Mode Registers
       when CSR_DCSR             => return "dcsr";
       when CSR_DPC              => return "dpc";
@@ -1067,12 +1191,12 @@ package body riscv_disas is
       -- Custom Read-only Registers
       when CSR_CAPABILITY       => return "capability";
       when CSR_CAPABILITYH      => return "capabilityh";
-      when others               => return "unknown";
+      when others                => return "unknown";
     end case;
   end;
 
   -- Floating Point Register ----------------------------------------
-  function fpreg2st(reg : fpu_type) return string is
+  function fpreg2st(reg : reg_t) return string is
   begin
     case reg is
       when FPU_FT0      => return "ft0";
@@ -1111,21 +1235,72 @@ package body riscv_disas is
     end case;
   end;
 
+  function fli_imm(rs1 : reg_t) return string is
+  begin
+    case rs1 is
+      when "00000" => return "-1.0";
+      when "00001" => return "min";
+      when "00010" => return "2.0^-16";
+      when "00011" => return "2.0^-15";
+      when "00100" => return "2.0^-8";
+      when "00101" => return "2.0^-7";
+      when "00110" => return "2.0^-4";
+      when "00111" => return "2.0^-3";
+      when "01000" => return "0.25";
+      when "01001" => return "0.3125";
+      when "01010" => return "0.375";
+      when "01011" => return "0.4375";
+      when "01100" => return "0.5";
+      when "01101" => return "0.625";
+      when "01110" => return "0.75";
+      when "01111" => return "0.875";
+      when "10000" => return "1.0";
+      when "10001" => return "1.25";
+      when "10010" => return "1.5";
+      when "10011" => return "1.75";
+      when "10100" => return "2.0";
+      when "10101" => return "2.5";
+      when "10110" => return "3.0";
+      when "10111" => return "4.0";
+      when "11000" => return "8.0";
+      when "11001" => return "16.0";
+      when "11010" => return "128.0";
+      when "11011" => return "256.0";
+      when "11100" => return "32768.0";
+      when "11101" => return "65536.0";
+      when "11110" => return "inf";
+      when others  => return "nan";
+    end case;
+  end;
+
+  function rnd2str(insn : std_logic_vector) return string is
+    constant rnd_modes : string(1 to 3 * 8) := "rnertzrdnruprmmxxxyyydyn";
+    variable funct3    : funct3_type        := insn(14 downto 12);
+    variable mode      : integer            := to_integer(unsigned(funct3));
+  begin
+    if mode <= 4 then
+      return ", " & rnd_modes(mode * 3 + 1 to mode * 3 + 3);
+    else
+      return "";
+    end if;
+  end;
+
   function fp2str(insn : std_logic_vector) return string is
-    variable rs1        : fpu_type    := insn(19 downto 15);
-    variable rs2        : fpu_type    := insn(24 downto 20);
-    variable rd         : fpu_type    := insn(11 downto 7);
-    variable opcode     : opcode_type := insn(6 downto 0);
-    variable funct3     : funct3_type := insn(14 downto 12);
-    variable funct5     : funct5_type := insn(31 downto 27);
-    variable funct7     : funct7_type := insn(31 downto 25);
-    constant rs2low     : std_logic_vector(1 downto 0) := rs2(1 downto 0);
-    constant fdf1f2     : string :=  " " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2);
-    constant idf1f2     : string :=  " " &   reg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2);
-    constant fdf1       : string :=  " " & fpreg2st(rd) & ", " & fpreg2st(rs1);
-    constant fdi1       : string :=  " " & fpreg2st(rd) & ", " &   reg2st(rs1);
-    constant idf1       : string :=  " " &   reg2st(rd) & ", " & fpreg2st(rs1);
-    variable size       : string(1 to 2);
+    variable rs1    : reg_t       := insn(19 downto 15);
+    variable rs2    : reg_t       := insn(24 downto 20);
+    variable rd     : reg_t       := insn(11 downto 7);
+    variable opcode : opcode_type := insn(6 downto 0);
+    variable funct3 : funct3_type := insn(14 downto 12);
+    variable funct5 : funct5_type := insn(31 downto 27);
+    variable funct7 : funct7_type := insn(31 downto 25);
+    constant fdf1f2 : string :=  " " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2);
+    constant idf1f2 : string :=  " " &   reg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2);
+    constant fd     : string :=  " " & fpreg2st(rd);
+    constant fdf1   : string :=  " " & fpreg2st(rd) & ", " & fpreg2st(rs1);
+    constant fdi1   : string :=  " " & fpreg2st(rd) & ", " &   reg2st(rs1);
+    constant fdi1i2 : string :=  " " & fpreg2st(rd) & ", " &   reg2st(rs1) & ", " &   reg2st(rs2);
+    constant idf1   : string :=  " " &   reg2st(rd) & ", " & fpreg2st(rs1);
+    variable size   : string(1 to 2);
   begin
     case funct7(1 downto 0) is
       when "00"   => size := ".s";
@@ -1135,11 +1310,11 @@ package body riscv_disas is
     end case;
 
     case funct7(6 downto 2) is
-      when R_FADD  => return "fadd"  & size & fdf1f2;
-      when R_FSUB  => return "fsub"  & size & fdf1f2;
-      when R_FMUL  => return "fmul"  & size & fdf1f2;
-      when R_FDIV  => return "fdiv"  & size & fdf1f2;
-      when R_FSQRT => return "fsqrt" & size & fdf1;
+      when R_FADD  => return "fadd"  & size & fdf1f2 & rnd2str(insn);
+      when R_FSUB  => return "fsub"  & size & fdf1f2 & rnd2str(insn);
+      when R_FMUL  => return "fmul"  & size & fdf1f2 & rnd2str(insn);
+      when R_FDIV  => return "fdiv"  & size & fdf1f2 & rnd2str(insn);
+      when R_FSQRT => return "fsqrt" & size & fdf1   & rnd2str(insn);
       when R_FSGN  =>
         case funct3 is
           when R_FSGNJ  => return "fsgnj"  & size & fdf1f2;
@@ -1148,24 +1323,37 @@ package body riscv_disas is
           when others   => return "xxx";
         end case;
       when R_FMINMAX =>
-        if funct3(0) = '0' then
-          return "fmin" & size & fdf1f2;
+        if funct3(1) = '0' then
+          if funct3(0) = '0' then
+            return "fmin" & size & fdf1f2;
+          else
+            return "fmax" & size & fdf1f2;
+          end if;
         else
-          return "fmax" & size & fdf1f2;
+          if funct3(0) = '0' then
+            return "fminm" & size & fdf1f2;
+          else
+            return "fmaxm" & size & fdf1f2;
+          end if;
         end if;
       when R_FCVT_W_S =>
-        case rs2low is
-          when "00"   => return "fcvt.w"  & size & idf1;
-          when "01"   => return "fcvt.wu" & size & idf1;
-          when "10"   => return "fcvt.l"  & size & idf1;
-          when others => return "fcvt.lu" & size & idf1;
+        case rs2(1 downto 0) is
+          when "00"   =>
+            if funct7(1 downto 0) = "01" and rs2 = "01000" then
+              return "fcvtmod.w.d" & idf1 & rnd2str(insn);
+            else
+              return "fcvt.w" & size & idf1 & rnd2str(insn);
+            end if;
+          when "01"   => return "fcvt.wu" & size & idf1 & rnd2str(insn);
+          when "10"   => return "fcvt.l"  & size & idf1 & rnd2str(insn);
+          when others => return "fcvt.lu" & size & idf1 & rnd2str(insn);
         end case;
       when R_FMV_X_W =>
         if funct3(0) = '0' then
-          if funct7(0) = '0' then
-            return "fmv.x.w" & idf1;
+          if rs2(0) = '0' then
+            return "fmv.x" & size & idf1;
           else
-            return "fmv.x.d" & idf1;
+            return "fmvh.x.d" & idf1;
           end if;
         else
           return "fclass" & size & idf1;
@@ -1175,27 +1363,34 @@ package body riscv_disas is
           when R_FEQ  => return "feq" & size & idf1f2;
           when R_FLT  => return "flt" & size & idf1f2;
           when R_FLE  => return "fle" & size & idf1f2;
+          when R_FLTQ => return "fltq" & size & idf1f2;
+          when R_FLEQ => return "fleq" & size & idf1f2;
           when others => return "xxx";
         end case;
       when R_FCVT_S_W =>
-        case rs2low is
-          when "00"   => return "fcvt" & size & ".w"  & fdi1;
-          when "01"   => return "fcvt" & size & ".wu" & fdi1;
-          when "10"   => return "fcvt" & size & ".l"  & fdi1;
-          when others => return "fcvt" & size & ".lu" & fdi1;
+        case rs2(1 downto 0) is
+          when "00"   => return "fcvt" & size & ".w"  & fdi1 & rnd2str(insn);
+          when "01"   => return "fcvt" & size & ".wu" & fdi1 & rnd2str(insn);
+          when "10"   => return "fcvt" & size & ".l"  & fdi1 & rnd2str(insn);
+          when others => return "fcvt" & size & ".lu" & fdi1 & rnd2str(insn);
         end case;
       when R_FMV_W_X =>
-        if funct7(0) = '0' then
-          return "fmv.w.x" & fdi1;
+        if rs2(0) = '0' then
+          return "fmv" & size & ".x" & fdi1;
         else
-          return "fmv.d.x" & fdi1;
+          return "fli" & size & fd & ", " & fli_imm(rs1);
         end if;
       when R_FCVT_S_D =>
-        if rs2(0) = '0' then
-          return "fcvt.d.s" & fdf1;
-        else
-          return "fcvt.s.d" & fdf1;
-        end if;
+        case rs2(2 downto 0) is
+          when "000"  => return "fcvt" & size & ".s" & fdf1 & rnd2str(insn);
+          when "001"  => return "fcvt" & size & ".d" & fdf1 & rnd2str(insn);
+          when "010"  => return "fcvt" & size & ".h" & fdf1 & rnd2str(insn);
+          when "011"  => return "fcvt" & size & ".q" & fdf1 & rnd2str(insn);
+          when "100"  => return "fround" & size & fdf1 & rnd2str(insn);
+          when others => return "xxx";
+        end case;
+      when R_FMVP_5_X =>
+        return "fmvp.d.x" & fdi1i2;
 
       when others => return "xxx";
     end case;
@@ -1223,6 +1418,13 @@ package body riscv_disas is
   -- Instruction To String
   ----------------------------------------------------------------------------
 
+  
+  -- Return data interpreted as unsigned, as an integer.
+  function u2i(data : std_logic_vector) return integer is
+  begin
+    return to_integer(unsigned(data));
+  end;
+
   function insn2st(pc           : std_logic_vector;
                    insn         : std_logic_vector(31 downto 0);
                    cinsn        : std_logic_vector(15 downto 0);
@@ -1232,9 +1434,9 @@ package body riscv_disas is
     constant bb4        : string(1 to 4) := (others => ' ');
     variable imm12      : std_logic_vector(11 downto 0) := insn(31 downto 20);
     variable imm20      : std_logic_vector(19 downto 0) := insn(31 downto 12);
-    variable rs1        : gpr_type       := insn(19 downto 15);
-    variable rs2        : gpr_type       := insn(24 downto 20);
-    variable rd         : gpr_type       := insn(11 downto 7);
+    variable rs1        : reg_t          := insn(19 downto 15);
+    variable rs2        : reg_t          := insn(24 downto 20);
+    variable rd         : reg_t          := insn(11 downto 7);
     variable opcode     : opcode_type    := insn(6 downto 0);
     variable funct3     : funct3_type    := insn(14 downto 12);
     variable funct5     : funct5_type    := insn(31 downto 27);
@@ -1414,6 +1616,14 @@ package body riscv_disas is
               else
                 disas := strpad("xxx " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
               end if;
+            when F7_CZERO =>
+              if funct3 = R_SRL then
+                disas := strpad("czero.eqz " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+              elsif funct3 = R_AND then
+                disas := strpad("czero.nez " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+              else
+                disas := strpad("xxx " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+              end if;
             when others =>
               disas := strpad("xxx " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
           end case;
@@ -1465,25 +1675,75 @@ package body riscv_disas is
             disas := strpad(csrop2str(funct3) & " " & reg2st(rd) & ", " & csr2str(imm12) & ", " & tosti(imm), disas'length);
             return insn2string(insn, pc, disas, cinsn, comp);
           when "100" =>
-            if funct7(6 downto 3) = "0110" then
-              if funct7(0) = '0' then
-                if rs2(4 downto 2) = "000" then
-                  disas := strpad(hlv2str(funct7(2 downto 0), rs2(1 downto 0)) & " " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
-                  return insn2string(insn, pc, disas, cinsn, comp);
+            case funct7 is
+              when F7_MOPR_000 =>
+                if funct12 = F12_SSPOP and rd /= "00000" and rs1 = "00000" then
+                  disas := strpad("sspop " & reg2st(rd), disas'length);
+                elsif funct12 = F12_SSPRR and rd /= "00000" and rs1 = "00000" then
+                  disas := strpad("ssprr " & reg2st(rd), disas'length);
                 else
-                  return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                  disas := strpad("mopr " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
                 end if;
-              else -- funct7(0) = '1'
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when F7_MOPR_001 | F7_MOPR_010 | F7_MOPR_011 | F7_MOPR_100 |
+                   F7_MOPR_101 | F7_MOPR_110 | F7_MOPR_111 =>
+                disas := strpad("mopr " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when F7_MOPRR_000 =>
+                if rd /= "00000" then
+                  disas := strpad("ssamoswap " & reg2st(rd) & ", " & reg2st(rs2) & ", (" & reg2st(rs1) & ")", disas'length);
+                elsif insn(24) = '0' then
+                  disas := strpad("lpsll " & tost(u2i(insn(23 downto 15))), disas'length);
+                else
+                  disas := strpad("lpcll " & tost(u2i(insn(23 downto 15))), disas'length);
+                end if;
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when F7_MOPRR_001 =>
                 if rd = "00000" then
-                  disas := strpad(hsv2str(funct7(2 downto 0)) & " " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
-                  return insn2string(insn, pc, disas, cinsn, comp);
+                  case insn(24 downto 23) is
+                    when "00"   => disas := strpad("lpsml " & tost(u2i(insn(22 downto 15))), disas'length);
+                    when "01"   => disas := strpad("lpcml " & tost(u2i(insn(22 downto 15))), disas'length);
+                    when "10"   => disas := strpad("lpsul " & tost(u2i(insn(22 downto 15))), disas'length);
+                    when others => disas := strpad("lpcul " & tost(u2i(insn(22 downto 15))), disas'length);
+                  end case;
+                else
+                  disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+                end if;
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when F7_MOPRR_010 =>
+                if rd = "00000" and rs1 = "00101" and rs2 = "00001" then
+                  disas := strpad("sschkra rs5, rs1", disas'length);
+                elsif rd = "00000" and rs1 = "00000" and rs2 /= "00000" then
+                  disas := strpad("sspush " & reg2st(rs2), disas'length);
+                else
+                  disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+                end if;
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when F7_MOPRR_011 | F7_MOPRR_100 | F7_MOPRR_101 |
+                   F7_MOPRR_110 | F7_MOPRR_111  =>
+                disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+                return insn2string(insn, pc, disas, cinsn, comp);
+              when others =>
+                if funct7(6 downto 3) = "0110" then
+                  if funct7(0) = '0' then
+                    if rs2(4 downto 2) = "000" then
+                      disas := strpad(hlv2str(funct7(2 downto 0), rs2(1 downto 0)) & " " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+                      return insn2string(insn, pc, disas, cinsn, comp);
+                    else
+                      return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                    end if;
+                  else -- funct7(0) = '1'
+                    if rd = "00000" then
+                      disas := strpad(hsv2str(funct7(2 downto 0)) & " " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                      return insn2string(insn, pc, disas, cinsn, comp);
+                    else
+                      return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                    end if;
+                  end if;
                 else
                   return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
                 end if;
-              end if;
-            else
-              return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
-            end if;
+            end case;
           when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
         end case;
 
@@ -1578,62 +1838,104 @@ package body riscv_disas is
         ----------------------------------------------------------------------------
 
       when OP_LOAD_FP =>
-        if funct3 = R_WORD then
-          disas := strpad("flw " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else  -- Assume funct3 = R_DOUBLE
-          disas := strpad("fld " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct3 is
+          when R_WORD =>
+            disas := strpad("flw " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when R_DOUBLE =>
+            disas := strpad("fld " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when R_HALF =>
+            disas := strpad("flh " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("flq " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_STORE_FP =>
-        if funct3 = R_WORD then
-          disas := strpad("fsw " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else  -- Assume funct3 = R_DOUBLE
-          disas := strpad("fsd " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct3 is
+          when R_WORD =>
+            disas := strpad("fsw " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when R_DOUBLE =>
+            disas := strpad("fsd " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when R_HALF =>
+            disas := strpad("fsh " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("fsq " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_FP =>
         disas := strpad(fp2str(insn), disas'length);
         return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_FMADD =>
-        if insn(25) = '0' then
-          disas := strpad("fmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else
-          disas := strpad("fmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct7(1 downto 0) is
+          when "00" =>
+            disas := strpad("fmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "01" =>
+            disas := strpad("fmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "10" =>
+            disas := strpad("fmadd.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("fmadd.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_FMSUB =>
-        if insn(25) = '0' then
-          disas := strpad("fmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else
-          disas := strpad("fmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct7(1 downto 0) is
+          when "00" =>
+            disas := strpad("fmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "01" =>
+            disas := strpad("fmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "10" =>
+            disas := strpad("fmsub.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("fmsub.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_FNMSUB =>
-        if insn(25) = '0' then
-          disas := strpad("fnmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else
-          disas := strpad("fnmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct7(1 downto 0) is
+          when "00" =>
+            disas := strpad("fnmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "01" =>
+            disas := strpad("fnmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "10" =>
+            disas := strpad("fnmsub.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("fnmsub.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_FNMADD =>
-        if insn(25) = '0' then
-          disas := strpad("fnmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        else
-          disas := strpad("fnmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
-        end if;
+        case funct7(1 downto 0) is
+          when "00" =>
+            disas := strpad("fnmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "01" =>
+            disas := strpad("fnmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when "10" =>
+            disas := strpad("fnmadd.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+          when others =>
+            disas := strpad("fnmadd.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
+            return insn2string(insn, pc, disas, cinsn, comp);
+        end case;
 
       when OP_CUSTOM0 =>
         if funct3(2) = '0' then  -- Load
@@ -1664,7 +1966,7 @@ package body riscv_disas is
                        cdual      : integer;
                        valid      : std_ulogic;
                        pc         : std_logic_vector;
-                       rd         : gpr_type;
+                       rd         : reg_t;
                        csr        : csratype;
                        wrdata     : std_logic_vector;
                        fsd        : std_ulogic;
@@ -1799,7 +2101,7 @@ package body riscv_disas is
     cdual      : integer;
     valid      : std_ulogic;
     pc         : std_logic_vector;
-    rd         : gpr_type;
+    rd         : reg_t;
     csr        : csratype;
     wrdata     : std_logic_vector;
     fsd        : std_ulogic;

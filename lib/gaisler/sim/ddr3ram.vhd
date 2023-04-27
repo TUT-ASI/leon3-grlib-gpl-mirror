@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,7 +51,8 @@ entity ddr3ram is
     pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
     changeendian: integer range 0 to 32 := 0;
     initbyte: integer := 0;
-    jitter_tol: integer := 50
+    jitter_tol: integer := 50;
+    mprmode: integer range 0 to 8 := 0
     );
   port (
     ck: in std_ulogic;
@@ -726,7 +728,11 @@ begin
           assert vmr.mprloc="00" report "Read from undefined MPR!" severity warning;
           read_data <= (others => '0');
           for x in width/8-1 downto 0 loop
-            read_data(x*8) <= '1';
+            if mprmode=8 then
+              read_data(x*8+7 downto x*8) <= (others => '1');
+            else
+              read_data(x*8+mprmode) <= '1';
+            end if;
           end loop;
         else
           read_data <= memdata_get(accpipe(2+cl+al).bank, accpipe(2+cl+al).col(0)) &

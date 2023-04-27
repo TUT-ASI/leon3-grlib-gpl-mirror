@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -625,6 +626,7 @@ begin
             assert dctags(idx)(w1)(dtagwidth-1 downto 1) /= dctags(idx)(w2)(dtagwidth-1 downto 1)
               report "Duplicated dtag written" severity failure;
             assert dstags(idx)(w1)(dtagwidth-1 downto 1) /= dstags(idx)(w2)(dtagwidth-1 downto 1)
+              or (dtagconf=0 and (dctags(idx)(w1)(0)='0' or dctags(idx)(w2)(0)='0'))
               report "Duplicated snoop-dtag written" severity failure;
           end loop;
         end loop;

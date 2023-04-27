@@ -1,3 +1,27 @@
+------------------------------------------------------------------------------
+--  This file is a part of the GRLIB VHDL IP LIBRARY
+--  Copyright (C) 2003 - 2008, Gaisler Research
+--  Copyright (C) 2008 - 2014, Aeroflex Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; version 2.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
+-- Package:     alunv
+-- File:        alunv.vhd
+-- Description: Internal ALU for NOEL-V
+------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -26,6 +50,9 @@ package alunv is
   constant EXE_OR       : word3 := "001";
   constant EXE_XOR      : word3 := "010";
   constant EXE_ORCB     : word3 := "011";
+  constant EXE_Z        : word3 := "100";
+  constant EXE_NZ       : word3 := "101";
+  constant EXE_AND01    : word3 := "110";
 
   -- Shift Operation
   constant EXE_SLL      : word3 := "100";
@@ -143,23 +170,25 @@ package body alunv is
 --    variable ext_zbb : integer      := 1;
 --    variable ext_zbc : integer      := 1;
 --    variable ext_zbs : integer      := 1;
-    variable is_rv64  : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32  : boolean      := not is_rv64;
-    variable ext_zba  : integer      := is_enabled(active, x_zba);
-    variable ext_zbb  : integer      := is_enabled(active, x_zbb);
-    variable ext_zbc  : integer      := is_enabled(active, x_zbc);
-    variable ext_zbs  : integer      := is_enabled(active, x_zbs);
-    variable ext_zbkb : integer      := is_enabled(active, x_zbkb);
-    variable ext_zbkc : integer      := is_enabled(active, x_zbkc);
-    variable ext_zbkx : integer      := is_enabled(active, x_zbkx);
-    variable op       : opcode_type  := inst(6 downto 0);
-    variable funct3   : funct3_type  := inst(14 downto 12);
-    variable funct7   : funct7_type  := inst(31 downto 25);
-    variable funct12  : funct12_type := inst(31 downto 20);
+    variable is_rv64    : boolean      := is_enabled(active, x_rv64);
+    variable is_rv32    : boolean      := not is_rv64;
+    variable ext_zba    : integer      := is_enabled(active, x_zba);
+    variable ext_zbb    : integer      := is_enabled(active, x_zbb);
+    variable ext_zbc    : integer      := is_enabled(active, x_zbc);
+    variable ext_zbs    : integer      := is_enabled(active, x_zbs);
+    variable ext_zbkb   : integer      := is_enabled(active, x_zbkb);
+    variable ext_zbkc   : integer      := is_enabled(active, x_zbkc);
+    variable ext_zbkx   : integer      := is_enabled(active, x_zbkx);
+    variable ext_zimops : integer      := is_enabled(active, x_zimops);
+    variable ext_zicond : integer      := is_enabled(active, x_zicond);
+    variable op         : opcode_type  := inst(6 downto 0);
+    variable funct3     : funct3_type  := inst(14 downto 12);
+    variable funct7     : funct7_type  := inst(31 downto 25);
+    variable funct12    : funct12_type := inst(31 downto 20);
     -- Non-constant
-    variable ctrl     : word3        := EXE_AND;     -- Default assignment
-    variable ctrlx    : word3        := "000";       -- Default to no special handling
-    variable sel      : word2        := ALU_LOGIC;   -- Default assignment
+    variable ctrl       : word3        := EXE_AND;     -- Default assignment
+    variable ctrlx      : word3        := "000";       -- Default to no special handling
+    variable sel        : word2        := ALU_LOGIC;   -- Default assignment
   begin
     -- Assuming the ALU is needed (based on the decoded fusel)
     case op is
@@ -329,8 +358,8 @@ package body alunv is
               case funct7 is
                 when F7_BCLREXT | F7_BCLREXT_I64 =>
                   sel   := ALU_LOGIC;
-                  ctrl  := EXE_AND;
-                  ctrlx := "001";
+                  ctrl  := EXE_AND01;
+                  ctrlx := "011";
                 when others =>
                   null;
               end case;
@@ -496,8 +525,8 @@ package body alunv is
               case funct7 is
                 when F7_BCLREXT | F7_BCLREXT_I64 =>
                   sel   := ALU_LOGIC;
-                  ctrl  := EXE_AND;
-                  ctrlx := "001";
+                  ctrl  := EXE_AND01;
+                  ctrlx := "011";
                 when others =>
                   null;
               end case;
@@ -517,6 +546,26 @@ package body alunv is
             end if;
           end if;
         end if;
+        if ext_zicond = 1 then
+          if op = OP_REG and funct7 = F7_CZERO then
+            if funct3 = R_SRL then
+              sel   := ALU_LOGIC;
+              ctrl  := EXE_Z;
+              ctrlx := "001";
+            elsif funct3 = R_AND then
+              sel   := ALU_LOGIC;
+              ctrl  := EXE_NZ;
+              ctrlx := "001";
+            end if;
+          end if;
+        end if;
+      when OP_SYSTEM =>
+        if ext_zimops = 1 then
+            -- Zimops
+            sel   := ALU_LOGIC;
+            ctrl  := EXE_AND;
+            ctrlx := "001";
+        end if;
       when others =>
     end case;
 
@@ -534,22 +583,24 @@ package body alunv is
 --    variable ext_zbc : integer      := 1;
 --    variable ext_zbs : integer      := 1;
 --    variable ext_m   : integer      := 1;
-    variable is_rv64  : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32  : boolean      := not is_rv64;
-    variable ext_zba  : integer      := is_enabled(active, x_zba);
-    variable ext_zbb  : integer      := is_enabled(active, x_zbb);
-    variable ext_zbc  : integer      := is_enabled(active, x_zbc);
-    variable ext_zbs  : integer      := is_enabled(active, x_zbs);
-    variable ext_zbkb : integer      := is_enabled(active, x_zbkb);
-    variable ext_zbkc : integer      := is_enabled(active, x_zbkc);
-    variable ext_zbkx : integer      := is_enabled(active, x_zbkx);
-    variable ext_m    : integer      := is_enabled(active, x_m);
-    variable opcode   : opcode_type  := inst_in( 6 downto  0);
-    variable funct3   : funct3_type  := inst_in(14 downto 12);
-    variable funct7   : funct7_type  := inst_in(31 downto 25);
-    variable funct12  : funct12_type := inst_in(31 downto 20);
+    variable is_rv64    : boolean      := is_enabled(active, x_rv64);
+    variable is_rv32    : boolean      := not is_rv64;
+    variable ext_zba    : integer      := is_enabled(active, x_zba);
+    variable ext_zbb    : integer      := is_enabled(active, x_zbb);
+    variable ext_zbc    : integer      := is_enabled(active, x_zbc);
+    variable ext_zbs    : integer      := is_enabled(active, x_zbs);
+    variable ext_zbkb   : integer      := is_enabled(active, x_zbkb);
+    variable ext_zbkc   : integer      := is_enabled(active, x_zbkc);
+    variable ext_zbkx   : integer      := is_enabled(active, x_zbkx);
+    variable ext_zimops : integer      := is_enabled(active, x_zimops);
+    variable ext_zicond : integer      := is_enabled(active, x_zicond);
+    variable ext_m      : integer      := is_enabled(active, x_m);
+    variable opcode     : opcode_type  := inst_in( 6 downto  0);
+    variable funct3     : funct3_type  := inst_in(14 downto 12);
+    variable funct7     : funct7_type  := inst_in(31 downto 25);
+    variable funct12    : funct12_type := inst_in(31 downto 20);
     -- Non-constant
-    variable illegal  : std_ulogic   := '0';
+    variable illegal    : std_ulogic   := '0';
   begin
     case opcode is
       when OP_IMM =>
@@ -730,6 +781,15 @@ package body alunv is
               when others =>
                 illegal := '1';
             end case;
+          when F7_CZERO =>
+            if ext_zicond = 1 then
+              case funct3 is
+                when R_SRL | R_AND => null;  -- CZERO.EQZ/NEZ
+                when others => illegal := '1';
+              end case;
+            else
+              illegal := '1';
+            end if;
           when others =>
             if ext_zbb = 1 and is_rv32 and funct12 = F12_ZEXTH and funct3 = "100" then
               null;
@@ -860,15 +920,17 @@ package body alunv is
 --    variable ext_zbb : integer := 1;
 --    variable ext_zbc : integer := 1;
 --    variable ext_zbs : integer := 1;
-    variable is_rv64  : boolean := is_enabled(active, x_rv64);
-    variable is_rv32  : boolean := not is_rv64;
-    variable ext_zba  : integer := is_enabled(active, x_zba);
-    variable ext_zbb  : integer := is_enabled(active, x_zbb);
-    variable ext_zbc  : integer := is_enabled(active, x_zbc);
-    variable ext_zbs  : integer := is_enabled(active, x_zbs);
-    variable ext_zbkb : integer := is_enabled(active, x_zbkb);
-    variable ext_zbkc : integer := is_enabled(active, x_zbkc);
-    variable ext_zbkx : integer := is_enabled(active, x_zbkx);
+    variable is_rv64    : boolean := is_enabled(active, x_rv64);
+    variable is_rv32    : boolean := not is_rv64;
+    variable ext_zba    : integer := is_enabled(active, x_zba);
+    variable ext_zbb    : integer := is_enabled(active, x_zbb);
+    variable ext_zbc    : integer := is_enabled(active, x_zbc);
+    variable ext_zbs    : integer := is_enabled(active, x_zbs);
+    variable ext_zbkb   : integer := is_enabled(active, x_zbkb);
+    variable ext_zbkc   : integer := is_enabled(active, x_zbkc);
+    variable ext_zbkx   : integer := is_enabled(active, x_zbkx);
+    variable ext_zimops : integer := is_enabled(active, x_zimops);
+    variable ext_zicond : integer := is_enabled(active, x_zicond);
     variable op1      : wordx   := op1_in;
     variable op2      : wordx   := op2_in;
     -- Non-constant
@@ -876,11 +938,15 @@ package body alunv is
     variable bits     : std_logic_vector(7 downto 0);
   begin
     case ctrlx is
-      when "111" | "011" | "001" =>
+      -- Used with EXE_OR/XOR (only 011), EXT_AND (only 111) and EXT_AND01 (only 011)
+      when "111" | "011" =>  -- Bit set/clear/extract mask
         if ext_zbs = 1 then
-          op2              := (others => ctrlx(2));
-          bits                          := (others => ctrlx(2));
+          -- Prepare mask "backgrounds"
+          op2  := (others => ctrlx(2));
+          bits := (others => ctrlx(2));
+          -- Set up a byte with mask for bit number modulo 8.
           bits(u2i(op2_in(2 downto 0))) := not ctrlx(2);
+          -- Set the correct byte to create the full mask.
           for i in wordx'length / 8 - 1 downto 0 loop
             if (is_rv64 and u2vec(i, 3) = op2_in(5 downto 3)) or
                (is_rv32 and u2vec(i, 2) = op2_in(4 downto 3)) then
@@ -888,27 +954,45 @@ package body alunv is
             end if;
           end loop;
         end if;
+      -- Used with EXE_AND
       when "110" | "010" =>  -- 16 bit sign/zero extension
         if ext_zbb = 1 then
           op1(op1'high downto 16) := (others => op1(15) and ctrlx(2));
           op2                     := (others => '1');
         end if;
+      -- Used with EXE_AND
       when "101" =>          -- 8 bit sign extension
         if ext_zbb = 1 then
           op1(op1'high downto 8) := (others => op1(7));
           op2 := (others => '1');
         end if;
+      -- Used with EXE_OR/XOR/AND (100 - negation)
       when "100" | "000" =>  -- Possible inversion
         if ext_zbb = 1 or ext_zbkb = 1 then
           op2 := op2 xor (wordx'range => ctrlx(2));
+        end if;
+      -- Used with EXE_Z/NZ and EXE_AND
+      when "001" =>
+        -- EXE_Z/NZ for conditional clear
+        if ext_zicond = 1 and ctrl(2) = '1' then
+          -- Only EXE_Z and EXE_NZ get here (ctrl(0) = 0/1).
+          if all_0(op2_in) = not ctrl(0) then
+            op2 := (others => '1');
+          else
+            op2 := (others => '0');
+          end if;
+        -- EXE_AND for always clear
+        elsif ext_zimops = 1 then
+          op2 := (others => '0');
         end if;
       when others =>
     end case;
 
     case ctrl is
-      when EXE_XOR   => res := op1 xor op2;
-      when EXE_OR    => res := op1 or  op2;
-      when EXE_AND   => res := op1 and op2;
+      when EXE_XOR                  => res := op1 xor op2;
+      when EXE_OR                   => res := op1 or  op2;
+      when EXE_AND | EXE_AND01 |
+           EXE_Z   | EXE_NZ         => res := op1 and op2;
       when EXE_ORCB  =>
         if ext_zbb = 1 then
           res := zerox;
@@ -922,8 +1006,8 @@ package body alunv is
     end case;
 
     -- BEXT?
-    if ext_zbs = 1 and ctrlx = "001" then
-      res := u2vec(u2i(not all_0(res)), res);
+    if ext_zbs = 1 and ctrl = EXE_AND01 then
+      res := u2vec(not all_0(res), res);
     end if;
 
     return res;
@@ -955,7 +1039,8 @@ package body alunv is
     variable op      : std_logic_vector(op_in'length - 1 downto 0) := op_in;
     variable cnt_top : integer := log2(op'length);
     -- Non-constant
-    variable cnt     : unsigned(cnt_top downto 0);
+    -- GHDL synth does not seem to like using cnt_top here. for some reason!
+    variable cnt     : unsigned(log2(op'length) downto 0);
   begin
     if op'length = 1 then
       cnt(0) := not op(0);
@@ -1064,8 +1149,7 @@ package body alunv is
 
   function xperm4(data : wordx; sel : wordx; clear : wordx) return wordx is
     -- Non-constant
-    variable res      : wordx := (others => '0');
-    subtype  word4   is std_logic_vector(3 downto 0);
+    variable res      : wordx           := (others => '0');
     type     w4_arr  is array (integer range <>) of word4;
     variable nybbles  : w4_arr(0 to 15) := (others => x"0");
   begin
@@ -1172,6 +1256,7 @@ package body alunv is
           -- xperm8?
           if ctrlx(0) = '0' then
             for i in 0 to op2_in'length / 8 - 1 loop
+              -- Split byte chunk into its two nybble parts.
               set(op2r, i * 8,     get(op2_in, i * 8, 3) & '0');
               set(op2r, i * 8 + 4, get(op2_in, i * 8, 3) & '1');
               -- Zero output if index too high.

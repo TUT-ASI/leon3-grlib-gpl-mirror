@@ -29,6 +29,9 @@ package config is
   constant CFG_CFG : integer := (3)*256 + (1)*128 + (0)*2 + (0);
   constant CFG_NODBUS : integer := 1;
   constant CFG_DISAS : integer := 3*0;
+-- Interrupts
+  constant CFG_APLIC_NDOM : integer := 4;
+  constant CFG_NEIID : integer := 63;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
   constant CFG_L2_SIZE : integer := 32;

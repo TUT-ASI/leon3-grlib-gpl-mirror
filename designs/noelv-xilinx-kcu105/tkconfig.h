@@ -42,8 +42,8 @@
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
 #define CONFIG_SYN_TECH ihp25rh
-#elif defined CONFIG_SYN_CMOS9SF
-#define CONFIG_SYN_TECH cmos9sf
+#elif defined CONFIG_SYN_NEXUS
+#define CONFIG_SYN_TECH nexus
 #elif defined CONFIG_SYN_BRAVEMED
 #define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
@@ -286,6 +286,13 @@
 #define CONFIG_IU_DISAS 0
 #endif
 
+#ifndef CONFIG_DOMAINS_NUM
+#define CONFIG_DOMAINS_NUM 4
+#endif
+
+#ifndef CONFIG_EIID_NUM
+#define CONFIG_EIID_NUM 63
+#endif
 #ifndef CONFIG_L2_ENABLE
 #define CONFIG_L2_ENABLE 0
 #endif

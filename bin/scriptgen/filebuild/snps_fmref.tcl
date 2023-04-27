@@ -30,6 +30,9 @@ proc append_file_snps_fmref {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

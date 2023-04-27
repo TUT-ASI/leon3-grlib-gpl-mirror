@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -122,6 +123,9 @@ begin
   pere  : if (tech = peregrine) generate
     x0 : peregrine_iopad generic map (level, slew, voltage, strength)
          port map(pad, gnd, oen, o);
+  end generate;
+  nxus   : if (tech = nexus) generate
+    x0 : nexus_iopad port map(pad, gnd, oen, o);
   end generate;
 end;
 

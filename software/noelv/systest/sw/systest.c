@@ -12,6 +12,8 @@
 #include "greth.h"
 #include "l2c.h"
 #include "l2capi.h"
+#include "aclint.h"
+#include "imsic.h"
 
 #ifndef CONSOLE_DEBUG
 #define CONSOLE_DEBUG 1 // Set to 0 to disable the following printf statements
@@ -47,6 +49,15 @@
 #ifndef L2C_ADDR_SYSTEST
 #define L2C_ADDR_SYSTEST 0xff000000ULL // De-RISC: 0xff000000ULL
 #endif
+#ifndef ACLINT_ADDR_SYSTEST
+#define ACLINT_ADDR_SYSTEST 0xe0000000ULL // Generic
+#endif
+#ifndef IMSIC_ADDR_SYSTEST
+#define IMSIC_ADDR_SYSTEST 0xa0000000ULL  // Generic
+#endif
+#ifndef APLIC_ADDR_SYSTEST
+#define APLIC_ADDR_SYSTEST 0xf8000000ULL  // Generic
+#endif
 // Default PIRQ
 #ifndef SPICTRL_PIRQ
 #define SPICTRL_PIRQ 6 // Generic: 8 | De-RISC: 6
@@ -69,6 +80,7 @@
 #define GRIOMMU_SYSTEST (1 << 8)
 #define GRETH_SYSTEST (1 << 9)
 #define L2C_SYSTEST (1 << 10)
+#define AIA_SYSTEST (1 << 11)
 
 #ifndef SYSTEST_TYPE
 #define SYSTEST_TYPE L2C_SYSTEST
@@ -175,7 +187,26 @@ int main() {
     test_failed |= l2c_test(memaddr, (struct l2cregs*)l2c_addr);
     print_test_result(test_failed, "L2Cache");
   }
-  print_test_result(test_failed, "All");
-  report_end();
+  //if ((SYSTEST_TYPE) & ACLINT_SYSTEST) {
+  //  printf("Starting aCLINT test\n");
+  //  addr_t aclint_addr = ACLINT_ADDR_SYSTEST;
+  //  test_failed |= aclint_test(aclint_addr);
+  //  print_test_result(test_failed, "aCLINT");
+  //}
+  if ((SYSTEST_TYPE) & AIA_SYSTEST) {
+    printf("Starting AIA test\n");
+    addr_t aclint_addr = ACLINT_ADDR_SYSTEST;
+    addr_t imsic_addr  = IMSIC_ADDR_SYSTEST;
+    addr_t aplic_addr  = APLIC_ADDR_SYSTEST;
+    int cpus    = 1;  // Number of CPUS in the system
+    int geilen  = 16; // GEILEN constant of the RISCV system
+    int domains = 4;  // APLIC implemented domains
+    int lite    = 1;  // Executes a shorter version of the test
+    test_failed |= aia_test(aclint_addr, imsic_addr, aplic_addr, 
+                            cpus, geilen, domains, 1);
+    print_test_result(test_failed, "AIA");
+  }
+  //print_test_result(test_failed, "All");
+  //report_end();
 	return 0;
 }

@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,7 +61,10 @@ entity syncfifo_2p is
     piperead: integer := 0;   -- add full pipeline stage on read side (ping pong buffer)
     ft   : integer := 0;     -- enable EDAC on RAMs (GRLIB-FT only, passed on to syncram_2pft)
     custombits : integer := 1;
-    rdhold: integer := 0
+    rdhold: integer := 0;
+    scantest: integer := 0;
+    arstr : integer := 0;  -- async reset read domain
+    arstw : integer := 0   -- async reset write domain
     );
   port (
     rclk    : in std_logic;  -- read clock
@@ -81,6 +85,7 @@ entity syncfifo_2p is
     datain  : in std_logic_vector(dbits-1 downto 0); -- fifo data input
     dynsync : in std_ulogic := '0';     -- dynamic sync select
     testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+    testrst : in std_ulogic := '0';
     error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0); -- FT only
     errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0') -- FT only
     );
@@ -91,7 +96,8 @@ architecture rtl of syncfifo_2p is
   component generic_fifo
     generic (tech  : integer := 0; abits : integer := 10; dbits : integer := 32;
     sepclk : integer := 1; afullwl : integer := 0; aemptyrl : integer := 0; fwft : integer := 0;
-    ft : integer := 0; custombits : integer := 1; rdhold : integer := 0; extrempty: integer := 0);
+    ft : integer := 0; custombits : integer := 1; rdhold : integer := 0; extrempty: integer := 0;
+    scantest: integer := 0; arstr: integer := 0; arstw: integer := 0);
     port (
       rclk    : in std_logic;
       rrstn   : in std_logic;
@@ -112,6 +118,7 @@ architecture rtl of syncfifo_2p is
       dynsync : in std_ulogic;
       rextempty: in std_ulogic;
       testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+      testrst : in std_ulogic := '0';
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
       );
@@ -144,9 +151,10 @@ begin
 -- generic FIFO implemented using syncram_2p component
   inf : if ((tech /= altera) and (tech /= stratix1) and (tech /= stratix2) and 
             (tech /= stratix3) and (tech /= stratix4) and (tech /= stratix5)) or ft/=0 generate
-    x0: generic_fifo generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx, ft, custombits, rdhold, piperead)
+    x0: generic_fifo generic map (tech, abits, dbits, sepclk, afullwl, aemptyrl, fwftx, ft,
+                                  custombits, rdhold, piperead, scantest, arstr, arstw)
       port map (rclk, rrstn, wrstn, renable_i, rfull, rempty_i, aempty_i, rusedw, dataout_i,
-        wclk, write, wfull, afull, wempty, wusedw, datain, dynsync, plempty, testin, error_i, errinj
+        wclk, write, wfull, afull, wempty, wusedw, datain, dynsync, plempty, testin, testrst, error_i, errinj
                 );
   end generate;
 

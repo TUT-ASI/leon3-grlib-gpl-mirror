@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -97,6 +98,11 @@ architecture rtl of cctrl5 is
     if x>y then return x; else return y; end if;
   end max;
 
+  function pick(b: boolean; tv,fv: integer) return integer is
+  begin
+    if b then return tv; else return fv; end if;
+  end pick;
+
   constant LINESZMAX    : integer := max(dlinesize,ilinesize);
   constant BUF_HIGH     : integer := log2(LINESZMAX*4)-1;
   constant DLINE_BITS   : integer := log2(dlinesize);
@@ -131,6 +137,21 @@ architecture rtl of cctrl5 is
   constant LRR     : std_logic_vector(1 downto 0) := "10";
   constant LRU     : std_logic_vector(1 downto 0) := "01";
   constant DIR     : std_logic_vector(1 downto 0) := "00";
+
+  -- If either wbmask=0 or busw=32, we have a 32-bit only system
+  --  create modified constants xwbmask=0 and xbusw=32 for
+  --  this case to make the code consistent.
+  constant xwbmask : integer := pick(busw=32 or wbmask=0, 0,  wbmask);
+  constant xbusw   : integer := pick(busw=32 or wbmask=0, 32, busw);
+  -- "fiddle constant" that is set 1 when xbusw=32 to avoid
+  -- some null ranges in the code
+  constant nbfid   : integer := pick(busw=32 or wbmask=0, 1, 0);
+  -- Bus width to use in the read data logic, this is the same as
+  -- xbusw above except in the special case of a wide bus with only
+  -- narrow slaves but where AMBA compliant data muxing is enabled in
+  -- the config package. For that case, we still need to pick the
+  -- right 32-bit slice even though all accesses are 32-bit only.
+  constant xdbusw: integer := pick((busw=32 or wbmask=0) and CORE_ACDM=0, 32, busw);
 
   function get_itags_default return cram_tags is
     variable r: cram_tags;
@@ -337,17 +358,25 @@ architecture rtl of cctrl5 is
     size: std_logic_vector(1 downto 0);
     data: std_logic_vector(63 downto 0);
     snoopmask: std_logic_vector(0 to DWAYS-1);
+    -- su status for hprot generation
+    su: std_ulogic;
+    -- set to 1 for narrow 64-bit write to be converted into burst
+    nb64: std_ulogic;
+    -- "00" - does not combine with next
+    -- "01" - might combine with next
+    -- "11" - can be combined with next
+    wcomb: std_logic_vector(1 downto 0);
   end record;
   type stbufarr is array(natural range <>) of stbufent;
 
-  constant stbufent_zero: stbufent := ((others => '0'), (others => '0'), (others => '0'), (others => '0'));
+  constant stbufent_zero: stbufent := ((others => '0'), (others => '0'), (others => '0'), (others => '0'), '0','0',"11");
 
   type cctrl5_state is (as_normal, as_flush, as_icfetch,
                         as_dcfetch, as_dcfetch2,
                         as_dcsingle, as_mmuwalk, as_mmuwalk3, as_mmuwalk4,
                         as_wptectag1, as_wptectag2, as_wptectag3,
-                        as_store,
-                        as_slowwr, as_wrburst,
+                        as_store, as_wrcomb1, as_wrcomb2,
+                        as_slowwr,
                         as_wrasi, as_wrasi2, as_wrasi3,
                         as_rdasi, as_rdasi2, as_rdasi3, as_rdcdiag, as_rdcdiag2,
                         as_getlock, as_parked, as_mmuprobe2, as_mmuprobe3, as_mmuflush2,
@@ -360,6 +389,7 @@ architecture rtl of cctrl5 is
     dcs     : std_logic_vector(1 downto 0);      -- dcache state
     ics     : std_logic_vector(1 downto 0);      -- icache state
     ics_btb : std_logic_vector(1 downto 0);     -- icache state output to btb
+    wcomben : std_ulogic;                       -- write combining enable
   end record;
 
   constant M_CTX_SZ       : integer := 8;
@@ -439,6 +469,7 @@ architecture rtl of cctrl5 is
     iflushpend: std_ulogic;
     dflushpend: std_ulogic;
     slowwrpend: std_ulogic;
+    dbgaccpend: std_ulogic;
     holdn: std_ulogic;
     ramreload: std_ulogic;
     fastwr_rdy: std_ulogic;
@@ -456,7 +487,7 @@ architecture rtl of cctrl5 is
     ahb_hsize: std_logic_vector(2 downto 0);
     ahb_hburst: std_logic_vector(2 downto 0);
     ahb_hprot: std_logic_vector(3 downto 0);
-    ahb_hwdata: std_logic_vector(63 downto 0);
+    ahb_hwdata: std_logic_vector(xbusw-1 downto 0);
     ahb_snoopmask: std_logic_vector(0 to DWAYS-1);
     -- AHB delayed registers
     ahb3_inacc: std_ulogic;
@@ -469,8 +500,13 @@ architecture rtl of cctrl5 is
     ahb2_addrmask: std_logic_vector(LINESZMAX-1 downto 0);
     ahb2_ifetch: std_ulogic;
     ahb2_dacc: std_ulogic;
+    ahb2_haddr42: std_logic_vector(4 downto 2);
+    ahb2_hburst0: std_ulogic;
+    ahb2_hsize10: std_logic_vector(1 downto 0);
     -- AHB grant tracking
     granted: std_ulogic;
+    -- Track if we are performing retry (for tag update logic)
+    ahb_retrying: std_ulogic;
     -- write error
     werr: std_ulogic;
     -- MMU TLBs
@@ -550,6 +586,13 @@ architecture rtl of cctrl5 is
     d2stbw: std_logic_vector(1 downto 0);
     d2stba: std_logic_vector(1 downto 0);
     d2stbd: std_logic_vector(1 downto 0);
+    d2nb64en: std_ulogic;
+    d2nb64ctr: std_ulogic;
+    d2nb64den: std_ulogic;
+    d2nb64dctr: std_ulogic;
+    d2stbcont: std_ulogic;
+    d2wcctr: std_logic_vector(1 downto 0);
+    d2wchold: std_logic_vector(2 downto 0);
     d2specread: std_ulogic;
     d2nocache: std_ulogic;
     d2tcmhit: std_ulogic;
@@ -585,6 +628,10 @@ architecture rtl of cctrl5 is
     iudiag_mosi : l5_intreg_mosi_type;
     -- context switch status signal
     ctxswitch : std_ulogic;
+    -- debug access state
+    fsmidle : std_ulogic;
+    dbgacc : std_logic_vector(1 downto 0);
+    dbgaccwr : std_ulogic;
     perf     : std_logic_vector(31 downto 0);
   end record;
 
@@ -594,7 +641,7 @@ architecture rtl of cctrl5 is
     v := (
       cctrl => (dfrz => '0', ifrz => '0', dsnoop => '0',
                 dcs => (others => '0'), ics => (others => '0'),
-                ics_btb => (others=>'0')
+                ics_btb => (others=>'0'), wcomben => '0'
                 ),
       mmctrl1 => mmctrl_type1_none, mmfsr => mmctrl_fs_zero, mmfar => (others => '0'),
       regflmask => (others => '0'), regfladdr => (others => '0'), iregflush => '0', dregflush => '0',
@@ -605,7 +652,8 @@ architecture rtl of cctrl5 is
       dtcmenp => '0', dtcmenva => '0', dtcmenvc => '0', dtcmperm => "0000",
       dtcmaddr => (others => '0'), dtcmctx => (others => '0'), itcmwipe => '0', dtcmwipe => '0',
       s => as_normal, imisspend => '0', dmisspend => '0',
-      iflushpend => '1', dflushpend => '1', slowwrpend => '0', holdn => '1',
+      iflushpend => '1', dflushpend => '1', slowwrpend => '0', dbgaccpend => '0',
+      holdn => '1',
       ramreload => '0', fastwr_rdy => '1', stbuffull => '0',
       flushwrd => (others => '0'), flushwri => (others => '0'), regflpipe => (others => regfl_pipe_entry_zero),
       regfldone => '0',
@@ -617,8 +665,8 @@ architecture rtl of cctrl5 is
       ahb3_inacc => '0', ahb3_rdbuf => (others => '0'), ahb3_error => '0', ahb3_rdbvalid => (others => '0'),
       ahb3_rdberr => (others => '0'),
       ahb2_inacc => '0', ahb2_hwrite => '0', ahb2_addrmask => (others => '0'),
-      ahb2_ifetch => '0', ahb2_dacc => '0',
-      granted => '0', werr => '0',
+      ahb2_ifetch => '0', ahb2_dacc => '0', ahb2_haddr42 => (others => '0'), ahb2_hburst0 => '0', ahb2_hsize10 => "00",
+      granted => '0', ahb_retrying => '0', werr => '0',
       itlb => tlb_def, dtlb => tlb_def, tlbflush => '0', newent => tlbent_empty, mmuerr => mmctrl_fs_zero,
       curerrclass => "00", newerrclass => "00",
       itlbpmru => (others => '0'), dtlbpmru => (others => '0'),
@@ -642,6 +690,8 @@ architecture rtl of cctrl5 is
       d2hitv => (others => '0'), d2validv => (others => '0'),
       d2size => "00", d2asi => "00000000", d2specialasi => '0', d2forcemiss => '0', d2lock => '0', d2su => '0',
       d2stbuf => (others => stbufent_zero), d2stbw => "00", d2stba => "00", d2stbd => "00",
+      d2nb64en => '0', d2nb64ctr => '0', d2nb64den => '0', d2nb64dctr => '0',
+      d2stbcont => '0', d2wcctr => "00", d2wchold => "000",
       d2specread => '0', d2nocache => '0', d2tcmhit => '0',
       d1ten => '0', d1chk => '0', d1vaddr => (others => '0'), d1vaddr_repl => (others => '0'),
       d1asi => "00000000", d1su => '0',
@@ -652,7 +702,8 @@ architecture rtl of cctrl5 is
       flushctr => (others => '0'), flushpart => (others => '0'), dtflushdone => '0',
       mmusel => (others => '0'), fpc_mosi => l5_intreg_mosi_none, c2c_mosi => l5_intreg_mosi_none,
       iudiag_mosi => l5_intreg_mosi_none,
-      ctxswitch => '0'
+      ctxswitch => '0',
+      fsmidle => '0', dbgacc => "00", dbgaccwr => '0'
       , perf => (others => '0')
       );
     return v;
@@ -785,7 +836,7 @@ architecture rtl of cctrl5 is
   signal r,c: cctrl5_regs;
   signal rs,cs: cctrl5_snoop_regs;
 
-  signal dbg: std_logic_vector(11 downto 0);
+  signal dbg: std_logic_vector(12 downto 0);
 
 begin
 
@@ -997,6 +1048,10 @@ begin
     variable vaddr5: std_logic_vector(4 downto 0);
     variable vaddr3: std_logic_vector(2 downto 0);
     variable fastwr: std_ulogic;
+    variable fastwr_nb64: std_ulogic;
+    variable fastwr_wcomb: std_ulogic;
+    variable wrcomb_valid, wrcomb_nvalid: std_logic_vector(0 to 3);
+    variable vstoresu: std_ulogic;
     variable vdiagasi: std_logic_vector(3 downto 0);
     variable d64: std_logic_vector(63 downto 0);
     variable dwriting: std_ulogic;
@@ -1017,6 +1072,13 @@ begin
     variable keepreq: std_ulogic;
     variable voffs: std_logic_vector(DOFFSET_HIGH downto DOFFSET_LOW);
     variable vfoffs: std_logic_vector(DOFFSET_HIGH downto DOFFSET_LOW);
+    variable vrflag: std_ulogic;
+    variable vstd32: std_logic_vector(31 downto 0);
+    variable vstd32set: std_ulogic;
+    variable vstd64: std_logic_vector(63 downto 0);
+    variable vstd64set: std_ulogic;
+    variable vstd128: std_logic_vector(127 downto 0);
+    variable vstd128set: std_ulogic;
 
     variable frdmatch: std_logic_vector(0 to DWAYS-1);
     variable frimatch: std_logic_vector(0 to IWAYS-1);
@@ -1147,31 +1209,35 @@ begin
       variable acctype, ctxeq: std_ulogic;
     begin
       r := '0';
-      fltp := vaddr(11 downto 8);
-      acctype := '0';
-      if unsigned(e.acc) > 5 then acctype := '1'; end if;
-      ctxeq := '0';
-      if e.ctx=curctx then ctxeq := '1'; end if;
-      case fltp is
-        when "0000" =>
-          if (acctype='1' or ctxeq='1') and vaddr(31 downto 12)=e.vaddr(31 downto 12) and e.mask3='1' then
-            r := '1';
-          end if;
-        when "0001" =>
-          if (acctype='1' or ctxeq='1') and vaddr(31 downto 18)=e.vaddr(31 downto 18) and e.mask2='1' then
-            r := '1';
-          end if;
-        when "0010" =>
-          if (acctype='1' or ctxeq='1') and vaddr(31 downto 24)=e.vaddr(31 downto 24) and e.mask1='1' then
-            r := '1';
-          end if;
-        when "0011" =>
-          if acctype='0' and ctxeq='1' then
-            r := '1';
-          end if;
-        when "0100" => r := '1';
-        when others => r := '0';
-      end case;
+      if notx(e.acc) and notx(e.ctx) and notx(e.vaddr) and notx(e.mask3) and notx(e.mask2) and notx(e.mask1) then
+        fltp := vaddr(11 downto 8);
+        acctype := '0';
+        if unsigned(e.acc) > 5 then acctype := '1'; end if;
+        ctxeq := '0';
+        if e.ctx=curctx then ctxeq := '1'; end if;
+        case fltp is
+          when "0000" =>
+            if (acctype='1' or ctxeq='1') and vaddr(31 downto 12)=e.vaddr(31 downto 12) and e.mask3='1' then
+              r := '1';
+            end if;
+          when "0001" =>
+            if (acctype='1' or ctxeq='1') and vaddr(31 downto 18)=e.vaddr(31 downto 18) and e.mask2='1' then
+              r := '1';
+            end if;
+          when "0010" =>
+            if (acctype='1' or ctxeq='1') and vaddr(31 downto 24)=e.vaddr(31 downto 24) and e.mask1='1' then
+              r := '1';
+            end if;
+          when "0011" =>
+            if acctype='0' and ctxeq='1' then
+              r := '1';
+            end if;
+          when "0100" => r := '1';
+          when others => r := '0';
+        end case;
+      else
+        setx(r);
+      end if;
       return r;
     end flushmatch;
 
@@ -1329,6 +1395,7 @@ begin
       end loop;
     end if;
     v.perf := (others=>'0');
+    vrflag := '0';
 
 
     --------------------------------------------------------------------------
@@ -1387,7 +1454,7 @@ begin
     itlbpaddr(11 downto 0) := itlbpaddr(11 downto 0) or r.i1pc(11 downto 0);
     -- end if;
     -- Select bus width from TLB unless 4 GiB entry, then decode from virt addr
-    ivbusw := dec_wbmask_fixed(r.i1pc(31 downto 2), wbmask);
+    ivbusw := dec_wbmask_fixed(r.i1pc(31 downto 2), xwbmask);
     if itlbmask1='0' then
       itlbbusw := itlbbusw or ivbusw;
     end if;
@@ -1661,6 +1728,8 @@ begin
       voffs := r.d1vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
       if r.s=as_regflush then
         voffs := r.regflpipe(2).addr;
+      elsif r.s=as_rdcdiag2 then
+        voffs := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
       end if;
       for w in 0 to DWAYS-1 loop
         if notx(voffs) then
@@ -1693,9 +1762,6 @@ begin
     end if;
     for x in 0 to dtlbnum-1 loop
       dvaddr := r.d1vaddr_repl((x mod tlbrepl)*32+31 downto (x mod tlbrepl)*32);
-      if dci.dsuen='1' then
-        dvaddr := dci.maddress;
-      end if;
       if ( ( r.dtlb(x).valid='1' and r.dtlb(x).ctx=r.mmctrl1.ctx and
            (r.dtlb(x).mask1='0' or r.dtlb(x).vaddr(31 downto 24)=dvaddr(31 downto 24)) and
            (r.dtlb(x).mask2='0' or r.dtlb(x).vaddr(23 downto 18)=dvaddr(23 downto 18)) and
@@ -1733,13 +1799,9 @@ begin
       end if;
     end loop;
     -- if r.mmctrl1.e='0' then
-    if dci.dsuen='1' then
-      dtlbpaddr(11 downto 0) := dtlbpaddr(11 downto 0) or dci.maddress(11 downto 0);
-    else
       dtlbpaddr(11 downto 0) := dtlbpaddr(11 downto 0) or r.d1vaddr(11 downto 0);
-    end if;
     -- end if;
-    dvbusw := dec_wbmask_fixed(r.d1vaddr(31 downto 2), wbmask);
+    dvbusw := dec_wbmask_fixed(r.d1vaddr(31 downto 2), xwbmask);
     -- Select bus width from TLB unless 4 GiB entry, then decode from virt addr
     if dtlbmask1='0' then
       dtlbbusw := dtlbbusw or dvbusw;
@@ -1747,6 +1809,9 @@ begin
     -- Select cacheability from TLB unless cache is off
     if r.mmctrl1.e='0' then
       dtlbcached := ahb_slv_dec_cache(r.d1vaddr, ahbso, cached);
+    end if;
+    if r.cctrl.dcs(0)='0' then
+      dtlbcached := '0';
     end if;
 
     -- Tag compare logic
@@ -1831,6 +1896,8 @@ begin
     end if;
     -- Stage 1 tag check
     fastwr := '0';
+    fastwr_nb64 := '0';
+    fastwr_wcomb := '0';
     dwriting := '0';
     v.d2tlbclr := '0';
     if r.holdn='1' then
@@ -1840,10 +1907,63 @@ begin
       v.d2write := '0';
       v.d2tcmhit := '0';
     end if;
-    if r.d1chk='1' and r.holdn='1' then
+    -- Write combining logic
+    --   create mask of valid store buffer entries
+    wrcomb_valid := "0000";
+    if notx(r.d2stbw) and notx(r.d2stbd) then
+      for x in 0 to 3 loop
+        if r.stbuffull='1' and r.d2stbw=r.d2stbd then
+          wrcomb_valid(x) := '1';
+        else
+          if unsigned(r.d2stbw) > unsigned(r.d2stbd) and unsigned(r.d2stbd) <= x and unsigned(r.d2stbw) > x then
+            wrcomb_valid(x) := '1';
+          end if;
+          if unsigned(r.d2stbw) < unsigned(r.d2stbd) and (unsigned(r.d2stbd) <= x or unsigned(r.d2stbw) > x) then
+            wrcomb_valid(x) := '1';
+          end if;
+        end if;
+        -- clear valid for any entries that are already in progress on AHB bus
+        if r.s=as_store then
+          if r.ahb_htrans(1)='1' and r.d2stba=std_logic_vector(to_unsigned(x,2)) then
+            wrcomb_valid(x) := '0';
+          end if;
+          if r.ahb2_inacc='1' and r.d2stbd=std_logic_vector(to_unsigned(x,2)) then
+            wrcomb_valid(x) := '0';
+          end if;
+        end if;
+      end loop;
+    else
+      setx(wrcomb_valid);
+    end if;
+    dbg(12 downto 9) <= wrcomb_valid;
+    for x in 0 to 3 loop
+      wrcomb_nvalid(x) := wrcomb_valid((x+1) mod 4);
+      -- avoid checking for write combining across wrapping point when store buffer
+      -- is full.
+      if r.stbuffull='1' and r.d2stbd=std_logic_vector(to_unsigned((x+1) mod 4, 2)) then
+        wrcomb_nvalid(x) := '0';
+      end if;
+    end loop;
+    for x in 0 to 3 loop
+      -- Check address write combining
+      if wrcomb_valid(x)='1' and wrcomb_nvalid(x)='1' then
+        if r.d2stbuf(x).size="11" and r.d2stbuf((x+1) mod 4).size="11" and
+          r.d2stbuf(x).addr(31 downto 5)=r.d2stbuf((x+1) mod 4).addr(31 downto 5) and
+          r.d2stbuf(x).su=r.d2stbuf((x+1) mod 4).su and
+          r.d2stbuf(x).addr(4 downto 3)/="11" and
+          add(r.d2stbuf(x).addr(4 downto 3),1)=r.d2stbuf((x+1) mod 4).addr(4 downto 3) and
+          r.d2stbuf(x).snoopmask=r.d2stbuf((x+1) mod 4).snoopmask then
+          v.d2stbuf(x).wcomb(1) := '1';
+        else
+          v.d2stbuf(x).wcomb := "00";
+        end if;
+      end if;
+    end loop;
+    if r.d1chk='1' and (r.dbgacc(1)='1' or r.holdn='1') then
       v.d2vaddr := r.d1vaddr;
       v.d2data := dci.edata;
-      v.d2write := dci.write and (not dci.nullify or dci.dsuen);
+      v.d2write := dci.write and not dci.nullify;
+      if r.dbgacc(1)='1' then v.d2write := r.dbgaccwr; end if;
       v.d2paddr := dtlbpaddr;
       v.d2paddrv := dtlbhit;
       v.d2tlbhit := dtlbhit;
@@ -1860,21 +1980,31 @@ begin
       v.d2su := r.d1su;
       v.d2specialasi := r.d1specialasi;
       v.d2forcemiss := r.d1forcemiss;
+      v.d2nocache := not dtlbcached;
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).addr := v.d2paddr;
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).size := v.d2size;
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).data := v.d2data;
-      v.d2stbuf(to_integer(unsigned(r.d2stbw))).snoopmask := (others => r.cctrl.dcs(0));
+      v.d2stbuf(to_integer(unsigned(r.d2stbw))).snoopmask := (others => (not v.d2nocache));
+      v.d2stbuf(to_integer(unsigned(r.d2stbw))).su := v.d2su;
+      v.d2stbuf(to_integer(unsigned(r.d2stbw))).nb64 := '0';
+      v.d2stbuf(to_integer(unsigned(r.d2stbw))).wcomb := "00";
+      if v.d2size="11" then
+        v.d2stbuf(to_integer(unsigned(r.d2stbw))).wcomb := "01";
+      end if;
+      if v.d2size="11" and v.d2busw='0' then
+        v.d2stbuf(to_integer(unsigned(r.d2stbw))).nb64 := '1';
+      end if;
       v.d2specread := dci.specread;
-      v.d2nocache := not dtlbcached;
+      if r.dbgacc(1)='1' then v.d2specread := '0'; end if;
       v.d2tcmhit := dtcmhit;
       -- Set dcmiss pending bit for load cache miss
-      if (dci.nullify='0' or dci.dsuen='1') and not (dhit='1' and dforcemiss='0' and dspecialasi='0' and dci.lock='0') and dci.read='1' then
+      if (dci.nullify='0' or r.dbgacc(1)='1') and not (dhit='1' and dforcemiss='0' and dspecialasi='0' and dci.lock='0') and (dci.read='1' or (r.dbgacc(1)='1' and r.dbgaccwr='0')) then
         v.dmisspend := '1';
       end if;
       -- Cache update for writes
       --   generate ocrami.ddatawrite independently of dci.nullify to avoid
       --     nullify -> ddatawrite -> ddatain path via data loopback
-      if dci.nullify='0' and r.d1ten='1' and dci.write='1' and r.d1specialasi='0' then
+      if ((dci.nullify='0' and dci.write='1') or r.dbgaccwr='1') and r.d1ten='1' and r.d1specialasi='0' then
         ocrami.ddataen(0 to DWAYS-1) := dhitv;
         -- moved to separate if-statement below:
         --   dwriting := '1';
@@ -1883,18 +2013,24 @@ begin
       if dci.nullify='0' and r.d1tcmen='1' and dci.write='1' and r.d1specialasi='0' then
         ocrami.dtcmen := dtcmhit;
       end if;
-      if (r.d1ten='1' or r.d1tcmen='1') and dci.write='1' and r.d1specialasi='0' then
+      if (r.d1ten='1' or r.d1tcmen='1') and (dci.write='1' or r.dbgaccwr='1') and r.d1specialasi='0' then
         dwriting := '1';
         ocrami.ddatawrite := getdmask64(r.d1vaddr,dci.size,ENDIAN);
       end if;
       -- Store buffer update for writes
-      if (dci.nullify='0' or dci.dsuen='1') and dci.write='1' and dtcmhit='0' then
+      if dci.nullify='0' and dci.write='1' and dtcmhit='0' then
         dbg(1) <= '1';
-        if v.d2paddrv='1' and v.d2busw='1' and v.d2tlbmod='1' and r.fastwr_rdy='1' and
+        if v.d2paddrv='1' and v.d2tlbmod='1' and r.fastwr_rdy='1' and
           dspecialasi='0' and dci.lock='0' then
           -- Fast write path (TLB hit, written set in PTE, wide bus, store buffer
           -- idle, and standard ASIs)
           fastwr := '1';
+          if v.d2busw='0' and v.d2size="11" then
+            fastwr_nb64 := '1';
+          end if;
+          if v.d2size="11" and r.cctrl.wcomben='1' then
+            fastwr_wcomb := '1';
+          end if;
         else
           -- Slow write path (TLB miss, written not set in PTE, narrow bus, store buffer
           -- busy, or special ASI)
@@ -1902,10 +2038,8 @@ begin
           v.slowwrpend := '1';
         end if;
       end if;
-      if dci.dsuen='1' and r.holdn='1' then
-        v.d2vaddr := dci.maddress;
-      end if;
     end if;
+
     -- Stage 0 address to tag ram
     dtenall := ((r.holdn and dci.eenaddr) or (r.ramreload and r.d1chk));
     if dtenall='1' and r.cctrl.dcs(0)='1' then
@@ -2176,7 +2310,7 @@ begin
       end if;
     elsif ahbsi.hready='1' and ahbsi.htrans="10" and ahbsi.hwrite='0' and rs.sgranted='1' then
       -- Note in first cycle of dcfetch we do not know which set will be used
-      if r.s=as_dcfetch then
+      if r.s=as_dcfetch and r.ahb_retrying='0' then
         vs.s1read := '1';
       end if;
     end if;
@@ -2344,6 +2478,19 @@ begin
     -- should be kept high
     keepreq := '0';
 
+    -- use read buffer also for write combining
+    if r.s=as_wrcomb1 then
+      for x in 0 to 3 loop
+        if r.d2stbuf(to_integer(unsigned(r.d2stba))).addr(4 downto 3)=std_logic_vector(to_unsigned(x,2)) then
+          if (not ENDIAN) then
+            v.ahb3_rdbuf((3-x)*64+63 downto (3-x)*64) := r.d2stbuf(to_integer(unsigned(r.d2stba))).data;
+          else
+            v.ahb3_rdbuf(x*64+63 downto x*64) := r.d2stbuf(to_integer(unsigned(r.d2stba))).data;
+          end if;
+        end if;
+      end loop;
+    end if;
+
     if r.dcerrmask='1' or r.ahb2_ifetch='1' then
       for x in LINESZMAX-1 downto 0 loop
         if r.ahb3_rdberr(x)='1' then
@@ -2363,7 +2510,7 @@ begin
         end if;
         for x in LINESZMAX-1 downto 0 loop
           if r.ahb2_addrmask(x)='1' then
-            v.ahb3_rdbuf((x+1)*32-1 downto x*32) := ahbi.hrdata((((x+1)*32-1) mod busw) downto ((x*32) mod busw));
+            v.ahb3_rdbuf((x+1)*32-1 downto x*32) := ahbi.hrdata((((x+1)*32-1) mod xdbusw) downto ((x*32) mod xdbusw));
           end if;
         end loop;
         if ahbi.hresp(1)='0' then
@@ -2376,15 +2523,23 @@ begin
           v.werr := '1';
         end if;
       end if;
+      if r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
+        v.ahb_retrying := '1';
+      else
+        v.ahb_retrying := '0';
+      end if;
       v.ahb2_inacc := r.granted and r.ahb_htrans(1);
       v.ahb2_hwrite := r.ahb_hwrite;
       v.ahb2_addrmask := getvalidmask(r.ahb_haddr(4 downto 2), r.ahb_hsize, ENDIAN);
       v.ahb2_ifetch := '0';
       if r.s=as_icfetch then v.ahb2_ifetch:='1'; end if;
       v.ahb2_dacc := '0';
-      if v.s=as_store or v.s=as_dcfetch or v.s=as_dcsingle or v.s=as_wrburst then
+      if v.s=as_store or v.s=as_dcfetch or v.s=as_dcsingle then
         v.ahb2_dacc := '1';
       end if;
+      v.ahb2_haddr42 := r.ahb_haddr(4 downto 2);
+      v.ahb2_hburst0 := r.ahb_hburst(0);
+      v.ahb2_hsize10 := r.ahb_hsize(1 downto 0);
     end if;
     v.ahb3_rdbvalid := v.ahb3_rdbvalid or r.ahb3_rdberr;
     -- set rdberr during first cycle of response to get another cycle to clear
@@ -2422,11 +2577,6 @@ begin
       end if;
     end if;
 
-    -- Do this above FSM as it may set ramreload
-    if r.imisspend='0' and r.dmisspend='0' and r.slowwrpend='0' and
-      r.iflushpend='0' and r.dflushpend='0' and r.ramreload='1' then
-      v.ramreload := '0';
-    end if;
 
     v.newent.valid := '1';
     v.dtlbrecheck := '0';
@@ -2440,13 +2590,22 @@ begin
     v.iudiag_mosi.accwr := '0';
     v.iudiag_mosi.addr(v.fpc_mosi.addr'high downto 1) := r.d2vaddr(v.fpc_mosi.addr'high+2 downto 3);
     v.ctxswitch := '0';
+    vstd32 := (others => '0');
+    vstd32set := '0';
+    vstd64 := (others => '0');
+    vstd64set := '0';
+    vstd128 := (others => '0');
+    vstd128set := '0';
+    vstoresu := v.d2su;
+    v.fsmidle := '0';
     case r.s is
       when as_normal =>
+        v.ramreload := '0';
         v.ahb_htrans := "00";
         v.ahb_hwrite := '0';
         v.ahb_hburst := HBURST_INCR;
         v.ahb_snoopmask := (others => '0');
-        if r.cctrl.dcs(0)='1' and dforcemiss='0' then
+        if v.d2nocache='0' then
           v.ahb_snoopmask := (others => '1');
         end if;
         v.ahb3_error := '0';
@@ -2468,6 +2627,10 @@ begin
         v.d2stbw := "00";
         v.d2stba := "00";
         v.d2stbd := "00";
+        v.d2nb64en := '0';
+        v.d2nb64ctr := '0';
+        v.d2stbcont := '0';
+        v.d2wchold := "000";
         v.stbuffull := '0';
         if r.ahb_hlock='1' and dlock='0' then
           v.ahb_hlock := '0';
@@ -2479,6 +2642,15 @@ begin
           v.ahb_hwrite := '1';
           v.d2stbw := std_logic_vector(unsigned(r.d2stbw)+1);
           v.s := as_store;
+          if fastwr_nb64='1' then
+            v.ahb_hburst := HBURST_INCR;
+            v.ahb_hsize := "010";
+            v.d2nb64en := '1';
+            keepreq := '1';
+          end if;
+          if fastwr_wcomb='1' then
+            v.ahb_htrans := "00";
+          end if;
         elsif ( ((not IMISSPIPE) and v.iflushpend='1') or (IMISSPIPE and r.iflushpend='1') or
                 ((not DMISSPIPE) and v.dflushpend='1') or (DMISSPIPE and r.dflushpend='1') ) then
           if r.iregflush='1' or r.dregflush='1' then
@@ -2493,7 +2665,7 @@ begin
         elsif ((not IMISSPIPE) and v.imisspend='1') or (IMISSPIPE and r.imisspend='1') then
           v.ahb_haddr := v.i2paddr;
           v.ahb_haddr(log2(ilinesize*4)-1 downto 0) := (others => '0');
-          v.ahb_hsize := std_logic_vector(to_unsigned(log2(busw/8),3));
+          v.ahb_hsize := std_logic_vector(to_unsigned(log2(xbusw/8),3));
           v.mmusel := "000";
           if v.i2busw='0' then
             v.ahb_hsize := "010";
@@ -2508,6 +2680,7 @@ begin
             v.ahb_haddr := r.mmctrl1.ctxp(25 downto 4) & v.i2ctx & "00";
             v.ahb_htrans := "10";
             v.ahb_hsize := "010";
+            v.ahb_hburst := HBURST_SINGLE;
             v.perf(1) := '1';
           end if;
         elsif (((not DMISSPIPE) and v.dmisspend='1') or (DMISSPIPE and r.dmisspend='1')) and v.d2specread='0' then
@@ -2522,8 +2695,8 @@ begin
             end if;
           elsif v.d2paddrv='1' and dspecialasi='0' then
             if v.d2busw='1' then
-              v.ahb_hsize := std_logic_vector(to_unsigned(log2(busw/8),3));
-              v.ahb_haddr(log2(busw/8)-1 downto 0) := (others => '0');
+              v.ahb_hsize := std_logic_vector(to_unsigned(log2(xbusw/8),3));
+              v.ahb_haddr(log2(xbusw/8)-1 downto 0) := (others => '0');
             else
               v.ahb_hsize := "010";
               v.ahb_haddr(1 downto 0) := "00";
@@ -2545,14 +2718,18 @@ begin
             v.ahb_haddr := r.mmctrl1.ctxp(25 downto 4) & r.mmctrl1.ctx & "00";
             v.ahb_htrans := "10";
             v.ahb_hsize := "010";
+            v.ahb_hburst := HBURST_SINGLE;
             v.perf(3) := '1';
           else
             v.s := as_rdasi;
           end if;
         elsif v.slowwrpend='1' then
           v.s := as_slowwr;
-        elsif ici.parkreq='1' then
-          v.s := as_parked;
+        else
+          v.fsmidle := '1';
+          if ici.parkreq='1' then
+            v.s := as_parked;
+          end if;
         end if;
 
       when as_flush =>
@@ -2631,27 +2808,27 @@ begin
             -- Move haddr forward
             -- Note we can not look at r.i2busw here as it may get updated while streaming
             --   therefore we look directly at ahb_hsize instead
-            if r.ahb_hsize(1 downto 0)="10" then
+            if r.ahb_hsize(1 downto 0)="10" or xbusw=32 then
               v.ahb_haddr(log2(LINESZMAX*4)-1 downto 2) :=
                 std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto 2))+1);
             else
-              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)) :=
-                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)))+1);
+              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)) :=
+                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)))+1);
             end if;
             v.ahb_htrans := "11";
-            if (r.ahb_haddr(log2(ilinesize*4)-1 downto log2(busw/8))=
-                onev(log2(ilinesize*4)-1 downto log2(busw/8))) and
-              (r.ahb_hsize(1 downto 0)/="10" or r.ahb_haddr(log2(busw/8)-1 downto 2)=onev(log2(busw/8)-1 downto 2))then
+            if (r.ahb_haddr(log2(ilinesize*4)-1 downto log2(xbusw/8))=
+                onev(log2(ilinesize*4)-1 downto log2(xbusw/8))) and
+              (xbusw=32 or r.ahb_hsize(1 downto 0)/="10" or r.ahb_haddr(log2(xbusw/8)-1+nbfid downto 2)=onev(log2(xbusw/8)-1+nbfid downto 2)) then
               v.ahb_htrans := "00";
             end if;
           elsif r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
             -- Move haddr backward for retry/split
-            if r.ahb_hsize(1 downto 0)="10" then
+            if r.ahb_hsize(1 downto 0)="10" or xbusw=32 then
               v.ahb_haddr(log2(LINESZMAX*4)-1 downto 2) :=
                 std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto 2))-1);
             else
-              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)) :=
-                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)))-1);
+              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)) :=
+                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)))-1);
             end if;
             v.ahb_htrans := "10";
           end if;
@@ -2659,7 +2836,7 @@ begin
         keepreq := '1';
         if (v.ahb_haddr(log2(ilinesize*4)-1 downto log2(busw/8))=
             onev(log2(ilinesize*4)-1 downto log2(busw/8))) and
-          (r.ahb_hsize(1 downto 0)/="10" or v.ahb_haddr(log2(busw/8)-1 downto 2)=onev(log2(busw/8)-1 downto 2))then
+          (xbusw=32 or r.ahb_hsize(1 downto 0)/="10" or v.ahb_haddr(log2(xbusw/8)-1+nbfid downto 2)=onev(log2(xbusw/8)-1+nbfid downto 2))then
           keepreq := '0';
         end if;
         -- write read data buffer into I$ data RAM
@@ -2730,10 +2907,10 @@ begin
             -- Move haddr forward
             v.ahb_htrans := "11";
             if r.d2busw='1' then
-              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)) :=
-                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)))+1);
-              if r.ahb_haddr(log2(dlinesize*4)-1 downto log2(busw/8))=
-                onev(log2(dlinesize*4)-1 downto log2(busw/8)) then
+              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)) :=
+                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)))+1);
+              if r.ahb_haddr(log2(dlinesize*4)-1 downto log2(xbusw/8))=
+                onev(log2(dlinesize*4)-1 downto log2(xbusw/8)) then
                 v.ahb_htrans := "00";
               end if;
             else
@@ -2747,8 +2924,8 @@ begin
           elsif r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
             -- Move haddr backward for retry/split
             if r.d2busw='1' then
-              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)) :=
-                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(busw/8)))-1);
+              v.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)) :=
+                std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)))-1);
             else
               v.ahb_haddr(log2(LINESZMAX*4)-1 downto 2) :=
                 std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto 2))-1);
@@ -2757,9 +2934,9 @@ begin
           end if;
         end if;
         keepreq := '1';
-        if v.ahb_haddr(log2(dlinesize*4)-1 downto log2(busw/8))=
-          onev(log2(dlinesize*4)-1 downto log2(busw/8)) and
-          (r.d2busw='1' or v.ahb_haddr(log2(busw/8)-1 downto 2)=onev(log2(busw/8)-1 downto 2)) then
+        if v.ahb_haddr(log2(dlinesize*4)-1 downto log2(xbusw/8))=
+          onev(log2(dlinesize*4)-1 downto log2(xbusw/8)) and
+          (r.d2busw='1' or v.ahb_haddr(log2(xbusw/8)-1+nbfid downto 2)=onev(log2(xbusw/8)-1+nbfid downto 2)) then
           keepreq := '0';
         end if;
 
@@ -2852,6 +3029,7 @@ begin
         odco.mexc := r.ahb3_error and not r.dcignerr;
 
       when as_mmuwalk =>
+        v.ahb_hburst := HBURST_SINGLE;
         -- Ensure PTE writes get snooped
         if r.mmusel(2)='0' then
           v.ahb_snoopmask := (others => '0');
@@ -2903,26 +3081,26 @@ begin
         end if;
         v.newent.paddr(31 downto 12) := rdb32(27 downto 8);
         v.newent.cached := rdb32(7);
-        v.newent.busw := dec_wbmask_fixed(v.newent.paddr(31 downto 12) & "0000000000", wbmask);
+        v.newent.busw := dec_wbmask_fixed(v.newent.paddr(31 downto 12) & "0000000000", xwbmask);
         if rdb32v='1' then
           v.newent.modified := v.newent.modified or rdb32(6);
         end if;
         -- Prepare hwdata for writing back PTE with R/M bits set
         -- Check if write-back is needed
-        v.ahb_hwdata(31 downto 0) := rdb32;
+        vstd32 := rdb32;
+        vstd32set := '1';
         if r.newent.modified='1' then
-          v.ahb_hwdata(6) := '1';
+          vstd32(6) := '1';
         end if;
-        v.ahb_hwdata(5) := '1';         -- referenced bit
+        vstd32(5) := '1';         -- referenced bit
         vneedwb := '0';
         vneedwblock := '0';
-        if v.ahb_hwdata(6 downto 5) /= rdb32(6 downto 5) then
+        if vstd32(6 downto 5) /= rdb32(6 downto 5) then
           vneedwb := '1';
-          if v.ahb_hwdata(6) = '0' then
+          if vstd32(6) = '0' then
             vneedwblock := '1';
           end if;
         end if;
-        v.ahb_hwdata(63 downto 32) := v.ahb_hwdata(31 downto 0);
         v.newent.acc := rdb32(4 downto 2);
         v.dregval := rdb32;
         if rdb32v='1' then
@@ -3083,7 +3261,9 @@ begin
           v.mmuerr.ft := "100";       -- Translation error
           v.mmuerr.fav := '1';
         elsif rdb32v='1' then
-          v.ahb_hwdata(6 downto 5) := v.ahb_hwdata(6 downto 5) or rdb32(6 downto 5);
+          vstd32 := r.ahb_hwdata(31 downto 0);
+          vstd32set := '1';
+          vstd32(6 downto 5) := vstd32(6 downto 5) or rdb32(6 downto 5);
           v.s := as_wptectag1;
           v.ahb_htrans := "10";
           v.ahb_hwrite := '1';
@@ -3097,7 +3277,7 @@ begin
             end if;
           end if;
         elsif r.ahb_htrans(1)='1' then
-          if r.granted='1' then
+          if ahbi.hready='1' then
             v.ahb_htrans := "00";
           end if;
         else
@@ -3249,44 +3429,117 @@ begin
         end if;
 
       when as_store =>
+        v.ramreload := '0';
+        if r.granted='0' then
+          v.d2stbcont := '0';
+        end if;
+        vrflag := '0';
         if r.ahb2_inacc='1' and ahbi.hresp(1)='1' and ahbi.hready='0' then
+          vrflag := '1';
           v.ahb_htrans := "00";
-          v.d2stba := std_logic_vector(unsigned(r.d2stba)-1);
+          if r.d2nb64ctr='1' then
+            v.d2nb64ctr := '0';
+          else
+            v.d2stba := std_logic_vector(unsigned(r.d2stba)-1);
+          end if;
+          v.d2stbcont := '0';
         else
           if ahbi.hready='1' and r.granted='1' then
             if r.ahb_htrans(1)='1' then
-              v.d2stba := std_logic_vector(unsigned(r.d2stba)+1);
-              if r.cctrl.dcs(0)='1' then
-                v.ahb_snoopmask := (others => '1');
+              if r.d2nb64ctr='0' and r.d2nb64en='1' then
+                v.d2nb64ctr := '1';
+                v.d2stbcont := '1';
+              else
+                v.d2nb64ctr := '0';
+                v.d2stba := std_logic_vector(unsigned(r.d2stba)+1);
+                v.d2stbcont := '0';
               end if;
             end if;
           end if;
           if ahbi.hready='1' then
             v.d2stbd := r.d2stba;
+            v.d2nb64den := r.d2nb64en;
+            v.d2nb64dctr := r.d2nb64ctr;
           end if;
           v.ahb_htrans := "00";
           if v.d2stba /= r.d2stbw or r.stbuffull='1' then
-            v.ahb_htrans := "10";
+            v.ahb_htrans := "1" & v.d2stbcont;
           end if;
         end if;
 
         v.ahb_hwrite := '1';
         v.ahb_haddr := r.d2stbuf(to_integer(unsigned(v.d2stba))).addr;
         v.ahb_hsize := '0' & r.d2stbuf(to_integer(unsigned(v.d2stba))).size;
-        v.ahb_hwdata := r.d2stbuf(to_integer(unsigned(v.d2stbd))).data;
+        v.ahb_snoopmask := r.d2stbuf(to_integer(unsigned(v.d2stba))).snoopmask;
+        vstd64 := r.d2stbuf(to_integer(unsigned(v.d2stbd))).data;
+        vstd64set := '1';
+        if v.d2nb64dctr='0' then
+          vstd32 := r.d2stbuf(to_integer(unsigned(v.d2stbd))).data(63 downto 32);
+        else
+          vstd32 := r.d2stbuf(to_integer(unsigned(v.d2stbd))).data(31 downto 0);
+        end if;
+        if v.d2nb64den='1' or xbusw < 64 then
+          vstd32set := '1'; -- overrides vstd64set
+        end if;
         v.ahb_hburst := HBURST_SINGLE;
+        if r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64='1' then
+          v.ahb_hburst := HBURST_INCR;
+        end if;
+        v.d2nb64en := r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64;
+        if v.d2nb64en='1' and vrflag='1' and r.d2nb64ctr='0' then v.d2nb64ctr:='1'; end if;
+        if v.d2nb64ctr='1' then v.ahb_haddr(2):='1'; end if;
+        if v.d2nb64en='1' then
+          v.ahb_hsize(0) := '0';
+        end if;
+        -- su forwarded to hprot below
+        vstoresu := r.d2stbuf(to_integer(unsigned(v.d2stba))).su;
 
-        if v.d2stba /= std_logic_vector(unsigned(r.d2stbw)-1) or r.stbuffull='1' or fastwr='1' then
+        v.d2wcctr := "11";
+        v.d2wchold := "000";
+        if (v.d2stba /= r.d2stbw or r.stbuffull='1') and r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb(1)='1' and r.ahb_htrans(1)='0' and not (r.ahb2_inacc='1' and ahbi.hresp(1)='1') and r.d2nb64ctr='0' then
+          v.ahb_htrans := "00";
+          v.s := as_wrcomb1;
+        elsif r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb(0)='1' and v.d2stbcont='0' and r.cctrl.wcomben='1' and not (r.holdn='0' and r.stbuffull='0' and r.ramreload='0') and r.d2wchold/="111" then
+          v.ahb_htrans := "00";
+          if r.d2wchold /= "111" then
+            v.d2wchold := std_logic_vector(unsigned(r.d2wchold)+1);
+          end if;
+        end if;
+
+        if (v.d2stba /= std_logic_vector(unsigned(r.d2stbw)-1) or (v.d2nb64en='1' and v.d2nb64ctr='0')) or r.stbuffull='1' or fastwr='1' then
           keepreq := '1';
+        end if;
+        if v.d2nb64en='1' and v.d2nb64ctr='1' then
+          keepreq := '0';
         end if;
 
         if r.d2stbd /= r.d2stbw then
           v.stbuffull := '0';
         end if;
+
         if fastwr='1' then
           v.d2stbw := std_logic_vector(unsigned(r.d2stbw)+1);
           if v.d2stbw=r.d2stbd then
             v.stbuffull := '1';
+          end if;
+          if v.d2stba=r.d2stbw then
+            v.ahb_htrans := "10";
+            v.ahb_hburst := HBURST_SINGLE;
+            v.ahb_haddr := v.d2paddr;
+            v.ahb_hsize := "0" & v.d2size;
+            v.ahb_snoopmask := (others => (not v.d2nocache));
+            vstoresu := r.d1su;
+            v.d2nb64en := '0';
+            if fastwr_nb64='1' then
+              v.ahb_hburst := HBURST_INCR;
+              v.ahb_hsize := "010";
+              v.d2nb64en := '1';
+              keepreq := '1';
+            end if;
+            if fastwr_wcomb='1' then
+              v.ahb_htrans := "00";
+              v.s := as_wrcomb1;
+            end if;
           end if;
         end if;
 
@@ -3297,6 +3550,213 @@ begin
           v.d2stbd := "00";
         end if;
 
+      when as_wrcomb1 =>
+        v.d2stbcont := '0';
+        vrflag := '0';
+        v.ahb_htrans := "00";
+        if r.ahb2_inacc='1' and ahbi.hresp(1)='1' and ahbi.hready='0' then
+          -- Go back into store state to handle retry on previous access
+          vrflag := '1';
+          v.d2stba := std_logic_vector(unsigned(r.d2stba)-1);
+          v.s := as_store;
+        else
+          if ahbi.hready='1' or r.ahb2_inacc='0' then
+            v.d2stbd := r.d2stba;
+            v.d2nb64den := r.d2nb64en;
+            v.d2nb64dctr := r.d2nb64ctr;
+          end if;
+        end if;
+        if r.ahb2_inacc='0' and (r.d2stba /= r.d2stbw or r.stbuffull='1') and r.d2stbuf(to_integer(unsigned(r.d2stba))).wcomb="11" then
+          v.d2stba := std_logic_vector(unsigned(r.d2stba)+1);
+          v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+1);
+          v.d2nb64ctr := '0';
+          v.d2wchold := (others => '0');
+        else
+          if r.d2wchold /= "111" then
+            v.d2wchold := std_logic_vector(unsigned(r.d2wchold)+1);
+          end if;
+          if r.ahb2_inacc='0' and (r.d2stbuf(to_integer(unsigned(r.d2stba))).wcomb(0)='0' or (r.holdn='0' and r.stbuffull='0')) then
+            v.ahb_htrans := "10";
+            v.s := as_wrcomb2;
+            v.d2stba := std_logic_vector(unsigned(r.d2stba)+1);
+            v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+1);
+          end if;
+        end if;
+
+        v.ahb_hwrite := '1';
+        v.ahb_hsize := '0' & r.d2stbuf(to_integer(unsigned(v.d2stba))).size;
+        v.ahb_hburst := HBURST_SINGLE;
+        if r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64='1' then
+          v.ahb_hburst := HBURST_INCR;
+          keepreq := '1';
+        end if;
+        if vrflag='1' then
+          v.d2nb64en := r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64;
+          if v.d2nb64en='1' then v.d2nb64ctr:='1'; end if;
+        end if;
+        if v.d2nb64en='1' then
+          v.ahb_hsize(0) := '0';
+        end if;
+        if vrflag='1' then
+          v.ahb_haddr := r.d2stbuf(to_integer(unsigned(v.d2stba))).addr;
+          if v.d2nb64ctr='1' then v.ahb_haddr(2):='1'; end if;
+          vstoresu := r.d2stbuf(to_integer(unsigned(v.d2stba))).su;
+        elsif xbusw>32 and r.d2nb64en='0' then
+          if r.d2wcctr="11" or r.ahb_haddr(3)='1' or xbusw<128 then
+            v.ahb_hsize := "011";
+          else
+            v.ahb_hsize := "100";
+          end if;
+          if (xbusw<128 and r.d2wcctr/="11") or (r.ahb_haddr(3)='0' and r.d2wcctr="10") then
+            v.ahb_hburst := HBURST_INCR;
+            keepreq := '1';
+          else
+            v.ahb_hburst := HBURST_SINGLE;
+          end if;
+        else
+          v.ahb_hsize := "010";
+          v.ahb_hburst := HBURST_INCR;
+          keepreq := '1';
+        end if;
+
+
+        if r.d2stbd /= r.d2stbw then
+          v.stbuffull := '0';
+        end if;
+
+        if fastwr='1' then
+          v.d2stbw := std_logic_vector(unsigned(r.d2stbw)+1);
+          if v.d2stbw=r.d2stbd then
+            v.stbuffull := '1';
+          end if;
+        end if;
+
+      when as_wrcomb2 =>
+        if r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
+          if ahbi.hready='0' then
+            v.ahb_htrans := "00";
+            if r.ahb_htrans(1)='1' then
+              if xbusw>64 and r.ahb2_hsize10(1)='0' then  -- hsize=100
+                v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+2);
+              elsif xbusw>32 and r.ahb2_hsize10(1 downto 0)="11" then  -- hsize=011
+                v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+1);
+              elsif r.ahb2_haddr42(2)='1' then  -- hsize=010
+                v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+1);
+              end if;
+            end if;
+          else
+            v.ahb_htrans := "10";
+          end if;
+          v.ahb_haddr(4 downto 2) := r.ahb2_haddr42;
+          v.ahb_hsize(2) := not r.ahb2_hsize10(1);
+          v.ahb_hsize(1 downto 0) := r.ahb2_hsize10;
+          if r.ahb2_hburst0='1' then
+            v.ahb_hburst := HBURST_INCR;
+            keepreq := '1';
+          else
+            v.ahb_hburst := HBURST_SINGLE;
+          end if;
+        elsif ahbi.hready='1' and r.granted='1' and r.ahb_htrans(1)='1' then
+          if xbusw>64 and r.ahb_hsize(2)='1' then
+            v.ahb_haddr(4) := not r.ahb_haddr(4);
+            if unsigned(r.d2wcctr) > 1 then
+              v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr))-2;
+            else
+              v.d2wcctr := (others => '0');
+            end if;
+            v.ahb_htrans := "11";
+            if unsigned(r.d2wcctr)=2 then
+              v.ahb_htrans := "10";
+              v.ahb_hsize := "011";
+            end if;
+          elsif xbusw>32 and r.ahb_hsize(1 downto 0)="11" then
+            v.ahb_haddr(4 downto 3) := std_logic_vector(unsigned(r.ahb_haddr(4 downto 3))+1);
+            if unsigned(r.d2wcctr) > 0 then
+              v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr))-1;
+            end if;
+            v.ahb_htrans := "11";
+            if r.ahb_hburst(0)='0' then
+              -- Special case - 128-bit bus, two 64-bit stores not aligned on
+              --                  128-bit boundary
+              v.ahb_htrans(0) := '0';
+            end if;
+            if xbusw>64 and unsigned(r.d2wcctr)>1 and r.ahb_haddr(3)='1' then
+              -- Special case - 128-bit bus, four 64-bit stores not aligned on
+              --                  128-bit boundary, switch from first 64-bit
+              --                  store to 128-bit store for middle bit
+              v.ahb_htrans := "10";
+              v.ahb_hsize := "100";
+            end if;
+          else
+            v.ahb_haddr(4 downto 2) := std_logic_vector(unsigned(r.ahb_haddr(4 downto 2))+1);
+            if r.ahb_haddr(2)='1' and unsigned(r.d2wcctr) > 0 then
+              v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr))-1;
+            end if;
+            v.ahb_htrans := "11";
+          end if;
+          if (  r.d2wcctr=(r.d2wcctr'range => '0') and
+                (  r.ahb_haddr(2)='1' or
+                   (xbusw>64 and r.ahb_hsize(2)='1') or
+                   (xbusw>32 and r.ahb_hsize(1 downto 0)="11") ) ) then
+            v.ahb_htrans := "00";
+          end if;
+          if xbusw>64 and r.d2wcctr(r.d2wcctr'high downto 1)=(r.d2wcctr'high downto 1 => '0') and
+            r.ahb_hsize(2)='1' then
+            v.ahb_htrans := "00";
+          end if;
+          if ( (     (xbusw>64 and v.ahb_hsize(2)='1') and unsigned(v.d2wcctr)>1) or
+               ( not (xbusw>64 and v.ahb_hsize(2)='1') and unsigned(v.d2wcctr)>0) or
+               (v.ahb_hsize(1 downto 0)="10" and v.ahb_haddr(2)='0')              ) then
+            keepreq := '1';
+          end if;
+        elsif ahbi.hready='1' and r.granted='0' then
+          v.ahb_htrans(0) := '0';
+        end if;
+        if ahbi.hready='1' then
+          if r.ahb_haddr(4)='0' xor ENDIAN then
+            vstd128 := r.ahb3_rdbuf(LINESZMAX*32-1 downto LINESZMAX*32-128);
+          else
+            vstd128 := r.ahb3_rdbuf(127 downto 0);
+          end if;
+          for x in 0 to 3 loop
+            if x=0 or r.ahb_haddr(4 downto 3)=std_logic_vector(to_unsigned(x,2)) then
+              if (not ENDIAN) then
+                vstd64 := r.ahb3_rdbuf((3-x)*64+63 downto (3-x)*64);
+              else
+                vstd64 := r.ahb3_rdbuf(x*64+63 downto x*64);
+              end if;
+              if r.ahb_haddr(2)='0' xor ENDIAN then
+                vstd32 := vstd64(63 downto 32);
+              else
+                vstd32 := vstd64(31 downto 0);
+              end if;
+            end if;
+          end loop;
+          vstd128set := '1';
+          if xbusw < 128 or r.ahb_hsize(2)='0' then
+            vstd64set := '1';
+          end if;
+          if xbusw < 64 or r.ahb_hsize(1 downto 0)="10" then
+            vstd32set := '1';
+          end if;
+        end if;
+
+        v.d2wchold := "000";
+        if r.ahb_htrans="00" and ahbi.hresp(1)='0' and v.ahb2_inacc='0' then
+          if r.d2stbw=r.d2stbd and r.stbuffull='0' and fastwr='0' then
+            v.s := as_normal;
+          else
+            v.s := as_store;
+          end if;
+        end if;
+
+        if fastwr='1' then
+          v.d2stbw := std_logic_vector(unsigned(r.d2stbw)+1);
+          if v.d2stbw=r.d2stbd then
+            v.stbuffull := '1';
+          end if;
+        end if;
+
       when as_slowwr =>
         -- Translate addr
         -- MMU permission check
@@ -3304,6 +3764,20 @@ begin
         -- Write burst on narrow bus
         -- Perform write
         v.mmusel := "011";
+        -- Set up store buffer entry for single/double store cases
+        v.d2stbuf(0).addr := r.d2paddr;
+        v.d2stbuf(0).size := r.d2size;
+        v.d2stbuf(0).data := r.d2data;
+        v.d2stbuf(0).snoopmask := (others => (not r.d2nocache));
+        v.d2stbuf(0).su := r.d2su;
+        v.d2stbuf(0).nb64 := '0';
+        v.d2stbuf(0).wcomb := "00";
+        if v.d2size="11" then
+          v.d2stbuf(0).wcomb := "01";
+        end if;
+        if r.d2size="11" and r.d2busw='0' then
+          v.d2stbuf(0).nb64 := '1';
+        end if;
         if dspecialasi='1' then
           v.s := as_wrasi;
         elsif r.d2paddrv='0' or r.d2tlbmod='0' then
@@ -3311,61 +3785,31 @@ begin
           v.ahb_haddr := r.mmctrl1.ctxp(25 downto 4) & r.mmctrl1.ctx & "00";
           v.ahb_htrans := "10";
           v.ahb_hsize := "010";
-        elsif r.d2size="11" and r.d2busw='0' then
-          v.ahb_hbusreq := '1';
-          v.ahb_haddr := r.d2paddr;
-          v.ahb_hsize := "010";
-          v.ahb_htrans := "10";
-          v.ahb_hburst := HBURST_INCR;
-          v.ahb_hwrite := '1';
-          v.s := as_wrburst;
-          keepreq := '1';
+          v.ahb_hburst := HBURST_SINGLE;
         else
           v.ahb_haddr := r.d2paddr;
-          v.ahb_hsize := "0" & r.d2size;
+          if r.d2size="11" and r.d2busw='0' then
+            v.ahb_hsize := "010";
+            v.ahb_hburst := HBURST_INCR;
+            v.d2nb64en := '1';
+            keepreq := '1';
+          else
+            v.ahb_hsize := "0" & r.d2size;
+            v.ahb_hburst := HBURST_SINGLE;
+            v.d2nb64en := '0';
+          end if;
           v.ahb_htrans := "10";
-          v.ahb_hburst := HBURST_SINGLE;
           v.ahb_hwrite := '1';
-          v.d2stbuf(0).addr := r.d2paddr;
-          v.d2stbuf(0).size := r.d2size;
-          v.d2stbuf(0).data := r.d2data;
-          v.d2stbuf(0).snoopmask := r.ahb_snoopmask;
           v.d2stbw := "01";
           v.s := as_store;
           v.slowwrpend := '0';
           if r.d1ten='1' then
             v.ramreload := '1';
           end if;
-        end if;
-
-      when as_wrburst =>
-        if ahbi.hresp(1)='1' and r.ahb2_inacc='1' then
-          v.ahb_htrans := "00";
-        end if;
-        if ahbi.hready='1' then
-          if r.granted='1' and (ahbi.hresp(1)='0' or r.ahb2_inacc='0') and r.ahb_htrans(1)='1' then
-            v.ahb_haddr(2) := not r.ahb_haddr(2);
-            v.ahb_htrans(0) := '1';
-            if r.ahb_haddr(2)='1' then
-              v.ahb_htrans := "00";
-            end if;
-            if r.ahb_haddr(2)='0' then
-              v.ahb_hwdata := r.d2data(63 downto 32) & r.d2data(63 downto 32);
-            else
-              v.ahb_hwdata := r.d2data(31 downto 0) & r.d2data(31 downto 0);
-            end if;
-          elsif r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
-            v.ahb_haddr(2) := not r.ahb_haddr(2);
-            v.ahb_htrans := "10";
-          elsif r.ahb_htrans(1)='0' then
-            v.s := as_normal;
-            v.slowwrpend := '0';
-            if r.d1ten='1' then
-              v.ramreload := '1';
-            end if;
+          if r.d2size="11" and r.cctrl.wcomben='1' then
+            v.ahb_htrans := "00";
           end if;
         end if;
-        if v.ahb_haddr(2)='0' then keepreq:='1'; end if;
 
       when as_wrasi =>
         v.s := as_wrasi2;
@@ -3401,6 +3845,7 @@ begin
               when "00011" =>     -- DCache configuration register
                 null;
               when "00100" =>     -- LEON5 configuration register
+                v.cctrl.wcomben       := r.d2data(32+11);
                 v.iuctrl.staticd      := r.d2data(32+10);
                 --bit9 is reserved
                 v.iuctrl.staticbp     := r.d2data(32+8);
@@ -3433,6 +3878,7 @@ begin
                 if r.d2data(32+2)='1' then vs.ahberrm := '0'; end if;
                 if r.d2data(32+1)='1' then vs.ahboerr := '0'; end if;
                 if r.d2data(32+0)='1' then vs.ahberr := '0'; end if;
+
 
               when "10000" => -- TCM configuration register
                 if itcmen=0 and dtcmen=0 then
@@ -3555,8 +4001,14 @@ begin
 
           when "00011011" =>               -- 0x1B MMU flush/probe
             v.s := as_mmuflush2;
-            v.itlbprobeid := (others => '0');
-            v.d2tlbid := (others => '0');
+            -- Swap addresses for TLB check
+            --  use r.dregval is used as temp holding register for i1pc
+            v.i1pc := r.d2vaddr;
+            v.dregval := r.i1pc;
+            v.i1ctx := r.mmctrl1.ctx;
+            v.dregval64(7 downto 0) := r.i1ctx;
+            v.d1vaddr := r.d2vaddr;
+            v.d2vaddr := r.d1vaddr;
 
           when "00011100" =>            -- 0x1C MMU/Cache bypass
             -- Update registers and jump back to normal to handle in standard
@@ -3564,7 +4016,7 @@ begin
             v.d2paddr := r.d2vaddr;
             v.d2paddrv := '1';
             v.d2tlbmod := '1';
-            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), wbmask);
+            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
             v.d2asi := "000" & ASI_SDATA;
             v.d2specialasi := '0';
             v.d2forcemiss := '1';
@@ -3850,6 +4302,8 @@ begin
                 if dtcmen /= 0 then
                   v.dregval(27) := '1';
                 end if;
+                v.dregval(26) := '0';   -- GRLIB AHB bus implementation
+                v.dregval(11) := r.cctrl.wcomben;
                 v.dregval(10) := r.iuctrl.staticd;
                 v.dregval(8)  := r.iuctrl.staticbp;
                 v.dregval(7)  := r.iuctrl.fbp;
@@ -3887,6 +4341,11 @@ begin
 
               when "01001" =>    -- AHB error address register
                 v.dregval := rs.ahberrhaddr;
+
+              when "01010" =>    -- AHB stripe configuration register
+                -- This register is not implemented in standard AHB version
+                -- of LEON5 (LEON5 config reg bit 26 is 0)
+                v.dregerr := '1';
 
 
               when "01111" =>    -- Boot word
@@ -4022,7 +4481,7 @@ begin
             -- path
             v.d2paddr := r.d2vaddr;
             v.d2paddrv := '1';
-            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), wbmask);
+            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
             v.d2asi := "000" & ASI_SDATA;
             v.d2specialasi := '0';
             v.d2su := '1';
@@ -4317,28 +4776,37 @@ begin
       when as_mmuprobe3 =>
         v.dregval(31 downto 28) := "0000";
         v.dregval(27 downto 8) := r.itlb(to_integer(unsigned(r.itlbprobeid))).paddr;
-        v.dregval(7) := r.dtlb(to_integer(unsigned(r.itlbprobeid))).cached;
-        v.dregval(6) := r.dtlb(to_integer(unsigned(r.itlbprobeid))).modified;
+        v.dregval(7) := r.itlb(to_integer(unsigned(r.itlbprobeid))).cached;
+        v.dregval(6) := r.itlb(to_integer(unsigned(r.itlbprobeid))).modified;
         v.dregval(5) := '1';    -- referenced
-        v.dregval(4 downto 2) := r.dtlb(to_integer(unsigned(r.itlbprobeid))).acc;
+        v.dregval(4 downto 2) := r.itlb(to_integer(unsigned(r.itlbprobeid))).acc;
         v.dregval(1 downto 0) := "10";  -- PTE
         v.s := as_rdasi2;
 
       when as_mmuflush2 =>
-        v.itlbprobeid := std_logic_vector(unsigned(r.itlbprobeid)+1);
-        v.d2tlbid := std_logic_vector(unsigned(r.d2tlbid)+1);
-        if flushmatch(r.itlb(to_integer(unsigned(r.itlbprobeid))), r.d2vaddr, r.mmctrl1.ctx) = '1' then
-          v.itlb(to_integer(unsigned(r.itlbprobeid))).valid := '0';
-        end if;
-        if flushmatch(r.dtlb(to_integer(unsigned(r.d2tlbid))), r.d2vaddr, r.mmctrl1.ctx) = '1' then
-          v.dtlb(to_integer(unsigned(r.d2tlbid))).valid := '0';
-        end if;
-        if ( (dtlbnum >= itlbnum and r.d2tlbid = (r.d2tlbid'range => '1')) or
-             (dtlbnum  < itlbnum and r.itlbprobeid = (r.itlbprobeid'range => '1')) ) then
-          v.s := as_normal;
-          v.ramreload := '1';
-          v.slowwrpend := '0';
-        end if;
+        -- Note use same registers for address/context as in regular TLB lookup
+        -- should equality checks inside flushmatch function to be merged with
+        -- regular TLB.
+        for e in 0 to itlbnum-1 loop
+          ipc := r.i1pc_repl((e mod tlbrepl)*32+31 downto (e mod tlbrepl)*32);
+          if flushmatch(r.itlb(e), ipc, r.i1ctx) = '1' then
+            v.itlb(e).valid := '0';
+          end if;
+        end loop;
+        for e in 0 to dtlbnum-1 loop
+          if flushmatch(r.dtlb(e), r.d1vaddr, r.mmctrl1.ctx) = '1' then
+            v.dtlb(e).valid := '0';
+          end if;
+        end loop;
+        v.s := as_normal;
+        -- Swap back addresses to restore correct state
+        --  use r.dregval is used as temp holding register for i1pc
+        v.i1pc := r.dregval;
+        v.i1ctx := r.dregval64(7 downto 0);
+        v.d1vaddr := r.d2vaddr;
+        v.d2vaddr := r.d1vaddr;
+        v.ramreload := '1';
+        v.slowwrpend := '0';
 
       when as_regflush =>
         ocrami.iindex := (others => '0');
@@ -4450,6 +4918,26 @@ begin
 
     end case;
 
+    if vstd32set='1' then
+      if xbusw < 64 then
+        v.ahb_hwdata := vstd32;
+      else
+        vstd64set := '1';
+        vstd64 := vstd32 & vstd32;
+      end if;
+    end if;
+    if xbusw > 32 and vstd64set='1' then
+      if xbusw < 128 then
+        v.ahb_hwdata := vstd64;
+      else
+        vstd128set := '1';
+        vstd128 := vstd64 & vstd64;
+      end if;
+    end if;
+    if xbusw > 64 and vstd128set='1' then
+      v.ahb_hwdata := vstd128;
+    end if;
+
     if v.itcmwipe='1' or v.dtcmwipe='1' then
       v.itcmenp := '0';
       v.itcmenva := '0';
@@ -4468,15 +4956,54 @@ begin
     end if;
 
 
+    -- Debug link access
+    -- Stage 4 : tag recheck d1 -> d2, set dmisspend (if read miss) / slowwrpend
+    if r.dbgacc(1)='1' then
+      if r.dbgaccwr='1' then
+        v.slowwrpend := '1';
+      end if;
+    end if;
+    -- Stage 3 : ram reload in progress
+    v.dbgacc(1) := r.dbgacc(0);
+    if r.dbgacc(0)='1' then
+      v.ramreload := '0';
+      if r.dbgacc(1)='0' then
+        v.d1chk := '1';
+      end if;
+    end if;
+    -- Stage 2 : capture virtual address and set ramreload
+    if r.dbgaccpend='1' and r.fsmidle='1' then
+      v.dbgacc(0) := '1';
+      v.d1vaddr := dci.maddress;
+      if r.dbgacc(0)='0' then
+        v.ramreload := '1';
+      end if;
+    end if;
+    -- Stage 1 : capture read/write command
+    if dci.dsuen='1' and dci.enaddr='1' and r.holdn='1' then
+      if dci.read='1' then
+        v.dbgaccpend := '1';
+      end if;
+      if dci.write='1' then
+        v.dbgaccpend := '1';
+        v.dbgaccwr := '1';
+      end if;
+    end if;
+    if r.dbgacc(1)='1' or dci.dsuen='0' then
+      v.dbgacc := (others => '0');
+      v.dbgaccpend := '0';
+      v.dbgaccwr := '0';
+    end if;
+
     v.holdn := '1';
     if ( v.imisspend='1' or v.dmisspend='1' or v.slowwrpend='1' or
          v.iflushpend='1' or v.dflushpend='1' or v.ramreload='1' or
-         v.stbuffull='1' or freeze='1') then
+         v.stbuffull='1' or v.dbgaccpend='1' or freeze='1') then
       v.holdn := '0';
     end if;
 
     v.fastwr_rdy := '0';
-    if (v.s=as_normal and v.ahb_hlock='0') or v.s=as_store then
+    if (v.s=as_normal or v.s=as_store or v.s=as_wrcomb1 or v.s=as_wrcomb2) and v.ahb_hlock='0' then
       v.fastwr_rdy := '1';
     end if;
 
@@ -4490,7 +5017,9 @@ begin
     v.ahb_hprot := "1101";
     if v.s=as_icfetch then
       v.ahb_hprot := "11" & v.i2su & '0';
-    elsif v.s=as_store or v.s=as_dcfetch or v.s=as_dcsingle or v.s=as_wrburst then
+    elsif v.s=as_store or v.s=as_wrcomb1 or v.s=as_wrcomb2 then
+      v.ahb_hprot := "11" & vstoresu & '1';
+    elsif v.s=as_dcfetch or v.s=as_dcsingle then
       v.ahb_hprot := "11" & v.d2su & '1';
     end if;
 
@@ -4572,6 +5101,7 @@ begin
         v.cctrl.ics      := RRES.cctrl.ics;
         v.cctrl.ics_btb  := RRES.cctrl.ics_btb;
         v.cctrl.dsnoop   := RRES.cctrl.dsnoop;
+        v.cctrl.wcomben  := RRES.cctrl.wcomben;
         v.iuctrl         := RRES.iuctrl;
         v.icignerr       := RRES.icignerr;
         v.dcignerr       := RRES.dcignerr;
@@ -4682,6 +5212,18 @@ begin
       end if;
     end loop;
 
+    -- If wbmask is zero we force all bus-width related registers to zero
+    if xwbmask=0 then
+      for x in 0 to itlbnum-1 loop
+        v.itlb(x).busw := '0';
+      end loop;
+      for x in 0 to dtlbnum-1 loop
+        v.dtlb(x).busw := '0';
+      end loop;
+      v.newent.busw := '0';
+      v.i2busw := '0';
+      v.d2busw := '0';
+    end if;
     --------------------------------------------------------------------------
     -- Assign signals
     --------------------------------------------------------------------------
@@ -4745,7 +5287,7 @@ begin
       if r.ahb2_inacc='1' and r.ahb2_hwrite='0' and ahbi.hready='1' and ahbi.hresp="00" then
         for x in LINESZMAX-1 downto 0 loop
           assert
-            not (r.ahb2_addrmask(x)='1' and is_x(ahbi.hrdata((((x+1)*32-1) mod busw) downto ((x*32) mod busw))))
+            not (r.ahb2_addrmask(x)='1' and is_x(ahbi.hrdata((((x+1)*32-1) mod xbusw) downto ((x*32) mod xbusw))))
             report "Reading in X over AHB bus into CPU"
             severity warning;
         end loop;

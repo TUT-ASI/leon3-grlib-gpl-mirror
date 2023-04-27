@@ -60,3 +60,7 @@ localclean:
 	@rm -rf syspll1 syspll1_sim syspll1.[bcpqsv]* syspll1_sim.f hc_output libraries
 	@rm -rf lpddr2ctrl1 lpddr2ctrl1_sim lpddr2ctrl1_example_design lpddr2ctrl1.[bcpqsv]* lpddr2ctrl1_sim.f 
 	@rm -rf ddr3ctrl1 ddr3ctrl1_sim ddr3ctrl1_example_design ddr3ctrl1.[bcpqsv]* ddr3ctrl1_sim.f 
+
+
+# To fully automate the "make quartus" target
+quartus: qwiz

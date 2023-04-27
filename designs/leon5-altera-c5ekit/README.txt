@@ -2,7 +2,7 @@ Overview
 --------
 
 This LEON3 design is tailored for the Altera CycloneV E Development
-kit and builds with Quartus 13.
+kit and builds with Quartus 16.
 
 Design contains:
   * LEON3 running at 95 MHz

@@ -174,7 +174,7 @@ proc generatefilelists {filetree fileinfo} {
                 if {[lsearch $XDIRSKIP $dname] < 0 } {
                     set flist {}
                     foreach i {vlogsyn vhdlsyn svlogsyn vhdlmtie vhdlsynpe vhdldce\
-                                   vhdlcdse vhdlxile vhdlprec vhdlfpro\
+                                   vhdlcdse vhdlxile vhdlxise vhdlprec vhdlfpro\
                                    vhdlp1735 vlogsim vhdlsim svlogsim } {
                         set m $k/$realdir/$i
                         if {[file exists $m.txt]} {
@@ -278,11 +278,14 @@ proc generatefilelists {filetree fileinfo} {
     foreach f $LATTICE_IP  {
 	set info [regsub {[ \t]*#.*} $f ""]
 	set infolist [regexp -all -inline {\S+} $info]
-	set fname [lindex $infolist 0]
-	set fattr [lreplace $infolist 0 0]
-        if {[file exists "$GRLIB/boards/$BOARD/$fname"] } {
+	#example: lifcl/pll/pll_12mhz -> fname=pll_12mhz
+	#fattr is for the folder IP path -> lifcl/pll/
+	#the regex matches everything (.*) until the last occurrence of / (included)
+	regexp {.*\/} [lindex $infolist 0] fattr
+	set fname [lindex [split [lindex $infolist 0] "/"] end]
+        if {[file exists "$GRLIB/boards/$BOARD/lattice_ips/${fattr}${fname}.cfg"] } {
             lappend flist $fname
-            set conffiledict [dict create bn "work" l "local" i "latticeipx" q $fname fattr $fattr]
+            set conffiledict [dict create bn "work" l "local" i "latticeipcfg" q $fname fattr $fattr]
             dict set fi $fname $conffiledict
         }
     }

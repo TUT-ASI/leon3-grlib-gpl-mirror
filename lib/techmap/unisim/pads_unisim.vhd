@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -713,6 +714,10 @@ begin
       end generate;
       cmos_18 : if voltage = x18v generate
         ip : IBUFG generic map (IOSTANDARD => "LVCMOS18") port map (O => ol, I => pad);
+        bf : BUFG port map (O => o, I => ol);
+      end generate;
+      cmos_12 : if voltage = x12v generate
+        ip : IBUFG generic map (IOSTANDARD => "LVCMOS12") port map (O => ol, I => pad);
         bf : BUFG port map (O => o, I => ol);
       end generate;
     end generate;

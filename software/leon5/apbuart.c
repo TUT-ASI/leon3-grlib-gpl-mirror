@@ -63,6 +63,7 @@ int apbuart_test(int addr)
         uart->control = ENABLE_TX | ENABLE_RX | LOOP_BACK;
         for (i = 0; i < 100; i++) {
           uart->data = 0;
+          while ((uart->status & FIFO_TX_INT) != 0) { }
         }
         
         for (i = 0; i < 100; i++) {

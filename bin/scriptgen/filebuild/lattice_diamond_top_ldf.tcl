@@ -32,6 +32,9 @@ proc append_file_lattice_diamond_top_ldf {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

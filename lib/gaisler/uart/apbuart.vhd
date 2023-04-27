@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -235,7 +236,14 @@ begin
       rdata(6 downto 0) := r.frame & r.parerr & r.ovf &
                 r.break & thempty & r.tsempty & dready;
 --pragma translate_off
-      if CONSOLE = 1 then rdata(2 downto 1) := "11"; end if;
+      if CONSOLE = 1 then
+        rdata(2 downto 1) := "11";
+        if fifosize /= 1 then
+          rdata(20 + log2x(fifosize) downto 20) := rcntzero;
+          rdata(9) := '0';
+          rdata(7) := '1';
+        end if;
+      end if;
 --pragma translate_on
     when "000010" =>
       if fifosize > 1 then
@@ -388,7 +396,12 @@ begin
           if r.paren = '1' then
             v.tshift(0) := r.tpar; v.txstate := cparity;
           else
-            v.tshift(0) := '1'; v.txstate := idle;
+            v.tshift(0) := '1';
+            if r.stop = '1' then
+              v.txstate := stopbit;
+            else
+              v.txstate := idle;
+            end if;
           end if;
         end if;
       end if;

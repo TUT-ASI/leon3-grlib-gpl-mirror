@@ -33,6 +33,9 @@ proc append_file_top_xise {f finfo} {
 			return
 		}
 		"vhdlxile" {
+			return
+		}
+		"vhdlxise" {
 			global TOP
 			upvar TOP_xise_contents txc
 			append txc "    <file xil_pn:name=\"$f\" xil_pn:type=\"FILE_VHDL\">\n"

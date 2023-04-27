@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -171,7 +172,8 @@ package sim is
       pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
       changeendian: integer range 0 to 32 := 0;
       initbyte: integer := 0;
-      jitter_tol: integer := 50
+      jitter_tol: integer := 50;
+      mprmode: integer range 0 to 8 := 0
       );
     port (
       ck: in std_ulogic;
@@ -304,7 +306,8 @@ package sim is
     hindex  : integer := 0;
     haddr   : integer := 0;
     hmask   : integer := 16#fff#;
-    halt    : integer := 1); 
+    halt    : integer := 1;
+    delay_stop : integer := 0); 
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -447,6 +450,37 @@ package sim is
       a : inout std_logic_vector(data_width-1 downto 0);
       b : inout std_logic_vector(data_width-1 downto 0);
       x : in std_logic_vector(data_width-1 downto 0) := (others => '0')
+      );
+  end component;
+
+  component delay_wire2
+    generic(
+      dab  : time := 10 ps;
+      dba  : time := 10 ps;
+      pull : integer range 0 to 2 := 0       -- 0=none, 1=pull-up, 2=pull-down
+      );
+    port(
+      a : inout std_logic;
+      b : inout std_logic;
+      eiab : in std_ulogic := '0';
+      eiba : in std_ulogic := '0';
+      col : out std_ulogic
+      );
+  end component;
+
+  component delay_wire2_bus
+    generic(
+      width  : integer := 8;
+      dab  : time := 10 ps;
+      dba  : time := 10 ps;
+      pull : integer range 0 to 2 := 0
+      );
+    port(
+      a : inout std_logic_vector(width-1 downto 0);
+      b : inout std_logic_vector(width-1 downto 0);
+      eiab: in std_logic_vector(width-1 downto 0) := (others => '0');
+      eiba: in std_logic_vector(width-1 downto 0) := (others => '0');
+      col : out std_logic_vector(width-1 downto 0)
       );
   end component;
 
@@ -1060,8 +1094,8 @@ package body sim is
 
   procedure leon5_subtest(subtest : integer) is
   begin
-
     case (subtest mod 16) is
+      when 1 => print("  CPU#" & (tost(subtest/16)) & " write combining");
       when 2 => print("  CPU#" & (tost(subtest/16)) & " tightly coupled memory");
       when others => leon3_subtest(subtest);
     end case;

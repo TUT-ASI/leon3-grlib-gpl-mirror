@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1056,6 +1057,12 @@ component nexus_iopad is
   port (pad   : inout std_ulogic; --From/To external
         i, en : in std_ulogic;    --From internal design
         o     : out std_ulogic);  --To internal design
+end component;
+
+component nexus_toutpad is
+  port ( pad : out std_ulogic; --To external
+         i   : in std_ulogic;  --From internal design
+         en  : in std_ulogic); -- Tri-state control
 end component;
 
 end;

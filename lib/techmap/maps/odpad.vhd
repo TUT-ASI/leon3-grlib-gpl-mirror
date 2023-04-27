@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -133,6 +134,9 @@ begin
       port map (pad, gnd, oen,cfgi(0), cfgi(1),
                 cfgi(19 downto 15), cfgi(14 downto 10),
                 cfgi(9 downto 6), cfgi(5 downto 2));
+  end generate;
+  nxus : if (tech = nexus) generate
+    x0 : nexus_toutpad  port map (pad, gnd, oen);
   end generate;
   
 end;

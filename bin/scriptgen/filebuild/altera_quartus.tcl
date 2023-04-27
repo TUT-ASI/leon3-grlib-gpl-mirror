@@ -37,6 +37,9 @@ proc append_file_altera_quartus {f finfo } {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

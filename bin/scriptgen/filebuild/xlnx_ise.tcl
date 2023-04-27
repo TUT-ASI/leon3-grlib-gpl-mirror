@@ -42,6 +42,9 @@ proc append_file_xlnx_ise {f finfo} {
 			return
 		}
 		"vhdlxile" {
+			return
+		}
+		"vhdlxise" {
 			upvar TOP_ise_tcl_contents titc
 			upvar compile_xst_contents cxc
 			global XSTVHDL VHDLOPT TOP

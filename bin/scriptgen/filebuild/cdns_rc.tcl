@@ -30,6 +30,9 @@ proc append_file_cdns_rc {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

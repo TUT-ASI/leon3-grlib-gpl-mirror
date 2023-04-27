@@ -29,6 +29,9 @@ proc append_file_aldec_make_riv {f finfo} {
         "vhdlxile" {
             return
         }
+        "vhdlxise" {
+            return
+        }
         "vhdlfpro" {
             return
         }

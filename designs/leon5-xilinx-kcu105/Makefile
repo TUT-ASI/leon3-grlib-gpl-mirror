@@ -4,9 +4,18 @@ include .config
 GRLIB=../..
 CLEAN=soft-clean
 
-############  Leon Core  ########################
+###################################################
+#DESIGN CONFIGURATION
+# Set the AHB data width of the design (supported 128,64 and 32) 
+AHB-WIDTH=128
 
+############  GRLIB_CONFIGURATION ########################
+
+ifeq ("$(AHB-WIDTH)","32")
+GRLIB_CONFIG=rtl/ahb-32bits/grlib_config_leon5.vhd
+else
 GRLIB_CONFIG=grlib_config_leon5.vhd
+endif
 
 ############  Board Setup  ########################
 
@@ -75,7 +84,7 @@ VIVADO_IMPL_STRATEGY=Performance_ExplorePostRoutePhysOpt
 RTL=$(GRLIB)/designs/$(DESIGN)/rtl
 
 VHDLSYNFILES= rtl/ddr4ram.vhd rtl/axi_mig4_7series.vhd rtl/ahb2axi_mig4_7series.vhd rtl/sgmii_kcu105.vhd \
-		config.vhd ahbrom128.vhd leon5mp.vhd $(MEMTECH) 
+		config.vhd ahbrom128.vhd ahbrom64.vhd ahbrom.vhd leon5mp.vhd $(MEMTECH) 
 VHDLSIMFILES= testbench.vhd 
 
 VERILOGSYNFILES=
@@ -86,9 +95,10 @@ SKIP_SIM_TECHLIBS = 1
 LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix ge_1000baseX \
 	spansion secureip usb ddr grdmac mmuconfig atf micron 	esa fmf
-DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest \
+DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft leon3 leon3v3 leon4 leon4v0 \
+        irqmp grfpc4 grlfpc4 subsys srio idt crypto satcan pci ambatest \
 	spacewire ascs slink hssl pwm gr1553b iommu ac97 secureip canfd \
-	nand grrm mma lram 
+	nand grrm mma lram clk2x
 
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd
 
@@ -105,11 +115,22 @@ include $(GRLIB)/bin/Makefile
 ##################  project specific targets ##########################
 
 ### Synthesis ###
+ifeq ("$(AHB-WIDTH)","32")
+MIG_IP= rtl/axi_32/mig.xci
+MIG_CDC_IP= rtl/axi_32/mig_cdc.xci
+else ifeq ("$(AHB-WIDTH)","64")
+MIG_IP= rtl/axi_64/mig.xci
+MIG_CDC_IP= rtl/axi_64/mig_cdc.xci
+else
+MIG_IP= rtl/axi_128/mig.xci
+MIG_CDC_IP= rtl/axi_128/mig_cdc.xci
+endif
+
 
 cp-mig-files: scripts
 	@echo "!!!!! Overwriting board mig files with local files"
-	cp rtl/axi_128/mig.xci vivado/mig.xci
-	cp rtl/axi_128/mig_cdc.xci vivado/mig_cdc.xci
+	cp $(MIG_IP)  vivado/mig.xci
+	cp $(MIG_CDC_IP) vivado/mig_cdc.xci
 	cp rtl/axi_128/axi_pipe.xci vivado/axi_pipe.xci
 	cp rtl/sgmii.xci vivado/sgmii.xci
 	cp rtl/sem_ultra_0.xci vivado/sem_ultra_0.xci

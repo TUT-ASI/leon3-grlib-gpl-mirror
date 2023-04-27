@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,8 +48,11 @@ use gaisler.nvsupport.all;
 use gaisler.noelv.XLEN;
 use gaisler.noelv.GEILEN;
 use gaisler.noelv.CAUSELEN;
+use gaisler.noelv.imsic_in_type;
+use gaisler.noelv.imsic_out_type;
 use gaisler.noelv.nv_irq_in_type;
 use gaisler.noelv.nv_irq_out_type;
+use gaisler.noelv.nv_nirq_in_type;
 use gaisler.noelv.nv_debug_in_type;
 use gaisler.noelv.nv_debug_out_type;
 use gaisler.noelv.nv_debug_out_none;
@@ -59,6 +63,8 @@ use gaisler.mmucacheconfig.satp_mode;
 use gaisler.fputilnv.fpevt_t;
 use gaisler.fputilnv.fpuevent_t;
 use gaisler.fputilnv.fpu_event;
+use gaisler.fputilnv.fpu_illegal;
+use gaisler.fputilnv.imm_create;
 use gaisler.alunv.alu_ctrl;
 use gaisler.alunv.alu_ctrl_none;
 use gaisler.alunv.alu_gen;
@@ -78,6 +84,7 @@ use gaisler.noelvint.nv_ras_in_none;
 use gaisler.noelvint.nv_ras_out_type;
 use gaisler.noelvint.nv_ras_out_none;
 use gaisler.noelvint.nv_dcache_in_type;
+use gaisler.noelvint.nv_dcache_in_none;
 use gaisler.noelvint.nv_dcache_out_type;
 use gaisler.noelvint.iregfile_in_type;
 use gaisler.noelvint.iregfile_out_type;
@@ -104,7 +111,6 @@ use gaisler.noelvint.cause_type;
 use gaisler.noelvint.pmpaddrzero;
 use gaisler.noelvint.PMPPRECALCRES;
 use gaisler.noelvint.fpu_id;
-use gaisler.noelvint.reg_t;
 
 
 entity iunv is
@@ -133,13 +139,17 @@ entity iunv is
     pmp_no_tor   : integer range 0  to 1;        -- Disable PMP TOR
     pmp_entries  : integer range 0  to 16;       -- Implemented PMP registers
     pmp_g        : integer range 0  to 10;       -- PMP grain is 2^(pmp_g + 2) bytes
-    asidlen      : integer range 0 to  16 := 0;  -- Max 9 for Sv32
-    vmidlen      : integer range 0 to  14 := 0;  -- Max 7 for Sv32
+    asidlen      : integer range 0 to  16;       -- Max 9 for Sv32
+    vmidlen      : integer range 0 to  14;       -- Max 7 for Sv32
+    -- Interrupts
+    imsic        : integer range 0 to  1;        -- IMSIC implemented
     -- Extensions
+    ext_noelv    : integer range 0  to 1;        -- NOEL-V Extensions
     ext_m        : integer range 0  to 1;        -- M Base Extension Set
     ext_a        : integer range 0  to 1;        -- A Base Extension Set
     ext_c        : integer range 0  to 1;        -- C Base Extension Set
     ext_h        : integer range 0  to 1;        -- H-Extension
+    ext_zcb      : integer range 0  to 1;        -- Zcb Extension
     ext_zba      : integer range 0  to 1;        -- Zba Extension
     ext_zbb      : integer range 0  to 1;        -- Zbb Extension
     ext_zbc      : integer range 0  to 1;        -- Zbc Extension
@@ -148,8 +158,19 @@ entity iunv is
     ext_zbkc     : integer range 0  to 1;        -- Zbkc Extension
     ext_zbkx     : integer range 0  to 1;        -- Zbkx Extension
     ext_sscofpmf : integer range 0  to 1;        -- Sscofpmf Extension
-    ext_sstc     : integer range 0  to 2;        -- Sctc Extension (2 : only time csr impl.)  
+    ext_sstc     : integer range 0  to 2;        -- Sctc Extension (2 : only time csr impl.)
+    ext_smrnmi   : integer range 0  to 1 := 0;   -- Smrnmi Extension
+    ext_smaia    : integer range 0  to 1;        -- Smaia Extension
+    ext_ssaia    : integer range 0  to 1;        -- Ssaia Extension
+    ext_smstateen : integer range 0  to 1;       -- Sstateen Extension
+    ext_smepmp   : integer range 0  to 1;        -- Smepmp Extension
     ext_zicbom   : integer range 0  to 1;        -- Zicbom Extension
+    ext_zicond   : integer range 0  to 1;        -- Zicond Extension
+    ext_zimops   : integer range 0  to 1;        -- Zimops Extension
+    ext_zfa      : integer range 0  to 1;        -- Zfa Extension
+    ext_zfh      : integer range 0  to 1;        -- Zfh Extension
+    ext_zfhmin   : integer range 0  to 1;        -- Zfhmin Extension
+    ext_zfbfmin  : integer range 0  to 1;        -- Zfbfmin Extension
     mode_s       : integer range 0  to 1;        -- Supervisor Mode Support
     mode_u       : integer range 0  to 1;        -- User Mode Support
     dmen         : integer range 0  to 1;        -- Using RISC-V Debug Module
@@ -164,9 +185,9 @@ entity iunv is
     tbuf         : integer;                      -- Trace buffer size in kB
     scantest     : integer;                      -- Scantest support
     rfreadhold   : integer range 0  to 1;        -- Register File Read Hold
+    allow_x_ctrl : integer range 0 to 1 := 1; -- Allow X to be turned off
     fpu_debug    : integer range 0  to 1 := 0;   -- FCSR bits for controlling the FPU
     fpu_lane     : integer range 0  to 1 := 0;   -- Lane where (non-memory) FPU instructions go
-    csr_lane     : integer range 0  to 1 := 0;   -- Lane where CSRs are handled
     endian       : integer range 0  to 1         -- 1 - little endian
     );
   port (
@@ -185,8 +206,11 @@ entity iunv is
     dco            : in  nv_dcache_out_type;   -- D$ Out Port
     rfi            : out iregfile_in_type;     -- Regfile In Port
     rfo            : in  iregfile_out_type;    -- Regfile Out Port
+    imsici         : out imsic_in_type;        -- IMSIC In Port
+    imsico         : in  imsic_out_type;       -- IMSIC Out Port
     irqi           : in  nv_irq_in_type;       -- Irq In Port
     irqo           : out nv_irq_out_type;      -- Irq Out Port
+    nirqi          : in  nv_nirq_in_type;      -- RNM Irq In Port
     dbgi           : in  nv_debug_in_type;     -- Debug In Port
     dbgo           : out nv_debug_out_type;    -- Debug Out Port
     muli           : out mul_in_type;          -- Mul Unit In Port
@@ -212,7 +236,10 @@ end;
 
 architecture rtl of iunv is
 
-  -- Regarding instructions swapping lanes
+  -- Regarding instructions swapping lanes vs forwarding
+  --
+  -- It would complicate things if swap had to be checked
+  -- while looking for where to forward from.
   --
   -- Instructions that need to be swapped in the lanes are:
   -- 0 -> 1
@@ -241,6 +268,9 @@ architecture rtl of iunv is
   -- do not give IU results - for the IU result ones the issue is
   -- with multi-cycle EX not working),
   -- so for forwarding we are (currently) left with:
+  -- (When FPU pairing is allowed, it must be ensured that FPU->IU
+  --  instructions do not pair and swap with anything that has
+  --  the same destination register!)
   -- 0 -> 1
   --   JAL, JALR
   --   CSRs, if csr_lane = 1
@@ -250,6 +280,8 @@ architecture rtl of iunv is
   --
   -- JAL/JALR will not pair when first due to control flow change,
   -- so there will never be a swap with them paired.
+  -- (If such pairing is allowed, it must be ensured that the
+  --  there are not the same destination registers!)
   -- To ensure that load integer and amo destinations do not cause
   -- issues when the same as for a paired other instruction, this
   -- specific case is disallowed by dual_issue_check().
@@ -271,6 +303,8 @@ architecture rtl of iunv is
 
   -- Lane where memory operations are handled (must be 0!)
   constant memory_lane : integer := 0;
+  -- Lane where CSR operations are handled (must be 0, due to CFI with mem & CSR!)
+  constant csr_lane    : integer := 0;
   -- Lane where branches are handled (0 not allowed when dual-issue!)
   constant branch_lane : integer := 1 - single_issue;
   -- Lane 1 (the one that does not exist when not dual-issue!)
@@ -278,9 +312,9 @@ architecture rtl of iunv is
   constant one         : integer := 1 - single_issue;
 
   -- Defined as in MISA
-  constant rv : std_logic_vector(1 downto 0) := u2vec(log2(XLEN / 32) + 1, 2);
+  constant rv : word2 := u2vec(log2(XLEN / 32) + 1, 2);
 
-  function is_rv(len : integer; rv : std_logic_vector(1 downto 0)) return boolean is
+  function is_rv(len : integer; rv : word2) return boolean is
   begin
     if len /= 32 and len /= 64 and len /= 128 then
       assert false report "Bad XLEN (len)" severity failure;
@@ -328,15 +362,29 @@ architecture rtl of iunv is
     extension(x_rv64,         is_rv64)               or
     extension(x_mode_u,       is_set(mode_u))        or
     extension(x_mode_s,       is_set(mode_s))        or
+    extension(x_noelv,        is_set(ext_noelv))     or
     extension(x_m,            is_set(ext_m))         or
     extension(x_f,            is_set(ext_f))         or
     extension(x_d,            is_set(ext_d))         or
     extension(x_a,            is_set(ext_a))         or
     extension(x_c,            is_set(ext_c))         or
+    extension(x_zcb,          is_set(ext_zcb))       or
     extension(x_h,            is_set(ext_h))         or
     extension(x_sscofpmf,     is_set(ext_sscofpmf))  or
     extension(x_sstc,         (ext_sstc = 1))        or
+    extension(x_imsic,        is_set(imsic))         or
+    extension(x_smrnmi,       is_set(ext_smrnmi))    or
+    extension(x_smaia,        is_set(ext_smaia))     or
+    extension(x_ssaia,        is_set(ext_ssaia))     or
+    extension(x_smstateen,    is_set(ext_smstateen)) or
+    extension(x_smepmp,       is_set(ext_smepmp))    or
     extension(x_zicbom,       is_set(ext_zicbom))    or
+    extension(x_zicond,       is_set(ext_zicond))    or
+    extension(x_zimops,       is_set(ext_zimops))    or
+    extension(x_zfa,          is_set(ext_zfa))       or
+    extension(x_zfh,          is_set(ext_zfh))       or
+    extension(x_zfhmin,       is_set(ext_zfhmin + ext_zfh)) or
+    extension(x_zfbfmin,      is_set(ext_zfbfmin))   or
     extension(x_time,         is_set(ext_sstc))      or
     extension(x_zba,          is_set(ext_zba))       or
     extension(x_zbb,          is_set(ext_zbb))       or
@@ -392,7 +440,7 @@ architecture rtl of iunv is
   constant ISA_EXTENSION : std_logic_vector(25 downto 0) :=
     '0'                 &     -- Z Reserved
     '0'                 &     -- Y Reserved
-    '0'                 &     -- X Non-standard
+    to_bit(ext_noelv)   &     -- X Non-standard
     '0'                 &     -- W Reserved
     '0'                 &     -- V
     to_bit(mode_u)      &     -- U User mode
@@ -402,7 +450,7 @@ architecture rtl of iunv is
     to_bit(ext_q)       &     -- Q
     '0'                 &     -- P
     '0'                 &     -- O Reserved
-    to_bit(ext_n)       &     -- N
+    '0'                 &     -- N
     to_bit(ext_m)       &     -- M
     '0'                 &     -- L
     '0'                 &     -- K Reserved
@@ -425,7 +473,7 @@ architecture rtl of iunv is
   constant x_ctrl      : integer := 23;  -- Non-standard extensions (X)
   constant ISA_CONTROL : wordx   := (
     h_ctrl => '1',
-    x_ctrl => '1',
+    x_ctrl => to_bit(allow_x_ctrl),
     others => '0'
   );
   constant ISA_DEFAULT : word    := "000000" & ISA_EXTENSION;
@@ -485,6 +533,13 @@ architecture rtl of iunv is
     return result;
   end;
 
+  -- Smstateen
+  constant CSR_MSTATEEN0_MASK : csr_mstateen0_type := gen_mstateen0_mask(active_extensions);
+
+  -- Interrupt constants
+  constant int_cause2prio : int_cause_arr(0 to 15) := set_cause2prio(cause_prio);
+
+
   -- Debug Constants
   function create_dprogbuf return wordx is
     -- Non-constant
@@ -508,86 +563,52 @@ architecture rtl of iunv is
   -- whether higher bits are the same or not (not same - bad address).
   subtype addr_type is std_logic_vector(cond(addr_bits = XLEN, addr_bits - 1, addr_bits + 1) downto 0);
 
-  -- Shortens addresses to the size that is actually needed (see addr_type).
-  -- If an address is "sign extended" above the useable part, the two bits
-  -- just above that part will be the same as that one.
-  -- A mix of 0s and 1s above the useable part will force the two bits
-  -- just above that part to be "10".
-  -- Example - MSB is top of actually useable address bits:
-  --   Incoming address <n bits (X)><1 MSB><(XLEN - n - 1) LSBs>
-  --   1 X = 111...111 -> 11<MSB><LSBs>
-  --   2 X = 000...000 -> 00<MSB><LSBs>
-  --   3 X = <mix 0/1> -> 10<MSB><LSBs>
-  --   ->
-  --   1 - The extra bits will be a sign extension if MSB is 1.
-  --   2 - The extra bits will be a sign extension if MSB is 0.
-  --   3 - Top two bits always different.
-  --   ->
-  --     A properly sign extended virtual address will stay sign extended in short form.
-  --     A badly sign extended virtual address will stay badly sign extended.
-  --     A physical address will have "00" at the top if and only if all were zero up there.
   function to_addr(addr_in : std_logic_vector) return addr_type is
-    variable addr_normal : std_logic_vector(addr_in'length - 1 downto 0)         := addr_in;
-    variable high_bits   : std_logic_vector(addr_in'length - 1 downto addr_bits) := (others => '0');
-    -- Non-constant
-    variable addr        : addr_type;  -- Manipulated from _in for efficiency.
   begin
-    addr := addr_normal(addr'range);
-    if addr_normal'length > addr'length then
-      addr(addr'high)     := not all_0(addr_normal(high_bits'range));  -- Some hign 1s?
-      addr(addr'high - 1) :=     all_1(addr_normal(high_bits'range));  -- All hign 1s?
-    end if;
-
-    return addr;
+    return to_addr(addr_in, addr_type'length);
   end;
 
   -- This is the maximum number of bits that need to be stored for PC,
   -- but calculations need full 64 bits (or at least check for bad address).
---  subtype pctype         is std_logic_vector(pcbits - 1 downto 0);
-  subtype pctype         is addr_type;
+  subtype pctype              is addr_type;
 
-  subtype lanes_range    is integer range lanes'range;
-  subtype lanes_type     is std_logic_vector(lanes'high downto lanes'low);  -- Must be n downto 0!
+  subtype lanes_range         is integer range lanes'range;
+  subtype lanes_type          is std_logic_vector(lanes'high downto lanes'low);  -- Must be n downto 0!
 
   -- Lanes types
-  type pc_lanes_type     is array (lanes'range) of pctype;
-  type rfa_lanes_type    is array (lanes'range) of rfatype;
-  type word_lanes_type   is array (lanes'range) of word;
-  type wordx_lanes_type  is array (lanes'range) of wordx;
-  type word16_lanes_type is array (lanes'range) of word16;
-  type word2_lanes_type  is array (lanes'range) of word2;
-  type word3_lanes_type  is array (lanes'range) of word3;
-  type fusel_lanes_type  is array (lanes'range) of fuseltype;
-  type rs_lanes_type     is array (lanes'range) of std_logic_vector(1 to 2);
-  type mux_lanes_type    is array (lanes'range) of word3;
-  type cause_lanes_type  is array (lanes'range) of cause_type;
-  type alu_ctrl_lanes_type is array (lanes'range) of alu_ctrl;
+  subtype word_lanes_type     is word_arr(lanes'range);
+  subtype wordx_lanes_type    is wordx_arr(lanes'range);
+  subtype word16_lanes_type   is word16_arr(lanes'range);
+  type    pc_lanes_type       is array (lanes'range) of pctype;
+  type    rfa_lanes_type      is array (lanes'range) of reg_t;
+  type    word2_lanes_type    is array (lanes'range) of word2;
+  type    word3_lanes_type    is array (lanes'range) of word3;
+  type    fusel_lanes_type    is array (lanes'range) of fuseltype;
+  type    rs_lanes_type       is array (lanes'range) of std_logic_vector(1 to 2);
+  type    mux_lanes_type      is array (lanes'range) of word3;
+  type    cause_lanes_type    is array (lanes'range) of cause_type;
+  type    alu_ctrl_lanes_type is array (lanes'range) of alu_ctrl;
 
---  type iword16_type is record
---    lpc : std_logic_vector(1 downto 0);
---    d   : word16;
---    xc  : word3;
---  end record;
 
   -- These are for the two fetched instructions, not lanes!
-  constant fetch          : std_logic_vector(0 to 1) := (others => '0');    -- Used as range.
-  subtype fetch_pair     is std_logic_vector(fetch'high downto fetch'low);  -- Must be n downto 0!
---  type iword16_pair_type is array (fetch'range) of iword16_type;
-  type wordx_pair_type   is array (fetch'range) of wordx;
-  type pc_fetch_type     is array (fetch'range) of pctype;
-  type word16_fetch_type is array (fetch'range) of word16;
-  type rfa_fetch_type    is array (fetch'range) of rfatype;
-  type fusel_fetch_type  is array (fetch'range) of fuseltype;
-  type cause_fetch_type  is array (fetch'range) of cause_type;
+  constant fetch             : std_logic_vector(0 to 1) := (others => '0');    -- Used as range.
+  subtype fetch_pair        is std_logic_vector(fetch'high downto fetch'low);  -- Must be n downto 0!
+  subtype iword_pair_type   is iword_tuple_type(fetch'range);
+  subtype wordx_pair_type   is wordx_arr(fetch'range);
+  subtype word16_fetch_type is word16_arr(fetch'range);
+  type    pc_fetch_type     is array (fetch'range) of pctype;
+  type    rfa_fetch_type    is array (fetch'range) of reg_t;
+  type    fusel_fetch_type  is array (fetch'range) of fuseltype;
+  type    cause_fetch_type  is array (fetch'range) of cause_type;
 
   -- Caches
-  type icdtype           is array (0 to iways - 1) of word64;
-  type dcdtype           is array (0 to dways - 1) of word64;
+  subtype icdtype           is word64_arr(0 to iways - 1);
+  subtype dcdtype           is word64_arr(0 to dways - 1);
 
   -- PC
-  constant PC_ZERO      : pctype    := (others => '0');
-  constant PC_RESET     : pctype    := PC_ZERO(PC_ZERO'high downto 32) &
-                                       u2vec(rstaddr, 20) & PC_ZERO(11 downto 0);
+  constant PC_ZERO           : pctype    := (others => '0');
+  constant PC_RESET          : pctype    := PC_ZERO(PC_ZERO'high downto 32) &
+                                            u2vec(rstaddr, 20) & PC_ZERO(11 downto 0);
 
   -- Stages
   type stage_type is (a, e, m, x, wb);
@@ -680,7 +701,8 @@ architecture rtl of iunv is
   type csr_type is record
     r        : std_ulogic;
     w        : std_ulogic;
-    category : std_logic_vector(9 downto 0);
+    addr     : csratype;
+    category : category_t;
     ctrl     : word2;
     v        : wordx;         -- Value read from CSR register
   end record;
@@ -688,6 +710,7 @@ architecture rtl of iunv is
   constant csr_none : csr_type := (
     r        => '0',
     w        => '0',
+    addr     => (others => '0'),
     category => (others => '0'),
     ctrl     => (others => '0'),
     v        => (others => '0')
@@ -699,6 +722,8 @@ architecture rtl of iunv is
   type fetch_reg_type is record
     pc          : pctype;                             -- pc to be fetched
     valid       : std_ulogic;                         -- valid fetch request
+    btb_hit     : std_ulogic;                         -- For hpm counters
+    ras_hit     : std_ulogic;                         -- For hpm counters
   end record;
 
   -- Fetch Stage <-> Decode Stage --------------------------------------------
@@ -720,7 +745,6 @@ architecture rtl of iunv is
     prediction  : prediction_array_type;              -- BHT record
     hit         : std_ulogic;                         -- fetched pc hit BTB
     unaligned   : std_ulogic;                         -- unaligned compressed instruction flag due to previous fetched pair
---    uninst      : iword16_type;                       -- unaligned compressed instruction
   end record;
 
   -- Decode Stage <-> Register Access Stage -----------------------------------
@@ -735,7 +759,7 @@ architecture rtl of iunv is
     swap        : std_ulogic;                -- instructions are swapped in lanes
     raso        : nv_ras_out_type;           -- RAS record
     rasi        : nv_ras_in_type;            -- speculative RAS record
-    csrw_eq     : std_logic_vector(3 downto 0);  --related to csr write hold checks
+    csrw_eq     : word4;                     -- related to csr write hold checks
     lalu_pre    : lanes_type;                -- prechecked lalu
   end record;
 
@@ -774,6 +798,7 @@ architecture rtl of iunv is
     stdata      : wordx;                     -- Data to be stored for ST instructions
     accesshold  : std_logic_vector(0 to 1);  -- Memory access hold due to CSR access.
     exechold    : std_logic_vector(0 to 2);  -- Execution hold due to pipeline flushing instruction.
+    fpu_valid   : std_ulogic;                -- Synchronous FPU valid
     fpuhold     : std_logic_vector(0 to 5);  -- Execution hold due to FPU instruction.
     fpu_wait    : std_ulogic;                -- FPU instruction will return result in EX.
     was_held    : std_ulogic;                -- Bubble was inserted after EX
@@ -802,12 +827,13 @@ architecture rtl of iunv is
     size        : word2;
     asi         : word8;
     amo         : std_logic_vector(5 downto 0);
-    cbo         : std_logic_vector(2 downto 0);
-    vms         : std_logic_vector(2 downto 0);
+    cbo         : word3;
+    vms         : word3;
     sum         : std_ulogic;
     mxr         : std_ulogic;
     vmxr        : std_ulogic;
     hx          : std_ulogic;
+    ss          : std_ulogic;
   end record;
 
   constant dcache_in_none : dcache_in_type := (
@@ -825,7 +851,8 @@ architecture rtl of iunv is
     sum         => '0',
     mxr         => '0',
     vmxr        => '0',
-    hx          => '0'
+    hx          => '0',
+    ss          => '0'
     );
 
   -- Load types
@@ -842,9 +869,8 @@ architecture rtl of iunv is
   subtype trighit_type   is std_logic_vector(TRIGGER_NUM - 1 downto 0);
 
   type trig_typ_vector_type  is array (0 to TRIGGER_NUM - 1) of std_logic_vector(11 downto 0);
---  type trig_info_vector_type is array (0 to TRIGGER_NUM - 1) of std_logic_vector(15 downto 0);
   constant dummy_csr : csr_reg_type := CSRRES;
-  type trig_info_vector_type is array (0 to 2 ** dummy_csr.tcsr.tselect'length - 1) of std_logic_vector(15 downto 0);
+  subtype trig_info_vector_type is word16_arr(0 to 2 ** dummy_csr.tcsr.tselect'length - 1);
   function set_trig_typ_vector(mc : integer;
                                ic : integer;
                                ie : integer) return trig_typ_vector_type is
@@ -899,7 +925,7 @@ architecture rtl of iunv is
     valid   : lanes_type;
     nullify : lanes_type;
     pending : std_logic;
-    action  : std_logic_vector(1 downto 0);
+    action  : word2;
     hit     : trighit_type;
   end record;
   constant trig_none : trig_type := ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'));
@@ -911,7 +937,7 @@ architecture rtl of iunv is
     rfa1        : rfa_lanes_type;               -- Register file record for op1
     rfa2        : rfa_lanes_type;               -- Register file record for op2
     result      : wordx_lanes_type;             -- ALUs result
-    fpuflags    : std_logic_vector(4 downto 0); -- FPU flags
+    fpuflags    : word5;                        -- FPU flags
     dci         : dcache_in_type;               -- Data cache input record
     stdata      : wordx;                        -- Data to store for ST instructions
     stforw      : lanes_type;                   -- Store unit forwarded flags
@@ -930,37 +956,43 @@ architecture rtl of iunv is
 
   -- Memory Stage <-> Exception Stage -----------------------------------------
   type exception_reg_type is record
-    ctrl        : pipeline_ctrl_lanes_type;     -- Pipeline control record
-    csr         : csr_type;                     -- CSR information
-    rfa1        : rfa_lanes_type;               -- Register file record for op1
-    rfa2        : rfa_lanes_type;               -- Register file record for op2
-    result      : wordx_lanes_type;             -- ALUs result
-    fpuflags    : std_logic_vector(4 downto 0); -- FPU flags
-    address     : addr_type;                    -- Computed address for Data cache
-    dci         : dcache_in_type;               -- Data Cache record
-    data        : dcdtype;                      -- Data from Load unit
-    way         : std_logic_vector(DWAYMSB downto 0);
-    mexc        : std_ulogic;                   -- Exception flag from Data cache
-    exctype     : std_ulogic;                   -- Exception type from Data cache
-    exchyper    : std_ulogic;                   -- Hypervisor exception from cache
-    tval2       : wordx;                        -- Hypervisor exception info from cache
-    tval2type   : word2;                        -- Hypervisor exception info from cache
-    wcsr        : wordx;                        -- Load/store address for trace
-    csrw        : lanes_type;                   -- CSR write enable
-    csraxc      : std_ulogic;                   -- CSR write address not OK
-    ret         : word2;                        -- Privileged level to return
-    swap        : std_ulogic;                   -- Instrutions are swapped
-    alupreforw1 : mux_lanes_type;               -- ALUs preforward information
-    alupreforw2 : mux_lanes_type;               -- ALUs preforward information
-    lbranch     : std_ulogic;                   -- Late branch flag
-    alu         : alu_pair_type;                -- Late ALUs record
-    spec_ld     : std_ulogic;                   -- Speculative load operation flag
-    rstate      : core_state;                   -- Core state
-    rasi        : nv_ras_in_type;               -- Speculative RAS record
-    trig        : trig_type;                    -- Trigger on instruction
-    int         : lanes_type;                   -- Interrupt on instruction
-    irqcause    : cause_type;                   -- interrupt cause
-    fsd_hi      : word;                         -- High half of fsd data
+    ctrl           : pipeline_ctrl_lanes_type;     -- Pipeline control record
+    csr            : csr_type;                     -- CSR information
+    rfa1           : rfa_lanes_type;               -- Register file record for op1
+    rfa2           : rfa_lanes_type;               -- Register file record for op2
+    result         : wordx_lanes_type;             -- ALUs result
+    result0        : word2;                        -- ALUs result is zero
+    fpuflags       : word5;                        -- FPU flags
+    address        : addr_type;                    -- Computed address for Data cache
+    dci            : dcache_in_type;               -- Data Cache record
+    data           : dcdtype;                      -- Data from Load unit
+    way            : std_logic_vector(DWAYMSB downto 0);
+    mexc           : std_ulogic;                   -- Exception flag from Data cache
+    exctype        : std_ulogic;                   -- Exception type from Data cache
+    exchyper       : std_ulogic;                   -- Hypervisor exception from cache
+    tval2          : wordx;                        -- Hypervisor exception info from cache
+    tval2type      : word2;                        -- Hypervisor exception info from cache
+    wcsr           : wordx;                        -- Load/store address for trace
+    csrw           : lanes_type;                   -- CSR write enable
+    csraxc         : std_ulogic;                   -- CSR write address not OK
+    aia_acchold    : std_logic_vector(0 to 2);     -- Access hold due to AIA CSR dependency
+    ret            : word2;                        -- Privileged level to return
+    nret           : std_ulogic;                   -- Return from a RNMI
+    swap           : std_ulogic;                   -- Instrutions are swapped
+    alupreforw1    : mux_lanes_type;               -- ALUs preforward information
+    alupreforw2    : mux_lanes_type;               -- ALUs preforward information
+    lbranch        : std_ulogic;                   -- Late branch flag
+    alu            : alu_pair_type;                -- Late ALUs record
+    spec_ld        : std_ulogic;                   -- Speculative load operation flag
+    rstate         : core_state;                   -- Core state
+    rasi           : nv_ras_in_type;               -- Speculative RAS record
+    trig           : trig_type;                    -- Trigger on instruction
+    int            : lanes_type;                   -- Interrupt on instruction
+    irqcause       : cause_type;                   -- Interrupt cause
+    nirqpend       : std_ulogic;                   -- RNMI interrupt pending
+    fpu_imm        : word64;                       -- Immediate FPU value
+    data_valid_fpu : std_ulogic;                   -- Data to FPU valid
+    fsd_hi         : word;                         -- High half of fsd data
   end record;
 
   -- Exception Stage <-> Write Back Stage -------------------------------------
@@ -969,7 +1001,7 @@ architecture rtl of iunv is
     csr           : csr_type;                       -- CSR information
     wdata         : wordx_lanes_type;               -- Write-back data to register file
     wcsr          : wordx_lanes_type;               -- Write-back data to CSR etc for trace
-    fpuflags      : std_logic_vector(4 downto 0);   -- FPU flags
+    fpuflags      : word5;                          -- FPU flags
     lalu          : lanes_type;                     -- Late ALUs flag
     flushall      : std_ulogic;                     -- Flushall instructions flag
     csr_pipeflush : std_ulogic;                     -- Pipeline flush due to CSR instructions flag
@@ -984,23 +1016,24 @@ architecture rtl of iunv is
     rasi          : nv_ras_in_type;                 -- Speculative RAS record
     prv           : priv_lvl_type;                  -- Only used for instruction trace printout
     v             : std_ulogic;                     -- Only used for instruction trace printout
-    bht_bhistory  : std_logic_vector(4 downto 0);   -- BHT bhistory input
+    bht_bhistory  : word5;                          -- BHT bhistory input
     bht_phistory  : word64;                         -- BHT phistory input
     ret           : std_logic;                      -- xRet instruction
     trap_taken    : lanes_type;                     -- Used for debug printing
-    icnt          : std_logic_vector(1 downto 0);   -- instruction count event
+    icnt          : word2;                          -- instruction count event
     unalg_pc      : pctype;                         -- Unaligned PC to write for BTB/BHT
+    commit_fpu    : std_ulogic;                     -- FPU instruction commit
     fsd_hi        : word;                           -- High half of fsd data
   end record;
 
   -- Debug-Module reegister ---------------------------------------------------
   type debugmodule_reg_type is record
-    cmdexec     : std_logic_vector(1 downto 0);              -- Command on going
+    cmdexec     : word2;                                     -- Command on going
     write       : std_ulogic;                                -- Command write
-    size        : std_logic_vector(2 downto 0);              -- Command size
-    cmd         : std_logic_vector(1 downto 0);              -- Command
-    addr        : std_logic_vector(15 downto 0);             -- Command addr
-    havereset   : std_logic_vector(3 downto 0);              -- Have been reset
+    size        : word3;                                     -- Command size
+    cmd         : word2;                                     -- Command
+    addr        : word16;                                    -- Command addr
+    havereset   : word4;                                     -- Have been reset
     tbufaddr    : std_logic_vector(TBUFBITS - 1 downto 0);   -- Trace buffer readout address
   end record;
 
@@ -1020,7 +1053,7 @@ architecture rtl of iunv is
     cevt    : std_logic_vector(0 to perf_cnts + 3 - 1);  -- 0-2 not used
     evtirq  : std_logic_vector(0 to perf_cnts + 3 - 1);  -- 0-2 not used
     fpo     : fpu5_out_type;    -- FPU output, for logging
-    fpflush : std_logic_vector(4 downto 0);
+    fpflush : word5;
   end record;
 
   ----------------------------------------------------------------------------
@@ -1034,6 +1067,8 @@ architecture rtl of iunv is
     -- Fetch Stage
     v.f.pc                      := PC_RESET;
     v.f.valid                   := '0';
+    v.f.btb_hit                 := '0';
+    v.f.ras_hit                 := '0';
     -- Decode Stage
     v.d.pc                      := PC_RESET;
     v.d.inst                    := (others => (others => '0'));
@@ -1075,6 +1110,7 @@ architecture rtl of iunv is
     v.e.stdata                  := zerox;
     v.e.accesshold              := (others => '0');
     v.e.exechold                := (others => '0');
+    v.e.fpu_valid               := '0';
     v.e.fpuhold                 := (others => '0');
     v.e.fpu_wait                := '0';
     v.e.swap                    := '0';
@@ -1126,6 +1162,7 @@ architecture rtl of iunv is
     v.x.wcsr                    := zerox;
     v.x.csrw                    := (others => '0');
     v.x.csraxc                  := '0';
+    v.x.aia_acchold             := (others => '0');
     v.x.ret                     := (others => '0');
     v.x.swap                    := '0';
     v.x.alupreforw1             := (others => (others => '0'));
@@ -1138,6 +1175,8 @@ architecture rtl of iunv is
     v.x.int                     := (others => '0');
     v.x.spec_ld                 := '0';
     v.x.irqcause                := (others => '0');
+    v.x.fpu_imm                 := (others => '0');
+    v.x.data_valid_fpu          := '0';
     v.x.fsd_hi                  := (others => '0');
     -- Writeback Stage
     v.wb.ctrl                   := (others => pipeline_ctrl_none);
@@ -1164,6 +1203,7 @@ architecture rtl of iunv is
     v.wb.ret                    := '0';
     v.wb.trap_taken             := (others => '0');
     v.wb.icnt                   := (others => '0');
+    v.wb.commit_fpu             := '0';
     v.wb.fsd_hi                 := (others => '0');
     -- CSR Regfile
     v.csr                       := CSRRES;
@@ -1175,8 +1215,8 @@ architecture rtl of iunv is
     v.evtirq                    := (others => '0');
     -- Triggers
     for i in trig_typ_vector'range loop
-      v.csr.tcsr.tdata1(i)(XLEN-1 downto XLEN-12) := trig_typ_vector(i);
-      v.csr.tcsr.tinfo(i)                         := trig_info_vector(i);
+      v.csr.tcsr.tdata1(i)(XLEN - 1 downto XLEN - 12) := trig_typ_vector(i);
+      v.csr.tcsr.tinfo(i)                             := trig_info_vector(i);
     end loop;
     -- Debug-Module
     v.dm.cmdexec                := (others => '0');
@@ -1203,7 +1243,7 @@ architecture rtl of iunv is
   signal arst           : std_ulogic;
 
   -- Hart index
-  signal hart           : std_logic_vector(3 downto 0);
+  signal hart           : word4;
 
 
 
@@ -1276,9 +1316,9 @@ architecture rtl of iunv is
   -- Fetch rd from specified stage and lane.
   -- Note that this returns the rd position bits, whether rd exists or not.
   -- Normally should be used together with .rdv check.
-  function rd(r : registers; stage : stage_type; lane : lanes_range) return std_logic_vector is
+  function rd(r : registers; stage : stage_type; lane : lanes_range) return reg_t is
   begin
-    return ctrl(r, stage, lane).inst(11 downto 7);
+    return rd(ctrl(r, stage, lane).inst);
   end;
 
 
@@ -1355,32 +1395,32 @@ architecture rtl of iunv is
 
   -- Is rd valid and the same as given rs?
   function v_rd_eq(r  : registers; stage : stage_type; lane : lanes_range;
-                   rs : std_logic_vector) return boolean is
+                   rs : reg_t) return boolean is
     -- Non-constant
     variable c_valid : std_logic;
     variable c_rdv   : std_logic;
-    variable c_rd    : rfatype;
+    variable c_rd    : reg_t;
   begin
     if    stage = a then
       c_valid := r.a.ctrl(lane).valid;
       c_rdv   := r.a.ctrl(lane).rdv;
-      c_rd    := r.a.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.a.ctrl(lane).inst);
     elsif stage = e then
       c_valid := r.e.ctrl(lane).valid;
       c_rdv   := r.e.ctrl(lane).rdv;
-      c_rd    := r.e.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.e.ctrl(lane).inst);
     elsif stage = m then
       c_valid := r.m.ctrl(lane).valid;
       c_rdv   := r.m.ctrl(lane).rdv;
-      c_rd    := r.m.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.m.ctrl(lane).inst);
     elsif stage = x then
       c_valid := r.x.ctrl(lane).valid;
       c_rdv   := r.x.ctrl(lane).rdv;
-      c_rd    := r.x.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.x.ctrl(lane).inst);
     else
       c_valid := r.wb.ctrl(lane).valid;
       c_rdv   := r.wb.ctrl(lane).rdv;
-      c_rd    := r.wb.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.wb.ctrl(lane).inst);
     end if;
 
     return c_valid = '1' and c_rdv = '1' and c_rd = rs;
@@ -1458,26 +1498,26 @@ architecture rtl of iunv is
   -- Is rd valid and the same as given rs?
   -- (Using special rdv value.)
   function v_rd_eq_xrdv(r   : registers; stage : stage_type; lane : lanes_range;
-                        rdv : std_logic; rs    : std_logic_vector) return boolean is
+                        rdv : std_logic; rs    : reg_t) return boolean is
     -- Non-constant
     variable c_valid : std_logic;
-    variable c_rd    : rfatype;
+    variable c_rd    : reg_t;
   begin
     if    stage = a then
       c_valid := r.a.ctrl(lane).valid;
-      c_rd    := r.a.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.a.ctrl(lane).inst);
     elsif stage = e then
       c_valid := r.e.ctrl(lane).valid;
-      c_rd    := r.e.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.e.ctrl(lane).inst);
     elsif stage = m then
       c_valid := r.m.ctrl(lane).valid;
-      c_rd    := r.m.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.m.ctrl(lane).inst);
     elsif stage = x then
       c_valid := r.x.ctrl(lane).valid;
-      c_rd    := r.x.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.x.ctrl(lane).inst);
     else
       c_valid := r.wb.ctrl(lane).valid;
-      c_rd    := r.wb.ctrl(lane).inst(11 downto 7);
+      c_rd    := rd(r.wb.ctrl(lane).inst);
     end if;
 
     return c_valid = '1' and rdv = '1' and c_rd = rs;
@@ -1532,26 +1572,26 @@ architecture rtl of iunv is
   -- Is rd valid and the same as given rs?
   -- (Using special valid value.)
   function v_rd_eq_xvalid(r     : registers; stage : stage_type; lane : lanes_range;
-                          valid : std_logic; rs    : std_logic_vector) return boolean is
+                          valid : std_logic; rs    : reg_t) return boolean is
     -- Non-constant
     variable c_rdv : std_logic;
-    variable c_rd  : rfatype;
+    variable c_rd  : reg_t;
   begin
     if    stage = a then
       c_rdv := r.a.ctrl(lane).rdv;
-      c_rd  := r.a.ctrl(lane).inst(11 downto 7);
+      c_rd  := rd(r.a.ctrl(lane).inst);
     elsif stage = e then
       c_rdv := r.e.ctrl(lane).rdv;
-      c_rd  := r.e.ctrl(lane).inst(11 downto 7);
+      c_rd  := rd(r.e.ctrl(lane).inst);
     elsif stage = m then
       c_rdv := r.m.ctrl(lane).rdv;
-      c_rd  := r.m.ctrl(lane).inst(11 downto 7);
+      c_rd  := rd(r.m.ctrl(lane).inst);
     elsif stage = x then
       c_rdv := r.x.ctrl(lane).rdv;
-      c_rd  := r.x.ctrl(lane).inst(11 downto 7);
+      c_rd  := rd(r.x.ctrl(lane).inst);
     else
       c_rdv := r.wb.ctrl(lane).rdv;
-      c_rd  := r.wb.ctrl(lane).inst(11 downto 7);
+      c_rd  := rd(r.wb.ctrl(lane).inst);
     end if;
 
     return valid = '1' and c_rdv = '1' and c_rd = rs;
@@ -1604,9 +1644,21 @@ architecture rtl of iunv is
   end;
 
   function csr_addr(r : registers; stage : stage_type) return csratype is
+    variable csr : csr_type := csr(r, stage);
+  begin
+    return csr.addr;
+  end;
+
+  function csr_access_addr(r : registers; stage : stage_type) return csratype is
     variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
   begin
-    return csr_addr(c.inst);
+    return csr_access_addr(c.inst);
+  end;
+
+  function is_csr_access(r : registers; stage : stage_type) return boolean is
+    variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
+  begin
+    return is_csr_access(c.inst);
   end;
 
   function csr_eq(r : registers; stage1 : stage_type; stage2 : stage_type) return boolean is
@@ -1615,10 +1667,10 @@ architecture rtl of iunv is
   end;
 
   function csr_category_eq(r : registers; stage1 : stage_type; stage2 : stage_type) return boolean is
-    variable csr1 : csr_type                     := csr(r, stage1);
-    variable csr2 : csr_type                     := csr(r, stage2);
-    variable cat1 : std_logic_vector(3 downto 0) := csr1.category(3 downto 0);
-    variable cat2 : std_logic_vector(3 downto 0) := csr2.category(3 downto 0);
+    variable csr1 : csr_type := csr(r, stage1);
+    variable csr2 : csr_type := csr(r, stage2);
+    variable cat1 : word4    := csr1.category(3 downto 0);
+    variable cat2 : word4    := csr2.category(3 downto 0);
   begin
     return cat1 /= "0000" and cat1 = cat2;
   end;
@@ -1630,36 +1682,59 @@ architecture rtl of iunv is
     return c.csrv = '1' and c.valid = '1';
   end;
 
-  function to_asi(func : std_logic_vector(3 downto 0)) return std_logic_vector is
-    variable asi : std_logic_vector(7 downto 0);
+  function to_asi(func : word4) return word8 is
+    variable asi : word8;
   begin
+    -- 0x00 Force miss (LEON5 U)
+    -- 0x01 Force miss (LEON5 S)
+    -- 0x02 LEON5 - System control registers (SYSR)
+    -- 0x03 I$ + D$ + TLB flush (MMUFLUSHPROBE_V8)
+    -- 0x04 LEON5 - MMU registers (MMUREGS_V8)
+    -- 0x08 (UINST)
+    -- 0x09 (SINST)
+    -- 0x0A (UDATA)
+    -- 0x0B (SDATA)
+    -- 0x10 I$ + D$ flush (IFLUSH / FLUSH_PAGE)
+    -- 0x11 D$ flush (DFLUSH)
+    -- 0x13 I$ + D$ flush (FLUSH_CTX)
+    -- 0x14 Unused (DCTX)
+    -- 0x15 Unused (ICTX)
+    -- 0x18 I$ + D$ + TLB flush (MMUFLUSHPROBE)
+    -- 0x19 LEON5 - cache control (MMUREGS)
+    -- 0x1D Unused (MMU_DIAG / MMU_DIAG_V8)
+    -- 0x1F Unused (MMU_DSU)
+    -- 0x20 LEON5 - FPU control/debug
+    -- 0x21 LEON5 - CPC (coprocessor) control/debug
+    -- 0x22 LEON5 - CPU-to-CPU interface
     case func is
-      when "0000" => asi := x"0C";
-      when "0001" => asi := x"0D";
-      when "0010" => asi := x"0E";
-      when "0011" => asi := x"0F";
-      when "0100" => asi := x"1B";
-      when "0101" => asi := x"1C";
-      when "0110" => asi := x"1E";
-      when "0111" => asi := x"23";
-      when "1000" => asi := x"24";
-      when "1001" => asi := x"25";
-      when "1010" => asi := x"26";
-      when "1011" => asi := x"27";
-      when others => asi := x"0B";
+      when x"0" => asi := x"0C";  -- I$ tags (ITAG)
+      when x"1" => asi := x"0D";  -- I$ data (IDATA)
+      when x"2" => asi := x"0E";  -- D$ tags (DTAG)
+      when x"3" => asi := x"0F";  -- D$ data (DDATA)
+      when x"4" => asi := x"1B";  -- MMU flush/probe
+      when x"5" => asi := x"1C";  -- MMU/cache bypass (MMU_BP / MMU_BP_V8)
+      when x"6" => asi := x"1E";  -- Snoop tags (MMUSNOOP_DIAG)
+      when x"7" => asi := x"23";  -- TLB diagnostic access
+      when x"8" => asi := x"24";  -- BTB/BHT diagnostic access
+      when x"9" => asi := x"25";  -- Cache LRU diagnostic interface
+      when x"A" => asi := x"26";  -- Instruction TCM access
+      when x"B" => asi := x"27";  -- Data TCM access
+      when x"C" => asi := x"2E";  -- NOEL-V - PMP test and status bits
+      when x"D" => asi := x"2F";  -- NOEL-V - extra data for RV32
+      when others => asi := x"0B";  -- (SDATA)
     end case;
 
     return asi;
   end;
 
-  function to_asi_load(inst : std_logic_vector) return std_logic_vector is
-    variable func : std_logic_vector(3 downto 0) := inst(23 downto 20);
+  function to_asi_load(inst : std_logic_vector) return word8 is
+    variable func : word4 := inst(23 downto 20);
   begin
     return to_asi(func);
   end;
 
-  function to_asi_store(inst : std_logic_vector) return std_logic_vector is
-    variable func : std_logic_vector(3 downto 0) := inst(10 downto 7);
+  function to_asi_store(inst : std_logic_vector) return word8 is
+    variable func : word4 := inst(10 downto 7);
   begin
     return to_asi(func);
   end;
@@ -1695,20 +1770,32 @@ architecture rtl of iunv is
   function csr_read_only(r : registers; stage : stage_type) return boolean is
     variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
   begin
-    return csr_read_only(c.inst);
+    return csr_read_only(active_extensions, c.inst);
+  end;
+
+  function csr_access_read(r : registers; stage : stage_type) return boolean is
+    variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
+  begin
+    return csr_access_read(c.inst);
+  end;
+
+  function csr_access_read_only(r : registers; stage : stage_type) return boolean is
+    variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
+  begin
+    return csr_access_read_only(c.inst);
   end;
 
   -- Assumes it is already known that inst is a CSR instruction.
   function csr_write_only(r : registers; stage : stage_type) return boolean is
     variable c : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
   begin
-    return csr_write_only(c.inst);
+    return csr_write_only(active_extensions, c.inst);
   end;
 
   -- Assumes it is already known that inst is a CSR instruction.
   function csr_immediate(r : registers; stage : stage_type) return boolean is
     variable c      : pipeline_ctrl_type := ctrl(r, stage, csr_lane);
-    variable funct3 : funct3_type        := c.inst(14 downto 12);
+    variable funct3 : funct3_type        := funct3(c.inst);
   begin
     -- Since CSR instruction is assumed, the following is equivalent to
     -- funct3 = I_CSRRWI or funct3 = I_CSRRSI or funct3 = I_CSRRCI
@@ -1756,46 +1843,46 @@ architecture rtl of iunv is
 
     for i in lanes'range loop
       if r.a.ctrl(i).valid = '1' and r.a.ctrl(i).rdv = '1' and a_valid = '1' then
-        if r.a.ctrl(i).inst(11 downto 7) =  rfa1(dst_lane) then
+        if rd(r.a.ctrl(i).inst) =  rfa1(dst_lane) then
           forwarding.rfa1(stage_type'pos(a))(i) := '1';
         end if;
-        if r.a.ctrl(i).inst(11 downto 7) =  rfa2(dst_lane) then
+        if rd(r.a.ctrl(i).inst) =  rfa2(dst_lane) then
           forwarding.rfa2(stage_type'pos(a))(i) := '1';
         end if;
       end if;
 
       if r.e.ctrl(i).valid = '1' and r.e.ctrl(i).rdv = '1' and e_valid = '1' then
-        if r.e.ctrl(i).inst(11 downto 7) =  rfa1(dst_lane) then
+        if rd(r.e.ctrl(i).inst) =  rfa1(dst_lane) then
           forwarding.rfa1(stage_type'pos(e))(i) := '1';
         end if;
-        if r.e.ctrl(i).inst(11 downto 7) =  rfa2(dst_lane) then
+        if rd(r.e.ctrl(i).inst) =  rfa2(dst_lane) then
           forwarding.rfa2(stage_type'pos(e))(i) := '1';
         end if;
       end if;
 
       if r.m.ctrl(i).valid = '1' and r.m.ctrl(i).rdv = '1' and m_valid = '1' then
-        if r.m.ctrl(i).inst(11 downto 7) =  rfa1(dst_lane) then
+        if rd(r.m.ctrl(i).inst) =  rfa1(dst_lane) then
           forwarding.rfa1(stage_type'pos(m))(i) := '1';
         end if;
-        if r.m.ctrl(i).inst(11 downto 7) =  rfa2(dst_lane) then
+        if rd(r.m.ctrl(i).inst) =  rfa2(dst_lane) then
           forwarding.rfa2(stage_type'pos(m))(i) := '1';
         end if;
       end if;
 
       if r.x.ctrl(i).valid = '1' and r.x.ctrl(i).rdv = '1' and x_valid = '1' then
-        if r.x.ctrl(i).inst(11 downto 7) =  rfa1(dst_lane) then
+        if rd(r.x.ctrl(i).inst) =  rfa1(dst_lane) then
           forwarding.rfa1(stage_type'pos(x))(i) := '1';
         end if;
-        if r.x.ctrl(i).inst(11 downto 7) =  rfa2(dst_lane) then
+        if rd(r.x.ctrl(i).inst) =  rfa2(dst_lane) then
           forwarding.rfa2(stage_type'pos(x))(i) := '1';
         end if;
       end if;
 
       if r.wb.ctrl(i).valid = '1' and r.wb.ctrl(i).rdv = '1' and wb_valid = '1' then
-        if r.wb.ctrl(i).inst(11 downto 7) =  rfa1(dst_lane) then
+        if rd(r.wb.ctrl(i).inst) =  rfa1(dst_lane) then
           forwarding.rfa1(stage_type'pos(wb))(i) := '1';
         end if;
-        if r.wb.ctrl(i).inst(11 downto 7) =  rfa2(dst_lane) then
+        if rd(r.wb.ctrl(i).inst) =  rfa2(dst_lane) then
           forwarding.rfa2(stage_type'pos(wb))(i) := '1';
         end if;
       end if;
@@ -1881,32 +1968,21 @@ architecture rtl of iunv is
     return hpmevent;
   end;
 
-  -- Pad or extend pc to XLEN
-  function pc2xlen(pc : pctype) return wordx is
+  -- Hardwire mseccfg CSR bits
+  function tie_mseccfg(seccfg_in : csr_seccfg_type) return csr_seccfg_type is
     -- Non-constant
-    variable data : wordx;
+    variable seccfg : csr_seccfg_type := seccfg_in;
   begin
-    data           := (others => get_hi(pc));
-    data(pc'range) := pc;
-
-    return data;
-  end;
-
-  -- Generate Next PC with adder, depending on whether compressed or not.
-  function npc_adder(pc   : pctype;
-                     comp : std_ulogic) return pctype is
-    -- Non-constant
-    variable op2 : integer;
-    variable npc : pctype;
-  begin
-    op2   := 4;
-    if comp = '1' then
-      op2 := 2;
+    if ext_smepmp = 0 then
+      seccfg.mml    := '0';
+      seccfg.mmwp   := '0';
+    end if;
+    if ext_smepmp = 0
+       then
+      seccfg.rlb    := '0';
     end if;
 
-    npc   := uadd(pc, op2);
-
-    return to_addr(npc);
+    return seccfg;
   end;
 
   -- Generate default next PC for fetch mux
@@ -1939,13 +2015,14 @@ architecture rtl of iunv is
     return to_addr(npc);
   end;
 
-  -- Precheck of late alu issues in order to reduce
+  -- Precheck of late ALU issues in order to reduce
   -- critical path on decode stage.
-  procedure late_alu_precheck(r         : in  registers;
-                              instx_in  : in  iword_pair_type;
-                              valid_in  : in  fetch_pair;
-                              lalu_exe  : in  fetch_pair;
-                              lalu_pre  : out fetch_pair
+  -- Note that this is directly releated to some stuff in instruction_control()!
+  procedure late_alu_precheck(r        : in  registers;
+                              instx_in : in  iword_pair_type;
+                              valid_in : in  fetch_pair;
+                              lalu_exe : in  fetch_pair;
+                              lalu_pre : out fetch_pair
                               ) is
     -- Non-constant
     variable inst_in  : word_lanes_type;
@@ -1960,12 +2037,16 @@ architecture rtl of iunv is
     for i in lanes'range loop
       inst_in(i)  := instx_in(i).d;
       fusel(i)    := fusel_gen(active_extensions, instx_in(i).d);
-      rfa1(i)     := rs1_gen(inst_in(i));
-      rfa2(i)     := rs2_gen(inst_in(i));
-      rd_valid(i) := rd_gen(inst_in(i));
-      rd(i)       := inst_in(i)(11 downto 7);
+      rfa1(i)     := rs1_gen(active_extensions,
+                             inst_in(i));
+      rfa2(i)     := rs2_gen(active_extensions,
+                             inst_in(i));
+      rd_valid(i) := rd_gen(active_extensions,
+                            inst_in(i));
+      rd(i)       := get_rd(inst_in(i));
     end loop;
 
+    -- Late if dependency between paired instructions?
     if single_issue = 0 then
       if v_fusel_eq(fusel(0), ALU or LD or MUL or FPU) and valid_in(0) = '1' then
         if rd_valid(0) = '1' then
@@ -1976,9 +2057,10 @@ architecture rtl of iunv is
       end if;
     end if;
 
+    -- Late if dependency on LD in RA stage?
     if v_fusel_eq(r, a, 0, LD) then
       for i in lanes'range loop
-        if v_fusel_eq(fusel(i),ALU) then
+        if v_fusel_eq(fusel(i), ALU) then
           if v_rd_eq(r, a, 0, rfa1(i)) or
              v_rd_eq(r, a, 0, rfa2(i)) then
             lalu_pre(i) := '1';
@@ -1987,10 +2069,11 @@ architecture rtl of iunv is
       end loop;
     end if;
 
+    -- Late if dependency on MUL in RA stage?
     for i in lanes'range loop
       if v_fusel_eq(r, a, i, MUL) then
         for j in lanes'range loop
-          if v_fusel_eq(fusel(j),ALU) then
+          if v_fusel_eq(fusel(j), ALU) then
             if v_rd_eq(r, a, i, rfa1(j)) or
                v_rd_eq(r, a, i, rfa2(j)) then
               lalu_pre(j) := '1';
@@ -2000,10 +2083,11 @@ architecture rtl of iunv is
       end if;
     end loop;
 
+    -- Late if dependency on late instruction in RA and this is for ALU.
     for i in lanes'range loop
       if lalu_exe(i) = '1' and r.a.ctrl(i).valid = '1' then
         for j in lanes'range loop
-          if v_fusel_eq(fusel(j),ALU) then
+          if v_fusel_eq(fusel(j), ALU) then
             if v_rd_eq(r, a, i, rfa1(j)) or
                v_rd_eq(r, a, i, rfa2(j)) then
               lalu_pre(j) := '1';
@@ -2161,11 +2245,11 @@ architecture rtl of iunv is
     end if;
 
     ---- Optional signals
-    --context   : std_logic_vector(XLEN-1 downto 0);
+    --context   : std_logic_vector(XLEN - 1 downto 0);
     et.ctext := (others => '0');
-    --tetime    : std_logic_vector(XLEN-1 downto 0);
+    --tetime    : std_logic_vector(XLEN - 1 downto 0);
     et.tetime := (others => '0');
-    --ctype     : std_logic_vector(1 downto 0);
+    --ctype     : word2;
     et.ctype := (others => '0');
     --sijump    : std_logic_vector(0 downto 0);
     et.sijump := (others => '0');
@@ -2173,24 +2257,26 @@ architecture rtl of iunv is
     eto := et;
   end procedure;
 
+
   -- CSR Read
   -- CSR read unit located in register access stage.
   -- All read accesses are combinatorial accesses.
-  procedure csr_read(envcfg    : in  csr_envcfg_type;
-                     csr_file  : in  csr_reg_type;
-                     csra_in   : in  csratype;
-                     csrv_in   : in  std_ulogic;
-                     rstate_in : in  core_state;
-                     iu_fflags : in  std_logic_vector;
-                     mmu_csr   : in  nv_csr_in_type;
-                     s_time    : in  std_logic_vector;
-                     s_vtime   : in  std_logic_vector;
-                     data_out  : out wordx;
-                     xc_out    : out std_ulogic;
-                     cause_out : out cause_type) is
+  procedure csr_read(envcfg      : in  csr_envcfg_type;
+                     csr_file    : in  csr_reg_type;
+                     csra_in     : in  csratype;
+                     csrv_in     : in  std_ulogic;
+                     rstate_in   : in  core_state;
+                     iu_fflags   : in  word5;
+                     mmu_csr     : in  nv_csr_in_type;
+                     s_time      : in  word64;
+                     s_vtime     : in  word64;
+                     data_out    : out wordx;
+                     xc_out      : out std_ulogic;
+                     cause_out   : out cause_type) is
     variable csra_high : csratype      := csra_in(csra_in'high downto 4) & "0000";
     variable csra_low  : integer       := u2i(csra_in(3 downto 0));
     variable h_en      : boolean       := csr_file.misa(h_ctrl) = '1';
+    variable x_en      : boolean       := csr_file.misa(x_ctrl) = '1';
     variable v_mode    : std_ulogic    := csr_file.misa(h_ctrl) and csr_file.v;
     variable vu_mode   : std_ulogic    := v_mode and to_bit(csr_file.prv = "00");
     -- Non-constant
@@ -2199,8 +2285,15 @@ architecture rtl of iunv is
     variable xc_v      : std_ulogic    := '0';
     variable priv_lvl  : priv_lvl_type := (others => '0');
     variable priv_lvlv : priv_lvl_type := (others => '0');
+    -- State Enable extnesion (Smstateen)
+    variable mstateen0  : csr_mstateen0_type := mstateen0_mask(csr_file.mstateen0, CSR_MSTATEEN0_MASK);
+    variable hstateen0  : csr_mstateen0_type := mstateen0_mask(csr_file.hstateen0, csr_file.mstateen0);
+    -- unused so far
+    -- variable sstateen0  : csr_sstateen0_type := sstateen0_mask(csr_file.sstateen0, csr_file.mstateen0);
+    -- variable vsstateen0 : csr_sstateen0_type := sstateen0_mask(csr_file.sstateen0, csr_file.hstateen0);
   begin
     if csrv_in = '1' then
+
       case csra_in is
         -- User Floating-Point CSRs
         when CSR_FFLAGS =>
@@ -2309,6 +2402,147 @@ architecture rtl of iunv is
             xc := '1';
           end if;
           xc_v := v_mode; -- virtual instruction exception
+        -- Hypervisor AIA registers
+        when CSR_HVIEN          =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+          else
+            xc := '1';
+          end if;
+          xc_v := v_mode; -- virtual instruction exception
+        when CSR_HVICTL         =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            csr := to_hvictl(csr_file.hvictl);
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIPRIO1       =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            csr := (others => '0'); -- Read-only zero
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIPRIO2       =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            csr := (others => '0'); -- Read-only zero
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        -- Hypervisor AIA registers (RV32)
+        when CSR_HIDELEGH       =>
+          if h_en and is_rv32 and
+             (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIENH         =>
+          if h_en and is_rv32 and
+             (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIPH          =>
+          if h_en and is_rv32 and
+             (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        -- Hypervisor Sstateen extension CSRs
+        when CSR_HSTATEEN0 =>
+          if h_en and ext_smstateen = 1 and
+             (csr_file.mstateen0.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            csr := to_mstateen0(hstateen0);
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN1 =>
+          if h_en and ext_smstateen = 1 and
+             (csr_file.mstateen1.stateen = '1'  or csr_file.prv = PRIV_LVL_M) then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.hstateen1.stateen;
+            end if;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN2 =>
+          if h_en and ext_smstateen = 1 and
+             (csr_file.mstateen2.stateen = '1'  or csr_file.prv = PRIV_LVL_M) then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.hstateen2.stateen;
+            end if;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN3 =>
+          if h_en and ext_smstateen = 1 and
+             (csr_file.mstateen3.stateen = '1'  or csr_file.prv = PRIV_LVL_M) then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.hstateen3.stateen;
+            end if;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN0H =>
+          if h_en and is_rv32 and ext_smstateen = 1 and
+             (csr_file.mstateen0.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            csr := to_mstateen0h(hstateen0);
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN1H =>
+          if h_en and is_rv32 and ext_smstateen = 1 and
+             (csr_file.mstateen1.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            csr(31) := csr_file.hstateen1.stateen;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN2H =>
+          if h_en and is_rv32 and ext_smstateen = 1 and
+             (csr_file.mstateen2.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            csr(31) := csr_file.hstateen2.stateen;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN3H =>
+          if h_en and is_rv32 and ext_smstateen = 1 and
+             (csr_file.mstateen3.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            csr(31) := csr_file.hstateen3.stateen;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIPRIO1H      =>
+          if h_en and is_rv32 and
+             (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_HVIPRIO2H      =>
+          if h_en and is_rv32 and
+             (ext_smaia = 1 or ext_ssaia = 1) then
+            -- TODO
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
         -- Hypervisor Protection and Translation
         when CSR_HGATP          =>
           if h_en then
@@ -2345,7 +2579,7 @@ architecture rtl of iunv is
           xc_v := v_mode; -- virtual instruction exception
         when CSR_HTIMEDELTAH    =>
           if h_en and is_rv32 then
-            csr := to0x(csr_file.htimedelta(63 downto 32));
+            csr := to0x(hi_h(csr_file.htimedelta));
           else
             xc := '1';
           end if;
@@ -2353,7 +2587,8 @@ architecture rtl of iunv is
         -- Virtual Supervisor Registers
         when CSR_VSSTATUS       =>
           if h_en then
-            csr := to_vsstatus(csr_file.vsstatus);
+            csr := to_vsstatus(csr_file.vsstatus
+                              );
           else
             xc := '1';
           end if;
@@ -2381,6 +2616,38 @@ architecture rtl of iunv is
             xc := '1';
           end if;
           xc_v := v_mode; -- virtual instruction exception
+        when CSR_VSISELECT      =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            csr := csr_file.vsiselect;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_VSIREG         =>
+          if GintFile_addrExcp(csr_file.vsiselect, imsic, is_rv64) = '1' or
+             (unsigned(csr_file.hstatus.vgein) = 0 or                  -- VGEIN is not a valid number
+              unsigned(csr_file.hstatus.vgein) > GEILEN) then
+            xc := '1';
+          else
+            csr := csr_file.vsireg;
+            xc_v := v_mode; -- virtual instruction exception
+          end if;
+        when CSR_VSTOPEI        =>
+          if not h_en or imsic = 0 or unsigned(csr_file.hstatus.vgein) = 0 or
+             unsigned(csr_file.hstatus.vgein) > GEILEN or
+             (ext_smaia = 0 and ext_ssaia = 0) then
+                xc := '1';
+          else
+            csr := csr_file.vstopei;
+            xc_v := v_mode; -- virtual instruction exception
+          end if;
+        when CSR_VSTOPI         =>
+          if h_en and (ext_smaia = 1 or ext_ssaia = 1) then
+            csr := csr_file.vstopi;
+            xc_v := v_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
         when CSR_VSEPC          =>
           if h_en then
             csr := csr_file.vsepc;
@@ -2432,8 +2699,8 @@ architecture rtl of iunv is
             xc_v := v_mode; -- virtual instruction exception
           end if;
         when CSR_VSTIMECMPH    =>
-          if envcfg.stce = '1' and h_en and is_rv32 then 
-            csr := to0x(csr_file.vstimecmp(63 downto 32));
+          if envcfg.stce = '1' and h_en and is_rv32 then
+            csr := to0x(hi_h(csr_file.vstimecmp));
           else
             xc := '1';
           end if;
@@ -2443,20 +2710,43 @@ architecture rtl of iunv is
         -- Supervisor Trap Setup
         when CSR_SSTATUS        =>
           if h_en and csr_file.v = '1' then
-            csr := to_vsstatus(csr_file.vsstatus);
+            csr := to_vsstatus(csr_file.vsstatus
+                              );
           else
-            csr := to_sstatus(csr_file.mstatus);
+            csr := to_sstatus(csr_file.mstatus
+                             );
           end if;
           xc_v := vu_mode; -- virtual instruction exception
         when CSR_SIE            =>
           if h_en and csr_file.v = '1' then
-            csr(9)  := csr_file.mie(10) and csr_file.hideleg(10);
-            csr(5)  := csr_file.mie(6)  and csr_file.hideleg(6);
-            csr(1)  := csr_file.mie(2)  and csr_file.hideleg(2);
+            if csr_file.hvictl.vti = '0' then
+              csr(9)  := csr_file.mie(10) and csr_file.hideleg(10);
+              csr(5)  := csr_file.mie(6)  and csr_file.hideleg(6);
+              csr(1)  := csr_file.mie(2)  and csr_file.hideleg(2);
+            else
+              xc   := '1';
+              xc_v := '1';
+            end if;
           else
             csr := csr_file.mie and (csr_file.mideleg and not CSR_HIE_MASK);
           end if;
-          xc_v := vu_mode; -- virtual instruction exception
+          xc_v := xc_v or vu_mode; -- virtual instruction exception
+        when CSR_SIEH           =>
+          if (ext_smaia = 1 or ext_ssaia = 1) and is_rv32 then
+            if h_en and csr_file.v = '1' then
+              if csr_file.hvictl.vti = '0' then
+                -- TODO
+              else
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            else
+              -- TODO
+            end if;
+            xc_v := xc_v or vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
         when CSR_STVEC          =>
           if h_en and csr_file.v = '1' then
             csr := csr_file.vstvec;
@@ -2501,13 +2791,34 @@ architecture rtl of iunv is
           xc_v := vu_mode; -- virtual instruction exception
         when CSR_SIP            =>
           if h_en and csr_file.v = '1' then
-            csr(9)  := csr_file.mip(10) and csr_file.hideleg(10);
-            csr(5)  := csr_file.mip(6)  and csr_file.hideleg(6);
-            csr(1)  := csr_file.mip(2)  and csr_file.hideleg(2);
+            if csr_file.hvictl.vti = '0' then
+              csr(9)  := csr_file.mip(10) and csr_file.hideleg(10);
+              csr(5)  := csr_file.mip(6)  and csr_file.hideleg(6);
+              csr(1)  := csr_file.mip(2)  and csr_file.hideleg(2);
+            else
+              xc   := '1';
+              xc_v := '1';
+            end if;
           else
             csr := csr_file.mip and csr_file.mideleg;
           end if;
-          xc_v := vu_mode; -- virtual instruction exception
+          xc_v := xc_v or vu_mode; -- virtual instruction exception
+        when CSR_SIPH           =>
+          if (ext_smaia = 1 or ext_ssaia = 1) and is_rv32 then
+            if h_en and csr_file.v = '1' then
+              if csr_file.hvictl.vti = '0' then
+              -- TODO
+              else
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            else
+              -- TODO
+            end if;
+            xc_v := xc_v or vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
         when CSR_SSCRATCH       =>
           if h_en and csr_file.v = '1' then
             csr := csr_file.vsscratch;
@@ -2515,6 +2826,99 @@ architecture rtl of iunv is
             csr := csr_file.sscratch;
           end if;
           xc_v := vu_mode; -- virtual instruction exception
+        when CSR_SISELECT       =>
+          if ext_smaia = 1 or ext_ssaia = 1 then
+            if h_en and csr_file.v = '1' then
+              csr := csr_file.vsiselect;
+            else
+              csr := csr_file.siselect;
+            end if;
+            xc_v := vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_SIREG          =>
+          if ext_smaia = 1 or ext_ssaia = 1 then
+            if h_en and csr_file.v = '1' then
+              if GintFile_addrExcp(csr_file.vsiselect, imsic, is_rv64) = '1' or
+                 (unsigned(csr_file.hstatus.vgein) = 0 or                  -- VGEIN is not a valid number
+                  unsigned(csr_file.hstatus.vgein) > GEILEN) then
+                xc_v := '1';
+                xc   := '1';
+              else
+                if imsic = 1 then
+                  csr := csr_file.vsireg;
+                else
+                  csr := (others => '0');
+                end if;
+              end if;
+            else
+              if intFile_addrExcp(csr_file.siselect, imsic, is_rv64) = '1' then
+                xc := '1';
+              else
+                -- IPRIO array from supervisor level not implemented (major priorities have always default order)
+                if csr_file.siselect(7 downto 4) = x"3" or imsic = 0 then
+                  csr := (others => '0');
+                else
+                  csr := csr_file.sireg;
+                end if;
+              end if;
+            end if;
+            xc_v := xc_v or vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_STOPEI         =>
+          if (ext_smaia = 1 or ext_ssaia = 1) then
+            if h_en and csr_file.v = '1' then
+              if imsic = 0 or unsigned(csr_file.hstatus.vgein) = 0 or
+                 unsigned(csr_file.hstatus.vgein) > GEILEN then
+                    xc_v := '1';
+                    xc   := '1';
+              else
+                csr := csr_file.vstopei;
+              end if;
+            else
+              if imsic = 1 then
+                csr := csr_file.stopei;
+              else
+                xc := '1';
+              end if;
+            end if;
+            xc_v := xc_v or vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_STOPI          =>
+          if ext_smaia = 1 or ext_ssaia = 1 then
+            if h_en and csr_file.v = '1' then
+              csr := csr_file.vstopi;
+            else
+              csr := csr_file.stopi;
+            end if;
+            xc_v := vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        -- Supervisor Sstateen extension CSRs
+        when CSR_SSTATEEN0 =>
+          if ext_smstateen = 1 and
+             (mstateen0.stateen = '1' or csr_file.prv = PRIV_LVL_M) then
+            if h_en and csr_file.v = '1' then
+              if hstateen0.stateen = '1' then
+                --csr := to0x(sstateen0);
+              else
+                xc_v := '1';
+                xc   := '1';
+              end if;
+            else
+              --csr := to0x(sstateen0);
+            end if;
+            xc_v := xc_v or vu_mode; -- virtual instruction exception
+          else
+            xc := '1';
+          end if;
+        when CSR_SSTATEEN1 | CSR_SSTATEEN2 | CSR_SSTATEEN3 =>
         -- Supervisor Protection and Translation
         when CSR_SATP           =>
           xc_v := vu_mode; -- virtual instruction exception
@@ -2554,18 +2958,18 @@ architecture rtl of iunv is
             xc_v := v_mode; -- virtual instruction exception
           end if;
         when CSR_STIMECMPH    =>
-          if envcfg.stce = '1' and is_rv32 then 
+          if envcfg.stce = '1' and is_rv32 then
             if h_en and csr_file.v = '1' then
               if csr_file.hcounteren(1) = '0' or csr_file.mcounteren(1) = '0' then
                 xc := '1';
               else
-                csr := to0x(csr_file.vstimecmp(63 downto 32));
+                csr := to0x(hi_h(csr_file.vstimecmp));
               end if;
             else
               if csr_file.mcounteren(1) = '0' and csr_file.prv = PRIV_LVL_S then
                 xc := '1';
               else
-                csr := to0x(csr_file.stimecmp(63 downto 32));
+                csr := to0x(hi_h(csr_file.stimecmp));
               end if;
             end if;
           else
@@ -2594,6 +2998,7 @@ architecture rtl of iunv is
         when CSR_MARCHID        => csr := CSR_ARCHID;
         when CSR_MIMPID         => csr := CSR_IMPID;
         when CSR_MHARTID        => csr := to0x(hart);
+        when CSR_MCONFIGPTR     => csr := zerox;
         --  Machine Trap Setup
         when CSR_MSTATUS        => csr := to_mstatus(csr_file.mstatus);
         when CSR_MSTATUSH       =>
@@ -2616,9 +3021,21 @@ architecture rtl of iunv is
             then
             xc := '1';
           else
-            csr := csr_file.mideleg;
+            csr := csr_file.mideleg(wordx'LENGTH-1 downto 0);
           end if;
-        when CSR_MIE            => csr := csr_file.mie;
+        when CSR_MIDELEGH       =>
+          if is_rv64 or ext_smaia = 0 or(mode_s = 0
+             )
+            then
+            xc := '1';
+          else
+          end if;
+        when CSR_MIE            => csr := csr_file.mie(wordx'LENGTH-1 downto 0);
+        when CSR_MIEH           =>
+          if is_rv64 or ext_smaia = 0 then
+            xc := '1';
+          else
+          end if;
         when CSR_MCOUNTEREN     => csr := to0x(csr_file.mcounteren);
         -- Machine Trap Handling
         when CSR_MSCRATCH       => csr := csr_file.mscratch;
@@ -2630,6 +3047,143 @@ architecture rtl of iunv is
         when CSR_MCAUSE         => csr := csr_file.mcause;
         when CSR_MTVAL          => csr := csr_file.mtval;
         when CSR_MIP            => csr := csr_file.mip;
+        when CSR_MIPH           =>
+          if is_rv64 or ext_smaia = 0 then
+            xc := '1';
+          else
+            -- TODO
+          end if;
+        when CSR_MNSCRATCH      =>
+          if ext_smrnmi = 1 then
+            csr := csr_file.mnscratch;
+          else
+            xc := '1';
+          end if;
+        when CSR_MNEPC          =>
+          if ext_smrnmi = 1 then
+            csr := csr_file.mnepc;
+          else
+            xc := '1';
+          end if;
+        when CSR_MNCAUSE        =>
+          if ext_smrnmi = 1 then
+            csr := csr_file.mncause;
+          else
+            xc := '1';
+          end if;
+        when CSR_MNSTATUS       =>
+          if ext_smrnmi = 1 then
+            csr := to_mnstatus(csr_file.mnstatus);
+          else
+            xc := '1';
+          end if;
+        when CSR_MISELECT       =>
+          if ext_smaia = 1 then
+            csr := csr_file.miselect;
+          else
+            xc := '1';
+          end if;
+        when CSR_MIREG          =>
+          if ext_smaia = 0 or intFile_addrExcp(csr_file.miselect, imsic, is_rv64) = '1' then
+            xc := '1';
+          else
+            -- IPRIO array from machine level not implemented (major priorities have always default order)
+            if csr_file.miselect(7 downto 4) = x"3" or imsic = 0 then
+              csr := (others => '0');
+            else
+              csr := csr_file.mireg;
+            end if;
+          end if;
+        when CSR_MTOPEI         =>
+          if imsic = 1 and ext_smaia = 1 then
+            csr := csr_file.mtopei;
+          else
+            xc := '1';
+          end if;
+        when CSR_MTOPI          =>
+          if ext_smaia = 1 then
+            csr := csr_file.mtopi;
+          else
+            xc := '1';
+          end if;
+        when CSR_MVIEN          =>
+          if ext_smaia = 1 and mode_s = 1 then
+          else
+            xc := '1';
+          end if;
+        when CSR_MVIENH         =>
+          if is_rv32 and ext_smaia = 1 and mode_s = 1 then
+          else
+            xc := '1';
+          end if;
+        when CSR_MVIP           =>
+          -- Minimal implementation
+          if ext_smaia = 1 and mode_s = 1 then
+            csr(1) := csr_file.mip(1);
+            csr(5) := csr_file.mip(5);
+            csr(9) := csr_file.mip(9);
+          else
+            xc := '1';
+          end if;
+        when CSR_MVIPH          =>
+          if ext_smaia = 1 and mode_s = 1 then
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN0 =>
+          if ext_smstateen = 1 then
+            csr := to_mstateen0(mstateen0);
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN1 =>
+          if ext_smstateen = 1 then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.mstateen1.stateen;
+            end if;
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN2 =>
+          if ext_smstateen = 1 then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.mstateen2.stateen;
+            end if;
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN3 =>
+          if ext_smstateen = 1 then
+            if is_rv64 then
+              csr(wordx'high) := csr_file.mstateen3.stateen;
+            end if;
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN0H =>
+          if ext_smstateen = 1 and is_rv32  then
+            csr := to_mstateen0h(mstateen0);
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN1H =>
+          if ext_smstateen = 1 and is_rv32  then
+            csr(31) := csr_file.mstateen1.stateen;
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN2H =>
+          if ext_smstateen = 1 and is_rv32  then
+            csr(31) := csr_file.mstateen2.stateen;
+          else
+            xc := '1';
+          end if;
+        when CSR_MSTATEEN3H =>
+          if ext_smstateen = 1 and is_rv32  then
+            csr(31) := csr_file.mstateen3.stateen;
+          else
+            xc := '1';
+          end if;
         when CSR_MTINST         =>
           if h_en then
             csr := csr_file.mtinst;
@@ -2654,18 +3208,32 @@ architecture rtl of iunv is
           else
             xc := '1';
           end if;
+        when CSR_MSECCFG        =>
+          if ext_smepmp = 1
+             then
+            csr := to_mseccfg(csr_file.mseccfg)(wordx'range);
+          else
+            xc := '1';
+          end if;
+        when CSR_MSECCFGH       =>
+          if is_rv32 and (
+             ext_smepmp = 1) then
+            csr := to0x(hi_h(to_mseccfg(csr_file.mseccfg)));
+          else
+            xc := '1';
+          end if;
         -- Machine Protection and Translation
         when CSR_PMPCFG0        => csr := csr_file.pmpcfg0(wordx'range);
         when CSR_PMPCFG1        =>
           if is_rv32 then
-            csr := to0x(csr_file.pmpcfg0(63 downto 32));
+            csr := to0x(hi_h(csr_file.pmpcfg0));
           else
             xc := '1';
           end if;
         when CSR_PMPCFG2        => csr := csr_file.pmpcfg2(wordx'range);
         when CSR_PMPCFG3        =>
           if is_rv32 then
-            csr := to0x(csr_file.pmpcfg2(63 downto 32));
+            csr := to0x(hi_h(csr_file.pmpcfg2));
           else
             xc := '1';
           end if;
@@ -2675,7 +3243,7 @@ architecture rtl of iunv is
         when CSR_CYCLEH |
              CSR_MCYCLEH        =>
           if is_rv32 then
-            csr := to0x(csr_file.mcycle(63 downto 32));
+            csr := to0x(hi_h(csr_file.mcycle));
           else
             xc := '1';
           end if;
@@ -2695,9 +3263,9 @@ architecture rtl of iunv is
         when CSR_TIMEH          =>
           if is_rv32 and time_en then
             if h_en and csr_file.v = '1' then
-              csr := to0x(s_vtime(63 downto 32));
+              csr := to0x(hi_h(s_vtime));
             else
-              csr := to0x(s_time(63 downto 32));
+              csr := to0x(hi_h(s_time));
             end if;
           else
             xc := '1';
@@ -2707,7 +3275,7 @@ architecture rtl of iunv is
         when CSR_INSTRETH |
              CSR_MINSTRETH      =>
           if is_rv32 then
-            csr := to0x(csr_file.minstret(63 downto 32));
+            csr := to0x(hi_h(csr_file.minstret));
           else
             xc := '1';
           end if;
@@ -2754,7 +3322,7 @@ architecture rtl of iunv is
           csr(9)                := csr_file.dcsr.stoptime;
           csr(8 downto 6)       := csr_file.dcsr.cause;
           if h_en then
-            csr(5)                := csr_file.dcsr.v;
+            csr(5)              := csr_file.dcsr.v;
           end if;
           csr(4)                := csr_file.dcsr.mprven;
           csr(3)                := csr_file.dcsr.nmip;
@@ -2763,55 +3331,75 @@ architecture rtl of iunv is
         when CSR_DPC            => csr := csr_file.dpc;
         when CSR_DSCRATCH0      => csr := csr_file.dscratch0;
         when CSR_DSCRATCH1      => csr := csr_file.dscratch1;
+        -- Custom Registers
         when CSR_FEATURES       =>
-          csr(31)               := csr_file.dfeaturesen.tpbuf_en;
-          csr(30 downto 26)     := csr_file.trace.ctrl(12 downto 8);
-          -- [25:14] RESERVED
-          csr(13)               := csr_file.dfeaturesen.dm_trace;
-          csr(12)               := csr_file.dfeaturesen.new_irq;
-          csr(11)               := csr_file.dfeaturesen.fs_dirty;
-          csr(10)               := csr_file.dfeaturesen.nostream;
-          csr(9)                := csr_file.dfeaturesen.staticdir;
-          csr(8)                := csr_file.dfeaturesen.staticbp;
-          csr(7)                := csr_file.dfeaturesen.mmu_adfault;
-          csr(6)                := csr_file.dfeaturesen.b2bst_dis;
-          csr(5)                := csr_file.dfeaturesen.lalu_dis;
-          csr(4)                := csr_file.dfeaturesen.lbranch_dis;
-          csr(3)                := csr_file.dfeaturesen.ras_dis;
-          csr(2)                := csr_file.dfeaturesen.jprd_dis;
-          csr(1)                := csr_file.dfeaturesen.btb_dis;
-          csr(0)                := csr_file.dfeaturesen.dual_dis;
+          if ext_noelv = 1 then
+            csr(31)             := csr_file.dfeaturesen.tpbuf_en;
+            csr(30 downto 26)   := csr_file.trace.ctrl(12 downto 8);
+            -- [25:18] RESERVED
+            csr(17)             := csr_file.dfeaturesen.x0;
+            csr(16)             := csr_file.dfeaturesen.mmu_oldfence;
+            csr(15)             := csr_file.dfeaturesen.mmu_hptfault;
+            csr(14)             := csr_file.dfeaturesen.mmu_sptfault;
+            csr(13)             := csr_file.dfeaturesen.dm_trace;
+            csr(11)             := csr_file.dfeaturesen.fs_dirty;
+            csr(10)             := csr_file.dfeaturesen.nostream;
+            csr(9)              := csr_file.dfeaturesen.staticdir;
+            csr(8)              := csr_file.dfeaturesen.staticbp;
+            csr(7)              := csr_file.dfeaturesen.mmu_adfault;
+            csr(6)              := csr_file.dfeaturesen.b2bst_dis;
+            csr(5)              := csr_file.dfeaturesen.lalu_dis;
+            csr(4)              := csr_file.dfeaturesen.lbranch_dis;
+            csr(3)              := csr_file.dfeaturesen.ras_dis;
+            csr(2)              := csr_file.dfeaturesen.jprd_dis;
+            csr(1)              := csr_file.dfeaturesen.btb_dis;
+            csr(0)              := csr_file.dfeaturesen.dual_dis;
+          end if;
+          if not x_en then
+            xc := '1';
+          end if;
         when CSR_FEATURESH      =>
-          if is_rv32 then
+          if is_rv32 and x_en then
           else
             xc := '1';
           end if;
         when CSR_CCTRL          =>
-          csr(13)               := mmu_csr.cctrl.iflushpend;
-          csr(12)               := mmu_csr.cctrl.dflushpend;
-          -- Bit[11] is RESERVED
-          if itcmen = 1 then
-            csr(10)             := mmu_csr.cctrl.itcmwipe;
+          if ext_noelv = 1 then
+            csr(13)             := mmu_csr.cctrl.iflushpend;
+            csr(12)             := mmu_csr.cctrl.dflushpend;
+            -- Bit[11] is RESERVED
+            if itcmen = 1 then
+              csr(10)           := mmu_csr.cctrl.itcmwipe;
+            end if;
+            if dtcmen = 1 then
+              csr(9)            := mmu_csr.cctrl.dtcmwipe;
+            end if;
+            csr(8)              := csr_file.cctrl.dsnoop;
+            csr(7)              := csr_file.cctrl.dflush;
+            csr(6)              := csr_file.cctrl.iflush;
+            -- Bit[5:4] is RESERVED
+            csr(3 downto 2)     := csr_file.cctrl.dcs;
+            csr(1 downto 0)     := csr_file.cctrl.ics;
           end if;
-          if dtcmen = 1 then
-            csr(9)              := mmu_csr.cctrl.dtcmwipe;
+          if not x_en then
+            xc := '1';
           end if;
-          csr(8)                := csr_file.cctrl.dsnoop;
-          csr(7)                := csr_file.cctrl.dflush;
-          csr(6)                := csr_file.cctrl.iflush;
-          -- Bit[5:4] is RESERVED
-          csr(3 downto 2)       := csr_file.cctrl.dcs;
-          csr(1 downto 0)       := csr_file.cctrl.ics;
         when CSR_TCMICTRL       =>
           xc := '1';
         when CSR_TCMDCTRL       =>
           xc := '1';
         when CSR_CAPABILITY =>
-          csr                   := to_capability(u2vec(fpuconf, 2), mmu_csr.cconfig);
+          if ext_noelv = 1 then
+            csr                 := to_capability(u2vec(fpuconf, 2), mmu_csr.cconfig);
+          end if;
+          if not x_en then
+            xc := '1';
+          end if;
         when CSR_CAPABILITYH =>
-          if is_rv32 then
+          if is_rv32 and ext_noelv = 1 then
             csr(word'range)     := to_capabilityh(u2vec(fpuconf, 2), mmu_csr.cconfig);
-          else
+          end if;
+          if not x_en then
             xc := '1';
           end if;
         when others =>
@@ -2833,7 +3421,7 @@ architecture rtl of iunv is
               end if;
               -- CSR_(M)HPMCOUNTER3-15H  (0-2 never _ok here!)
               if is_rv32 and counter_ok(csra_low) = '1' then
-                csr := to0x(csr_file.hpmcounter(csra_low)(63 downto 32));
+                csr := to0x(hi_h(csr_file.hpmcounter(csra_low)));
               end if;
             -- Machine|User Hardware Performance Monitoring (continued)
             when CSR_HPMCOUNTER16 |  -- All the higher counters.
@@ -2849,7 +3437,7 @@ architecture rtl of iunv is
               end if;
               -- CSR_(M)HPMCOUNTER16-31H
               if is_rv32 and counter_ok(csra_low + 16) = '1' then
-                csr := to0x(csr_file.hpmcounter(csra_low + 16)(63 downto 32));
+                csr := to0x(hi_h(csr_file.hpmcounter(csra_low + 16)));
               end if;
             -- According to the RISC-V documentation, the value read back from
             -- CSR_PMPADDR<x> will depend on pmpcfg<x> setting under some circumstances.
@@ -2895,7 +3483,137 @@ architecture rtl of iunv is
               xc := '1';
           end case;
       end case;
+
+      -- Check for execeptions produced when the Smstateen extnesion is implemented
+      -- Generate interrupts for reads when Smtateen extension is active
+      if ext_smstateen = 1 then
+        case csra_in is
+          -- sstateen CSRs
+          when CSR_SSTATEEN1 =>
+            if (csr_file.mstateen1.stateen = '0' and csr_file.prv /= PRIV_LVL_M) then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if csr_file.hstateen1.stateen = '0' then
+                xc_v := '1';
+                xc   := '1';
+              end if;
+            end if;
+          when CSR_SSTATEEN2 =>
+            if (csr_file.mstateen2.stateen = '0' and csr_file.prv /= PRIV_LVL_M) then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if csr_file.hstateen2.stateen = '0' then
+                xc_v := '1';
+                xc   := '1';
+              end if;
+            end if;
+          when CSR_SSTATEEN3 =>
+            if (csr_file.mstateen3.stateen = '0' and csr_file.prv /= PRIV_LVL_M) then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if csr_file.hstateen3.stateen = '0' then
+                xc_v := '1';
+                xc   := '1';
+              end if;
+            end if;
+          -- *envcfg CSRs
+          when CSR_HENVCFG | CSR_HENVCFGH =>
+            if mstateen0.envcfg = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            end if;
+          when CSR_SENVCFG =>
+            if mstateen0.envcfg = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if hstateen0.envcfg = '0' then
+                xc := '1';
+                xc_v := '1';
+              end if;
+            end if;
+          -- *iselect CSRs
+          when CSR_VSISELECT =>
+            if mstateen0.iselect = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            end if;
+          when CSR_SISELECT       =>
+            if mstateen0.iselect = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if hstateen0.iselect = '0' then
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            end if;
+          -- Other AIA CSRs
+          when CSR_HVIEN     | CSR_HVIENH    | CSR_HVICTL   | CSR_HVIPRIO1 | CSR_HVIPRIO1H |
+               CSR_HVIPRIO2  | CSR_HVIPRIO2H | CSR_HIDELEGH | CSR_HVIPH    | CSR_VSIEH     |
+               CSR_VSIPH     | CSR_VSTOPI  =>
+            if mstateen0.aia = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            end if;
+          when CSR_STOPI =>
+            if mstateen0.aia = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if hstateen0.aia = '0' then
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            end if;
+          -- IMSIC indirectly interrupt file accessed registers
+          when CSR_VSTOPEI =>
+            if mstateen0.imsic = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            end if;
+          when CSR_VSIREG =>
+            if (mstateen0.imsic and mstateen0.iselect) = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            end if;
+          when CSR_SIREG =>
+            if ((mstateen0.imsic = '0' and u2i(csr_file.siselect(7 downto 4)) > 6) or mstateen0.iselect = '0') 
+               and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if (hstateen0.imsic and hstateen0.iselect) = '0' then
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            end if;
+            -- Accesing IPRIO ARRAY (controlled with bit 59)
+            if (not(h_en) or csr_file.v = '0') and (mstateen0.aia = '0'
+               and csr_file.prv /= PRIV_LVL_M and csr_file.siselect(7 downto 4) = x"3") then
+                xc   := '1';
+            end if;
+          when CSR_STOPEI =>
+            if mstateen0.imsic = '0' and csr_file.prv /= PRIV_LVL_M then
+              xc := '1';
+            elsif h_en and csr_file.v = '1' then
+              if hstateen0.imsic = '0' then
+                xc   := '1';
+                xc_v := '1';
+              end if;
+            end if;
+          when others =>
+        end case;
+        -- Avoid to raise a virtual instruction exception when accesing a high CSR when
+        -- XLEN = 32
+        if is_rv32 then
+          case csra_in is
+            when CSR_SIEH | CSR_SIPH =>
+              if mstateen0.aia = '0' and csr_file.prv /= PRIV_LVL_M then
+                xc := '1';
+              elsif h_en and csr_file.v = '1' then
+                if hstateen0.aia = '0' then
+                  xc   := '1';
+                  xc_v := '1';
+                end if;
+              end if;
+            when others =>
+          end case;
+        end if;
+      end if;
     end if;
+
 
     -- Check for privileged level and read/write accessibility
     -- The standard RISC-V ISA sets aside a 12-bit encoding space (csr[11:0])
@@ -2936,6 +3654,7 @@ architecture rtl of iunv is
         elsif mode_u = 1 and csr_file.prv = PRIV_LVL_U and
               csr_file.scounteren(u2i(csra_in(4 downto 0))) = '0' then
           xc   := '1';
+          xc_v := vu_mode;
         end if;
       end if;
     end if;
@@ -3457,193 +4176,108 @@ architecture rtl of iunv is
     variable rfa2           : rfa_tuple := rfa(2, a, lane);
     variable rfa            : rfa_duo   := (1 => rfa1, 2 => rfa2);
     variable ex_rdv         : word2     := (1 => ex1_rdv_in, 0 => ex0_rdv_in);
-    type     op_data_t     is array (rfa'range) of wordx;
+    subtype  op_data_t     is wordx_arr(rfa'range);
     variable rf_in          : op_data_t := (1 => rf1_in, 2 => rf2_in);
     -- Non-constant
-    variable op1            : wordx;
-    variable op2            : wordx;
-    variable mux_output_op1 : wordx;
-    variable mux_output_op2 : wordx;
-    variable wb_forw_op1    : word2     := "00";
-    variable wb_forw_op2    : word2     := "00";
-    variable xc_forw_op1    : word2     := "00";
-    variable xc_forw_op2    : word2     := "00";
-    variable mem_forw_op1   : word2     := "00";
-    variable mem_forw_op2   : word2     := "00";
-    variable ex_forw_op1    : word2     := "00";
-    variable ex_forw_op2    : word2     := "00";
+    type     reg_fwd_t     is array (rfa'range) of std_logic_vector(0 to 7);
+    variable fwd            : reg_fwd_t := ((others => '0'), (others => '0'));
+    variable data           : wordx_arr(0 to 7)           := (others => (others => '0'));
+    variable mux_data       : op_data_t;
+    variable output_data    : op_data_t;
+    variable stage1         : std_logic_vector(rfa'range) := (others => '0');
+    variable fwd_hi_mask    : boolean;
   begin
-
-    -- Compute mux forwarding signals
-    -- bit(1) indicates forwarding should happen from that stage
-    -- bit(0) indicates from which lane the data should be forwarded
-
-    -- Op1
-    if    single_issue = 0 and
-          v_rd_eq_xrdv(r, e,  1, ex1_rdv_in, rfa1) then
-      ex_forw_op1    := "11";
-    elsif v_rd_eq_xrdv(r, e,  0, ex0_rdv_in, rfa1) then
-      ex_forw_op1    := "10";
-    elsif single_issue = 0 and
-          v_rd_eq(r, m,  1, rfa1) then
-      mem_forw_op1 := "11";
-    elsif v_rd_eq(r, m,  0, rfa1) then
-      -- Do not forward directly from cache access.
-      -- Handled by forwarding in next cycle instead.
-      if not v_fusel_eq(r, m, memory_lane, LD) then
-        mem_forw_op1 := "10";
+    -- Create priority ordered list of forwarding possibilities.
+    for op in rfa'range loop
+      fwd_hi_mask          := false;
+      for i in lanes'range loop
+        fwd(op)(1 - i)     := to_bit(v_rd_eq_xrdv(r, e,  i, ex_rdv(i), rfa(op)));
+        -- Special handling due to no direct load forwarding.
+        if i /= memory_lane then
+          fwd(op)(3 - i)   := to_bit(v_rd_eq(r, m, i, rfa(op)));
+        elsif v_rd_eq(r, m, memory_lane, rfa(op)) then
+          -- No lower priority forwarding even if none from here!
+          fwd_hi_mask      := true;
+          -- Do not forward directly from cache access.
+          -- Handled by forwarding in next cycle instead.
+          fwd(op)(3 - i)   := not to_bit(v_fusel_eq(r, m, memory_lane, LD));
+        end if;
+        fwd(op)(5 - i)     := to_bit(v_rd_eq(r, x, i, rfa(op)));
+        fwd(op)(7 - i)     := to_bit(v_rd_eq(r, wb, i, rfa(op)));
+      end loop;
+      if fwd_hi_mask then
+        fwd(op)(4 to 7)  := "0000";
       end if;
-    elsif single_issue = 0 and
-          v_rd_eq(r, x,  1, rfa1) then
-      xc_forw_op1    := "11";
-    elsif v_rd_eq(r, x,  0, rfa1) then
-      xc_forw_op1    := "10";
-    elsif single_issue = 0 and
-          v_rd_eq(r, wb, 1, rfa1) then
-      wb_forw_op1    := "11";
-    elsif v_rd_eq(r, wb, 0, rfa1) then
-      wb_forw_op1    := "10";
-    end if;
+    end loop;
 
-    -- Op2
-    if    single_issue = 0 and
-          v_rd_eq_xrdv(r, e,  1, ex1_rdv_in, rfa2) then
-      ex_forw_op2    := "11";
-    elsif v_rd_eq_xrdv(r, e,  0, ex0_rdv_in, rfa2) then
-      ex_forw_op2    := "10";
-    elsif single_issue = 0 and
-          v_rd_eq(r, m,  1, rfa2) then
-      mem_forw_op2 := "11";
-    elsif v_rd_eq(r, m,  0, rfa2) then
-      -- Do not forward directly from cache access.
-      -- Handled by forwarding in next cycle instead.
-      if not v_fusel_eq(r, m, memory_lane, LD) then
-        mem_forw_op2 := "10";
-      end if;
-    elsif single_issue = 0 and
-          v_rd_eq(r, x,  1, rfa2) then
-      xc_forw_op2    := "11";
-    elsif v_rd_eq(r, x,  0, rfa2) then
-      xc_forw_op2    := "10";
-    elsif single_issue = 0 and
-          v_rd_eq(r, wb, 1, rfa2) then
-      wb_forw_op2    := "11";
-    elsif v_rd_eq(r, wb, 0, rfa2) then
-      wb_forw_op2    := "10";
-    end if;
-
-
-    -- First Stage Mux for Op1
-    if r.a.pcv(lane) = '1' then
-      mux_output_op1     := pc2xlen(r.a.ctrl(lane).pc);
-    elsif xc_forw_op1 = "10" then
-      if v_fusel_eq(r, x, 0, LD) then
-        mux_output_op1   := r.x.data(0)(wordx'range);
+    -- Create mux list in the same order as above.
+    for i in lanes'range loop
+      data(1 - i)     := ex_data_in(i);       -- Execute stage
+      if v_fusel_eq(r, m, i, MUL) then        -- Memory stage
+        data(3 - i)   := mul_data_in(i);
       else
-        if r.x.alu(0).lalu = '1' then
-          mux_output_op1 := xc_data_in(0);
+        data(3 - i)   := r.m.result(i);
+      end if;
+      if i = memory_lane and                  -- Exception stage
+         v_fusel_eq(r, x, memory_lane, LD) then
+        data(5 - i)   := r.x.data(0)(wordx'range);
+      else
+        if r.x.alu(i).lalu = '1' then
+          data(5 - i) := xc_data_in(i);
         else
-          mux_output_op1 := r.x.result(0);
+          data(5 - i) := r.x.result(i);
         end if;
       end if;
-    elsif single_issue = 0 and
-          xc_forw_op1 = "11" then
-      if r.x.alu(one).lalu = '1' then
-        mux_output_op1   := xc_data_in(one);
-      else
-        mux_output_op1   := r.x.result(one);
-      end if;
-    elsif mem_forw_op1 = "10" then
-      if v_fusel_eq(r, m, 0, MUL) then
-        mux_output_op1   := mul_data_in(0);
-      else
-        mux_output_op1   := r.m.result(0);
-      end if;
-    elsif single_issue = 0 and
-          mem_forw_op1 = "11" then
-      if v_fusel_eq(r, m, 1, MUL) then
-        mux_output_op1   := mul_data_in(one);
-      else
-        mux_output_op1   := r.m.result(one);
-      end if;
-    elsif wb_forw_op1 = "10" then
-      mux_output_op1     := r.wb.wdata(0);
-    elsif single_issue = 0 and
-          wb_forw_op1 = "11" then
-      mux_output_op1     := r.wb.wdata(one);
-    end if;
+      data(7 - i)     := r.wb.wdata(i);       -- Write-back
+    end loop;
 
-    -- Second Stage Mux for Op1
-    if xc_forw_op1(1) = '1' or mem_forw_op1(1) = '1' or
-       wb_forw_op1(1) = '1' or r.a.pcv(lane)   = '1' then
-      op1                := mux_output_op1;
-    elsif single_issue = 0 and
-          ex_forw_op1 = "11" then
-      op1                := ex_data_in(one);
-    elsif ex_forw_op1 = "10" then
-      op1                := ex_data_in(0);
-    else
-      op1                := rf1_in;
-    end if;
+    -- First stage mux
+    for op in rfa'range loop
+      if    op = 1 and
+            r.a.pcv(lane) = '1' then
+        mux_data(op)    := pc2xlen(r.a.ctrl(lane).pc);
+        stage1(op)      := '1';
+--        debuglog("a" & tost(op));
+      elsif op = 2 and      -- True even with zimm, but do not forward imm generated from Branch.
+            r.a.immv(lane) = '1' and opcode(r.a.ctrl(lane).inst) /= OP_BRANCH then
+        mux_data(op)     := r.a.imm(lane);
+        stage1(op)       := '1';
+--        debuglog("b" & tost(op));
+      elsif fwd(op)(0 to 1) = "00" then       -- Not execute stage forwarding?
+        for i in 2 to 7 loop                  --  Check the rest in priority order!
+          if fwd(op)(i) = '1' then
+            mux_data(op) := data(i);
+            stage1(op)   := '1';
+--            debuglog("c" & tost(op) & tost(i));
+            exit;
+          end if;
+        end loop;
+      end if;
+    end loop;
 
-    -- First Stage Mux for Op2
-      -- True even with zimm, but do not forward imm generated fron Branch.
-    if r.a.immv(lane) = '1' and r.a.ctrl(lane).inst(6 downto 0) /= OP_BRANCH then
-      mux_output_op2     := r.a.imm(lane);
-    elsif xc_forw_op2 = "10" then
-      if v_fusel_eq(r, x, 0, LD) then
-        mux_output_op2   := r.x.data(0)(wordx'range);
+    -- Second stage mux
+    for op in rfa'range loop
+      if stage1(op) = '1' then
+        output_data(op)    := mux_data(op);
+--        debuglog("p" & tost(op));
+      elsif fwd(op)(0) = '1' then
+        output_data(op)    := data(0);
+--        debuglog("q" & tost(op));
+      elsif fwd(op)(1) = '1' then
+        output_data(op)    := data(1);
+--        debuglog("r" & tost(op));
       else
-        if r.x.alu(0).lalu = '1' then
-          mux_output_op2 := xc_data_in(0);
-        else
-          mux_output_op2 := r.x.result(0);
-        end if;
+        output_data(op)    := rf_in(op);
+--        debuglog("s" & tost(op));
       end if;
-    elsif single_issue = 0 and
-          xc_forw_op2 = "11" then
-      if r.x.alu(one).lalu = '1' then
-        mux_output_op2   := xc_data_in(one);
-      else
-        mux_output_op2   := r.x.result(one);
-      end if;
-    elsif mem_forw_op2 = "10" then
-      if v_fusel_eq(r, m, 0, MUL) then
-        mux_output_op2   := mul_data_in(0);
-      else
-        mux_output_op2   := r.m.result(0);
-      end if;
-    elsif single_issue = 0 and
-          mem_forw_op2 = "11" then
-      if v_fusel_eq(r, m, 1, MUL) then
-        mux_output_op2   := mul_data_in(one);
-      else
-        mux_output_op2   := r.m.result(one);
-      end if;
-    elsif wb_forw_op2 = "10" then
-      mux_output_op2     := r.wb.wdata(0);
-    elsif single_issue = 0 and
-          wb_forw_op2 = "11" then
-      mux_output_op2     := r.wb.wdata(one);
-    end if;
+    end loop;
 
-    -- Second Stage Mux for Op2
-    if xc_forw_op2(1) = '1' or mem_forw_op2(1) = '1' or wb_forw_op2(1) = '1' or
-       (r.a.immv(lane) = '1' and r.a.ctrl(lane).inst(6 downto 0) /= OP_BRANCH) then
-      op2                := mux_output_op2;
-    elsif single_issue = 0 and
-          ex_forw_op2 = "11" then
-      op2                := ex_data_in(one);
-    elsif ex_forw_op2 = "10" then
-      op2                := ex_data_in(0);
-    else
-      op2                := rf2_in;
-    end if;
 
-    op1_out              := op1;
-    op2_out              := op2;
-    forw_out(1)          := ex_forw_op1(1) or mem_forw_op1(1) or xc_forw_op1(1) or wb_forw_op1(1);
-    forw_out(2)          := ex_forw_op2(1) or mem_forw_op2(1) or xc_forw_op2(1) or wb_forw_op2(1);
+    op1_out       := output_data(1);
+    op2_out       := output_data(2);
+    forw_out(1)   := not all_0(fwd(1));
+    forw_out(2)   := not all_0(fwd(2));
+
   end;
 
   -- Jump Unit Forwarding
@@ -3757,227 +4391,6 @@ architecture rtl of iunv is
     forw_out(2)         := '0';  -- Unused, but needs a value.
   end;
 
-  -- Jump Unit for JAL and JALR instructions
-  procedure jump_unit(ctrl_in   : in  pipeline_ctrl_type;
-                      imm_in    : in  wordx;
-                      ras_in    : in  nv_ras_out_type;
-                      rf1       : in  wordx;
-                      flush_in  : in  std_ulogic;
-                      jump_out  : out std_ulogic;
-                      mem_jump  : out std_ulogic;
-                      xc_out    : out std_ulogic;
-                      cause_out : out cause_type;
-                      tval_out  : out wordx;
-                      addr_out  : out pctype) is
-    -- Non-constant
-    variable op1         : wordx;
-    variable target      : wordx;
-    variable jump_xc     : std_ulogic;
-    variable memjump_xc  : std_ulogic;
-    variable jump        : std_ulogic := '0';
-    variable mem_jumpt   : std_ulogic;
-    variable tval        : wordx;
-  begin
-    -- Jump in case of:
-    -- * Valid JALR instruction and ras_in.hit = '0' or address mismatch
-
-    -- Operations:
-    -- * JALR   -> rs1 + sign_extend(imm)
-    target       := std_logic_vector(signed(rf1) + signed(imm_in));
-
-    -- Generate Jump Signal
-    if ctrl_in.valid = '1' and v_fusel_eq(ctrl_in.fusel, JALR) and flush_in = '0' then
-        jump     := '1';
-    end if;
-
-
-    mem_jumpt := '0';
-
-    -- Setting the least-significat bit to zero.
-    target(0)    := '0';
-
-    -- Generate Exception Signal due to Address Misaligned.
-    jump_xc := '0';
-    if jump = '1' and inst_addr_misaligned(active_extensions, target) then
-      jump_xc    := '1';
-    end if;
-
-    -- Decouple jump and memjump_xc to not affect the critical path.
-    memjump_xc   := '0';
-    if mem_jumpt = '1' and inst_addr_misaligned(active_extensions, target) then
-      memjump_xc := '1';
-    end if;
-
-    xc_out       := jump_xc or memjump_xc;
-    cause_out    := XC_INST_ADDR_MISALIGNED;  -- Only valid when xc_out.
-    addr_out     := to_addr(target);
-    tval_out     := target;
-    jump_out     := jump and not jump_xc;
-    mem_jump     := mem_jumpt and not memjump_xc;
-  end;
-
-  -- Resolve Unconditional Jumps
-  procedure ujump_resolve(ctrl_in   : in  pipeline_ctrl_type;
-                          target_in : in  pctype;
-                          next_in   : in  pctype;
-                          taken_in  : in  std_ulogic;
-                          hit_in    : in  std_ulogic;
-                          xc_out    : out std_ulogic;
-                          cause_out : out cause_type;
-                          tval_out  : out wordx;
-                          jump_out  : out std_ulogic;
-                          addr_out  : out pctype) is
-    variable inst   : word       := ctrl_in.inst;
-    -- Non-constant
-    variable target : pctype     := target_in;
-    variable xc     : std_ulogic := '0';
-    variable jump   : std_ulogic := '0';
-    variable mis    : std_ulogic := '0';
-  begin
-    -- Jump here in case of:
-    --        * taken_in = 0 -> We did not get a hit from prediction
-    --        * taken_in = 1 and not JAL -> We get an alias
-
-    -- Generate Misprediction Signal due to wrong instruction.
-    if (taken_in and hit_in and ctrl_in.valid) = '1' and ctrl_in.xc = '0' then
-      if inst(6 downto 0) /= OP_JAL and inst(6 downto 0) /= OP_BRANCH then
-        mis     := '1';
-        target  := next_in;
-      end if;
-    end if;
-
-    -- Generate Jump Signal
-    if ctrl_in.valid = '1' and ctrl_in.xc = '0' and inst(6 downto 0) = OP_JAL and (taken_in and hit_in) = '0' then
-      jump      := '1';
-    end if;
-
-    -- Generate Exception Signal
-    if jump = '1' and inst_addr_misaligned(active_extensions, target) then
-      xc        := '1';
-    end if;
-
-    xc_out      := xc;
-    cause_out   := XC_INST_ADDR_MISALIGNED;  -- Only valid when xc_out.
-    tval_out    := pc2xlen(target);
-    addr_out    := target;
-    jump_out    := (jump or mis) and not xc;
-  end;
-
-  -- Resolve Early Branch in Decode Stage.
-  procedure branch_resolve(ctrl_in    : in  pipeline_ctrl_type;
-                           taken_in   : in  std_ulogic;
-                           hit_in     : in  std_ulogic;
-                           imm_in     : in  wordx;
-                           valid_out  : out std_ulogic;
-                           branch_out : out std_ulogic;
-                           taken_out  : out std_ulogic;
-                           hit_out    : out std_ulogic;
-                           xc_out     : out std_ulogic;
-                           cause_out  : out cause_type;
-                           next_out   : out pctype;
-                           addr_out   : out pctype) is
-    -- Non-constant
-    variable valid   : std_ulogic := '0';
-    variable xc      : std_ulogic := '0';
-    variable pc      : wordx;
-    variable target  : wordx;
-    variable nextpc  : pctype;
-    variable brancho : std_ulogic;
-  begin
-    -- Signal to branch in decode stage in case we got a taken from bht
-    -- but the btb does not have the target address where to branch.
-    brancho     := taken_in and not hit_in;
-
-    -- Check if branch
-    if ctrl_in.valid = '1' and ctrl_in.xc = '0' and v_fusel_eq(ctrl_in.fusel, BRANCH) then
-      valid     := '1';
-    end if;
-
-    -- Operations:
-    -- * BRANCH -> pc + sign_extend(imm)
-    pc          := pc2xlen(ctrl_in.pc);
-    target      := std_logic_vector(signed(pc) + signed(imm_in));
-    nextpc      := npc_adder(ctrl_in.pc, ctrl_in.comp);
-
-    -- Generate Exception Signal
-    if valid = '1' and taken_in = '1' and inst_addr_misaligned(active_extensions, target) then
-      xc        := '1';
-    end if;
-
-    -- Generate Output
-    addr_out    := to_addr(target);
-    next_out    := nextpc;
-    valid_out   := valid;
-    branch_out  := brancho and valid;
-    -- Taken signal for later stage of the pipeline
-    taken_out   := taken_in and valid;
-    xc_out      := xc;
-    cause_out   := XC_INST_ADDR_MISALIGNED;  -- Only valid when xc_out.
-    hit_out     := hit_in;
-  end;
-
-  procedure branch_misc(ctrl_in   : in  pipeline_ctrl_type;
-                        taken_in  : in  std_ulogic;
-                        hit_in    : in  std_ulogic;
-                        imm_in    : in  wordx_pair_type;
-                        swap      : in  std_logic;
-                        valid_out : out std_ulogic;
-                        taken_out : out std_ulogic;
-                        hit_out   : out std_ulogic;
-                        xc_out    : out std_ulogic;
-                        cause_out : out cause_type;
-                        next_out  : out pctype;
-                        addr_out  : out pctype) is
-    -- Non-constant
-    variable valid  : std_ulogic := '0';
-    variable xc     : std_ulogic := '0';
-    variable pc     : wordx;
-    variable target_l0 : wordx;
-    variable target_l1 : wordx;
-    variable target : wordx;
-    variable nextpc : pctype;
-  begin
-    -- Check if branch
-    if ctrl_in.valid = '1' and ctrl_in.xc = '0' and v_fusel_eq(ctrl_in.fusel, BRANCH) then
-      valid := '1';
-    end if;
-
-    -- Operations:
-    -- * BRANCH -> pc + sign_extend(imm)
-    pc     := pc2xlen(ctrl_in.pc);
-
-    target_l0 := std_logic_vector(signed(pc) + signed(imm_in(0)));
-    target_l1 := std_logic_vector(signed(pc) + signed(imm_in(1)));
-
-    if branch_lane = 0 then
-      target := target_l0;
-      if swap = '1' then
-        target := target_l1;
-      end if;
-    else
-      target := target_l1;
-      if swap = '1' then
-        target := target_l0;
-      end if;
-    end if;
-
-    nextpc := npc_adder(ctrl_in.pc, ctrl_in.comp);
-
-    -- Generate Exception Signal
-    if valid = '1' and taken_in = '1' and inst_addr_misaligned(active_extensions, target) then
-      xc := '1';
-    end if;
-
-    -- Generate Output
-    addr_out  := to_addr(target);
-    next_out  := nextpc;
-    valid_out := valid;
-    taken_out := taken_in and valid;
-    xc_out    := xc;
-    cause_out := XC_INST_ADDR_MISALIGNED;  -- Only valid when xc_out.
-    hit_out   := hit_in;
-  end;
-
   -- Data Cache Gen
   procedure dcache_gen(inst_in     : in  word;
                        fusel_in    : in  fuseltype;
@@ -3995,26 +4408,28 @@ architecture rtl of iunv is
                        vmxr_in     : in  std_ulogic;
                        vsum_in     : in  std_ulogic;
                        dci_out     : out dcache_in_type) is
-    variable funct3 : funct3_type    := inst_in(14 downto 12);
+    variable funct3 : funct3_type    := funct3(inst_in);
+    variable x0_rs1 : std_ulogic     := all_0(rs1(inst_in));
+    variable x0_rs2 : std_ulogic     := all_0(rs2(inst_in));
     -- Non-constant
     variable dci    : dcache_in_type := dcache_in_none;
   begin
     -- Drive Cache Signal
-    dci.signed := not funct3(2);
-    dci.size   := funct3(1 downto 0);
+    dci.signed  := not funct3(2);
+    dci.size    := funct3(1 downto 0);
     -- During normal operation, the LEON5 processor accesses instructions
     -- and data using ASI 0x8 - 0xB, so we do the same.
-    dci.asi  := "00001010";
+    dci.asi     := x"0A";
 
-    dci.mxr   := mxr_in;
-    dci.vmxr  := vmxr_in;
-    dci.vms    := v_in & prv_in;
+    dci.mxr     := mxr_in;
+    dci.vmxr    := vmxr_in;
+    dci.vms     := v_in & prv_in;
     if mprv_in = '1' then -- M-mode is assumed
-      dci.vms  := mpv_in & mpp_in;
+      dci.vms   := mpv_in & mpp_in;
     end if;
 
-    dci.hx     := '0';
-    dci.sum    := '0';
+    dci.hx      := '0';
+    dci.sum     := '0';
     if prv_in = PRIV_LVL_S or                       -- HS-mode or VS-mode
        (mprv_in = '1' and mpp_in = PRIV_LVL_S) then -- M-mode, access as through HS-mode or VS-mode
       if ext_h /= 0 and (v_in = '1' or (mprv_in and mpv_in) = '1') then
@@ -4023,72 +4438,89 @@ architecture rtl of iunv is
         dci.sum := sum_in;
       end if;
     end if;
-    if ext_h /= 0 and (is_hlv(inst_in) or is_hsv(inst_in)) then
-      dci.vms         := "10" & spvp_in;
-      dci.sum         := vsum_in;
-      dci.hx          := inst_in(21) and not inst_in(25); -- HLVX
+    if ext_h /= 0 and is_hlsv(inst_in) then
+      dci.vms   := "10" & spvp_in;
+      dci.sum   := vsum_in;
+      dci.hx    := inst_in(21) and not inst_in(25); -- HLVX
     end if;
 
     if valid_in = '1' then
       if v_fusel_eq(fusel_in, LD or ST) and misaligned = '0' then
         dci.enaddr      := '1';
-        dci.write       := inst_in(5);
-        dci.read        := not inst_in(5);
+        dci.write       := to_bit(v_fusel_eq(fusel_in, ST));
+        dci.read        := to_bit(v_fusel_eq(fusel_in, LD));
         dci.amo         := (others => '0');
         if ext_a /= 0 and v_fusel_eq(fusel_in, AMO) then
           dci.amo := '1' & inst_in(31 downto 27);
           if inst_in(28) = '1' then   -- LRSC
             if inst_in(27) = '0' then -- LR
-              dci.write := '0';
-              dci.read  := '1';
             else                      -- SC
-              dci.write := '1';
               dci.read  := '0';
               dci.lock  := '1';
             end if;
           else                        -- AMO
-            dci.write   := '1';
-            dci.read    := '1';
             dci.lock    := '1';
           end if;
         end if;
-        if ext_h /= 0 and (is_hlv(inst_in) or is_hsv(inst_in)) then
-          dci.write       := inst_in(25);
-          dci.read        := not inst_in(25);
+        if ext_h /= 0 and is_hlsv(inst_in) then
           dci.signed      := not inst_in(20);
           dci.size        := inst_in(27 downto 26);
         end if;
-        if v_fusel_eq(fusel_in, DIAG) then
+        if ext_noelv /= 0 and v_fusel_eq(fusel_in, DIAG) then
           if is_diag_store(inst_in) then
-            dci.write   := '1';
-            dci.read    := '0';
             dci.asi     := to_asi_store(inst_in);
           else
-            dci.write   := '0';
-            dci.read    := '1';
             dci.asi     := to_asi_load(inst_in);
           end if;
         end if;
       -- We encode a fence_i instruction in an instruction
       -- that flushes and enables both caches.
 --      elsif is_fence_i(inst_in) then
---        dci.asi         := "00000010";
+--        dci.asi         := x"02";
 --        dci.write       := '1';
 --        dci.enaddr      := '1';
 --        dci.size        := "10";
-      -- We encode an sfence.vma instruction in an instruction
-      -- that flushes caches amd TLB.
+      -- We encode an sfence.vma instruction in an instruction that flushes the
+      -- (v)sITLB and (v)sDTLB entries matching address and ASID, if requested,
+      -- and always current VMID if vs.
       elsif is_sfence_vma(inst_in) then
-        dci.asi         := "00011000";
+        dci.asi         := x"1B";
+        dci.vms(0)      := x0_rs1;
+        dci.vms(1)      := x0_rs2 or to_bit(asidlen = 0);
+        dci.vms(2)      := v_in;
+        -- While the standard is not entirely clear, IMHO, it seems to
+        -- want sfence.vma from machine mode to only touch (H)S TLBs (not VS).
+        -- An option could have been to have it look at mstatus.mpv.
+        if prv_in = PRIV_LVL_M then
+          dci.vms(2)    := '0';   -- Not mpv_in, apparently.
+        end if;
         dci.write       := '1';
         dci.enaddr      := '1';
-        dci.size        := "10";
-      elsif is_hfence_vvma(inst_in) or is_hfence_gvma(inst_in) then
-        dci.asi         := "00011000";
+        dci.size        := "00";   -- sfence.vma
+      -- We encode an hfence.vvma instruction in an instruction that flushes the
+      -- vsITLB and vsDTLB entries matching address and ASID, if requested,
+      -- and always current VMID.
+      elsif ext_h = 1 and is_hfence_vvma(inst_in) then
+        dci.asi         := x"1B";
+        dci.vms(0)      := x0_rs1;
+        dci.vms(1)      := x0_rs2 or to_bit(asidlen = 0);
+        dci.vms(2)      := '1';
         dci.write       := '1';
         dci.enaddr      := '1';
-        dci.size        := "10";
-      elsif is_cbo(inst_in) and inst_in(20) = '0' then -- Clean = NOP, inval/flush = inval
+        dci.size        := "01";   -- hfence.vvma
+      -- We encode an hfence.gvma instruction in an instruction that flushes the
+      -- hTLB entries matching address and VMID, if reqeusted, and also the
+      -- vsITLB and vsDTLB entries matching the VMID, if requested (no address check
+      -- possible since the ITLB and DTLB contain only direct mappings to physical addresses).
+      elsif ext_h = 1 and is_hfence_gvma(inst_in) then
+        dci.asi         := x"1B";
+        dci.vms(0)      := x0_rs1;
+        dci.vms(1)      := x0_rs2 or to_bit(vmidlen = 0);
+        dci.vms(2)      := '1';
+        dci.write       := '1';
+        dci.enaddr      := '1';
+        dci.size        := "10";   -- hfence.gvma
+      elsif ext_zicbom = 1 and is_cbo(inst_in) and inst_in(20) = '0' then -- Clean = NOP, inval/flush = inval
         dci.cbo         := "100";
         dci.write       := '0';
         dci.read        := '1';
@@ -4119,14 +4551,15 @@ architecture rtl of iunv is
   -- Generate data to store
   procedure stdata_unit(r        : in  registers;
                         data_out : out word64) is
-    variable op     : opcode_type := r.m.ctrl(memory_lane).inst(6 downto 0);
-    variable rfa2   : rfatype     := r.m.ctrl(memory_lane).inst(24 downto 20);
+    variable inst      : word        := r.m.ctrl(memory_lane).inst;
+    variable op        : opcode_type := opcode(inst);
+    variable rfa2      : reg_t       := rs2(inst);
     -- Hypervisor store instruction
-    variable hsv    : boolean     := (ext_h /= 0) and is_hsv(r.m.ctrl(memory_lane).inst);
+    variable hsv       : boolean     := (ext_h /= 0) and is_hsv(inst);
     -- Non-constant
-    variable data   : word64      := to64(r.m.stdata);
-    variable mvalid : std_ulogic  := '1';
-    variable mdata  : wordx;
+    variable data      : word64      := to64(r.m.stdata);
+    variable mvalid    : std_ulogic  := '1';
+    variable mdata     : wordx;
   begin
     -- Opt for a 2 stage mux
 
@@ -4168,23 +4601,26 @@ architecture rtl of iunv is
     end if;
 
     -- Replicate word/halfword/byte
-    if    (not hsv and r.m.ctrl(memory_lane).inst(13 downto 12) = "10") or
-          (    hsv and r.m.ctrl(memory_lane).inst(27 downto 26) = "10") then -- SW
-      data(63 downto 32) := data(31 downto 0);
-    elsif (not hsv and r.m.ctrl(memory_lane).inst(13 downto 12) = "01") or
-          (    hsv and r.m.ctrl(memory_lane).inst(27 downto 26) = "01") then -- SH
-      data(63 downto 48) := data(15 downto 0);
-      data(47 downto 32) := data(15 downto 0);
-      data(31 downto 16) := data(15 downto 0);
-    elsif (not hsv and r.m.ctrl(memory_lane).inst(13 downto 12) = "00") or
-          (    hsv and r.m.ctrl(memory_lane).inst(27 downto 26) = "00") then -- SB
-      data(63 downto 56) := data(7 downto 0);
-      data(55 downto 48) := data(7 downto 0);
-      data(47 downto 40) := data(7 downto 0);
-      data(39 downto 32) := data(7 downto 0);
-      data(31 downto 24) := data(7 downto 0);
-      data(23 downto 16) := data(7 downto 0);
-      data(15 downto 8)  := data(7 downto 0);
+    if (asidlen <= 8 and (ext_h = 0 or vmidlen <= 8)) or
+       not is_tlb_fence(active_extensions, inst) then
+      case r.m.dci.size is
+      when "10" =>
+        data(63 downto 32) := data(31 downto 0);
+      when "01" =>
+        data(63 downto 48) := data(15 downto 0);
+        data(47 downto 32) := data(15 downto 0);
+        data(31 downto 16) := data(15 downto 0);
+      when "00" =>
+        data(63 downto 56) := data(7 downto 0);
+        data(55 downto 48) := data(7 downto 0);
+        data(47 downto 40) := data(7 downto 0);
+        data(39 downto 32) := data(7 downto 0);
+        data(31 downto 24) := data(7 downto 0);
+        data(23 downto 16) := data(7 downto 0);
+        data(15 downto 8)  := data(7 downto 0);
+      when others =>
+        null;
+      end case;
     end if;
 
 --    if is_fence_i(r.m.ctrl(0).inst) then
@@ -4205,9 +4641,9 @@ architecture rtl of iunv is
   procedure me_exceptions(ctrl_in            : in  pipeline_ctrl_lanes_type;
                           dcache_xc_in       : in  std_ulogic;
                           dcache_xc_cause_in : in  cause_type;
-                          dcache_xc_tval_in  : in  std_logic_vector;
-                          ret_out            : out std_logic_vector;
-                          xc_out             : out std_logic_vector;
+                          ret_out            : out word2;
+                          nret_out           : out std_ulogic;
+                          xc_out             : out lanes_type;
                           cause_out          : out cause_lanes_type;
                           tval_out           : out wordx_lanes_type) is
     -- Non-constant
@@ -4215,46 +4651,53 @@ architecture rtl of iunv is
     variable cause : cause_lanes_type;
     variable tval  : wordx_lanes_type;
     variable ret   : word2 := (others => '0');
+    variable nret  : std_ulogic := '0';
   begin
     for i in lanes'range loop
-      xc(i)             := ctrl_in(i).xc;
-      cause(i)          := ctrl_in(i).cause;
-      tval(i)           := ctrl_in(i).tval;
+      xc(i)          := ctrl_in(i).xc;
+      cause(i)       := ctrl_in(i).cause;
+      tval(i)        := ctrl_in(i).tval;
     end loop;
 
 
     -- Evaluate Trap-Return Instructions
     for i in lanes'range loop
       if ctrl_in(i).xc = '0' and ctrl_in(i).valid = '1' then
-        if ctrl_in(i).inst(24 downto 7) = "000100000000000000" and ctrl_in(i).inst(6 downto 0) = OP_SYSTEM then
-          if ctrl_in(i).inst(31 downto 25) = F7_SRET then
-            xc(i)       := '1';
-            cause(i)    := XC_INST_ENV_CALL_SMODE;
-            tval(i)     := zerox;
-            ret         := "01";
-          elsif ctrl_in(i).inst(31 downto 25) = F7_MRET then
-            xc(i)       := '1';
-            cause(i)    := XC_INST_ENV_CALL_MMODE;
-            tval(i)     := zerox;
-            ret         := "11";
+        if is_xret(ctrl_in(i).inst) then
+          if    funct7(ctrl_in(i).inst) = F7_SRET then
+            xc(i)    := '1';
+            cause(i) := XC_INST_ENV_CALL_SMODE;
+            tval(i)  := zerox;
+            ret      := "01";
+          elsif funct7(ctrl_in(i).inst) = F7_MRET then
+            xc(i)    := '1';
+            cause(i) := XC_INST_ENV_CALL_MMODE;
+            tval(i)  := zerox;
+            ret      := "11";
+          elsif funct7(ctrl_in(i).inst) = F7_MNRET and ext_smrnmi = 1 then
+            xc(i)    := '1';
+            cause(i) := XC_INST_ENV_CALL_MMODE;
+            tval(i)  := zerox;
+            ret      := "11";
+            nret     := '1';
           end if;
         end if;
       end if;
     end loop;
 
     -- Drive outputs
-    xc_out              := xc;
-    cause_out           := cause;
-    tval_out            := tval;
-    ret_out             := ret;
+    xc_out           := xc;
+    cause_out        := cause;
+    tval_out         := tval;
+    ret_out          := ret;
+    nret_out         := nret;
   end;
 
   -- Nullify dor DCache
   procedure null_dcache_gen(xc_flush_in : in  std_ulogic;
-                            me_xc_in    : in  std_logic_vector;
+                            me_xc_in    : in  lanes_type;
                             mem_branch  : in  std_ulogic;
-                            inst        : in  std_logic_vector;
-                            valid_in    : in  std_logic_vector;
+                            valid_in    : in  lanes_type;
                             swap_in     : in  std_ulogic;
                             nullify_out : out std_ulogic) is
     -- Non-constant
@@ -4294,7 +4737,8 @@ architecture rtl of iunv is
     end if;
     if lane = csr_lane then
       -- CSR read values are available in cres.
-      if csrv_in = '1' then
+      if csrv_in = '1'
+         then
         data    := cres_in;
       end if;
     end if;
@@ -4312,38 +4756,35 @@ architecture rtl of iunv is
   end;
 
   -- Exception Management
-  procedure exception_unit(branch_xc    : in  std_ulogic;
-                           branch_cause : in  cause_type;
-                           branch_tval  : in  wordx;
-                           csr_xc       : in  std_logic_vector;
+  procedure exception_unit(r            : in  registers;
+                           op1          : in  wordx_lanes_type;
+                           op2          : in  wordx_lanes_type;
+                           csr_xc       : in  lanes_type;
                            csr_cause    : in  cause_type;
-                           r            : in  registers;
                            fence_in     : in  std_ulogic;
                            swap_in      : in  std_ulogic;
-                           csr_in       : in  csr_reg_type;
+                           v_in         : in  std_ulogic;
                            int_in       : in  lanes_type;
-                           xcs_out      : out std_logic_vector;
+                           xcs_out      : out lanes_type;
                            causes_out   : out cause_lanes_type;
                            tvals_out    : out wordx_lanes_type;
-                           ret_out      : out std_logic_vector;
+                           ret_out      : out word2;
+                           nret_out     : out std_ulogic;
                            xc_out       : out std_ulogic;
                            xc_lane_out  : out std_ulogic;
-                           irq_taken    : out std_logic_vector(1 downto 0);
+                           irq_taken    : out word2;
+                           nirq_taken   : out std_ulogic;
                            cause_out    : out cause_type;
                            tval_out     : out wordx;
                            tval2_out    : out wordx;
                            gva_out      : out std_ulogic;
-                           flush_out    : out std_logic_vector;
+                           flush_out    : out lanes_type;
                            pc_out       : out pctype;
                            inst_out     : out word;
                            trig_taken   : out std_ulogic) is
-    variable taken     : wordx          := csr_in.mip and csr_in.mie;
     -- Non-constant
-    variable irqenable : std_ulogic     := '0';
     variable xc        : std_ulogic     := '0';
     variable cause     : cause_type     := (others => '0');
-    variable irqcause  : cause_type     := (others => '0');
-    variable csr       : csr_reg_type   := csr_in;
     variable xcs       : lanes_type;
     variable causes    : cause_lanes_type;
     variable tvals     : wordx_lanes_type;
@@ -4353,11 +4794,14 @@ architecture rtl of iunv is
     variable tval      : wordx          := zerox;
     variable tval2     : wordx          := zerox;
     variable ret       : word2          := r.x.ret;
+    variable nret      : std_ulogic     := r.x.nret;
     variable flush     : word2          := "00";
+    variable xc_lane   : std_ulogic     := '0';
   begin
     irq_taken   := "00";
     trig_taken  := '0';
-    xc_lane_out := '0';
+    nirq_taken  := '0';
+
     -- Check exception from previous stages
     for i in lanes'range loop
       xcs(i)    := r.x.ctrl(i).xc;
@@ -4365,34 +4809,41 @@ architecture rtl of iunv is
       tvals(i)  := r.x.ctrl(i).tval;
     end loop;
 
-    -- Insert CSR write exception
+    -- qqq What about marking instruction invalid? Taken care of already?
+
+
+    -- Check for new exceptions in CSR lane
     if r.x.ctrl(csr_lane).xc = '0' then
+      -- Insert CSR write exception
       if csr_xc(csr_lane) = '1' then
         xcs(csr_lane)    := '1';
         causes(csr_lane) := csr_cause;
         tvals(csr_lane)  := to0x(r.x.ctrl(csr_lane).inst);
       end if;
+
     end if;
 
-    if xcs(0) = '0' and r.x.mexc = '1' then
-      xcs(0)        := '1';
+    -- Insert load/store page/access fault
+    if xcs(memory_lane) = '0' and r.x.mexc = '1' then
+      xcs(memory_lane)        := '1';
       if r.x.exctype = '1' then
-        causes(0)   := XC_INST_LOAD_ACCESS_FAULT;
+        causes(memory_lane)   := XC_INST_LOAD_ACCESS_FAULT;
       elsif r.x.exchyper = '1' then
-        causes(0)   := XC_INST_LOAD_G_PAGE_FAULT;
+        causes(memory_lane)   := XC_INST_LOAD_G_PAGE_FAULT;
       else
-        causes(0)   := XC_INST_LOAD_PAGE_FAULT;
+        causes(memory_lane)   := XC_INST_LOAD_PAGE_FAULT;
       end if;
-      if v_fusel_eq(r, x, 0, ST) or is_cbo(r.x.ctrl(memory_lane).inst) then
+      if v_fusel_eq(r, x, memory_lane, ST) or
+         (ext_zicbom = 1 and is_cbo(r.x.ctrl(memory_lane).inst)) then
         if r.x.exctype = '1' then
-          causes(0) := XC_INST_STORE_ACCESS_FAULT;
+          causes(memory_lane) := XC_INST_STORE_ACCESS_FAULT;
         elsif r.x.exchyper = '1' then
-          causes(0) := XC_INST_STORE_G_PAGE_FAULT;
+          causes(memory_lane) := XC_INST_STORE_G_PAGE_FAULT;
         else
-          causes(0) := XC_INST_STORE_PAGE_FAULT;
+          causes(memory_lane) := XC_INST_STORE_PAGE_FAULT;
         end if;
       end if;
-      tvals(0)      := pc2xlen(r.x.address);
+      tvals(memory_lane)      := pc2xlen(r.x.address);
     end if;
 
 
@@ -4400,130 +4851,111 @@ architecture rtl of iunv is
     -- First instruction should be in the upper arm, but in case of a
     -- swap it is in the second arm.
 
-    -- Raise exception only if not flushed by fence in write back stage.
-    if swap_in = '1' then
-      if    single_issue = 0 and
-            xcs(1) = '1' and r.x.ctrl(1).valid = '1' then
-        xc           := '1';
-        pc           := r.x.ctrl(1).pc;
-        inst         := r.x.ctrl(1).inst;
-        inst(1)      := not r.x.ctrl(1).comp;
-        cause        := causes(1);
-        tval         := tvals(1);
-        flush        := "11";           -- flush both
-        xc_lane_out  := '1';
-      elsif xcs(0) = '1' and r.x.ctrl(0).valid = '1' then
-        xc           := '1';
-        pc           := r.x.ctrl(0).pc;
-        inst         := r.x.ctrl(0).inst;
-        inst(1)      := not r.x.ctrl(0).comp;
-        cause        := causes(0);
-        tval         := tvals(0);
-        flush        := "01";           -- flush lane 0 only
+
+    -- Select exception
+    -- (Will only be raised if not flushed by fence in write back stage.)
+    xc := (xcs(0)   and r.x.ctrl(0).valid) or
+          (xcs(one) and r.x.ctrl(one).valid);
+
+    -- Exception in instruction fetch order
+    xc_lane     := '0';
+    if single_issue = 0 then
+      if swap_in = '0' then
+        -- No exception in first instruction (lane 0)?
+        xc_lane := not (xcs(0) and r.x.ctrl(0).valid);
+      else
+        -- Exception in first instruction (lane 1)?
+        xc_lane := xcs(one) and r.x.ctrl(one).valid;
       end if;
-    else
-      if    xcs(0) = '1' and r.x.ctrl(0).valid = '1' then
-        xc           := '1';
-        pc           := r.x.ctrl(0).pc;
-        inst         := r.x.ctrl(0).inst;
-        inst(1)      := not r.x.ctrl(0).comp;
-        cause        := causes(0);
-        tval         := tvals(0);
-        flush        := "11";           -- flush both
-      elsif single_issue = 0 and
-            xcs(1) = '1' and r.x.ctrl(1).valid = '1' then
-        xc           := '1';
-        pc           := r.x.ctrl(1).pc;
-        inst         := r.x.ctrl(1).inst;
-        inst(1)      := not r.x.ctrl(1).comp;
-        cause        := causes(1);
-        tval         := tvals(1);
-        flush        := "10";           -- flush lane 1 only
-        xc_lane_out  := '1';
+    end if;
+
+    if xc = '1' then
+      pc           := r.x.ctrl(u2i(xc_lane)).pc;
+      inst         := r.x.ctrl(u2i(xc_lane)).inst;
+      inst(1)      := not r.x.ctrl(u2i(xc_lane)).comp;
+      cause        := causes(u2i(xc_lane));
+      tval         := tvals(u2i(xc_lane));
+    end if;
+
+    -- Flush line with exception, and the next if there is one.
+    -- Copy of the code further down. Would not be needed, except
+    -- for the mask flushing that follows here.
+    if xc = '1' then
+      if swap_in = '0' then
+        -- Not swapped: 1st - flush both lanes, 2nd - flush lane 1 only
+        flush := "1" & not xc_lane;
+      else
+        -- Swapped: 1st - flush both lanes, 2nd - flush lane 0 only
+        flush := xc_lane & "1";
       end if;
     end if;
 
     -- Mask flush on:
     --
     -- control and system instructions such as mret, sret, ...
-    -- instruction access fault on JALR
     for i in lanes'range loop
-      if (r.x.ctrl(i).inst( 6 downto  0) = OP_SYSTEM and
-          r.x.ctrl(i).inst(14 downto 12) = "000"     and
-          r.x.ctrl(i).inst(24 downto 20) = "00010"   and
-          r.x.ctrl(i).cause(3 downto  2) = "10"      and  -- env call u/s/m
-          not is_irq(r.x.ctrl(i).cause)) then
+      if is_xret(r.x.ctrl(i).inst) and
+         (r.x.ctrl(i).cause = XC_INST_ENV_CALL_SMODE or
+          r.x.ctrl(i).cause = XC_INST_ENV_CALL_MMODE) then
         flush(i) := '0';
         xcs(i)   := '0';
       end if;
     end loop;
 
-    -- All interrupt related checks are done in memory stage
+
+    -- Raise exception if interrupts, in instruction order.
+    -- Interrupt overrides other exceptions here.
+    -- All interrupt related checks are done in memory stage;
     -- hence no extra check needed in this stage.
-    irqenable := int_in(0) or int_in(one);
-    irqcause  := r.x.irqcause;
+    -- int_in(n) can only be set if corresponding instruction is valid.
+    if (int_in(0) or int_in(one)) = '1' and is_irq(r.x.irqcause) then
+      xc      := '1';
+      causes  := (others => r.x.irqcause);
+      cause   := r.x.irqcause;
 
-    -- Raise exception if interrupts
-    if irqenable = '1' and is_irq(irqcause) then
-      xc     := '1';
-      causes := (others => irqcause);
-      cause  := irqcause;
-      tvals  := (others => (others => '0'));
-      tval   := (others => '0');
-      inst   := (others => '0');
-      if swap_in = '1' then
-        if    single_issue = 0 and
-              int_in(1) = '1' and r.x.ctrl(1).valid = '1' then
-          xcs(1)       := '1';
-          pc           := r.x.ctrl(1).pc;
-          flush        := "11";         -- flush both
-          xc_lane_out  := '1';
-          irq_taken(1) := '1';
-        elsif int_in(0) = '1' and r.x.ctrl(0).valid = '1' then
-          xcs(0)       := '1';
-          pc           := r.x.ctrl(0).pc;
-          flush        := "01";         -- flush lane 0 only
-          xc_lane_out  := '0';  -- Needed to overwrite exception from other lane
-          irq_taken(0) := '1';
-        end if;
-      else
-        if    int_in(0) = '1' and r.x.ctrl(0).valid = '1' then
-          xcs(0)       := '1';
-          pc           := r.x.ctrl(0).pc;
-          flush        := "11";         -- flush both
-          xc_lane_out  := '0';  -- Needed to overwrite exception from other lane
-          irq_taken(0) := '1';
-        elsif single_issue = 0 and
-              int_in(1) = '1' and r.x.ctrl(1).valid = '1' then
-          xcs(1)       := '1';
-          pc           := r.x.ctrl(1).pc;
-          flush        := "10";         -- flush lane 1 only
-          xc_lane_out  := '1';
-          irq_taken(1) := '1';
+      -- Needed to overwrite exception set above!
+      xc_lane := '0';
+      tvals   := (others => (others => '0'));
+      tval    := (others => '0');
+      inst    := (others => '0');
+
+      if single_issue = 0 then
+        if swap_in = '0' then
+          -- No interrupt in first instruction (lane 0)?
+          xc_lane := not int_in(0);
+        else
+          -- Interrupt in first instruction (lane 1)?
+          xc_lane := int_in(one);
         end if;
       end if;
-    end if;
 
-    -- Triggers: step, debug trigger (clear exception and instruction in wb)
-    if (r.x.ctrl(0).valid or r.x.ctrl(one).valid) = '1' then
-      if orv(r.x.trig.valid) = '1' and r.x.trig.action(1) = '1' then
-        xcs         := (others => '0');
-        xc          := '0';
-        for i in lanes'range loop
-          flush(i)  := r.x.trig.nullify(i);
-        end loop;
-        trig_taken  := '1';
+      xcs(u2i(xc_lane))       := '1';
+      pc                      := r.x.ctrl(u2i(xc_lane)).pc;
+      irq_taken(u2i(xc_lane)) := '1';
+      nirq_taken              := r.x.nirqpend;
+
+      -- Flush line with exception, and the next if there is one.
+      if xc = '1' then
+        if swap_in = '0' then
+          -- Not swapped: 1st - flush both lanes, 2nd - flush lane 1 only
+          flush := "1" & not xc_lane;
+        else
+          -- Swapped: 1st - flush both lanes, 2nd - flush lane 0 only
+          flush := xc_lane & "1";
+        end if;
       end if;
-    end if;
-
-    if ext_h /= 0 then
+    -- Hypervisor handling for gva/tval2/inst output
+    -- This only checks "cause" for things that are not interrupt related,
+    -- and thus can not depend on assignment to "cause" in if-clause above.
+    elsif ext_h /= 0 then
+      -- Check for guest virtual addresses
       if    cause = XC_INST_BREAKPOINT or
             cause = XC_INST_ADDR_MISALIGNED or
             cause = XC_INST_LOAD_ADDR_MISALIGNED or
             cause = XC_INST_STORE_ADDR_MISALIGNED then
-        gva   := csr.v;
+        gva   := v_in;
       elsif cause = XC_INST_INST_G_PAGE_FAULT then
-        gva   := csr.v;
+        gva   := v_in;
         tval2 := r.d.tval2;
         if r.d.tval2type = "01" then
           -- The value from MMU/cache controller has no knowledge of
@@ -4533,7 +4965,7 @@ architecture rtl of iunv is
         end if;
       elsif cause = XC_INST_LOAD_G_PAGE_FAULT or
             cause = XC_INST_STORE_G_PAGE_FAULT then
-        gva   := csr.v or is_hlsv(r.x.ctrl(0).inst);
+        gva   := v_in or to_bit(is_hlsv(r.x.ctrl(0).inst));
         tval2 := r.x.tval2;
         if r.x.tval2type = "01" then
           -- The value from MMU/cache controller has no knowledge of
@@ -4543,12 +4975,12 @@ architecture rtl of iunv is
         end if;
       elsif cause = XC_INST_INST_PAGE_FAULT or
             cause = XC_INST_ACCESS_FAULT then
-        gva   := csr.v;
+        gva   := v_in;
       elsif cause = XC_INST_LOAD_PAGE_FAULT   or
             cause = XC_INST_STORE_PAGE_FAULT  or
             cause = XC_INST_LOAD_ACCESS_FAULT or
             cause = XC_INST_STORE_ACCESS_FAULT then
-        gva   := csr.v or is_hlsv(r.x.ctrl(0).inst);
+        gva   := v_in or to_bit(is_hlsv(r.x.ctrl(0).inst));
       end if;
 
       -- mtinst / htinst
@@ -4572,14 +5004,15 @@ architecture rtl of iunv is
             cause = XC_INST_STORE_ACCESS_FAULT then
         if is_hsv(inst) then
           inst := inst and TINST_H_MASK;
-        elsif inst(6 downto 0) = OP_AMO then
+        elsif opcode(inst) = OP_AMO then
           inst := inst and TINST_AMO_MASK;
         else
           inst := inst and TINST_STORE_MASK;
         end if;
       else
-        inst  := (others => '0');
+        inst   := (others => '0');
       end if;
+
       -- Error due to L2 PT while reading L1 page table?
       if (cause = XC_INST_INST_G_PAGE_FAULT and r.d.tval2type /= "01") then
         if r.d.tval2type = "11" then
@@ -4597,6 +5030,19 @@ architecture rtl of iunv is
       end if;
     end if;
 
+    -- Triggers: step, debug trigger (clear exception and instruction in wb)
+    if (r.x.ctrl(0).valid or r.x.ctrl(one).valid) = '1' then
+      if orv(r.x.trig.valid) = '1' and r.x.trig.action(1) = '1' then
+        xcs         := (others => '0');
+        xc          := '0';
+        for i in lanes'range loop
+          flush(i)  := r.x.trig.nullify(i);
+        end loop;
+        trig_taken  := '1';
+      end if;
+    end if;
+
+
     -- Output exceptions pair (no interrupts infos here)
     xcs_out     := xcs;
     causes_out  := causes;
@@ -4604,6 +5050,7 @@ architecture rtl of iunv is
 
     -- Output taken exception
     xc_out      := xc and not fence_in;
+    xc_lane_out := xc_lane;
     cause_out   := cause;
     tval_out    := tval;
     tval2_out   := tval2;
@@ -4611,6 +5058,7 @@ architecture rtl of iunv is
     pc_out      := pc;
     inst_out    := inst;
     ret_out     := ret;
+    nret_out    := nret;
     for i in lanes'range loop
       flush_out(i) := flush(i) and not fence_in;
     end loop;
@@ -4618,8 +5066,8 @@ architecture rtl of iunv is
 
   function trigger_valid(prv   : priv_lvl_type;
                          tdata : wordx) return std_logic is
-    variable typ   : std_logic_vector(3 downto 0) := tdata(tdata'high downto tdata'high - 3);
-    variable prvi  : integer                      := u2i(prv);
+    variable typ   : word4   := tdata(tdata'high downto tdata'high - 3);
+    variable prvi  : integer := u2i(prv);
     -- Non-constant
     variable valid : std_logic;
   begin
@@ -4639,9 +5087,9 @@ architecture rtl of iunv is
   end;
 
   function trigger_set_hit(tdata : wordx) return wordx is
-    variable typ  : std_logic_vector(3 downto 0) := tdata(tdata'high downto tdata'high - 3);
+    variable typ  : word4 := tdata(tdata'high downto tdata'high - 3);
     -- Non-constant
-    variable data : wordx                        := tdata;
+    variable data : wordx := tdata;
   begin
     case typ is
       when "0000" | "1111" =>
@@ -4696,12 +5144,14 @@ architecture rtl of iunv is
   -- Exception flow
   procedure exception_flow(pc_in       : in  pctype;
                            xc_in       : in  std_ulogic;
+                           nirq_in     : in  std_ulogic;
                            cause_in    : in  cause_type;
                            tval_in     : in  wordx;
                            tval2_in    : in  wordx;
                            tinst_in    : in  word;
                            gva_in      : in  std_ulogic;
-                           ret_in      : in  std_logic_vector;
+                           ret_in      : in  word2;
+                           nret_in     : in  std_ulogic;
                            csr_in      : in  csr_reg_type;
                            rcsr_in     : in  csr_reg_type;
                            rstate_in   : in  core_state;
@@ -4719,8 +5169,9 @@ architecture rtl of iunv is
     variable cause_v  : cause_type    := cause_in;
   begin
     -- Check the privileged mode where to trap.
-    if (    is_irq(cause_in) and cause_bit(rcsr_in.mideleg, cause_in) = '1') or
-       (not is_irq(cause_in) and cause_bit(rcsr_in.medeleg, cause_in) = '1') then
+    if ((    is_irq(cause_in) and cause_bit(rcsr_in.mideleg, cause_in) = '1') or
+        (not is_irq(cause_in) and cause_bit(rcsr_in.medeleg, cause_in) = '1')) and
+       nirq_in = '0' then  -- If it is a RNMI, always trap to M.
       -- Delegated from M.
       if (rcsr_in.prv = PRIV_LVL_S or rcsr_in.prv = PRIV_LVL_U) then
         -- In S/HS/VS/U.
@@ -4732,6 +5183,19 @@ architecture rtl of iunv is
              (not is_irq(cause_in) and cause_bit(rcsr_in.hedeleg, cause_in) = '1') then
             -- Delegated from HS.
             trap_v := '1';
+            if is_irq(cause_in) then
+              -- Interrupt - translate.
+              if cause_in = IRQ_VS_EXTERNAL then
+                -- When delegated to VS-mode: transformed into supervisor external interrupt
+                cause_v := IRQ_S_EXTERNAL;
+              elsif cause_in = IRQ_VS_SOFTWARE then
+                -- When delegated to VS-mode: transformed into supervisor software interrupt
+                cause_v := IRQ_S_SOFTWARE;
+              elsif cause_in = IRQ_VS_TIMER then
+                -- When delegated to VS-mode: transformed into supervisor timer interrupt
+                cause_v := IRQ_S_TIMER;
+              end if;
+            end if;
           end if;
         end if;
       end if;
@@ -4752,44 +5216,55 @@ architecture rtl of iunv is
       -- When a trap is taken from privilege mode y into privilege mode x, xPIE is
       -- set to the value of xIE; xIE is set to 0; and xPP is set to y.
       if trap_v = '1' then -- trapping to VS Mode
-        csr.vsstatus.spie := csr_in.vsstatus.sie;
-        csr.vsstatus.sie  := '0';
-        csr.vsstatus.spp  := prv_lvl(0);
-        csr.vscause     := cause2wordx(cause_v);
-        csr.vsepc       := pc2xlen(pc_in);
-        csr.vstval      := tval_in;
+        csr.vsstatus.spie  := csr_in.vsstatus.sie;
+        csr.vsstatus.sie   := '0';
+        csr.vsstatus.spp   := prv_lvl(0);
+        csr.vscause        := cause2wordx(cause_v);
+        csr.vsepc          := pc2xlen(pc_in);
+        csr.vstval         := tval_in;
       elsif trap_prv = PRIV_LVL_S then  -- Trapping to S/HS Mode
-        csr.mstatus.spie := csr_in.mstatus.sie;
-        csr.mstatus.sie  := '0';
-        csr.mstatus.spp  := prv_lvl(0);
+        csr.mstatus.spie   := csr_in.mstatus.sie;
+        csr.mstatus.sie    := '0';
+        csr.mstatus.spp    := prv_lvl(0);
         -- H-ext
-        csr.hstatus.spv  := csr_in.v;
-        csr.hstatus.gva  := gva_in;
+        csr.hstatus.spv    := csr_in.v;
+        csr.hstatus.gva    := gva_in;
         if rcsr_in.v = '1' then
           csr.hstatus.spvp := prv_lvl(0);
         end if;
-          csr.scause     := cause2wordx(cause_in);
-          csr.sepc       := pc2xlen(pc_in);
-          csr.stval      := tval_in;
+          csr.scause       := cause2wordx(cause_in);
+          csr.sepc         := pc2xlen(pc_in);
+          csr.stval        := tval_in;
           -- H-ext
-          csr.htval      := tval2_in;
-          csr.htinst     := to0x(tinst_in);
+          csr.htval        := tval2_in;
+          csr.htinst       := to0x(tinst_in);
 
       else                              -- Trapping to Machine Mode
-        csr.mstatus.mpie := csr_in.mstatus.mie;
-        csr.mstatus.mie  := '0';
-        csr.mstatus.mpp  := csr_in.prv;
-        -- H-ext
-        if csr_in.prv /= PRIV_LVL_M then
-          csr.mstatus.mpv := csr_in.v;
+        if nirq_in = '0' or ext_smrnmi = 0 then -- Non-RNMI taken
+          csr.mstatus.mpie  := csr_in.mstatus.mie;
+          csr.mstatus.mie   := '0';
+          csr.mstatus.mpp   := csr_in.prv;
+          -- H-ext
+          if csr_in.prv /= PRIV_LVL_M then
+            csr.mstatus.mpv := csr_in.v;
+          end if;
+          csr.mstatus.gva   := gva_in;
+          csr.mcause        := cause2wordx(cause_in);
+          csr.mepc          := pc2xlen(pc_in);
+          csr.mtval         := tval_in;
+          -- H-ext
+          csr.mtval2        := tval2_in;
+          csr.mtinst        := to0x(tinst_in);
+        else -- Resumabale Non-Maskable Interrupt taken
+          csr.mnstatus.nmie   := '0';
+          csr.mnstatus.mnpp   := csr_in.prv;
+          -- H-ext
+          if csr_in.prv /= PRIV_LVL_M then
+            csr.mnstatus.mnpv := csr_in.v;
+          end if;
+          csr.mncause       := cause2wordx(cause_in);
+          csr.mnepc         := pc2xlen(pc_in);
         end if;
-        csr.mstatus.gva  := gva_in;
-        csr.mcause     := cause2wordx(cause_in);
-        csr.mepc       := pc2xlen(pc_in);
-        csr.mtval      := tval_in;
-        -- H-ext
-        csr.mtval2     := tval2_in;
-        csr.mtinst     := to0x(tinst_in);
 
       end if;
 
@@ -4805,25 +5280,44 @@ architecture rtl of iunv is
       -- and xPP is set to U (or M if user mode is not supported).
       -- Since priv-spec v1.12, mret/sret clears mprv when leaving machine mode.
       if ret_in = "11" then       -- mret
-        csr.mstatus.mie    := csr_in.mstatus.mpie;
-        prv_lvl            := csr_in.mstatus.mpp;
-        -- H-ext
-        prv_v              := csr_in.mstatus.mpv;
-        if prv_lvl = PRIV_LVL_M then
-          prv_v            := '0';
+        if nret_in = '0' then
+          csr.mstatus.mie    := csr_in.mstatus.mpie;
+          prv_lvl            := csr_in.mstatus.mpp;
+          -- H-ext
+          prv_v              := csr_in.mstatus.mpv;
+          if prv_lvl = PRIV_LVL_M then
+            prv_v            := '0';
+          end if;
+          if prv_lvl /= PRIV_LVL_M then
+            csr.mstatus.mprv := '0';
+          end if;
+          csr.mstatus.mpie   := '1';
+          csr.mstatus.mpp    := PRIV_LVL_U;
+          if mode_u = 0 then
+            csr.mstatus.mpp  := PRIV_LVL_M;
+          end if;
+          -- H-ext
+--        if prv_lvl /= PRIV_LVL_M then
+            csr.mstatus.mpv  := '0';
+--        end if;
+        else  -- mnret from a Resumable Non-Maskable Interrupt
+          csr.mnstatus.nmie    := '1';
+          prv_lvl            := csr_in.mnstatus.mnpp;
+          -- H-ext
+          prv_v              := csr_in.mnstatus.mnpv;
+          if prv_lvl = PRIV_LVL_M then
+            prv_v            := '0';
+          end if;
+          if prv_lvl /= PRIV_LVL_M then
+            csr.mstatus.mprv := '0';
+          end if;
+          csr.mnstatus.mnpp    := PRIV_LVL_U;
+          if mode_u = 0 then
+            csr.mnstatus.mnpp  := PRIV_LVL_M;
+          end if;
+          -- H-ext
+          csr.mnstatus.mnpv  := '0';
         end if;
-        if prv_lvl /= PRIV_LVL_M then
-          csr.mstatus.mprv := '0';
-        end if;
-        csr.mstatus.mpie   := '1';
-        csr.mstatus.mpp    := PRIV_LVL_U;
-        if mode_u = 0 then
-          csr.mstatus.mpp  := PRIV_LVL_M;
-        end if;
-        -- H-ext
---      if prv_lvl /= PRIV_LVL_M then
-          csr.mstatus.mpv  := '0';
---      end if;
       elsif ret_in = "01" then    -- sret
         if rcsr_in.v = '1' then   -- VS Mode
           csr.vsstatus.sie   := csr_in.vsstatus.spie;
@@ -4860,6 +5354,19 @@ architecture rtl of iunv is
     if rcsr_in.mtvec(0) = '1' and is_irq(cause_in) then
       tvec    := cause2vec(cause_in, tvec);
     end if;
+
+    -- If there is RNMI pending, trap to the RNMI interrupt trap handler
+    if nirq_in = '1' then
+      tvec  := to_addr(rnmi_int_trap_addr);
+    end if;
+
+    -- If the hart encounters an exception while executing in M-mode with the mnstatus.NMIE bit clear,
+    -- program counter is set to the RNMI exception trap handler address
+    -- if nmie = 0, interrupts never reach here so no need of differenciating between interrupts and exceptions
+    if rcsr_in.mnstatus.nmie = '0' and ext_smrnmi = 1 then
+      tvec  := to_addr(rnmi_xc_trap_addr);
+    end if;
+
     if trap_prv = PRIV_LVL_S then
       tvec    := to_addr(rcsr_in.stvec);
       if rcsr_in.stvec(0) = '1' and is_irq(cause_in) then
@@ -4875,7 +5382,11 @@ architecture rtl of iunv is
 
     -- Return Instructions
     if ret_in = "11" then
-      tvec    := to_addr(rcsr_in.mepc);
+      if nret_in = '0' then  -- MRET
+        tvec    := to_addr(rcsr_in.mepc);
+      else -- MNRET
+        tvec    := to_addr(rcsr_in.mnepc);
+      end if;
     elsif ret_in = "01" then
       tvec    := to_addr(rcsr_in.sepc);
       if rcsr_in.v = '1' then
@@ -4918,6 +5429,7 @@ architecture rtl of iunv is
     variable csra_high : csratype   := csra(csra'high downto 4) & "0000";
     variable csra_low  : integer    := u2i(csra(3 downto 0));
     variable h_en      : boolean    := misa(h_ctrl) = '1';
+    variable x_en      : boolean    := misa(x_ctrl) = '1';
     -- Non-constant
     variable xc        : std_ulogic := '0';
   begin
@@ -4971,6 +5483,59 @@ architecture rtl of iunv is
         end if;
       when CSR_HGEIP          =>
         if not h_en then
+          xc := '1';
+        end if;
+      -- Smstateen extension
+      when CSR_HSTATEEN0 | CSR_HSTATEEN1 | CSR_HSTATEEN2 | CSR_HSTATEEN3 =>
+        if not h_en or ext_smstateen = 0  then
+          xc := '1';
+        end if;
+      -- RV32
+      when CSR_HSTATEEN0H | CSR_HSTATEEN1H | CSR_HSTATEEN2H | CSR_HSTATEEN3H =>
+        if not h_en or ext_smstateen = 0 or is_rv64 then
+          xc := '1';
+        end if;
+      -- Hypervisor AIA registers
+      when CSR_HVIEN          =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      when CSR_HVICTL         =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      when CSR_HVIPRIO1       =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      when CSR_HVIPRIO2       =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      -- Hypervisor AIA registers (RV32)
+      when CSR_HIDELEGH       =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_HVIENH         =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_HVIPH          =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_HVIPRIO1H      =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_HVIPRIO2H      =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
           xc := '1';
         end if;
       -- Hypervisor Protection and Translation
@@ -5032,6 +5597,31 @@ architecture rtl of iunv is
         if not h_en then
           xc := '1';
         end if;
+      -- Virtual Supervisor AIA registers
+      when CSR_VSISELECT      =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      when CSR_VSIREG         =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      when CSR_VSTOPEI        =>
+        if not h_en or imsic = 0 or
+           (ext_smaia = 0 and ext_ssaia = 0) then
+          xc := '1';
+        end if;
+      -- Virtual Supervisor AIA registers (RV32)
+      when CSR_VSIEH          =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_VSIPH          =>
+        if not h_en or (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
       -- User Counters/Timers - see below
       when CSR_VSTIMECMP      =>
         if ext_sstc /= 1 or not h_en then
@@ -5044,6 +5634,11 @@ architecture rtl of iunv is
       -- Supervisor Trap Setup
       when CSR_SSTATUS        =>
       when CSR_SIE            =>
+      when CSR_SIEH           =>
+        if (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
       when CSR_STVEC          =>
       when CSR_SCOUNTEREN     =>
       when CSR_SENVCFG        =>
@@ -5060,6 +5655,29 @@ architecture rtl of iunv is
       when CSR_SCAUSE         =>
       when CSR_STVAL          =>
       when CSR_SIP            =>
+      when CSR_SIPH           =>
+        if (ext_smaia = 0 and ext_ssaia = 0) or
+           is_rv64 then
+          xc := '1';
+        end if;
+      -- Smstateen extension
+      when CSR_SSTATEEN0 | CSR_SSTATEEN1 | CSR_SSTATEEN2 | CSR_SSTATEEN3 =>
+        if ext_smstateen = 0  then
+          xc := '1';
+        end if;
+      -- Supervisor AIA
+      when CSR_SISELECT       =>
+        if ext_smaia = 0 and ext_ssaia = 0 then
+          xc := '1';
+        end if;
+      when CSR_SIREG          =>
+        if ext_smaia = 0 and ext_ssaia = 0 then
+          xc := '1';
+        end if;
+      when CSR_STOPEI         =>
+        if (ext_smaia = 0 and ext_ssaia = 0) or imsic = 0 then
+          xc := '1';
+        end if;
       -- Supervisor Protection and Translation
       when CSR_SATP           =>
       when CSR_STIMECMP       =>
@@ -5087,7 +5705,17 @@ architecture rtl of iunv is
           then
           xc := '1';
         end if;
+      when CSR_MIDELEGH       =>
+        if is_rv64 or ext_smaia = 0 or (mode_s = 0
+        )
+          then
+          xc := '1';
+        end if;
       when CSR_MIE            =>
+      when CSR_MIEH           =>
+        if is_rv64 or ext_smaia = 0 then
+          xc := '1';
+        end if;
       when CSR_MTVEC          =>
       when CSR_MCOUNTEREN     =>
       -- Machine Trap Handling
@@ -5096,6 +5724,10 @@ architecture rtl of iunv is
       when CSR_MCAUSE         =>
       when CSR_MTVAL          =>
       when CSR_MIP            =>
+      when CSR_MIPH           =>
+        if is_rv64 or ext_smaia = 0 then
+          xc := '1';
+        end if;
       when CSR_MTINST         =>
         if not h_en then
           xc := '1';
@@ -5104,12 +5736,66 @@ architecture rtl of iunv is
         if not h_en then
           xc := '1';
         end if;
+      -- RNMI Trap Handling
+      when CSR_MNSTATUS | CSR_MNSCRATCH | CSR_MNEPC | CSR_MNCAUSE =>
+        if ext_smrnmi = 0 then
+          xc := '1';
+        end if;
+      -- Smstateen Extension
+      when CSR_MSTATEEN0 | CSR_MSTATEEN1 | CSR_MSTATEEN2 | CSR_MSTATEEN3 =>
+        if ext_smstateen = 0  then
+          xc := '1';
+        end if;
+      -- RV32
+      when CSR_MSTATEEN0H | CSR_MSTATEEN1H | CSR_MSTATEEN2H | CSR_MSTATEEN3H =>
+        if ext_smstateen = 0 or is_rv64 then
+          xc := '1';
+        end if;
+      -- AIA machine
+      when CSR_MISELECT       =>
+        if ext_smaia = 0 then
+          xc := '1';
+        end if;
+      when CSR_MIREG          =>
+        if ext_smaia = 0 then
+          xc := '1';
+        end if;
+      when CSR_MTOPEI         =>
+        if ext_smaia = 0 or imsic = 0 then
+          xc := '1';
+        end if;
+      when CSR_MVIEN          =>
+        if ext_smaia = 0 or mode_s = 0 then
+          xc := '1';
+        end if;
+      when CSR_MVIENH         =>
+        if is_rv64 or ext_smaia = 0 or mode_s = 0 then
+          xc := '1';
+        end if;
+      when CSR_MVIP           =>
+        if ext_smaia = 0 or mode_s = 0 then
+          xc := '1';
+        end if;
+      when CSR_MVIPH          =>
+        if is_rv64 or ext_smaia = 0 or mode_s = 0 then
+          xc := '1';
+        end if;
       when CSR_MENVCFG        =>
         if mode_u = 0 then
           xc := '1';
         end if;
       when CSR_MENVCFGH       =>
         if mode_u = 0 or is_rv64 then
+          xc := '1';
+        end if;
+      when CSR_MSECCFG        =>
+        if ext_smepmp = 0
+           then
+          xc := '1';
+        end if;
+      when CSR_MSECCFGH        =>
+        if is_rv32 and (
+           ext_smepmp = 0) then
           xc := '1';
         end if;
       -- Machine Protection and Translation
@@ -5149,11 +5835,17 @@ architecture rtl of iunv is
       when CSR_DSCRATCH1 =>
       -- Custom Read/Write Registers
       when CSR_FEATURES =>
+        if not x_en then
+          xc := '1';
+        end if;
       when CSR_FEATURESH =>
-        if is_rv64 then
+        if is_rv64 or not x_en then
           xc := '1';
         end if;
       when CSR_CCTRL =>
+        if not x_en then
+          xc := '1';
+        end if;
       when CSR_TCMICTRL =>
         xc := '1';
       when CSR_TCMDCTRL =>
@@ -5207,10 +5899,14 @@ architecture rtl of iunv is
                         rstate : core_state;
                         csr    : csr_reg_type) return std_logic is
     variable priv_lvl : priv_lvl_type := csr.prv and csra(9 downto 8);
-    variable h_en     : boolean    := csr.misa(h_ctrl) = '1';
+    variable h_en     : boolean       := csr.misa(h_ctrl) = '1';
+    variable x_en     : boolean       := csr.misa(x_ctrl) = '1';
     -- Non-constant
     variable priv_lvlv: priv_lvl_type := csr.prv and csra(9 downto 8);
     variable xc       : std_ulogic    := csr_write_addr_xc(csra, csr.misa);
+    -- Smstateen
+    variable mstateen0, hstateen0  : csr_mstateen0_type;
+    variable sstateen0, vsstateen0 : csr_sstateen0_type;
   begin
     -- Check for privileged level and read/write accessibility to CSR registers
     -- The standard RISC-V ISA sets aside a 12-bit encoding space (csr[11:0])
@@ -5230,51 +5926,52 @@ architecture rtl of iunv is
     if ((priv_lvl /= csra(9 downto 8) and
          priv_lvlv /= csra(9 downto 8))
         ) or csra(11 downto 10) = "11" then        -- Read-only
-      xc    := '1';
+      xc := '1';
     end if;
 
     -- Exception if access Debug Core CSR or Features Enable not in Debug Mode.
     if rstate = run and
        (
         csra(11 downto 4) = "01111011") then
-      xc      := '1';
+      xc := '1';
     end if;
 
     -- Exception if access SATP in S-mode and TVM set or VS-mode and VTVM.
     if csra = CSR_SATP then
       if csr.v = '0' and csr.prv = PRIV_LVL_S and csr.mstatus.tvm = '1' then
-        xc      := '1';
+        xc := '1';
       end if;
       if csr.v = '1' and csr.prv = PRIV_LVL_S and csr.hstatus.vtvm = '1' then
-        xc      := '1';
+        xc := '1';
       end if;
     end if;
 
     -- Exception if access HGATP in HS-mode and TVM set.
     if h_en then
       if csra = CSR_HGATP and csr.prv = PRIV_LVL_S and csr.mstatus.tvm = '1' then
-        xc      := '1';
+        xc := '1';
       end if;
     end if;
+
 
     -- FPU CSRs not accessible if FPU is not active.
     if not (ext_f = 1) then
       if (csra = CSR_FFLAGS or csra = CSR_FRM or csra = CSR_FCSR) and
          (csr.mstatus.fs = "00" or (csr.v = '1' and csr.vsstatus.fs = "00")) then
-        xc      := '1';
+        xc := '1';
       end if;
     end if;
 
     -- SSTC
-    if ext_sstc = 1 then 
+    if ext_sstc = 1 then
       if envcfg.stce = '0' then
-        if csra = CSR_STIMECMP or csra = CSR_STIMECMPH or 
+        if csra = CSR_STIMECMP or csra = CSR_STIMECMPH or
            csra = CSR_VSTIMECMP or csra = CSR_VSTIMECMPH then
           xc := '1';
         end if;
       else
         if csra = CSR_STIMECMP or csra = CSR_STIMECMPH then
-          -- When counteren(time) = 0: exception also on STIMECMP 
+          -- When counteren(time) = 0: exception also on STIMECMP
           if (csr.v = '0' and csr.prv = PRIV_LVL_S and csr.mcounteren(1) = '0') or
              (csr.v = '1' and csr.prv = PRIV_LVL_S and (csr.mcounteren(1) = '0' or
                                                        csr.hcounteren(1) = '0')) then
@@ -5284,8 +5981,207 @@ architecture rtl of iunv is
       end if;
     end if;
 
+    -- Exceptions that occur due to an invalid *ireg CSR write must be
+    -- calculated here. The exception calculation depends on the *iselect current
+    -- value. If the exception is calculated in the previous cycle, an outdated value
+    -- of *iselect could be used if it was modified the previous instruction.
+    case csra is
+      when CSR_MIREG =>
+        if ext_smaia = 1 then -- If Smaia is not enabled xc is always set to 1 before
+          if intFile_addrExcp(csr.miselect, imsic, is_rv64) = '1' then
+            xc := '1';
+          end if;
+        end if;
+      when CSR_SIREG =>
+        if ext_smaia = 1 or ext_ssaia = 1 then -- If not xc set to 1 previously
+          if h_en and csr.v = '1' then
+            if GintFile_addrExcp(csr.vsiselect, imsic, is_rv64) = '1' or
+               (unsigned(csr.hstatus.vgein) = 0 or                  -- VGEIN is not a valid number
+                unsigned(csr.hstatus.vgein) > GEILEN) then
+              xc := '1';
+            end if;
+          else
+            if intFile_addrExcp(csr.siselect, imsic, is_rv64) = '1' then
+              xc := '1';
+            end if;
+          end if;
+        end if;
+      when CSR_VSIREG =>
+        if ext_smaia = 1 or ext_ssaia = 1 then -- If not xc set to 1 previously
+          if GintFile_addrExcp(csr.vsiselect, imsic, is_rv64) = '1' or
+             (unsigned(csr.hstatus.vgein) = 0 or                  -- VGEIN is not a valid number
+              unsigned(csr.hstatus.vgein) > GEILEN) then
+            xc := '1';
+          end if;
+        end if;
+      when CSR_STOPEI =>
+        if h_en and csr.v = '1' then
+          if imsic = 1 and (ext_smaia = 1 or ext_ssaia = 1) and (unsigned(csr.hstatus.vgein) = 0 or
+             unsigned(csr.hstatus.vgein) > GEILEN) then
+                xc := '1';
+          end if;
+        end if;
+      when CSR_VSTOPEI =>
+        if ext_smaia = 1 or ext_ssaia = 1 then -- If not xc set to 1 previously
+          if unsigned(csr.hstatus.vgein) = 0 or
+             unsigned(csr.hstatus.vgein) > GEILEN then
+                xc := '1';
+          end if;
+        end if;
+      when others =>
+    end case;
+
+
+    -- When bit VTI (Virtual Trap Interrupt Control) is set to 1 in csr hvictl
+    -- attempts from VS mode to access sip or sie CSRs cause a virtual instruction exception
+    if (ext_smaia = 1 or ext_ssaia = 1) then
+      if h_en and csr.v = '1' and csr.hvictl.vti = '1' then
+        if csra = CSR_SIP or csra = CSR_SIE or
+           (is_rv32 and (csra = CSR_SIPH or csra = CSR_SIEH)) then
+          xc := '1';
+        end if;
+      end if;
+    end if;
+
+
+    -- Generate interrupts for writes when Smtateen extension is active
+    if ext_smstateen = 1 then
+      mstateen0 := mstateen0_mask(csr.mstateen0, CSR_MSTATEEN0_MASK);
+      hstateen0 := mstateen0_mask(csr.hstateen0, csr.mstateen0);
+      -- unused so far
+      --sstateen0  : csr_sstateen0_type := sstateen0_mask(csr.sstateen0, csr.mstateen0);
+      --vsstateen0 : csr_sstateen0_type := sstateen0_mask(csr.sstateen0, csr.hstateen0);
+
+      case csra is
+        -- *stateen CSRs
+        when CSR_HSTATEEN0 | CSR_HSTATEEN0H =>
+          if mstateen0.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN1 | CSR_HSTATEEN1H =>
+          if csr.mstateen1.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN2 | CSR_HSTATEEN2H =>
+          if csr.mstateen2.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_HSTATEEN3 | CSR_HSTATEEN3H =>
+          if csr.mstateen3.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_SSTATEEN0 =>
+          if mstateen0.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if hstateen0.stateen = '0' then
+              xc := '1';
+            end if;
+          end if;
+        when CSR_SSTATEEN1 =>
+          if csr.mstateen1.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if csr.hstateen1.stateen = '0' then
+              xc := '1';
+            end if;
+          end if;
+        when CSR_SSTATEEN2 =>
+          if csr.mstateen2.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if csr.hstateen2.stateen = '0' then
+              xc := '1';
+            end if;
+          end if;
+        when CSR_SSTATEEN3 =>
+          if csr.mstateen3.stateen = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if csr.hstateen3.stateen = '0' then
+              xc := '1';
+            end if;
+          end if;
+        -- *envcfg CSRs
+        when CSR_HENVCFG | CSR_HENVCFGH =>
+          if mstateen0.envcfg = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_SENVCFG =>
+          if mstateen0.envcfg = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if hstateen0.envcfg = '0' then
+              xc := '1';
+            end if;
+          end if;
+        -- *iselect CSRs
+        when CSR_VSISELECT =>
+          if mstateen0.iselect = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_SISELECT       =>
+          if mstateen0.iselect = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if hstateen0.iselect = '0' then
+              xc := '1';
+            end if;
+          end if;
+        -- Other AIA CSRs
+        when CSR_HVIEN     | CSR_HVIENH    | CSR_HVICTL   | CSR_HVIPRIO1 | CSR_HVIPRIO1H |
+             CSR_HVIPRIO2  | CSR_HVIPRIO2H | CSR_HIDELEGH | CSR_HVIPH    | CSR_VSIEH     |
+             CSR_VSIPH  =>
+          if mstateen0.aia = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_SIEH | CSR_SIPH =>
+          if mstateen0.aia = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if hstateen0.aia = '0' then
+              xc := '1';
+            end if;
+          end if;
+        -- IMSIC indirectly interrupt file accessed registers
+        when CSR_VSTOPEI =>
+          if mstateen0.imsic = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_VSIREG =>
+          if (mstateen0.imsic and mstateen0.iselect) = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          end if;
+        when CSR_SIREG =>
+          if ((mstateen0.imsic = '0' and u2i(csr.siselect(7 downto 4)) > 6) or mstateen0.iselect = '0') 
+             and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if (hstateen0.imsic and hstateen0.iselect) = '0' then
+              xc := '1';
+            end if;
+          end if;
+          -- Accesing IPRIO ARRAY (controlled with bit 59)
+          if (not(h_en) or csr.v = '0') and (mstateen0.aia = '0'
+             and csr.prv /= PRIV_LVL_M and csr.siselect(7 downto 4) = x"3") then
+              xc   := '1';
+          end if;
+        when CSR_STOPEI =>
+          if mstateen0.imsic = '0' and csr.prv /= PRIV_LVL_M then
+            xc := '1';
+          elsif h_en and csr.v = '1' then
+            if hstateen0.imsic = '0' then
+              xc := '1';
+            end if;
+          end if;
+        when others =>
+      end case;
+    end if;
+
+
     return xc;
   end;
+
 
   -- Check if CSR read address should always cause illegal instruction fault.
   -- No CSRs are write-only, so this slightly modifies the write check above.
@@ -5309,6 +6205,7 @@ architecture rtl of iunv is
       when CSR_MARCHID        =>
       when CSR_MIMPID         =>
       when CSR_MHARTID        =>
+      when CSR_MCONFIGPTR     =>
       -- User Hardware Performance Monitoring
       when CSR_HPMCOUNTER3  | CSR_HPMCOUNTER4  | CSR_HPMCOUNTER5  |
            CSR_HPMCOUNTER6  | CSR_HPMCOUNTER7  | CSR_HPMCOUNTER8  |
@@ -5336,13 +6233,13 @@ architecture rtl of iunv is
                       csr_file         : in  csr_reg_type;
                       wcsr_in          : in  wordx;
                       csrv_in          : in  std_ulogic;
-                      wlane_in         : in  std_logic_vector;
+                      wlane_in         : in  lanes_type;
                       pc_in            : in  pctype;
                       csraxc_in        : in  std_ulogic;
                       envcfg           : in  csr_envcfg_type;
                       pipeflush_out    : out std_ulogic;
                       addrflush_out    : out std_ulogic;
-                      xc_out           : out std_logic_vector;
+                      xc_out           : out lanes_type;
                       cause_out        : out cause_type;
                       upd_mcycle_out   : out std_ulogic;
                       upd_minstret_out : out std_ulogic;
@@ -5358,6 +6255,10 @@ architecture rtl of iunv is
         return '1';
       end if;
 
+      if (ext_smepmp = 1
+         ) and csr.mseccfg.rlb = '1' then
+        return '0';
+      end if;
 
       return pmpcfg(pmp_entries, csr, n)(7);
     end;
@@ -5366,35 +6267,47 @@ architecture rtl of iunv is
                            first_in  : in    integer; last_in   : in  integer; wcsr_in : in wordx;
                            pmpcfg_io : inout word64;  flush_out : out std_ulogic) is
       --  Non-constant
-      variable pmpcfg02 : word64     := pmpcfg_io;
-      variable flush    : std_ulogic := '0';
-      variable pmpcfg_b : word8;
+      variable pmpcfg02   : word64     := pmpcfg_io;
+      variable flush      : std_ulogic := '0';
+      variable pmpcfg_b   : word8;
+      variable pmpcfg_old : word8;
     begin
       -- Should flush pipeline if (at least new) lock bit is set, since that
       -- should "take" immediately and might invalidate instruction fetches.
       for i in first_in to last_in loop
         if pmp_locked(csr_in, i) = '0' then
-          pmpcfg_b                         := wcsr_in((i - first_in) * 8 + 7 downto (i - first_in) * 8);
-          pmpcfg02(i * 8 + 7 downto i * 8) := pmpcfg_b and not x"60"; --Clear bit 6 & 5 since these are unused and WARL
-          -- W without R is reserved!
-          if pmpcfg_b(1 downto 0) = "10" then
-            pmpcfg02(i * 8 + 1)            := '0';
+          pmpcfg_old                           := get(pmpcfg_io, i * 8, 8);
+          pmpcfg_b                             := get(wcsr_in, (i - first_in) * 8, 8);
+          -- Clear bit 6 & 5 since these are unused and WARL.
+          pmpcfg02(i * 8 + 7 downto i * 8)     := pmpcfg_b and not x"60";
+          -- W without R is reserved, unless in Machine Mode Lockdown!
+          if csr_in.mseccfg.mml = '0' and pmpcfg_b(1 downto 0) = "10" then
+            pmpcfg02(i * 8 + 1)                := '0';
+          end if;
+          -- No new rules with X permission may be added with .L if in
+          -- Machine Mode Lockdown, unless also Rule Locking Bypass.
+          if csr_in.mseccfg.mml = '1' and pmpcfg_b(7) = '1' and csr_in.mseccfg.rlb = '0' then
+            if (pmpcfg_b(2) = '1' and get_lo(pmpcfg_b, 2) /= "11") or           -- RWX is R-only
+               (pmpcfg_b(2) = '0' and pmpcfg_b(1) = '1' and pmpcfg_b(0) = '0') then  -- -W- is X
+              pmpcfg02(i * 8 + 7 downto i * 8) := pmpcfg_old;
+            end if;
           end if;
           if pmp_g > 0 then
             -- NA4 not possible!
             if pmpcfg_b(4 downto 3) = "10" then
-              pmpcfg02(i * 8 + 4 downto i * 8 + 3) :=
-                pmpcfg_io((i - first_in) * 8 + 4 downto (i - first_in) * 8 + 3); -- Keep old value on illegal write
+              -- Keep old value on illegal write
+              pmpcfg02(i * 8 + 4 downto i * 8 + 3) := pmpcfg_old(4 downto 3);
             end if;
           end if;
           if pmp_no_tor = 1 then
             -- TOR not possible!
             if pmpcfg_b(4 downto 3) = "01" then
-              pmpcfg02(i * 8 + 3)          := '0';      -- Clear to OFF
+              pmpcfg02(i * 8 + 3)                := '0';      -- Clear to OFF
             end if;
           end if;
-          -- Flush if lock is being set with execute protection.
-          flush := flush or (pmpcfg_b(7) and not pmpcfg_b(2));
+          -- Always flush if lock bit x->1 or 1->0, since either
+          -- can affect the behaviour of the very next instruction.
+          flush := flush or pmpcfg_b(7) or (not pmpcfg_b(7) and pmpcfg_old(7));
         end if;
       end loop;
 
@@ -5407,12 +6320,12 @@ architecture rtl of iunv is
                           rstate_in : in  core_state;
                           wcsr_in   : in  wordx;
                           tcsr_out  : out csr_tcsr_type) is
-      variable sel    : integer                      := u2i(tcsr_in.tselect);
-      variable typ    : std_logic_vector(3 downto 0) := tcsr_in.tdata1(sel)(XLEN - 1 downto XLEN - 4);
-      variable typ_in : std_logic_vector(3 downto 0) := wcsr_in(XLEN - 1 downto XLEN - 4);
+      variable sel    : integer       := u2i(tcsr_in.tselect);
+      variable typ    : word4         := tcsr_in.tdata1(sel)(XLEN - 1 downto XLEN - 4);
+      variable typ_in : word4         := wcsr_in(XLEN - 1 downto XLEN - 4);
       -- Non-constant
-      variable valid  : std_logic                    := '0';
-      variable tcsr   : csr_tcsr_type                := tcsr_in;
+      variable valid  : std_logic     := '0';
+      variable tcsr   : csr_tcsr_type := tcsr_in;
 
       function tdata1_mcontrol(rstate : core_state; wcsr : wordx) return std_logic_vector is
         -- Non-constant
@@ -5520,7 +6433,7 @@ architecture rtl of iunv is
         end case;
       end if;
       tcsr_out := tcsr;
-      
+
 
     end;
 
@@ -5548,6 +6461,7 @@ architecture rtl of iunv is
     variable csr          : csr_reg_type := csr_file;
     variable mstatus      : csr_status_type;
     variable hpmevent     : hpmevent_type;
+    variable mseccfg      : csr_seccfg_type;
     variable mtvec        : wordx;
     variable pipeflush    : std_ulogic   := '0';
     variable addrflush    : std_ulogic   := '0';
@@ -5555,6 +6469,9 @@ architecture rtl of iunv is
     variable upd_mcycle   : std_ulogic   := '0';
     variable upd_minstret : std_ulogic   := '0';
     variable upd_counter  : std_logic_vector(r.csr.hpmcounter'range) := (others => '0');
+    -- Smstateen
+    variable mstateen0, hstateen0  : csr_mstateen0_type;
+    variable sstateen0, vsstateen0 : csr_sstateen0_type;
 
   begin
     -- Pre-calculation should be fine.
@@ -5571,11 +6488,21 @@ architecture rtl of iunv is
                 csr.pmp_precalc,
                 pmp_entries, pmp_no_tor, pmp_g, physaddr - 1);
 
-    -- flush should be single cycle
-    csr.cctrl.iflush := '0';
-    csr.cctrl.dflush := '0';
+    -- Flush should be single cycle
+    csr.cctrl.iflush   := '0';
+    csr.cctrl.dflush   := '0';
     csr.cctrl.itcmwipe := '0';
     csr.cctrl.dtcmwipe := '0';
+
+    -- Registers to interface with IMSIC
+    -- should be single cycle
+    csr.mtopei_w    := '0';
+    csr.mireg_w     := '0';
+    csr.stopei_w    := '0';
+    csr.sireg_w     := '0';
+    csr.vstopei_w   := '0';
+    csr.vsireg_w    := '0';
+
 
 
     if writen = '1' and xc = '0' then
@@ -5617,7 +6544,7 @@ architecture rtl of iunv is
           csr.hcounteren(HWPERFMONITORS + 2 downto 0) := wcsr_in(HWPERFMONITORS + 2 downto 0);
         when CSR_HGEIE          =>
           csr.hgeie(GEILEN downto 1)              := wcsr_in(GEILEN downto 1);
-        -- Hypervisor Trap Handling
+          -- Hypervisor Trap Handling
         when CSR_HTVAL          =>
           csr.htval        := wcsr_in;
         when CSR_HIP            =>
@@ -5630,13 +6557,50 @@ architecture rtl of iunv is
           csr.hvip(6)       := wcsr_in(6);
           csr.mip(2)        := wcsr_in(2);
         when CSR_HTINST         =>
-            csr.htinst       := wcsr_in;
+          csr.htinst       := wcsr_in;
         when CSR_HGEIP          =>
           -- Read only
+
+        when CSR_HSTATEEN0      =>
+          csr.hstateen0           := to_mstateen0(wcsr_in, csr.hstateen0);
+        when CSR_HSTATEEN1      =>
+          if is_rv64 then
+            csr.hstateen1.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_HSTATEEN2      =>
+          if is_rv64 then
+            csr.hstateen2.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_HSTATEEN3      =>
+          if is_rv64 then
+            csr.hstateen3.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_HSTATEEN0H     =>
+          csr.hstateen0            := to_mstateen0h(wcsr_in, csr.hstateen0);
+        when CSR_HSTATEEN1H     =>
+          csr.hstateen1.stateen    := wcsr_in(31);
+        when CSR_HSTATEEN2H     =>
+          csr.hstateen2.stateen    := wcsr_in(31);
+        when CSR_HSTATEEN3H     =>
+          csr.hstateen3.stateen    := wcsr_in(31);
+
+        -- Hypervisor AIA registers
+        when CSR_HVIEN          => -- TODO
+        when CSR_HVICTL         =>
+          csr.hvictl         := to_hvictl(wcsr_in);
+        when CSR_HVIPRIO1       => -- TODO
+        when CSR_HVIPRIO2       => -- TODO
+        -- Hypervisor AIA registers (RV32)
+        when CSR_HIDELEGH       => -- TODO
+        when CSR_HVIENH         => -- TODO
+        when CSR_HVIPH          => -- TODO
+        when CSR_HVIPRIO1H      => -- TODO
+        when CSR_HVIPRIO2H      => -- TODO
         -- Hypervisor Protection and Translation
         when CSR_HGATP          =>
           -- Assume value is OK
           csr.hgatp                               := wcsr_in and satp_mask(vmidlen, physaddr);
+          csr.hgatp(1 downto 0)                   := "00"; -- PPN[1:0] must be 16 KiB aligned
           -- Check that mode is OK, given build options.
           mode := satp_mode(riscv_mmu, wcsr_in);
           if mode = 0 then
@@ -5663,9 +6627,13 @@ architecture rtl of iunv is
 
         when CSR_HENVCFG        =>
           csr.henvcfg        := to_envcfg(wcsr_in, csr_file.henvcfg, csr_file.menvcfg);
+          pipeflush := '1';
+          addrflush := '1';
         when CSR_HENVCFGH       =>
           if is_rv32 then
             csr.henvcfg      := to_envcfgh(wcsr_in, csr_file.henvcfg, csr_file.menvcfg);
+            pipeflush := '1';
+            addrflush := '1';
           end if;
         when CSR_HTIMEDELTA     =>
           csr.htimedelta(wordx'range)    := wcsr_in;
@@ -5675,7 +6643,8 @@ architecture rtl of iunv is
           end if;
         -- Virtual Supervisor Registers
         when CSR_VSSTATUS       =>
-            csr.vsstatus     := to_vsstatus(wcsr_in);
+          csr.vsstatus     := to_vsstatus(wcsr_in
+                                         );
         when CSR_VSIE           =>
           csr.mie(10)                               := (csr_file.mie(10) and not csr_file.hideleg(10)) or
                                                        (wcsr_in(9) and csr_file.hideleg(10));
@@ -5684,21 +6653,31 @@ architecture rtl of iunv is
           csr.mie(2)                                := (csr_file.mie(2) and not csr_file.hideleg(2)) or
                                                        (wcsr_in(1) and csr_file.hideleg(2));
         when CSR_VSTVEC         =>
-            csr.vstvec       := wcsr_in(csr.vstvec'high downto 2) & '0' & wcsr_in(0);
+          csr.vstvec       := wcsr_in(csr.vstvec'high downto 2) & '0' & wcsr_in(0);
+          if wcsr_in(0) = '1' then
+            csr.vstvec     := wcsr_in(csr.vstvec'high downto 8) & "0000000" & wcsr_in(0);
+          end if;
         when CSR_VSSCRATCH      =>
-            csr.vsscratch    := wcsr_in;
+          csr.vsscratch    := wcsr_in;
         when CSR_VSEPC          =>
-            csr.vsepc        := wcsr_in(csr.vsepc'high downto 1) & '0';
-            if ext_c = 0 then
-              csr.vsepc(1)   := '0';
-            end if;
+          csr.vsepc        := wcsr_in(csr.vsepc'high downto 1) & '0';
+          if ext_c = 0 then
+            csr.vsepc(1)   := '0';
+          end if;
         when CSR_VSCAUSE        =>
-            csr.vscause      := wcsr_in;
+          csr.vscause      := wcsr_in;
         when CSR_VSTVAL         =>
-            csr.vstval       := wcsr_in;
+          csr.vstval       := wcsr_in;
         when CSR_VSIP           =>
           csr.mip(2)                                := (csr_file.hvip(2) and not csr_file.hideleg(2)) or
                                                        (wcsr_in(1) and csr_file.hideleg(2));
+        when CSR_VSISELECT      =>
+          csr.vsiselect    := wcsr_in;
+        when CSR_VSIREG         =>
+          csr.vsireg_w                              := '1';
+          csr.vsirego                               := wcsr_in;
+        when CSR_VSTOPEI        =>
+          csr.vstopei_w    := '1';
         when CSR_VSATP          =>
           -- Assume value is OK
           csr.vsatp                               := wcsr_in and satp_mask(asidlen, physaddr);
@@ -5732,9 +6711,11 @@ architecture rtl of iunv is
           end if;
         when CSR_SSTATUS        =>
           if h_en and csr_file.v = '1' then
-            csr.vsstatus      := to_vsstatus(wcsr_in);
+            csr.vsstatus      := to_vsstatus(wcsr_in
+                                            );
           else
-            mstatus     := to_sstatus(wcsr_in, csr_file.mstatus);
+            mstatus     := to_sstatus(wcsr_in, csr_file.mstatus
+                                     );
             csr.mstatus := tie_status(mstatus, csr_file.misa);
           end if;
         when CSR_SEDELEG        =>
@@ -5744,21 +6725,62 @@ architecture rtl of iunv is
           -- mie(6)  is aliased in hie(6)  and vsie(5)
           -- mie(2)  is aliased in hie(2)  and vsie(1)
           if h_en and csr_file.v = '1' then
-            csr.mie(10)      := (csr_file.mie(10) and not csr_file.hideleg(10)) or
-                                (wcsr_in(9) and csr_file.hideleg(10));
-            csr.mie(6)       := (csr_file.mie(6) and not csr_file.hideleg(6)) or
-                                (wcsr_in(5) and csr_file.hideleg(6));
-            csr.mie(2)       := (csr_file.mie(2) and not csr_file.hideleg(2)) or
-                                (wcsr_in(1) and csr_file.hideleg(2));
+            if csr_file.hvictl.vti = '0' or (ext_smaia = 0 and ext_ssaia = 0) then
+              csr.mie(10)      := (csr_file.mie(10) and not csr_file.hideleg(10)) or
+                                  (wcsr_in(9) and csr_file.hideleg(10));
+              csr.mie(6)       := (csr_file.mie(6) and not csr_file.hideleg(6)) or
+                                  (wcsr_in(5) and csr_file.hideleg(6));
+              csr.mie(2)       := (csr_file.mie(2) and not csr_file.hideleg(2)) or
+                                  (wcsr_in(1) and csr_file.hideleg(2));
+            else
+              -- If tries to access SIE from VS-mode (VSIE) when VTI=1 raise
+              -- a virtual instruction exception
+              xc_v := '1';
+            end if;
           else
             csr.mie          := (csr_file.mie and (not csr_file.mideleg or CSR_HIE_MASK)) or
                                 (wcsr_in and (csr_file.mideleg and not CSR_HIE_MASK));
-          end if;
+            end if;
         when CSR_STVEC          =>
           if h_en and csr_file.v = '1' then
             csr.vstvec       := wcsr_in(csr.vstvec'high downto 2) & '0' & wcsr_in(0);
+            if wcsr_in(0) = '1' then
+              csr.vstvec     := wcsr_in(csr.vstvec'high downto 8) & "0000000" & wcsr_in(0);
+            end if;
           else
             csr.stvec        := wcsr_in(csr.stvec'high downto 2) & '0' & wcsr_in(0);
+            if wcsr_in(0) = '1' then
+              csr.stvec      := wcsr_in(csr.stvec'high downto 8) & "0000000" & wcsr_in(0);
+            end if;
+          end if;
+        when CSR_SSTATEEN0      =>
+          --csr.sstateen0      := wcsr_in(31 downto 0);
+        -- TODO: add other STATEEN registers
+
+        when CSR_SISELECT       =>
+          if h_en and csr_file.v = '1' then
+            csr.vsiselect    := wcsr_in;
+          else
+            csr.siselect     := wcsr_in;
+          end if;
+        when CSR_SIREG          =>
+          if h_en and csr_file.v = '1' then
+            if imsic = 1 then
+              csr.vsireg_w     := '1';
+              csr.vsirego      := wcsr_in;
+            end if;
+          else
+            -- IPRIO array from supervisor level not implemented (major priorities have always default order)
+            if csr.siselect(7 downto 4) /= x"3" and imsic = 1 then
+              csr.sireg_w      := '1';
+              csr.sirego       := wcsr_in;
+            end if;
+          end if;
+        when CSR_STOPEI         =>
+          if h_en and csr_file.v = '1' then
+            csr.vstopei_w    := '1';
+          else
+            csr.stopei_w     := '1';
           end if;
         when CSR_SCOUNTEREN     =>
           if mode_u = 1 then
@@ -5768,6 +6790,8 @@ architecture rtl of iunv is
           if mode_u = 1 then
             csr.senvcfg      := to_envcfg(wcsr_in, csr_file.senvcfg,
                                           envcfg_mask(csr_file.menvcfg, active_senvcfg));
+            pipeflush := '1';
+            addrflush := '1';
           end if;
         -- Supervisor Trap Handling
         when CSR_SSCRATCH       =>
@@ -5880,13 +6904,14 @@ architecture rtl of iunv is
             end if;
           end if;
         when CSR_MEDELEG        =>
-            csr.medeleg      := wcsr_in and medeleg_mask(h_en);
+          csr.medeleg      := wcsr_in and medeleg_mask(h_en);
         when CSR_MIDELEG        =>
-            csr.mideleg      := to_mideleg(wcsr_in, mode_s, h_en,
-                                           ext_sscofpmf);
+          csr.mideleg      := to_mideleg(wcsr_in, mode_s = 1, h_en,
+                                         ext_sscofpmf = 1);
+        when CSR_MIDELEGH       =>
         when CSR_MIE            =>
-            csr.mie          := wcsr_in and mie_mask(mode_s, h_en,
-                                                     ext_sscofpmf);
+          csr.mie          := wcsr_in and mie_mask(mode_s = 1, h_en, ext_sscofpmf = 1);
+        when CSR_MIEH           =>
         when CSR_MTVEC          =>
           mtvec                                     := wcsr_in(mtvec'high downto 2) & '0' & wcsr_in(0);
           if wcsr_in(0) = '1' then
@@ -5897,28 +6922,96 @@ architecture rtl of iunv is
           csr.mcounteren(HWPERFMONITORS + 2 downto 0) := wcsr_in(HWPERFMONITORS + 2 downto 0);
         -- Machine Trap Handling
         when CSR_MSCRATCH       =>
-            csr.mscratch     := wcsr_in;
+          csr.mscratch     := wcsr_in;
         when CSR_MEPC           =>
           csr.mepc                                  := wcsr_in(csr.mepc'high downto 1) & '0';
           if ext_c = 0 then
             csr.mepc(1)                             := '0';
           end if;
+        when CSR_MNSCRATCH      =>
+          csr.mnscratch                             := wcsr_in;
+        when CSR_MNEPC          =>
+          csr.mnepc                                 := wcsr_in;
+        when CSR_MNCAUSE        =>
+          csr.mncause                               := wcsr_in;
+        when CSR_MNSTATUS       =>
+          csr.mnstatus                              := to_mnstatus(wcsr_in, csr.mnstatus);
+        when CSR_MSTATEEN0      =>
+          csr.mstateen0                             := to_mstateen0(wcsr_in, csr.mstateen0);
+        when CSR_MSTATEEN1      =>
+          if is_rv64 then
+            csr.mstateen1.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_MSTATEEN2      =>
+          if is_rv64 then
+            csr.mstateen2.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_MSTATEEN3      =>
+          if is_rv64 then
+            csr.mstateen3.stateen  := wcsr_in(wordx'length-1);
+          end if;
+        when CSR_MSTATEEN0H     =>
+          csr.mstateen0            := to_mstateen0h(wcsr_in, csr.mstateen0);
+        when CSR_MSTATEEN1H     =>
+          csr.mstateen1.stateen    := wcsr_in(31);
+        when CSR_MSTATEEN2H     =>
+          csr.mstateen2.stateen    := wcsr_in(31);
+        when CSR_MSTATEEN3H     =>
+          csr.mstateen3.stateen    := wcsr_in(31);
+        when CSR_MISELECT       =>
+          csr.miselect     := wcsr_in;
+        when CSR_MIREG          =>
+          -- IPRIO array from machine level not implemented (major priorities have always default order)
+          if csr.miselect(7 downto 4) /= x"3" and imsic = 1 then
+            csr.mireg_w        := '1';
+            csr.mirego         := wcsr_in;
+          end if;
+        when CSR_MTOPEI         =>
+          csr.mtopei_w     := '1';
+        when CSR_MVIEN          =>
+        when CSR_MVIENH         =>
+        when CSR_MVIP           =>
+        when CSR_MVIPH          =>
         when CSR_MCAUSE         =>
-            csr.mcause       := wcsr_in(csr.mcause'range);
+          csr.mcause       := wcsr_in(csr.mcause'range);
         when CSR_MTVAL          =>
-            csr.mtval        := wcsr_in;
+          csr.mtval        := wcsr_in;
         when CSR_MIP            =>
-            csr.mip          := wcsr_in and mip_mask(mode_s, h_en,
-                                                     ext_sscofpmf, 
-                                                     csr_file.menvcfg.stce);
+          csr.mip          := wcsr_in and mip_mask(mode_s = 1, h_en,
+                                                   ext_sscofpmf = 1,
+                                                   csr_file.menvcfg.stce);
+        when CSR_MIPH           =>
         when CSR_MTINST         =>
-            csr.mtinst       := wcsr_in;
+          csr.mtinst       := wcsr_in;
         when CSR_MTVAL2         =>
-            csr.mtval2       := wcsr_in;
+          csr.mtval2       := wcsr_in;
+        -- Machine Configuration
         when CSR_MENVCFG        =>
-            csr.menvcfg      := to_envcfg(wcsr_in, csr_file.menvcfg, active_menvcfg);
+          csr.menvcfg      := to_envcfg(wcsr_in, csr_file.menvcfg, active_menvcfg);
+          pipeflush := '1';
+          addrflush := '1';
         when CSR_MENVCFGH       =>
+          if is_rv32 then
             csr.menvcfg      := to_envcfgh(wcsr_in, csr_file.menvcfg, active_menvcfg);
+            pipeflush := '1';
+            addrflush := '1';
+          end if;
+        when CSR_MSECCFG        =>
+          if ext_smepmp = 1
+             then
+            mseccfg     := to_mseccfg(wcsr_in, csr_file.mseccfg);
+            csr.mseccfg := tie_mseccfg(mseccfg);
+            pipeflush := '1';
+            addrflush := '1';
+          end if;
+        when CSR_MSECCFGH       =>
+          if is_rv32 and (
+             ext_smepmp = 1) then
+            mseccfg     := to_mseccfgh(wcsr_in, csr_file.mseccfg);
+            csr.mseccfg := tie_mseccfg(mseccfg);
+            pipeflush := '1';
+            addrflush := '1';
+          end if;
         -- Machine Protection and Translation
         when CSR_PMPCFG0        =>
           if is_rv64 then
@@ -5990,7 +7083,6 @@ architecture rtl of iunv is
             csr.dcsr.step                           := wcsr_in(2);
             csr.dcsr.prv                            := wcsr_in(1 downto 0);
           end if;
-
         when CSR_DPC =>
           if rstate_in /= run then
             csr.dpc                                 := wcsr_in;
@@ -6005,46 +7097,57 @@ architecture rtl of iunv is
           end if;
         -- Custom Read/Write Registers
         when CSR_FEATURES =>
-          csr.dfeaturesen.tpbuf_en                  := wcsr_in(31);
-          csr.trace.ctrl(12 downto 8)               := wcsr_in(30 downto 26); 
-          -- [25:14] RESERVED
-          csr.dfeaturesen.dm_trace                  := wcsr_in(13);
-          csr.dfeaturesen.new_irq                   := wcsr_in(12);
-          csr.dfeaturesen.fs_dirty                  := wcsr_in(11);
-          csr.dfeaturesen.nostream                  := wcsr_in(10);
-          csr.dfeaturesen.staticdir                 := wcsr_in(9);
-          csr.dfeaturesen.staticbp                  := wcsr_in(8);
-          csr.dfeaturesen.mmu_adfault               := wcsr_in(7);
-          csr.dfeaturesen.b2bst_dis                 := wcsr_in(6);
-          csr.dfeaturesen.lalu_dis                  := wcsr_in(5);
-          csr.dfeaturesen.lbranch_dis               := wcsr_in(4);
-          csr.dfeaturesen.ras_dis                   := wcsr_in(3);
-          csr.dfeaturesen.jprd_dis                  := wcsr_in(2);
-          csr.dfeaturesen.btb_dis                   := wcsr_in(1);
-          csr.dfeaturesen.dual_dis                  := wcsr_in(0);
-          pipeflush := '1';
-          addrflush := '1';
+          if ext_noelv = 1 then
+            csr.dfeaturesen.tpbuf_en                := wcsr_in(31);
+            csr.trace.ctrl(12 downto 8)             := wcsr_in(30 downto 26);
+            -- [25:18] RESERVED
+            csr.dfeaturesen.x0                      := wcsr_in(17);
+            csr.dfeaturesen.mmu_oldfence            := wcsr_in(16);
+            csr.dfeaturesen.mmu_hptfault            := wcsr_in(15);
+            csr.dfeaturesen.mmu_sptfault            := wcsr_in(14);
+            csr.dfeaturesen.dm_trace                := wcsr_in(13);
+            csr.dfeaturesen.fs_dirty                := wcsr_in(11);
+            csr.dfeaturesen.nostream                := wcsr_in(10);
+            csr.dfeaturesen.staticdir               := wcsr_in(9);
+            csr.dfeaturesen.staticbp                := wcsr_in(8);
+            csr.dfeaturesen.mmu_adfault             := wcsr_in(7);
+            csr.dfeaturesen.b2bst_dis               := wcsr_in(6);
+            csr.dfeaturesen.lalu_dis                := wcsr_in(5);
+            csr.dfeaturesen.lbranch_dis             := wcsr_in(4);
+            csr.dfeaturesen.ras_dis                 := wcsr_in(3);
+            csr.dfeaturesen.jprd_dis                := wcsr_in(2);
+            csr.dfeaturesen.btb_dis                 := wcsr_in(1);
+            csr.dfeaturesen.dual_dis                := wcsr_in(0);
+            pipeflush := '1';
+            addrflush := '1';
+          end if;
         when CSR_FEATURESH =>
-          if is_rv32 then
+          if is_rv32 and ext_noelv = 1 then
           end if;
         when CSR_CCTRL =>
-          -- Bit[11] is RESERVED
-          if itcmen = 1 then
-            csr.cctrl.itcmwipe                      := wcsr_in(10);
+          if ext_noelv = 1 then
+            -- Bit[11] is RESERVED
+            if itcmen = 1 then
+              csr.cctrl.itcmwipe                    := wcsr_in(10);
+            end if;
+            if dtcmen = 1 then
+              csr.cctrl.dtcmwipe                    := wcsr_in(9);
+            end if;
+            csr.cctrl.dsnoop                        := wcsr_in(8);
+            csr.cctrl.dflush                        := wcsr_in(7);
+            csr.cctrl.iflush                        := wcsr_in(6);
+            -- Bit[5:4] is RESERVED
+            csr.cctrl.dcs                           := wcsr_in(3 downto 2);
+            csr.cctrl.ics                           := wcsr_in(1 downto 0);
+            pipeflush := '1';
+            addrflush := '1';
           end if;
-          if dtcmen = 1 then
-            csr.cctrl.dtcmwipe                      := wcsr_in(9);
-          end if;
-          csr.cctrl.dsnoop                          := wcsr_in(8);
-          csr.cctrl.dflush                          := wcsr_in(7);
-          csr.cctrl.iflush                          := wcsr_in(6);
-          -- Bit[5:4] is RESERVED
-          csr.cctrl.dcs                             := wcsr_in(3 downto 2);
-          csr.cctrl.ics                             := wcsr_in(1 downto 0);
-          pipeflush := '1';
-          addrflush := '1';
         when CSR_TCMICTRL =>
+          if ext_noelv = 1 then
+          end if;
         when CSR_TCMDCTRL =>
+          if ext_noelv = 1 then
+          end if;
         when others =>
           case csra_high is
             -- Machine Hardware Performance Monitoring
@@ -6122,17 +7225,47 @@ architecture rtl of iunv is
 
     -- Virtual instruction exception
     case csra is
-      when CSR_HSTATUS    | CSR_HEDELEG     | CSR_HIDELEG    | CSR_HIE     |
-           CSR_HCOUNTEREN | CSR_HGEIE       | CSR_HTVAL      | CSR_HIP     |
-           CSR_HVIP       | CSR_HTINST      | CSR_HGEIP      | CSR_HGATP   |
-           CSR_HTIMEDELTA | CSR_HTIMEDELTAH | CSR_VSSTATUS   | CSR_VSIE    |
-           CSR_VSTVEC     | CSR_VSSCRATCH   | CSR_VSEPC      | CSR_VSCAUSE |
-           CSR_VSTVAL     | CSR_VSIP        | CSR_VSATP =>
+      when CSR_HSTATUS    | CSR_HEDELEG     | CSR_HIDELEG    | CSR_HIE       |
+           CSR_HCOUNTEREN | CSR_HGEIE       | CSR_HTVAL      | CSR_HIP       |
+           CSR_HVIP       | CSR_HTINST      | CSR_HGEIP      | CSR_HGATP     |
+           CSR_HTIMEDELTA | CSR_HTIMEDELTAH | CSR_VSSTATUS   | CSR_VSIE      |
+           CSR_VSTVEC     | CSR_VSSCRATCH   | CSR_VSEPC      | CSR_VSCAUSE   |
+           CSR_VSTVAL     | CSR_VSIP        | CSR_VSATP  =>
         xc_v := v_mode;
-      when CSR_SSTATUS    | CSR_SEDELEG  | CSR_SIDELEG | CSR_SIE    | CSR_STVEC |
-           CSR_SCOUNTEREN | CSR_SSCRATCH | CSR_SEPC    | CSR_SCAUSE | CSR_STVAL |
-           CSR_SIP        | CSR_SATP =>
+      when CSR_HVIEN      | CSR_HVICTL      | CSR_HVIPRIO1   | CSR_HVIPRIO2  |
+           CSR_VSISELECT  | CSR_VSIREG      | CSR_VSTOPEI  =>
+        if ext_smaia = 1 or ext_ssaia = 1 then
+          xc_v := v_mode;
+        end if;
+      when CSR_HIDELEGH   | CSR_HVIENH      | CSR_HVIPH      | CSR_HVIPRIO1H |
+           CSR_HVIPRIO2H  =>
+        if (ext_smaia = 1 or ext_ssaia = 1) and is_rv32 then
+          xc_v := v_mode;
+        end if;
+      when CSR_HSTATEEN0  | CSR_HSTATEEN1  | CSR_HSTATEEN2  | CSR_HSTATEEN3  =>
+        if ext_smstateen = 1 then
+          xc_v := v_mode;
+        end if;
+      when CSR_HSTATEEN0H  | CSR_HSTATEEN1H  | CSR_HSTATEEN2H  | CSR_HSTATEEN3H  =>
+        if ext_smstateen = 1 and is_rv32 then
+          xc_v := v_mode;
+        end if;
+      when CSR_SSTATUS    | CSR_SEDELEG  | CSR_SIDELEG  | CSR_SIE    | CSR_STVEC  |
+           CSR_SCOUNTEREN | CSR_SSCRATCH | CSR_SEPC     | CSR_SCAUSE | CSR_STVAL  |
+           CSR_SIP        | CSR_SATP  =>
         xc_v := vu_mode;
+      when CSR_SISELECT   | CSR_SIREG    | CSR_STOPEI  =>
+        if ext_smaia = 1 or ext_ssaia = 1 then
+          xc_v := vu_mode;
+        end if;
+      when CSR_SIEH       | CSR_SIPH  =>
+        if (ext_smaia = 1 or ext_ssaia = 1) and is_rv32 then
+          xc_v := vu_mode;
+        end if;
+      when CSR_SSTATEEN0  | CSR_SSTATEEN1  | CSR_SSTATEEN2  | CSR_SSTATEEN3  =>
+        if ext_smstateen = 1 then
+          xc_v := vu_mode;
+        end if;
       when CSR_VSTIMECMP  | CSR_VSTIMECMPH  =>
         if csr_file.menvcfg.stce = '1' then
           xc_v := v_mode;
@@ -6155,6 +7288,95 @@ architecture rtl of iunv is
       end if;
     end if;
 
+    -- Calculate the virtual intstruction exception for IMSIC registers
+    if h_en and csr_file.v = '1' and (ext_smaia = 1 or ext_ssaia = 1) then
+      case csra is
+        when CSR_SIREG =>
+          if GintFile_addrExcp(csr_file.vsiselect, imsic, is_rv64) = '1' or
+             (unsigned(csr_file.hstatus.vgein) = 0 or                  -- VGEIN is not a valid number
+              unsigned(csr_file.hstatus.vgein) > GEILEN) then
+            xc_v := '1';
+          end if;
+        when CSR_STOPEI =>
+          if imsic = 1 and (unsigned(csr_file.hstatus.vgein) = 0 or
+             unsigned(csr_file.hstatus.vgein) > GEILEN) then
+                xc_v := '1';
+          end if;
+        when others =>
+      end case;
+    end if;
+
+    -- When bit VTI (Virtual Trap Interrupt Control) is set to 1 in csr hvictl
+    -- attempts from VS mode to access sip or sie CSRs cause a virtual instruction exception
+    if (ext_smaia = 1 or ext_ssaia = 1) then
+      if h_en and csr.v = '1' and csr_file.hvictl.vti = '1' then
+        if csra = CSR_SIP or csra = CSR_SIE or
+           (is_rv32 and (csra = CSR_SIPH or csra = CSR_SIEH)) then
+          xc_v := '1';
+        end if;
+      end if;
+    end if;
+
+    -- If Smstateen extension is implemented check if a virtual intruction exception
+    -- should be risen
+    if ext_smstateen = 1 then
+      mstateen0 := mstateen0_mask(csr.mstateen0, CSR_MSTATEEN0_MASK);
+      hstateen0 := mstateen0_mask(csr.hstateen0, csr.mstateen0);
+      -- unused so far
+      --sstateen0  : csr_sstateen0_type := sstateen0_mask(csr.sstateen0, csr.mstateen0);
+      --vsstateen0 : csr_sstateen0_type := sstateen0_mask(csr.sstateen0, csr.hstateen0);
+
+      if h_en and csr.v = '1' then
+        case csra is
+          when CSR_SSTATEEN0 =>
+            if hstateen0.stateen = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SSTATEEN1 =>
+            if csr.hstateen1.stateen = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SSTATEEN2 =>
+            if csr.hstateen2.stateen = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SSTATEEN3 =>
+            if csr.hstateen3.stateen = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SENVCFG =>
+            if hstateen0.envcfg = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SISELECT =>
+            if hstateen0.iselect = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_STOPEI =>
+            if hstateen0.imsic = '0' then
+              xc_v := '1';
+            end if;
+          when CSR_SIREG =>
+            if (hstateen0.imsic and hstateen0.iselect) = '0' then
+              xc_v := '1';
+            end if;
+          when others =>
+        end case;
+        if is_rv32 then
+          case csra is
+            when CSR_SIEH | CSR_SIPH =>
+              if hstateen0.aia = '0' then
+                xc_v := '1';
+              end if;
+            when others =>
+          end case;
+        end if;
+      end if;
+    end if;
+
+
+
+
     pipeflush_out    := pipeflush;
     addrflush_out    := addrflush;
     xc_out           := (wlane_in'range => xc) and wlane_in;
@@ -6172,28 +7394,29 @@ architecture rtl of iunv is
   -- Instruction Control Unit
   -- Note that both v_fusel_eq(r, stage, lane, fusel) and v_rd_eq(r, stage, lane, rs)
   -- verify that the instruction in that stage and lane is actually valid.
-  procedure instruction_control(r          : in    registers;
-                                fpu_ready  : in    std_ulogic;
-                                fpu_idle   : in    std_ulogic;
-                                lddp       : out   std_ulogic;
-                                sdb2b      : out   std_ulogic;
-                                lbrancho   : out   std_ulogic;
-                                laluo      : out   std_logic_vector;
-                                spec_ldo   : out   std_ulogic;
-                                accesshold : inout std_logic_vector;
-                                exechold   : inout std_logic_vector;
-                                fpuhold    : inout std_logic_vector;
-                                holdi      : out   std_ulogic) is
+  procedure instruction_control(r           : in    registers;
+                                fpu_ready   : in    std_ulogic;
+                                fpu_idle    : in    std_ulogic;
+                                lddp        : out   std_ulogic;
+                                sdb2b       : out   std_ulogic;
+                                lbrancho    : out   std_ulogic;
+                                laluo       : out   fetch_pair;
+                                spec_ldo    : out   std_ulogic;
+                                aia_acchold : inout std_logic_vector;
+                                accesshold  : inout std_logic_vector;
+                                exechold    : inout std_logic_vector;
+                                fpuhold     : inout std_logic_vector;
+                                holdi       : out   std_ulogic) is
+
     -- Non-constant
     variable hold      : std_ulogic    := '0';
     variable hvec      : word16        := (others => '0');  -- Only for debug
-    variable mul_rd    : rfatype;
+    variable mul_rd    : reg_t;
     variable lbranch   : std_ulogic    := '0';
     variable lbranchdp : std_ulogic    := '0';
     variable lcsr      : fetch_pair    := (others => '0');
     variable lalu      : fetch_pair    := (others => '0');
     variable laludp    : std_ulogic    := '0';  -- Lane 1 is dependent on lane 0 (no swap)
-    variable csrw_eq   : std_ulogic    := '0';
   begin
     lddp     := '0';
     sdb2b    := '0';
@@ -6265,6 +7488,8 @@ architecture rtl of iunv is
     -- Late ALUs Flag Generation
     ---------------------------------------------------------------------------
 
+    -- Note that these are directly releated to the stuff in late_alu_precheck()!
+
     -- This is an implicit "late ALU"!
     if csr_ok(r, a) then
       lcsr(csr_lane) := '1';
@@ -6320,7 +7545,7 @@ architecture rtl of iunv is
       end if;
     end loop;
 
-    -- In case previous instructions use late alus, drive this one to them as well
+    -- In case previous instructions use late ALUs, drive this one to them as well
     --      0                     1
     -- A    ALU <- Rn         or  ALU <- Rn
     -- EX   any -> Rn (late)  or  any -> Rn (late)
@@ -6337,11 +7562,12 @@ architecture rtl of iunv is
       end if;
     end loop;
 
-    -- Some ALU instructions can never be handled in the late ALU:s!
+    -- Some ALU instructions can never be handled in the late ALUs!
     for j in lanes'range loop
       if lalu(j) = '1' then
-        if v_fusel_eq(r, a, j, ALU_SPECIAL) then
-          hold := '1';
+        if v_fusel_eq(r, a, j, ALU_SPECIAL)
+           then
+          hold    := '1';
           lalu(j) := '0';
         end if;
       end if;
@@ -6502,39 +7728,52 @@ architecture rtl of iunv is
     ---------------------------------------------------------------------------
     -- Deal with CSR writes that have dependencies.
     ---------------------------------------------------------------------------
-    csrw_eq := '0';
-    for i in 0 to r.a.csrw_eq'high loop
-      if r.a.csrw_eq(i) = '1' then
-        csrw_eq := '1';
-      end if;
-    end loop;
-    if csr_ok(r, a) and not csr_write_only(r, a) then
+
+    -- Pairs of registers *iselect/*ireg (category 8) have also a dependency
+    -- for consecutive writes
+    if csr_ok(r, a) and (not csr_write_only(r, a) or unsigned(csr(r, a).category(4 downto 0)) = 8) then
       -- Hold Issue stage if there is already a CSR instruction in the pipeline
       -- that accesses the same register, or one in the same category, unless
       -- that access is read-only. Also unless the new access is write-only.
-      if (r.wb.ctrl(csr_lane).csrdo = '0') and csr_ok(r, wb) then
-        if (csrw_eq = '1') or csr_category_eq(r, a, wb) then
-          hold    := '1';
-          hvec(5) := '1';
-        end if;
+      if csr_ok(r, wb) and (r.wb.ctrl(csr_lane).csrdo = '0') and
+         (r.a.csrw_eq(3) = '1' or csr_category_eq(r, a, wb)) then
+        hold    := '1';
+        hvec(5) := '1';
       end if;
-      if (r.x.ctrl(csr_lane).csrdo = '0') and csr_ok(r, x) then
-        if (csrw_eq = '1') or csr_category_eq(r, a, x) then
-          hold    := '1';
-          hvec(5) := '1';
-        end if;
+      if csr_ok(r, x) and (r.x.ctrl(csr_lane).csrdo = '0') and
+         (r.a.csrw_eq(2) = '1' or csr_category_eq(r, a, x)) then
+        hold    := '1';
+        hvec(5) := '1';
       end if;
-      if (r.m.ctrl(csr_lane).csrdo = '0') and csr_ok(r, m) then
-        if (csrw_eq = '1')  or csr_category_eq(r, a, m) then
-          hold    := '1';
-          hvec(5) := '1';
-        end if;
+      if csr_ok(r, m) and (r.m.ctrl(csr_lane).csrdo = '0') and
+         (r.a.csrw_eq(1) = '1' or csr_category_eq(r, a, m)) then
+        hold    := '1';
+        hvec(5) := '1';
       end if;
-      if (r.e.ctrl(csr_lane).csrdo = '0') and csr_ok(r, e) then
-        if (csrw_eq = '1')  or csr_category_eq(r, a, e) then
-          hold    := '1';
-          hvec(5) := '1';
-        end if;
+      if csr_ok(r, e) and (r.e.ctrl(csr_lane).csrdo = '0') and
+         (r.a.csrw_eq(0) = '1' or csr_category_eq(r, a, e)) then
+        hold    := '1';
+        hvec(5) := '1';
+      end if;
+    end if;
+
+    ---------------------------------------------------------------------------
+    -- Hold issue if exception stage contained the previous two cycles a write
+    -- CSR instruction that belongs to category 8 (category to handle dependencies
+    -- among the AIA CSRs) and the access stage contians a valid CSR read instruction
+    -- belonging to the same category.
+    -- Since IMSIC CSR writes and reads experience some latency, this is needed if
+    -- the system implements an imsic to handle external interrupts.
+    ---------------------------------------------------------------------------
+    if imsic = 1 then
+      aia_acchold := '0' & aia_acchold(0 to aia_acchold'right - 1);
+      if csr_ok(r, x) and not csr_read_only(r, x) and unsigned(csr(r, x).category(4 downto 0)) = 8 then
+        aia_acchold := (aia_acchold'range => '1');
+      end if;
+      if aia_acchold(aia_acchold'right) = '1' and unsigned(csr(r, a).category(4 downto 0)) = 8 and
+         csr_ok(r, a) and not csr_write_only(r, a) then
+        hold    := '1';
+        hvec(5) := '1'; --TODO: which index should I choose
       end if;
     end if;
 
@@ -6546,7 +7785,7 @@ architecture rtl of iunv is
     -- being enabled, so that requires a flush later.
     ---------------------------------------------------------------------------
     accesshold   := '0' & accesshold(0 to accesshold'right - 1);
-    if csr_ok(r, e) and not csr_read_only(r, e) and csr(r, e).category(6) = '1' then
+    if csr_ok(r, e) and not csr_access_read_only(r, e) and csr(r, e).category(6) = '1' then
       accesshold := (accesshold'range => '1');
     end if;
     if accesshold(accesshold'right) = '1' and
@@ -6560,8 +7799,7 @@ architecture rtl of iunv is
     -- is a CSR write instruction to interrupt related registers in execute.
     -- This way interrupt does not need to be checked in two different stages
     ---------------------------------------------------------------------------
-    if csr_ok(r, e) and not csr_read_only(r, e) and
-       csr_category(csr_addr(r, e))(5) = '1'    and
+    if csr_ok(r, e) and not csr_access_read_only(r, e) and csr(r, e).category(5) = '1' and
        (r.a.ctrl(0).valid = '1' or r.a.ctrl(one).valid = '1') then
       -- CSR is going to write an interrupt related register.
       hold    := '1';
@@ -6577,14 +7815,12 @@ architecture rtl of iunv is
     -- on TLB updates to work as intended.
     ---------------------------------------------------------------------------
     exechold := '0' & exechold(0 to exechold'right - 1);
-    if csr_ok(r, e) and not csr_read_only(r, e) and csr(r, e).category(7) = '1' then
+    if csr_ok(r, e) and not csr_access_read_only(r, e) and csr(r, e).category(7) = '1' then
       exechold   := (exechold'range => '1');
     end if;
     if r.e.ctrl(memory_lane).valid = '1' then
-      if is_fence_i(r.e.ctrl(memory_lane).inst)     or
-         is_sfence_vma(r.e.ctrl(memory_lane).inst)  or
-         is_hfence_vvma(r.e.ctrl(memory_lane).inst) or
-         is_hfence_gvma(r.e.ctrl(memory_lane).inst) then
+      if is_fence_i(r.e.ctrl(memory_lane).inst) or
+         is_tlb_fence(active_extensions, r.e.ctrl(memory_lane).inst) then
         exechold := (exechold'range => '1');
       end if;
     end if;
@@ -6617,7 +7853,7 @@ architecture rtl of iunv is
       end if;
       -- Some CSR writes must take effect before the next FPU operation that
       -- can be affected (or can affect the CSR) is allowed.
-      if csr_ok(r, a) and csr(r, a).category(9) = '1' and not csr_read_only(r, a) then
+      if csr_ok(r, a) and csr(r, a).category(9) = '1' and not csr_access_read_only(r, a) then
         fpuhold := (fpuhold'range => '1');
       end if;
       -- All FPU operations must wait if the FPU is not ready.
@@ -6670,9 +7906,11 @@ architecture rtl of iunv is
            -- Is either store smaller than 32 bit?
            -- ST  inst: size < 32 when inst(13) = 0
            -- HSV inst: size < 32 when inst(27) = 0
-          ((((not is_hsv(r.a.ctrl(memory_lane).inst) and r.a.ctrl(memory_lane).inst(13) = '0') or
+          ((((not is_hsv(r.a.ctrl(memory_lane).inst) and
+              r.a.ctrl(memory_lane).inst(13) = '0') or
              (    is_hsv(r.a.ctrl(memory_lane).inst) and r.a.ctrl(memory_lane).inst(27) = '0')) or
-            ((not is_hsv(r.e.ctrl(memory_lane).inst) and r.e.ctrl(memory_lane).inst(13) = '0') or
+            ((not is_hsv(r.e.ctrl(memory_lane).inst) and
+              r.e.ctrl(memory_lane).inst(13) = '0') or
              (    is_hsv(r.e.ctrl(memory_lane).inst) and r.e.ctrl(memory_lane).inst(27) = '0'))
            ) or
            r.csr.dfeaturesen.b2bst_dis = '1')) or
@@ -6688,7 +7926,7 @@ architecture rtl of iunv is
     -- Store & AMO Late Branch dependency
     ---------------------------------------------------------------------------
     -- A store & AMO operation that is directly after a late branch will not have enough
-    -- time for nullify signals hence it has to be at least 2 cycles behind a late branch.
+    -- time for nullify signals, hence it has to be at least 2 cycles behind a late branch.
     if late_branch /= 0 then
       if v_fusel_eq(r, a, memory_lane, ST) or v_fusel_eq(r, a, memory_lane, AMO) then
         if v_fusel_eq(r, e, branch_lane, BRANCH) then
@@ -6707,14 +7945,12 @@ architecture rtl of iunv is
     if mode_s = 1 and late_branch /= 0 then
       if v_fusel_eq(r, e, branch_lane, BRANCH) then
         if r.e.lbranch = '1' then
-          if is_sfence_vma(r.a.ctrl(memory_lane).inst)  or
-             (ext_h = 1 and (is_hfence_vvma(r.a.ctrl(memory_lane).inst) or
-                             is_hfence_gvma(r.a.ctrl(memory_lane).inst))) then
+          if is_tlb_fence(active_extensions, r.a.ctrl(memory_lane).inst) then
             hold := '1';
           end if;
         end if;
       end if;
-    end if; 
+    end if;
 
     ---------------------------------------------------------------------------
     -- Speculative load
@@ -6786,7 +8022,7 @@ architecture rtl of iunv is
                     hold_out    : out std_ulogic;
                     valid_out   : out std_ulogic;
                     op_out      : out std_ulogic;
-                    ctrl_out    : out std_logic_vector;
+                    ctrl_out    : out word3;
                     op1_out     : out wordx;
                     op2_out     : out wordx) is
     -- Non-constant
@@ -6872,7 +8108,7 @@ architecture rtl of iunv is
                     div_in      : in  div_out_type;
                     fpu_in      : in  fpu5_out_type;
                     l_inst      : in  word_lanes_type;
-                    l_valid     : in  std_logic_vector;
+                    l_valid     : in  lanes_type;
                     l_fusel     : in  fusel_lanes_type;
                     results_in  : in  wordx_lanes_type;
                     results_out : out wordx_lanes_type) is
@@ -6904,7 +8140,7 @@ architecture rtl of iunv is
                                 ex1_valid_in : in  std_ulogic;
                                 ex_result    : in  wordx_lanes_type;
                                 ra_op2       : in  wordx;
-                                forw_out     : out std_logic_vector;
+                                forw_out     : out lanes_type;
                                 stdata_out   : out wordx) is
     -- Non-constant
     variable stdata         : wordx      := (others => '0');
@@ -7027,10 +8263,8 @@ architecture rtl of iunv is
     variable flush : std_ulogic := '0';
   begin
     if r.x.ctrl(memory_lane).valid = '1' then
-      if is_fence_i(r.x.ctrl(memory_lane).inst)     or
-         is_sfence_vma(r.x.ctrl(memory_lane).inst)  or
-         is_hfence_vvma(r.x.ctrl(memory_lane).inst) or
-         is_hfence_gvma(r.x.ctrl(memory_lane).inst) then
+      -- The only thing that should cause a flush is instruction fence.
+      if is_fence_i(r.x.ctrl(memory_lane).inst) then
         flush   := '1';
       end if;
     end if;
@@ -7061,16 +8295,20 @@ architecture rtl of iunv is
                        unalg_pc : in  pctype;
                        csren_in : in  csr_dfeaturesen_type;
                        bht_out  : out nv_bht_in_type) is
+    variable fusel_in : fuseltype  := ctrl_in.fusel;
+    variable valid_in : std_ulogic := ctrl_in.valid;
+    variable pc_in    : pctype     := ctrl_in.pc;
+    variable comp_in  : std_ulogic := ctrl_in.comp;
     -- Non-constant
-    variable bht   : nv_bht_in_type;
-    variable waddr : pctype := ctrl_in.pc;
+    variable bht      : nv_bht_in_type;
+    variable waddr    : pctype := pc_in;
   begin
     -- Write next address in case of a branch which wraps
     -- a word boundary.
     if ext_c = 1 then
-      if ctrl_in.comp = '0' then
-        if (single_issue = 0 and ctrl_in.pc(2 downto 1) = "11") or
-        (single_issue /= 0 and ctrl_in.pc(1) = '1') then
+      if comp_in = '0' then
+        if (single_issue  = 0 and pc_in(2 downto 1) = "11") or
+           (single_issue /= 0 and pc_in(1) = '1') then
           waddr   := unalg_pc;
         end if;
       end if;
@@ -7078,11 +8316,11 @@ architecture rtl of iunv is
 
     -- Update BHT with branch or unconditional jump address.
     bht.waddr   := pc2xlen(waddr);
-    bht.wen     := ctrl_in.valid and ctrl_in.branch.valid;
+    bht.wen     := valid_in and ctrl_in.branch.valid;
     bht.wdata   := ctrl_in.branch.dir;
     bht.taken   := ctrl_in.branch.taken;
 
-    if ctrl_in.valid = '1' and v_fusel_eq(ctrl_in.fusel, JAL) and csren_in.jprd_dis = '0' then
+    if valid_in = '1' and v_fusel_eq(fusel_in, JAL) and csren_in.jprd_dis = '0' then
       bht.wen   := '1';
       bht.taken := '1';
     end if;
@@ -7096,16 +8334,21 @@ architecture rtl of iunv is
                        csren_in   : in  csr_dfeaturesen_type;
                        wb_fence_i : in  std_ulogic;
                        btb_out    : out nv_btb_in_type) is
+    variable fusel_in : fuseltype  := ctrl_in.fusel;
+    variable valid_in : std_ulogic := ctrl_in.valid;
+    variable xc_in    : std_ulogic := ctrl_in.xc;
+    variable pc_in    : pctype     := ctrl_in.pc;
+    variable comp_in  : std_ulogic := ctrl_in.comp;
     -- Non-constant
-    variable waddr : pctype := ctrl_in.pc;
-    variable btb   : nv_btb_in_type;
+    variable waddr    : pctype := pc_in;
+    variable btb      : nv_btb_in_type;
   begin
     -- Write next address in case of a branch which wraps
     -- a word boundary.
     if ext_c = 1 then
-      if ctrl_in.comp = '0' then
-        if (single_issue = 0 and ctrl_in.pc(2 downto 1) = "11") or
-          (single_issue /= 0 and ctrl_in.pc(1) = '1') then
+      if comp_in = '0' then
+        if (single_issue = 0 and pc_in(2 downto 1) = "11") or
+          (single_issue /= 0 and pc_in(1) = '1') then
           waddr := unalg_pc;
         end if;
       end if;
@@ -7113,11 +8356,11 @@ architecture rtl of iunv is
 
     -- Update BTB with branch or unconditional jump address
     btb.waddr := pc2xlen(waddr);
-    btb.wen   := ctrl_in.valid and ctrl_in.branch.valid and ctrl_in.branch.taken and not ctrl_in.branch.hit and not ctrl_in.xc;
+    btb.wen   := valid_in and ctrl_in.branch.valid and ctrl_in.branch.taken and not ctrl_in.branch.hit and not xc_in;
     btb.wdata := to0x(ctrl_in.branch.addr);
     btb.flush := wb_fence_i;
 
-    if ctrl_in.valid = '1' and v_fusel_eq(ctrl_in.fusel, JAL) and csren_in.jprd_dis = '0' then
+    if valid_in = '1' and v_fusel_eq(fusel_in, JAL) and csren_in.jprd_dis = '0' then
       -- Target address is included in ctrl_in.branch.addr
       btb.wen := not ctrl_in.branch.hit;
     end if;
@@ -7125,9 +8368,8 @@ architecture rtl of iunv is
     btb_out   := btb;
   end;
 
-
-  function trigger_action(tdata : wordx) return std_logic_vector is
-    variable typ    : std_logic_vector(3 downto 0) := tdata(tdata'high downto tdata'high - 3);
+  function trigger_action(tdata : wordx) return word64 is
+    variable typ    : word4 := tdata(tdata'high downto tdata'high - 3);
     -- Non-constant
     variable action : word64;
   begin
@@ -7166,7 +8408,7 @@ architecture rtl of iunv is
   function trigger_mcontrol_match(tdata1 : wordx;
                                   tdata2 : wordx;
                                   value  : wordx) return std_logic is
-    variable match  : std_logic_vector(3 downto 0) := tdata1(10 downto 7);
+    variable match  : word4 := tdata1(10 downto 7);
     -- Non-constant
     variable hit    : std_logic;
     variable mask   : wordx;
@@ -7204,24 +8446,24 @@ architecture rtl of iunv is
                             e_ctrl : pipeline_ctrl_lanes_type;
                             avalid : std_logic;
                             addr   : addr_type;
-                            size   : std_logic_vector(1 downto 0);
+                            size   : word2;
                             awrite : std_logic;
                             rvalid : std_logic;
                             rdata  : word64;
                             wvalid : std_logic;
                             wdata  : word64) return hit_vec_type is
-    variable sizev    : std_logic_vector(3 downto 0) := tdata1(22 downto 21) & tdata1(17 downto 16);
-    variable selectv  : std_logic                    := tdata1(19);
-    variable exec     : std_logic                    := tdata1(2);
-    variable store    : std_logic                    := tdata1(1);
-    variable load     : std_logic                    := tdata1(0);
+    variable sizev    : word4            := tdata1(22 downto 21) & tdata1(17 downto 16);
+    variable selectv  : std_logic        := tdata1(19);
+    variable exec     : std_logic        := tdata1(2);
+    variable store    : std_logic        := tdata1(1);
+    variable load     : std_logic        := tdata1(0);
     -- Non-constant
-    variable hit      : lanes_type                   := (others => '0');
-    variable ehit     : lanes_type                   := (others => '0');
-    variable ahit     : std_logic                    := '0';
-    variable valid    : std_logic                    := '0';
-    variable value    : wordx_lanes_type             := (others => (others => '0'));
-    variable del      : std_logic                    := '0';
+    variable hit      : lanes_type       := (others => '0');
+    variable ehit     : lanes_type       := (others => '0');
+    variable ahit     : std_logic        := '0';
+    variable valid    : std_logic        := '0';
+    variable value    : wordx_lanes_type := (others => (others => '0'));
+    variable del      : std_logic        := '0';
     variable ret      : hit_vec_type;
   begin
     if exec = '1' then
@@ -7268,15 +8510,15 @@ architecture rtl of iunv is
                           m_ctrl : pipeline_ctrl_lanes_type;
                           x_ctrl : pipeline_ctrl_lanes_type) return hit_vec_type is
     variable cnt_hi   : std_logic_vector(13 downto 3) := tdata1(23 downto 13);
-    variable cnt_low  : std_logic_vector(2 downto 0)  := tdata1(12 downto 10);
+    variable cnt_low  : word3                         := tdata1(12 downto 10);
     -- Non-constant
     variable hit      : lanes_type                    := (others => '0');
-    variable instv    : std_logic_vector(3 downto 0)  := (others => '0');
+    variable instv    : word4                         := (others => '0');
     variable insts    : integer range 0 to 4          := 0;
     variable valid    : std_logic                     := '0';
     variable del      : std_logic                     := '0';
     variable ret      : hit_vec_type;
-    variable cnt      : std_logic_vector(3 downto 0);
+    variable cnt      : word4;
   begin
     -- Somewhat strange implementation of valid instruction count.
     -- Done this way to make Formality understand that there is
@@ -7344,7 +8586,7 @@ architecture rtl of iunv is
                            e_ctrl   : in  pipeline_ctrl_lanes_type;
                            avalid   : in  std_logic;
                            addr     : in  addr_type;
-                           size     : in  std_logic_vector(1 downto 0);
+                           size     : in  word2;
                            awrite   : in  std_logic;
                            rvalid   : in  std_logic;
                            rdata    : in  word64;
@@ -7531,7 +8773,7 @@ architecture rtl of iunv is
                          useDebug       : in  integer;
                          dbgi           : in  nv_debug_in_type;
                          dm_in          : in  debugmodule_reg_type;
-                         xc_in          : in  std_logic_vector;
+                         xc_in          : in  lanes_type;
                          xc_taken_in    : in  std_ulogic;
                          xc_cause_in    : in  cause_type;
                          dret_in        : in  std_ulogic;
@@ -7700,7 +8942,7 @@ architecture rtl of iunv is
           end if;
         end if;
       end if;
-      
+
 
       -- Assert error signal when not entering debug mode on EBREAK exception
       if xc_taken_in = '1' and xc_cause_in = XC_INST_BREAKPOINT and
@@ -7852,19 +9094,42 @@ begin
   arst <= testrst when (ASYNC_RESET and scantest /= 0 and testen /= '0')  else
           rstn when ASYNC_RESET else '1';
 
-  csr_mmu.satp        <= r.mmu.satp;
-  csr_mmu.vsatp       <= r.mmu.vsatp;
-  csr_mmu.hgatp       <= r.mmu.hgatp;
-  csr_mmu.mmu_adfault <= r.mmu.mmu_adfault;
-  csr_mmu.pmpcfg0     <= r.mmu.pmpcfg0;
-  csr_mmu.pmpcfg2     <= r.mmu.pmpcfg2;
-  csr_mmu.precalc     <= r.csr.pmp_precalc;
-  csr_mmu.cctrl       <= r.csr.cctrl;
+  csr_mmu.satp         <= r.mmu.satp;
+  csr_mmu.vsatp        <= r.mmu.vsatp;
+  csr_mmu.hgatp        <= r.mmu.hgatp;
+  csr_mmu.mmu_adfault  <= r.mmu.mmu_adfault;
+  csr_mmu.mmu_sptfault <= r.mmu.mmu_sptfault;
+  csr_mmu.mmu_hptfault <= r.mmu.mmu_hptfault;
+  csr_mmu.mmu_oldfence <= r.mmu.mmu_oldfence;
+  csr_mmu.pmpcfg0      <= r.mmu.pmpcfg0;
+  csr_mmu.pmpcfg2      <= r.mmu.pmpcfg2;
+  csr_mmu.mmwp         <= r.mmu.mmwp;
+  csr_mmu.mml          <= r.mmu.mml;
+  csr_mmu.precalc      <= r.csr.pmp_precalc;
+  csr_mmu.cctrl        <= r.csr.cctrl;
 
 
-  comb : process(r, bhto, btbo, raso, ico, dco, rfo, irqi, dbgi,
+  -- IMSIC inputs
+  imsici.mtopei_w   <= r.csr.mtopei_w;
+  imsici.miselect   <= r.csr.miselect;
+  imsici.mireg      <= r.csr.mirego;
+  imsici.mireg_w    <= r.csr.mireg_w;
+
+  imsici.stopei_w   <= r.csr.stopei_w;
+  imsici.siselect   <= r.csr.siselect;
+  imsici.sireg      <= r.csr.sirego;
+  imsici.sireg_w    <= r.csr.sireg_w;
+
+  imsici.vstopei_w  <= r.csr.vstopei_w;
+  imsici.vsiselect  <= r.csr.vsiselect;
+  imsici.vsireg     <= r.csr.vsirego;
+  imsici.vsireg_w   <= r.csr.vsireg_w;
+  imsici.vgein      <= r.csr.hstatus.vgein;
+
+
+  comb : process(r, bhto, btbo, raso, ico, dco, rfo, irqi, nirqi, dbgi,
                  itraceo,
-                 mulo, divo, fpuo, tbo, hart, rstn, holdn, mmu_csr, perf, cap)
+                 mulo, divo, fpuo, tbo, hart, rstn, holdn, mmu_csr, perf, cap, imsico)
 
     variable v                  : registers;
 
@@ -7917,10 +9182,12 @@ begin
     variable mexc_inull         : std_ulogic;
     variable btb_hitv           : std_ulogic;
 
+    variable ras_hit_1st        : std_ulogic;
+
     -- Decode Stage
     variable de_inst            : iword_pair_type;
     variable de_inst_buff       : iword_pair_type;
-    variable de_comp_ill        : std_logic_vector(1 downto 0);
+    variable de_comp_ill        : word2;
     variable de_cinst_buff      : word16_fetch_type;
     variable de_inst_valid      : fetch_pair;
     variable de_inst_xc_msb     : std_ulogic;
@@ -7951,12 +9218,11 @@ begin
     variable de_to_ra_xc        : fetch_pair;
     variable de_to_ra_cause     : cause_fetch_type;
     variable de_to_ra_tval      : wordx_pair_type;
-    variable de_buff_inst_xc    : std_logic_vector(2 downto 0);
-    variable de_inst_no_buf     : std_logic_vector(1 downto 0);
-    variable de_inst_mexc       : std_logic_vector(1 downto 0);
-    variable v_a_inst_no_buf    : std_logic_vector(1 downto 0);
+    variable de_buff_inst_xc    : word3;
+    variable de_inst_no_buf     : word2;
+    variable de_inst_mexc       : word2;
+    variable v_a_inst_no_buf    : word2;
     variable de_nullify         : std_ulogic;
-    variable de_branch          : std_ulogic;
     variable de_branch_taken    : std_ulogic;
     variable de_branch_hit      : std_ulogic;
     variable de_branch_valid    : std_ulogic;
@@ -7973,16 +9239,13 @@ begin
     variable de_btb_taken       : std_ulogic;
     variable de_btb_taken_buff  : std_ulogic;
     variable de_bjump_buff      : std_ulogic;
-    variable de_bjump_pos       : std_logic_vector(3 downto 0);
+    variable de_bjump_pos       : word4;
     variable de_bjump_addr      : pctype;
     variable de_bhto_taken      : fetch_pair;
     variable de_bhto_taken_tmp  : std_ulogic;
-    variable de_bhto_dir0       : std_logic_vector(bhti.wdata'range);
-    variable de_bhto_dir1       : std_logic_vector(bhti.wdata'range);
-    variable de_bhto_dir_tmp    : std_logic_vector(bhti.wdata'range);
     variable de_btbo_hit        : fetch_pair;
     variable de_btbo_hit_tmp    : std_ulogic;
-    variable de_btb_valid       : std_logic_vector(3 downto 0);
+    variable de_btb_valid       : word4;
     variable de_lalu_pre        : fetch_pair;
     variable de_dual_branch         : fetch_pair;
     variable de_dbranch             : fetch_pair;
@@ -7997,11 +9260,11 @@ begin
     variable de_rvc_instruction     : word_lanes_type;
     variable de_rvc_illegal         : fetch_pair;
     variable de_rvc_comp            : fetch_pair;
-    variable de_rvc_comp_ill        : std_logic_vector(1 downto 0);
+    variable de_rvc_comp_ill        : word2;
     variable de_rvc_aligned         : iword_pair_type;
     variable de_mux_instruction     : iword_pair_type;
-    variable de_rvc_bhto_taken      : std_logic_vector(1 downto 0);
-    variable de_rvc_btb_hit         : std_logic_vector(1 downto 0);
+    variable de_rvc_bhto_taken      : word2;
+    variable de_rvc_btb_hit         : word2;
     variable de_rvc_valid           : fetch_pair;
     variable de_rvc_hold            : std_ulogic;
     variable de_rvc_npc             : word3;
@@ -8017,8 +9280,8 @@ begin
     variable de_rvc_buffer_comp     : std_ulogic;
     variable de_rvc_buffer_comp_ill : std_ulogic;
     variable de_mux_cinstruction    : word16_fetch_type;
-    variable de_rvc_buff_lpc        : std_logic_vector(1 downto 0);
-    variable de_inst_comp_ill       : std_logic_vector(1 downto 0);
+    variable de_rvc_buff_lpc        : word2;
+    variable de_inst_comp_ill       : word2;
 
     -- Register File Stage
     variable ra_data12          : wordx_lanes_type;
@@ -8084,12 +9347,12 @@ begin
     variable ex_address_xc      : std_ulogic;
     variable ex_address_cause   : cause_type;
     variable ex_address_tval    : wordx;
+    variable ex_mprv            : std_ulogic;
 
     -- Memory Stage
     variable me_stdata          : word64;
     variable me_dcache_xc       : std_ulogic;
     variable me_dcache_cause    : cause_type;
-    variable me_dcache_tval     : wordx;
     variable me_xc              : lanes_type;
     variable me_xc_cause        : cause_lanes_type;
     variable me_xc_tval         : wordx_lanes_type;
@@ -8103,6 +9366,7 @@ begin
     variable me_fpu_flush       : std_ulogic;
     variable me_csrw            : lanes_type;
     variable me_ret             : word2;
+    variable me_nret            : std_ulogic;
     variable me_int             : std_ulogic;
     variable me_h_en            : boolean;
     variable me_irqand          : wordx;        -- qqq XXX Remove again!
@@ -8113,8 +9377,19 @@ begin
     variable me_irqprio_m       : std_logic_vector(cause_prio'reverse_range);
     variable me_irqprio_s       : std_logic_vector(cause_prio'reverse_range);
     variable me_irqprio_v       : std_logic_vector(cause_prio'reverse_range);
+    variable me_irqcause_m      : cause_type;
+    variable me_irqcause_s      : cause_type;
+    variable me_irqcause_v      : cause_type;
     variable me_irqcause        : cause_type;
     variable lz_cnt             : unsigned(4 downto 0);
+    variable me_int_v           : std_ulogic;
+    variable pending_int_v      : std_ulogic;
+    variable iprio_v            : unsigned(10 downto 0);
+    variable iprio1_v           : unsigned(10 downto 0);
+    variable iprio2_v           : unsigned(10 downto 0);
+    variable icause_v           : unsigned(4 downto 0);
+    variable icause1_v          : unsigned(4 downto 0);
+    variable icause2_v          : unsigned(4 downto 0);
     variable mem_branch         : std_ulogic;   -- Branch mispredict from early BU
     variable mem_branch_flush   : std_ulogic;
     variable mem_branch_target  : pctype;
@@ -8130,6 +9405,7 @@ begin
     variable x_xc_cause         : cause_lanes_type;
     variable x_xc_tval          : wordx_lanes_type;
     variable x_xc_ret           : word2;
+    variable x_xc_nret          : std_ulogic;
     variable x_trig_taken       : std_ulogic;
     variable x_xc_taken         : std_ulogic;
     variable x_xc_lane_out      : std_ulogic;
@@ -8142,7 +9418,8 @@ begin
     variable x_xc_inst          : word;
     variable x_xc_tvec          : pctype;
     variable x_irq              : nv_irq_in_type;
-    variable x_xc_irq_taken     : std_logic_vector(1 downto 0);
+    variable x_xc_irq_taken     : word2;
+    variable x_xc_nirq_taken    : std_ulogic;
     variable x_flush            : std_ulogic;
     variable x_fpu_flush        : std_ulogic;
     variable x_csr_pipeflush    : std_ulogic;
@@ -8238,8 +9515,11 @@ begin
     variable itrace_in : itrace_in_type;
 
 
+    variable r_d_valid : std_ulogic;
+
   begin
     v := r;
+
 
 
     iustall := '0';
@@ -8267,23 +9547,23 @@ begin
       s_vtime := zerow64;
     end if;
     -- Sstc extension (timer interrupt pending)
-    sstc_stip := to_bit(s_time >= r.csr.stimecmp);
-    sstc_vstip := to_bit(s_vtime >= r.csr.vstimecmp);
+    sstc_stip  := to_bit(unsigned(s_time)  >= unsigned(r.csr.stimecmp));
+    sstc_vstip := to_bit(unsigned(s_vtime) >= unsigned(r.csr.vstimecmp));
 
     -- Current envcfg
-    envcfg  := gen_envcfg_mmask(active_extensions);
-    henvcfg := envcfg_mask(r.csr.henvcfg, r.csr.menvcfg);
+    envcfg      := gen_envcfg_mmask(active_extensions);
+    henvcfg     := envcfg_mask(r.csr.henvcfg, r.csr.menvcfg);
     if r.csr.v = '1' then
       if r.csr.prv = PRIV_LVL_S then
-        envcfg := henvcfg;
+        envcfg    := henvcfg;
       elsif r.csr.prv = PRIV_LVL_U then
-        envcfg := envcfg_mask(r.csr.senvcfg, henvcfg);
+        envcfg    := envcfg_mask(r.csr.senvcfg, henvcfg);
       end if;
     else
       if r.csr.prv = PRIV_LVL_S then
-        envcfg := r.csr.menvcfg;
+        envcfg    := r.csr.menvcfg;
       elsif r.csr.prv = PRIV_LVL_U then
-        envcfg := envcfg_mask(r.csr.senvcfg, r.csr.menvcfg);
+        envcfg    := envcfg_mask(r.csr.senvcfg, r.csr.menvcfg);
       end if;
     end if;
 
@@ -8344,7 +9624,7 @@ begin
 
     -- Only allow one write (latest) to a specific destination register!
     if single_issue = 0 and
-       all_1(rfi_wen12) and (rfi_waddr12(0) = rfi_waddr12(1)) then
+       all_1(rfi_wen12) and (rfi_waddr12(0) = rfi_waddr12(one)) then
       if r.wb.swap = '0' then
         rfi_wen12(0)      := '0';
       else
@@ -8431,15 +9711,15 @@ begin
     end loop;
 
     -- CSR operation ------------------------------------------------------
-    x_csr_op1               := x_alu_op1(csr_lane);
-    if csr_immediate(r, x) then
-      x_csr_op1             := (others => '0');
-      x_csr_op1(4 downto 0) := r.x.ctrl(csr_lane).inst(19 downto 15);
-    end if;
+    x_csr_op1       := x_alu_op1(csr_lane);
+      if csr_immediate(r, x) then
+        x_csr_op1   := uext(r.x.ctrl(csr_lane).inst(19 downto 15), x_csr_op1);
+      end if;
     x_wcsr := csralu_op(x_csr_op1,        -- in  : Op1
                         r.x.csr.v,        -- in  : Op2
                         r.x.csr.ctrl      -- in  : Control Signal
                         );
+
     -- Only for trace
     x_wb_wcsr               := (others => zerox);
     x_wb_wcsr(memory_lane)  := r.x.wcsr;           -- At this point, this is load/store address.
@@ -8467,13 +9747,13 @@ begin
     -- (That is handled by dual_issue_check().)
     if csr_ok(r, x) then
       x_alu_res(csr_lane) := r.x.csr.v;
-      x_wb_wcsr(csr_lane) := x_wcsr;  -- Replace by CSR write data for trace
+        x_wb_wcsr(csr_lane) := x_wcsr;  -- Replace by CSR write data for trace
 
       -- The specification says that any actual read from MIP/SIP (not the rmw) must
       -- OR the incoming SEIP from the interrupt controller with MIP/SIP value.
-      if (r.x.ctrl(csr_lane).inst(31 downto 20) = CSR_MIP and
+      if (funct12(r.x.ctrl(csr_lane).inst) = CSR_MIP and
           r.csr.mideleg(cause2int(IRQ_S_EXTERNAL)) = '0') or
-         (r.x.ctrl(csr_lane).inst(31 downto 20) = CSR_SIP and
+         (funct12(r.x.ctrl(csr_lane).inst) = CSR_SIP and
           r.csr.mideleg(cause2int(IRQ_S_EXTERNAL)) /= '0') then
         x_wb_data(csr_lane)(cause2int(IRQ_S_EXTERNAL)) :=
           x_wb_data(csr_lane)(cause2int(IRQ_S_EXTERNAL)) or x_irq.seip;
@@ -8487,7 +9767,7 @@ begin
                   x_alu_op2(branch_lane),                 -- in  : Forwarded Op2
                   r.x.ctrl(branch_lane).valid,            -- in  : Instruction Valid Flag
                   r.x.ctrl(branch_lane).branch.valid,     -- in  : Branch Valid Flag
-                  r.x.ctrl(branch_lane).inst(14 downto 12),
+                  funct3(r.x.ctrl(branch_lane).inst),
                   r.x.ctrl(branch_lane).branch.addr,      -- in  : Branch Target Address
                   r.x.ctrl(branch_lane).branch.naddr,     -- in  : Branch Next Address
                   r.x.ctrl(branch_lane).branch.taken,     -- in  : Branch Prediction
@@ -8562,23 +9842,24 @@ begin
 
 
     -- Exception Unit -----------------------------------------------------
-    exception_unit(x_branch_xc,                 -- in  : Late Branch Exception
-                   x_branch_cause,              -- in  : Late Branch Cause
-                   x_branch_tval,               -- in  : Late Branch Value
+    exception_unit(r,                           -- in  : Registers
+                   x_alu_op1,
+                   x_alu_op2,
                    x_csr_write_xc,              -- in  : CSR Write Exception
                    x_csr_write_cause,           -- in  : CSR Write Cause
-                   r,                           -- in  : Registers
                    x_flush,                     -- in  : Flush from fence
                    r.x.swap,                    -- in  : Swapped Instructions
-                   r.csr,                       -- in  : CSR Regfile
+                   r.csr.v,                     -- in  : Virtualized
                    r.x.int,                     -- in  : Interrupt pending on instruction
                    x_xc,                        -- out : Exceptions
                    x_xc_cause,                  -- out : Exceptions Cause
                    x_xc_tval,                   -- out : Exceptions Value
                    x_xc_ret,                    -- out : Return Level
+                   x_xc_nret,                   -- out : Return from a RNMI
                    x_xc_taken,                  -- out : Exception Taken
                    x_xc_lane_out,               -- out : Exception lane
                    x_xc_irq_taken,              -- out : IRQ taken lane
+                   x_xc_nirq_taken,             -- out : Resumable Non-maskable Interrupt taken
                    x_xc_taken_cause,            -- out : Exception Taken Cause
                    x_xc_taken_tval,             -- out : Exception Taken Value
                    x_xc_taken_tval2,            -- out : Exception Taken Value 2
@@ -8603,6 +9884,26 @@ begin
     if ext_sstc = 1 and r.csr.menvcfg.stce = '1' then
       wb_csr.mip(cause2int(IRQ_S_TIMER))     := sstc_stip;
     end if;
+
+    wb_csr.mip(11) := x_irq.meip;
+    wb_csr.mip(9)  := x_irq.seip;
+    wb_csr.mip(7)  := x_irq.mtip;
+    wb_csr.mip(3)  := x_irq.msip;
+    if x_irq.ssip = '1' then
+      wb_csr.mip(1)  := '1';
+    end if;
+    if imsic = 1 then
+      wb_csr.hgeip(GEILEN downto 1) := x_irq.hgeip;
+
+      wb_csr.mireg   := imsico.mireg;
+      wb_csr.sireg   := imsico.sireg;
+      wb_csr.vsireg  := imsico.vsireg;  -- If VGEIN is not a valid number vsireg = 0
+
+      wb_csr.mtopei  := imsico.mtopei;
+      wb_csr.stopei  := imsico.stopei;
+      wb_csr.vstopei := imsico.vstopei; -- If VGEIN is not a valid number vstopei = 0
+    end if;
+
     if ext_h /= 0 then
       wb_csr.mip(cause2int(IRQ_SG_EXTERNAL)) := to_bit(not all_0(r.csr.hgeip and r.csr.hgeie));
       wb_csr.mip(cause2int(IRQ_VS_EXTERNAL)) := wb_csr.hvip(cause2int(IRQ_VS_EXTERNAL)) or
@@ -8610,8 +9911,8 @@ begin
                       ;
       wb_csr.mip(cause2int(IRQ_VS_TIMER))    := wb_csr.hvip(cause2int(IRQ_VS_TIMER))
                       -- Sstc extension support
-                      or (to_bit(ext_sstc = 1) and 
-                          r.csr.menvcfg.stce and r.csr.henvcfg.stce and 
+                      or (to_bit(ext_sstc = 1) and
+                          r.csr.menvcfg.stce and r.csr.henvcfg.stce and
                           sstc_vstip);
       -- When hypervisor extension is enabled, VS-level interrupt is always
       -- delegated to HS-mode
@@ -8705,12 +10006,14 @@ begin
     -- Exception Registers Update -----------------------------------------
     exception_flow(x_xc_pc,                     -- in  : Exception PC
                    x_xc_taken,                  -- in  : Exception
+                   x_xc_nirq_taken,             -- in  : Resumable Non-maskable Interrupt taken
                    x_xc_taken_cause,            -- in  : Exception Cause
                    x_xc_taken_tval,             -- in  : Exception Trap Value I
                    x_xc_taken_tval2,            -- in  : Exception Trap Value 2
                    x_xc_inst,                   -- in  : Exception instruction
                    x_xc_taken_gva,              -- in  : Exception GVA Value
                    x_xc_ret,                    -- in  : Return Level
+                   x_xc_nret,                   -- in  : Return from a RNMI
                    wb_csr,                      -- in  : CSR Regfile
                    r.csr,                       -- in  : Registered CSR Regfile
                    r.x.rstate,                  -- in  : Core State
@@ -8836,8 +10139,8 @@ begin
     me_exceptions(r.m.ctrl,             -- in  : Instruction Ctrl
                   me_dcache_xc,         -- in  : Data Cache Exception
                   me_dcache_cause,      -- in  : Data Cache Cause
-                  me_dcache_tval,       -- in  : Data Cache Value
                   me_ret,               -- out : Return Privileged Level
+                  me_nret,              -- out : Return from a RNMI
                   me_xc,                -- out : Memory Stage Exception
                   me_xc_cause,          -- out : Memory Stage Cause
                   me_xc_tval            -- out : Memory Stage Value
@@ -8847,7 +10150,6 @@ begin
     null_dcache_gen(me_flush,           -- in  : Flush all from Exception Stage
                     me_xc,              -- in  : Instruction Exceptions
                     mem_branch_flush,   -- in  : branch missp from memory stage
-                    r.m.ctrl(0).inst,
                     m_valid,            -- in  : Instruction Valids
                     r.m.swap,           -- in  : Instructions Swapped
                     me_nullify          -- out : Data Cache Nullify
@@ -8886,12 +10188,12 @@ begin
     me_int  := '0';
 
     -- Highest priority at lowest index
-    me_irqprio_m       := (others => '0');
-    me_irqand_m        := r.csr.mip and r.csr.mie;
+    me_irqand_m                            := r.csr.mip and r.csr.mie;
     -- Supervisor external interrupt needs to be OR:ed in separately.
     me_irqand_m(cause2int(IRQ_S_EXTERNAL)) := me_irqand_m(cause2int(IRQ_S_EXTERNAL)) or
                                               (x_irq.seip and r.csr.mie(cause2int(IRQ_S_EXTERNAL)));
-    me_irqand_m        := me_irqand_m and not r.csr.mideleg;
+    me_irqand_m                            := me_irqand_m and not r.csr.mideleg;
+    me_irqprio_m       := (others => '0');
     me_irqprio_m(0)    := me_irqand_m(cause2int(IRQ_M_EXTERNAL));
     me_irqprio_m(1)    := me_irqand_m(cause2int(IRQ_M_SOFTWARE));
     me_irqprio_m(2)    := me_irqand_m(cause2int(IRQ_M_TIMER));
@@ -8904,15 +10206,24 @@ begin
       me_irqprio_m(10) := me_irqand_m(cause2int(IRQ_LCOF));
     end if;
 
-    me_irqprio_s       := (others => '0');
-    me_irqand_s        := r.csr.mip and r.csr.mie;
+    -- The value of mtopi is zero unless there is an interrupt pending in mip/miph
+    -- and enabled in mie/mieh that is not delegated to a lower privilege level
+    v.csr.mtopi      := (others => '0');
+    if ext_smaia = 1 and not all_0(me_irqand_m) then
+      lz_cnt := clz(reverse(me_irqprio_m));
+      me_irqcause_m  := cause_prio(u2i(lz_cnt(3 downto 0)));
+      -- Since machine IPRIO array is read-only zero for all its elements
+      -- IPRIO[7:0] field is always 1
+      v.csr.mtopi(0) := '1';
+      v.csr.mtopi(me_irqcause_m'LENGTH - 2 + 16 downto 16) := me_irqcause_m(me_irqcause_m'LENGTH - 2 downto 0);
+    end if;
+
+    me_irqand_s                            := r.csr.mip and r.csr.mie;
     -- Supervisor external interrupt needs to be OR:ed in separately.
     me_irqand_s(cause2int(IRQ_S_EXTERNAL)) := me_irqand_s(cause2int(IRQ_S_EXTERNAL)) or
                                               (x_irq.seip and r.csr.mie(cause2int(IRQ_S_EXTERNAL)));
-    me_irqand_s        := me_irqand_s and r.csr.mideleg and not r.csr.hideleg;
---    me_irqprio_s(0)    := me_irqand_s(cause2int(IRQ_M_EXTERNAL));
---    me_irqprio_s(1)    := me_irqand_s(cause2int(IRQ_M_SOFTWARE));
---    me_irqprio_s(2)    := me_irqand_s(cause2int(IRQ_M_TIMER));
+    me_irqand_s                            := me_irqand_s and r.csr.mideleg and not r.csr.hideleg;
+    me_irqprio_s       := (others => '0');
     me_irqprio_s(3)    := me_irqand_s(cause2int(IRQ_S_EXTERNAL));
     me_irqprio_s(4)    := me_irqand_s(cause2int(IRQ_S_SOFTWARE));
     me_irqprio_s(5)    := me_irqand_s(cause2int(IRQ_S_TIMER));
@@ -8925,15 +10236,24 @@ begin
     if ext_sscofpmf /= 0 then
       me_irqprio_s(10) := me_irqand_s(cause2int(IRQ_LCOF));
     end if;
-    me_irqprio_v       := (others => '0');
+
+    -- The value of stopi is zero unless: (a) there is an interrupt that is both pending in sip/siph and
+    -- enabled in sie/sieh, or, if the hypervisor extension is implemented, both pending in hip and
+    -- enabled in hie; and (b) the interrupt is not delegated to a lower privilege level (by hideleg, if the
+    -- hypervisor extension is implemented)
+    v.csr.stopi      := (others => '0');
+    if (ext_smaia = 1 or ext_ssaia = 1) and not all_0(me_irqand_s) then
+      lz_cnt         := clz(reverse(me_irqprio_s));
+      me_irqcause_s  := cause_prio(u2i(lz_cnt(3 downto 0)));
+      -- Since supervisor IPRIO array is read-only zero for all its elements
+      -- IPRIO[7:0] field is always 1
+      v.csr.stopi(0) := '1';
+      v.csr.stopi(me_irqcause_s'LENGTH - 2 + 16 downto 16) := me_irqcause_s(me_irqcause_s'LENGTH - 2 downto 0);
+    end if;
+
     me_irqand_v        := r.csr.mip and r.csr.mie;
     me_irqand_v        := me_irqand_v and r.csr.mideleg and r.csr.hideleg;
---    me_irqprio_v(0)    := me_irqand_v(cause2int(IRQ_M_EXTERNAL));
---    me_irqprio_v(1)    := me_irqand_v(cause2int(IRQ_M_SOFTWARE));
---    me_irqprio_v(2)    := me_irqand_v(cause2int(IRQ_M_TIMER));
---    me_irqprio_v(3)    := me_irqand_v(cause2int(IRQ_S_EXTERNAL));
---    me_irqprio_v(4)    := me_irqand_v(cause2int(IRQ_S_SOFTWARE));
---    me_irqprio_v(5)    := me_irqand_v(cause2int(IRQ_S_TIMER));
+    me_irqprio_v       := (others => '0');
     me_irqprio_v(6)    := me_irqand_v(cause2int(IRQ_SG_EXTERNAL));
     me_irqprio_v(7)    := me_irqand_v(cause2int(IRQ_VS_EXTERNAL));
     me_irqprio_v(8)    := me_irqand_v(cause2int(IRQ_VS_SOFTWARE));
@@ -8942,8 +10262,108 @@ begin
       me_irqprio_v(10) := me_irqand_v(cause2int(IRQ_LCOF));
     end if;
 
-    me_irqprio := (others => '0');
-    if all_0(me_irqand_m or me_irqand_s or me_irqand_v) then
+    -- If Smaia or Ssaia exntion is implemented Virtual Supervisor interrupts are
+    -- computed in a different way:
+    -- The interrupt with highest priority should be taken from different 5 candidates.
+    -- The candidates are mutually exclusive of one another in groups of 3 and 2 leaving
+    -- two "finalists". The one with highest priority will be the cause of the interrupt
+    v.csr.vstopi  := (others => '0');
+    me_int_v      := '0';
+    pending_int_v := '0';
+    iprio_v       := (others => '0');
+    icause_v      := (others => '0');
+    if ext_smaia = 1 or ext_ssaia = 1 then
+      iprio1_v                 := (others => '0');
+      icause1_v                := (others => '0');
+      if unsigned(r.csr.hstatus.vgein) = 0 then
+        if unsigned(r.csr.hvictl.iid) = 9 and unsigned(r.csr.hvictl.iprio) /= 0 then
+          -- Supervisor external interrupt (code 9) with priority number hvictl.IPRIO
+          iprio1_v(7 downto 0) := unsigned(r.csr.hvictl.iprio);
+          icause1_v            := u2vec(9, icause1_v);
+        end if;
+      elsif unsigned(r.csr.hstatus.vgein) <= GEILEN and me_irqand_v(10) = '1' then
+        if unsigned(r.csr.vstopei) /= 0 then
+          -- Supervisor external interrupt (code 9) with the priority number indicated by vstopei
+          iprio1_v             := unsigned(r.csr.vstopei(10 downto 0));
+          icause1_v            := u2vec(9, icause1_v);
+        else -- this makes no sense
+          -- Supervisor external interrupt (code 9) with priority number 256
+          iprio1_v             := u2vec(256, iprio1_v);
+          icause1_v            := u2vec(9, icause1_v);
+        end if;
+      end if;
+
+      iprio2_v               := (others => '0');
+      icause2_v              := (others => '0');
+      if r.csr.hvictl.vti = '0' then
+        -- All pending-and-enabled major interrupts indicated by vsip/vsiph and vsie/vsieh
+        -- other than a supervisor external interrupt (code 9), with priority numbers assigned
+        -- by hviprio1/hviprio1h and hviprio2/hviprio2h;
+        lz_cnt               := clz(reverse(me_irqprio_v));
+        me_irqcause_v        := cause_prio(u2i(lz_cnt(3 downto 0)));
+        icause2_v(me_irqcause_v'LENGTH - 2 downto 0) := unsigned(me_irqcause_v(me_irqcause_v'LENGTH - 2 downto 0));
+        if icause2_v = 2 then
+          icause2_v          := u2vec(1, icause2_v);
+        elsif icause2_v = 6 then
+          icause2_v          := u2vec(5, icause2_v);
+        else
+          icause2_v          := (others => '0');
+        end if;
+        -- IPRIO Virtual Supervisor array values are all hardwired to 0
+        iprio2_v             := (others => '0');
+      elsif r.csr.hvictl.vti = '1' and unsigned(r.csr.hvictl.iid) /= 9 then
+        -- The major interrupt specified by hvictl fields IID and IPRIO
+        icause2_v            := unsigned(r.csr.hvictl.iid(icause2_v'length-1 downto 0));
+        iprio2_v(7 downto 0) := unsigned(r.csr.hvictl.iprio);
+      end if;
+
+      -- Determine which one has the highest priority
+      if icause1_v /= 0 and icause2_v /= 0 then
+        if iprio2_v > iprio1_v then
+          iprio_v    := iprio1_v;
+          icause_v   := icause1_v;
+        elsif iprio1_v = iprio2_v then
+          -- Ties in the priority are broken comparing the default priority order
+          if unsigned(int_cause2prio(u2i(icause2_v))) > unsigned(int_cause2prio(u2i(icause1_v))) then
+            iprio_v  := iprio1_v;
+            icause_v := icause1_v;
+          else
+            iprio_v  := iprio2_v;
+            icause_v := icause2_v;
+          end if;
+        else
+          iprio_v    := iprio2_v;
+          icause_v   := icause2_v;
+        end if;
+      elsif icause1_v /= 0 then
+        iprio_v      := iprio1_v;
+        icause_v     := icause1_v;
+      elsif icause2_v /= 0 then
+        iprio_v      := iprio2_v;
+        icause_v     := icause2_v;
+      end if;
+
+      if icause_v /= 0 then
+        -- Priority is compressed to 8 bits following the rules
+        -- found in the AIA specs
+        if r.csr.hvictl.ipriom = '0' then
+          iprio_v    := u2vec(1, iprio_v);
+        elsif iprio_v > 255 then
+          iprio_v    := u2vec(255, iprio_v);
+        elsif iprio_v = 0 then
+          if unsigned(int_cause2prio(9)) < unsigned(int_cause2prio(u2i(icause_v))) then
+            iprio_v  := u2vec(255, iprio_v);
+          end if;
+        end if;
+
+        pending_int_v := '1';
+        v.csr.vstopi(icause_v'LENGTH + 16 - 1 downto 16) := std_logic_vector(icause_v);
+        v.csr.vstopi(7 downto 0) := std_logic_vector(iprio_v(7 downto 0));
+      end if;
+    end if;
+
+    me_irqprio     := (others => '0');
+    if all_0(me_irqand_m or me_irqand_s or me_irqand_v) and pending_int_v = '0' then
       -- No enabled interrupt present.
     elsif r.csr.dcsr.step = '1' and r.csr.dcsr.stepie /= '1' then
       -- Stepping, but not into interrupts.
@@ -8970,91 +10390,42 @@ begin
         -- Note that VS mode interrupts are always enabled in U mode.
         me_int     := '1';
         me_irqprio := me_irqprio_v;
+        if pending_int_v = '1' then
+          me_int_v := '1';
+        end if;
       end if;
     end if;
 
-    me_irqcause   := (others => '0');
+    me_irqcause     := (others => '0');
     if me_int = '1' then
       -- It is assumed here that the priority list is 16 elements long.
       -- Formality complains if the indexing can go outside the array.
       assert me_irqprio'length = 16 severity failure;
-      lz_cnt := clz(reverse(me_irqprio));
-      me_irqcause := cause_prio(u2i(lz_cnt(3 downto 0)));
+      lz_cnt        := clz(reverse(me_irqprio));
+      me_irqcause   := cause_prio(u2i(lz_cnt(3 downto 0)));
+      -- If the interrupt has been delegated to virtual Supervisor mode
+      -- and extension Smaia or Ssaia are enabled, the cause may be different
+      if me_int_v = '1' then
+        me_irqcause := '1' & std_logic_vector(icause_v + 1);
+      end if;
     end if;
 
-    -- This code only deals with IRQ in fixed modes, except for LCOF.
-    -- qqq XXX This code should be removed. The above is better (but possibly incorrect ;-)
-    if r.csr.dfeaturesen.new_irq = '0' then
-      me_int        := '0';
-      me_irqand     := r.csr.mip and r.csr.mie;
-      -- Supervisor external interrupt needs to be OR:ed in separately.
-      me_irqand(cause2int(IRQ_S_EXTERNAL)) := me_irqand(cause2int(IRQ_S_EXTERNAL)) or
-                                              (x_irq.seip and r.csr.mie(cause2int(IRQ_S_EXTERNAL)));
---      report "MIP&MIE " & tost_bits(me_irqand(15 downto 0));
-      me_irqcause   := (others => '0');
-      if      me_irqand(cause2int(IRQ_M_EXTERNAL)) = '1' then
-        me_irqcause := IRQ_M_EXTERNAL;
-      elsif   me_irqand(cause2int(IRQ_M_SOFTWARE)) = '1' then
-        me_irqcause := IRQ_M_SOFTWARE;
-      elsif   me_irqand(cause2int(IRQ_M_TIMER)) = '1' then
-        me_irqcause := IRQ_M_TIMER;
-      elsif ext_sscofpmf /= 0 and r.csr.mideleg(cause2int(IRQ_LCOF)) = '0' and
-              me_irqand(cause2int(IRQ_LCOF)) = '1' then
-        me_irqcause := IRQ_LCOF;
-      elsif   me_irqand(cause2int(IRQ_S_EXTERNAL)) = '1' then
-        me_irqcause := IRQ_S_EXTERNAL;
-      elsif   me_irqand(cause2int(IRQ_S_SOFTWARE)) = '1' then
-        me_irqcause := IRQ_S_SOFTWARE;
-      elsif   me_irqand(cause2int(IRQ_S_TIMER)) = '1' then
-        me_irqcause := IRQ_S_TIMER;
-      elsif me_h_en then
-        if ext_sscofpmf /= 0 and r.csr.mideleg(cause2int(IRQ_LCOF)) = '1' and r.csr.hideleg(cause2int(IRQ_LCOF)) = '0' and
-              me_irqand(cause2int(IRQ_LCOF)) = '1' then
-          me_irqcause := IRQ_LCOF;
-        elsif me_irqand(cause2int(IRQ_SG_EXTERNAL)) = '1' then
-          me_irqcause := IRQ_SG_EXTERNAL;
-        elsif me_irqand(cause2int(IRQ_VS_EXTERNAL)) = '1' then
-          me_irqcause := IRQ_VS_EXTERNAL;
-        elsif me_irqand(cause2int(IRQ_VS_SOFTWARE)) = '1' then
-          me_irqcause := IRQ_VS_SOFTWARE;
-        elsif me_irqand(cause2int(IRQ_VS_TIMER)) = '1' then
-          me_irqcause := IRQ_VS_TIMER;
-        elsif ext_sscofpmf /= 0 and me_irqand(cause2int(IRQ_LCOF)) = '1' then
-          me_irqcause := IRQ_LCOF;
+    -- Resumable Non-maskable Interrupts
+    v.x.nirqpend := '0';
+    if ext_smrnmi = 1 then
+      if r.csr.mnstatus.nmie = '1' then
+        if not all_0(nirqi) then 
+          -- Causes to be defined
+          --me_irqcause := u2cause(clz(reverse(nirqi)), '1');
+          me_irqcause(me_irqcause'high) := '1';
+          me_irqcause(0) := '1';
+          me_int := '1';
+          v.x.nirqpend := '1';
         end if;
-      elsif ext_sscofpmf /= 0 and r.csr.mideleg(cause2int(IRQ_LCOF)) = '1' and
-              me_irqand(cause2int(IRQ_LCOF)) = '1' then
-          me_irqcause := IRQ_LCOF;
-      end if;
-
-      if not all_0(me_irqand) and
-         (r.csr.dcsr.stepie = '1' or r.csr.dcsr.step = '0') then
-        -- Some enabled IRQ pending, no step (or into interrupts is allowed).
-        if (r.csr.prv = PRIV_LVL_M and r.csr.mstatus.mie = '1') or
-           r.csr.prv = PRIV_LVL_S or r.csr.prv = PRIV_LVL_U then
-          -- In M with IRQ enabled, or in lower priority mode.
-          if r.csr.mideleg(u2i(me_irqcause(3 downto 0))) = '1' then
-            -- Cause of interrupt is delegated from M.
-            if (r.csr.mstatus.sie = '1' and r.csr.prv = PRIV_LVL_S) or
-               r.csr.v = '1' or r.csr.prv = PRIV_LVL_U then
-              -- In S/HS with IRQ enabled, or in lower priority mode.
-              if me_h_en and r.csr.hideleg(u2i(me_irqcause(3 downto 0))) = '1' then
-                -- Cause of interrupt is delegated from HS.
-                if r.csr.v = '1' and ((r.csr.vsstatus.sie = '1' and r.csr.prv = PRIV_LVL_S) or
-                    r.csr.prv = PRIV_LVL_U) then
-                  -- In VS with IRQ enabled, or in lower priority mode.
-                  me_int := '1';
-                end if;
-              else
-                -- S, or cause of interrupt was not delegated from HS.
-                me_int := '1';
-              end if;
-            end if;
-          else
-            -- Cause of interrupt was not delegated from M.
-            me_int   := '1';
-          end if;
-        end if;
+      else 
+        -- If nmie is set to 0 all interrupts are masked
+        me_int := '0';
+        me_irqcause := (others => '0');
       end if;
     end if;
 
@@ -9078,6 +10449,7 @@ begin
       v.x.rfa1(i)         := r.m.rfa1(i);
       v.x.rfa2(i)         := r.m.rfa2(i);
       v.x.result(i)       := me_result(i)(wordx'range);
+      v.x.result0(i)      := all_0(v.x.result(i));
       v.x.trig.valid(i)   := r.m.trig.valid(i) and not me_flush;
       v.x.trig.nullify(i) := r.m.trig.nullify(i);
       -- Previous code guarantees that there is no CSR write to registers
@@ -9100,14 +10472,23 @@ begin
     v.x.rasi              := r.m.rasi;
     v.x.spec_ld           := r.m.spec_ld;
     v.x.csrw              := me_csrw;
+    v.x.nret              := me_nret;
     v.x.ret               := me_ret;
     if not all_0(v.x.int) then      -- No xRET if IRQ.
-      v.x.ret := (others => '0');
+      v.x.ret             := (others => '0');
     end if;
     v.x.fpuflags          := r.m.fpuflags;
     v.x.trig.hit          := r.m.trig.hit;
     v.x.trig.action       := r.m.trig.action;
     v.x.trig.pending      := r.m.trig.pending and not x_trig_taken;
+
+    -- FLI.S/D/H
+    fpu_ctrl      := r.m.ctrl(fpu_lane);
+    if ext_zfa = 1 and funct5(fpu_ctrl.inst) = R_FMV_W_X and
+       rs2(fpu_ctrl.inst) = "00001" and funct3(fpu_ctrl.inst) = "000" then
+      v.x.fpu_imm := imm_create(active_extensions,
+                                fpu_ctrl.inst(19 downto 15), fpu_ctrl.inst(26 downto 25));
+    end if;
 
     -- From Data Cache ----------------------------------------------------
     if v_fusel_eq(r, m, memory_lane, LD) or not dco.mds = '1' then
@@ -9136,11 +10517,11 @@ begin
     v.x.mexc        := dco.mexc;
     v.x.exctype     := dco.exctype;
     v.x.exchyper    := dco.exchyper;
-    v.x.tval2       := dco.addrhyper(XLEN-1 downto 0);
+    v.x.tval2       := dco.addrhyper(XLEN - 1 downto 0);
     v.x.tval2type   := dco.typehyper;
 
     --BTB FLUSH---
-    mode_flush := '0';
+    mode_flush     := '0';
     if r.csr.prv /= v.csr.prv then
       if r.csr.prv = PRIV_LVL_M or v.csr.prv = PRIV_LVL_M then
         mode_flush := '1';
@@ -9153,9 +10534,10 @@ begin
     end if;
 
 
-    btbi.flush  <= (wb_btbi.flush or mode_flush or r.csr.dfeaturesen.btb_dis or not(icache_en) ) and holdn;
+    btbi.flush <= (wb_btbi.flush or mode_flush or r.csr.dfeaturesen.btb_dis or not(icache_en) ) and holdn;
 
     -- To Data Cache ------------------------------------------------------
+    dci <= nv_dcache_in_none;   -- Just in case
     if dci.maddress'length < r.m.address'length then
       dci.maddress                    <= r.m.address(dci.maddress'range);
     else
@@ -9172,14 +10554,9 @@ begin
     dci.flush           <= wb_fence_i;
     dci.dsuen           <= r.m.dci.dsuen;
     dci.msu             <= v.csr.prv(0) or v.csr.prv(1);    -- prv for dcache
-    dci.esu             <= '0';
-    dci.intack          <= '0';
-    dci.mmucacheclr     <= '0';
     dci.edata           <= me_stdata;
     dci.specread        <= v.x.spec_ld;
     dci.specreadannul   <= dci_specreadannulv;
-    dci.iudiag_miso.accrdy <= '1';
-    dci.iudiag_miso.rddata <= (others => '0');
 
     -----------------------------------------------------------------------
     -- EXECUTE STAGE
@@ -9225,7 +10602,7 @@ begin
                 ex_alu_op2(branch_lane),                  -- in  : Forwarded Op2
                 r.e.ctrl(branch_lane).valid,              -- in  : Enable/Valid Signal
                 r.e.ctrl(branch_lane).branch.valid,       -- in  : Branch Valid Signal
-                r.e.ctrl(branch_lane).inst(14 downto 12), -- in  : Inst funct3
+                funct3(r.e.ctrl(branch_lane).inst),       -- in  : Inst funct3
                 r.e.ctrl(branch_lane).branch.addr,        -- in  : Branch Target Address
                 r.e.ctrl(branch_lane).branch.naddr,       -- in  : Branch Next Address
                 r.e.ctrl(branch_lane).branch.taken,       -- in  : Prediction
@@ -9245,7 +10622,9 @@ begin
                        );
 
     -- Jump Unit ----------------------------------------------------------
-    jump_unit(r.e.ctrl(branch_lane),       -- in  : Ctrl
+    jump_unit(active_extensions,
+              r.e.ctrl(branch_lane).fusel, -- in  : Functional Unit
+              r.e.ctrl(branch_lane).valid, -- in  : Valid Instruction
               r.e.jimm,                    -- in  : Imm
               r.e.raso,                    -- in  : RAS
               ex_jump_op1,                 -- in  : Forwarded data
@@ -9452,6 +10831,14 @@ begin
       v.m.ctrl(branch_lane).branch.addr := ex_jump_addr;
     end if;
 
+    -- If NMIE equals 0 the hart behaves as though mstatus.MPRV were clear
+    ex_mprv := r.csr.mstatus.mprv;
+    if ext_smrnmi = 1 then
+      if r.csr.mnstatus.nmie = '0' then
+        ex_mprv := '0';
+      end if;
+    end if;
+
     -- Store Data ---------------------------------------------------------
     dcache_gen(r.e.ctrl(memory_lane).inst,   -- in  : Instruction
                r.e.ctrl(memory_lane).fusel,  -- in  : Functional Unit
@@ -9460,7 +10847,7 @@ begin
                r.csr.dfeaturesen,            -- in  : ASI information
                r.csr.prv,                    -- in  : Privilege level
                r.csr.v,                      -- in  : Virtualization mode
-               r.csr.mstatus.mprv,           -- in  :
+               ex_mprv,                      -- in  :
                r.csr.mstatus.mpv,            -- in  :
                r.csr.mstatus.mpp,            -- in  :
                r.csr.mstatus.mxr,            -- in  :
@@ -9571,6 +10958,7 @@ begin
     end if;
     ra_csr_address := csr_addr(r, a);
 
+
     if dmen = 1 then
       if (r.dm.cmdexec(1) and not r.dm.write and r.dm.cmd(0)) = '1' and
          r.x.rstate = dhalt then
@@ -9613,7 +11001,7 @@ begin
              iu_fflags,                 -- in  : FPU flags in IU transit
              mmu_csr,                   -- in  : Status form Cache controller
              s_time,                    -- in  : Shadow MTIME for S-mode
-             s_vtime,                   -- in  : Shadow MTIME for vitalized mode 
+             s_vtime,                   -- in  : Shadow MTIME for vitalized mode
              ra_csr,                    -- out : CSR Register Value
              ra_csr_read_xc,            -- out : Read Exception
              ra_csr_read_cause          -- out : Read Cause
@@ -9747,18 +11135,19 @@ begin
 
 
     -- Instruction Control ------------------------------------------------
-    instruction_control(r,              -- in  : Registers
-                        fpuo.ready,     -- in  : FPU not busy
-                        fpuo.idle,      -- in  : FPU completely idle
-                        ic_lddp,        -- out : Load Dependency Counter
-                        ic_stb2b,       -- out : Store b2b Counter
-                        ic_lbranch,     -- out : Late Branch Flag
-                        ic_lalu,        -- out : Late ALU Flag
-                        v.e.spec_ld,    -- out : Speculative load flag
-                        v.e.accesshold, -- out : Memory access hold due to CSR changes.
-                        v.e.exechold,   -- out : Execution hold due to pipeline flushing instruction.
-                        v.e.fpuhold,    -- out : Execution hold due to FPU instructions.
-                        ic_hold_issue   -- out : Hold Issue Signal
+    instruction_control(r,               -- in  : Registers
+                        fpuo.ready,      -- in  : FPU not busy
+                        fpuo.idle,       -- in  : FPU completely idle
+                        ic_lddp,         -- out : Load Dependency Counter
+                        ic_stb2b,        -- out : Store b2b Counter
+                        ic_lbranch,      -- out : Late Branch Flag
+                        ic_lalu,         -- out : Late ALU Flag
+                        v.e.spec_ld,     -- out : Speculative load flag
+                        v.x.aia_acchold, -- out : Memory access hold due to CSR changes.
+                        v.e.accesshold,  -- out : Memory access hold due to CSR changes.
+                        v.e.exechold,    -- out : Execution hold due to pipeline flushing instruction.
+                        v.e.fpuhold,     -- out : Execution hold due to FPU instructions.
+                        ic_hold_issue    -- out : Hold Issue Signal
                         );
 
     -- To the ALUs --------------------------------------------------------
@@ -9783,6 +11172,7 @@ begin
       de_nullify   := '1';
     end if;
 
+    de_inst        := (others => iword_none);
     de_inst(0).d   := r.d.inst(0)(31 downto 0);
     de_inst(0).dc  := r.d.inst(0)(15 downto 0);
     de_inst(1).d   := r.d.inst(0)(63 downto 32);
@@ -9797,11 +11187,13 @@ begin
       de_inst(1).dc := (others => '0');
     end if;
 
+    r_d_valid := r.d.valid;
+
     -- RVC Aligner --------------------------------------------------------
     rvc_aligner(active_extensions,
                 de_inst,                      -- in  : Fetch Instructions
                 r.d.pc,                       -- in  : Decode PC
-                r.d.valid,                    -- in  : Valid Instructions
+                r_d_valid,                    -- in  : Valid Instructions
                 not (r.csr.mstatus.fs = "00" or
                 (r.csr.v = '1' and r.csr.vsstatus.fs = "00")),
                 de_rvc_aligned,               -- out : Aligned Instructions
@@ -9831,7 +11223,7 @@ begin
 
     de_rvc_aligned(0).xc   := "000";
     de_rvc_aligned(1).xc   := "000";
-    if r.d.mexc = '1' and r.d.valid = '1' then
+    if r.d.mexc = '1' and r_d_valid = '1' then
       de_rvc_aligned(0).xc := r.d.exchyper & r.d.exctype & '1';
       de_rvc_aligned(1).xc := r.d.exchyper & r.d.exctype & '1';
     -- In case it is lsb of an unaligned instruction,
@@ -9840,6 +11232,7 @@ begin
     end if;
 
     -- RVC Expander -----------------------------------------------------
+    de_mux_instruction         := (others => iword_none);
     for i in fetch'range loop
       de_mux_instruction(i).d  := de_rvc_aligned(i).d;
       de_mux_instruction(i).xc := de_rvc_aligned(i).xc;
@@ -9862,7 +11255,7 @@ begin
               de_inst,
               r.d.buff,
               r.d.prediction,
-              r.d.valid,
+              r_d_valid,
               r.d.pc,
               de_bjump_buff,
               de_bjump,
@@ -10046,10 +11439,10 @@ begin
     end if;
 
     late_alu_precheck(r,
-                      de_inst_buff,
-                      de_inst_valid,
-                      ic_lalu,
-                      de_lalu_pre);
+                      de_inst_buff,      -- in  : Aligned Instructions
+                      de_inst_valid,     -- in  : Valid Signals
+                      ic_lalu,           -- in  : Late ALU Flag
+                      de_lalu_pre);      -- out :
 
     de_rvc_buffer_inst_exp := de_rvc_buffer_inst.d;
     de_rvc_buffer_inst_xc  := '0';
@@ -10078,6 +11471,32 @@ begin
       end if;
     end if;
 
+    for i in fetch'range loop
+      exception_check(active_extensions,
+                      envcfg,
+                      not (r.csr.mstatus.fs = "00" or
+                           (r.csr.v = '1' and r.csr.vsstatus.fs = "00")),
+                      not fpu_illegal(active_extensions, de_inst_buff(i).d, r.csr.frm),
+                      not alu_illegal(active_extensions, de_inst_buff(i).d),
+                      illegalTval0 = 1,
+                      de_inst_buff(i).d,   -- in  : Instruction
+                      de_cinst_buff(i),    -- in  : Compressed instruction
+                      de_pc(i),            -- in  : PC
+                      de_inst_comp_ill(i), -- in  : Illegal compressed inst
+                      r.csr.misa,          -- in  : CSR MISA
+                      r.csr.prv,           -- in  : Current Privileged Level
+                      r.csr.v,             -- in  : Current Virtualization mode
+                      r.csr.mstatus.tsr,   -- in  : Trap SRET bit
+                      r.csr.mstatus.tw,    -- in  : Timeout Wait bit
+                      r.csr.mstatus.tvm,   -- in  : Trap Virtual Memory bit
+                      r.csr.hstatus.vtsr,  -- in  : Virtual Trap SRET bit
+                      r.csr.hstatus.vtw,   -- in  : Virtual Timeout Wait bit
+                      r.csr.hstatus.vtvm,  -- in  : Virtual Trap Virtual Memory bit
+                      r.csr.hstatus.hu,    -- in  : Hypervisor User mode
+                      de_xc(i),            -- out : Exception Valid
+                      de_xc_cause(i),      -- out : Exception Cause
+                      de_xc_tval(i));      -- out : Exception Value
+    end loop;
 
     if single_issue = 0 then
       -- Issue Checker -----------------------------------------------------
@@ -10091,6 +11510,7 @@ begin
                        r.csr.dfeaturesen.dual_dis,
                        r.csr.dcsr.step,   -- in  : DCSR step
                        r.a.lalu_pre,      -- in  : Late ALUs from RA
+                       de_xc,             -- in  : Exception valid
                        r.d.mexc,          -- in  : Fetch exception
                        rd(v, e, 0),       -- in  : rd register from RA
                        v.e.ctrl(0).rdv,   -- in  : Valid rd register from RA
@@ -10127,7 +11547,7 @@ begin
               v.d.buff.valid            -- out : Buffer valid
               );
 
-    if r.d.mexc = '1' and r.d.valid = '1' then
+    if r.d.mexc = '1' and r_d_valid = '1' then
       v.d.buff.valid := '0';
     end if;
 
@@ -10139,56 +11559,38 @@ begin
 
     -- Decode Instructions
     for i in fetch'range loop
-      de_rfa1(i)       := rs1_gen(de_inst_buff(i).d);
-      de_rfa2(i)       := rs2_gen(de_inst_buff(i).d);
+      de_rfa1(i)       := rs1_gen(active_extensions,
+                                  de_inst_buff(i).d);
+      de_rfa2(i)       := rs2_gen(active_extensions,
+                                  de_inst_buff(i).d);
       -- For register file read port, generate non-masked address to reduce
       -- critical path, since register value does not matter when source
       -- is not valid.
-      de_rfa1_nmask(i)  := de_inst_buff(i).d(19 downto 15);
-      de_rfa2_nmask(i)  := de_inst_buff(i).d(24 downto 20);
+      de_rfa1_nmask(i) := rs1(de_inst_buff(i).d);
+      de_rfa2_nmask(i) := rs2(de_inst_buff(i).d);
 
-      de_rfrd_valid(i) := rd_gen(de_inst_buff(i).d);
+      de_rfrd_valid(i) := rd_gen(active_extensions,
+                                 de_inst_buff(i).d);
 
-      imm_gen(de_inst_buff(i).d,        -- in  : Instruction
+      imm_gen(active_extensions,
+              de_inst_buff(i).d,        -- in  : Instruction
               de_imm_valid(i),          -- out : Immediate Valid Flag
               de_imm(i),                -- out : Immediate Value
               de_bj_imm(i));            -- out : only bjump imm value
 
       de_pc_valid(i)   := pc_valid(de_inst_buff(i).d);
 
-      de_csr_valid(i)  := to_bit(is_csr(de_inst_buff(i).d));
+      de_csr_valid(i)  := to_bit(is_csr(active_extensions,
+                                        de_inst_buff(i).d));
 
-      de_csr_rdo(i) := '0';
-      if csr_read_only(de_inst_buff(i).d) then
-        de_csr_rdo(i) := '1';
+      de_csr_rdo(i)    := '0';
+      if csr_read_only(active_extensions, de_inst_buff(i).d) then
+        de_csr_rdo(i)  := '1';
       end if;
 
       de_fusel(i)      := fusel_gen(active_extensions,
-                                    de_inst_buff(i).d);   -- in  : Instruction
-
-      exception_check(active_extensions,
-                      envcfg,
-                      not (r.csr.mstatus.fs = "00" or
-                           (r.csr.v = '1' and r.csr.vsstatus.fs = "00")),
-                      not alu_illegal(active_extensions, de_inst_buff(i).d),
-                      illegalTval0 = 1,
-                      de_inst_buff(i).d,   -- in  : Instruction
-                      de_cinst_buff(i),    -- in  : Compressed instruction
-                      de_pc(i),            -- in  : PC
-                      de_inst_comp_ill(i), -- in  : Illegal compressed inst
-                      r.csr.misa,          -- in  : CSR MISA
-                      r.csr.prv,           -- in  : Current Privileged Level
-                      r.csr.v,             -- in  : Current Virtualization mode
-                      r.csr.mstatus.tsr,   -- in  : Trap SRET bit
-                      r.csr.mstatus.tw,    -- in  : Timeout Wait bit
-                      r.csr.mstatus.tvm,   -- in  : Trap Virtual Memory bit
-                      r.csr.hstatus.vtsr,  -- in  : Virtual Trap SRET bit
-                      r.csr.hstatus.vtw,   -- in  : Virtual Timeout Wait bit
-                      r.csr.hstatus.vtvm,  -- in  : Virtual Trap Virtual Memory bit
-                      r.csr.hstatus.hu,    -- in  : Hypervisor User mode
-                      de_xc(i),            -- out : Exception Valid
-                      de_xc_cause(i),      -- out : Exception Cause
-                      de_xc_tval(i));      -- out : Exception Value
+                                    de_inst_buff(i).d   -- in  : Instruction
+                                   );
     end loop;
 
     -- Avoid getting two illegal instructions logged.
@@ -10244,7 +11646,7 @@ begin
 
     -- inull icache after encountering an instruction memory exception
     mexc_inull   := '0';
-    if (r.d.mexc = '1' and r.d.valid = '1') then
+    if (r.d.mexc = '1' and r_d_valid = '1') then
       mexc_inull := '1';
     end if;
 
@@ -10336,29 +11738,6 @@ begin
       v.a.ctrl(fpu_lane).fpu := uadd(r.a.ctrl(fpu_lane).fpu, 1);
     end if;
 
-    -- Related to CSR write hold checks in access stage
-    v.a.csrw_eq := (others => '0');
-    if v.a.ctrl(csr_lane).inst(31 downto 20) = r.a.ctrl(csr_lane).inst(31 downto 20) then
-      if csr_ok(r,a) then
-        v.a.csrw_eq(0) := '1';
-      end if;
-    end if;
-    if v.a.ctrl(csr_lane).inst(31 downto 20) = r.e.ctrl(csr_lane).inst(31 downto 20) then
-      if csr_ok(r,e) then
-        v.a.csrw_eq(1) := '1';
-      end if;
-    end if;
-    if v.a.ctrl(csr_lane).inst(31 downto 20) = r.m.ctrl(csr_lane).inst(31 downto 20) then
-      if csr_ok(r,m) then
-        v.a.csrw_eq(2) := '1';
-      end if;
-    end if;
-    if v.a.ctrl(csr_lane).inst(31 downto 20) = r.x.ctrl(csr_lane).inst(31 downto 20) then
-      if csr_ok(r,x) then
-        v.a.csrw_eq(3) := '1';
-      end if;
-    end if;
-
     v.a.csr.r             := '0';
     v.a.csr.w             := '0';
     if csr_ok(v, a) then
@@ -10371,7 +11750,12 @@ begin
     if csr_read_only(v, a) then
       v.a.csr.w           := '0';
     end if;
-    v.a.csr.category      := csr_category(csr_addr(v, a));
+    v.a.csr.addr          := csr_addr(active_extensions, v.a.ctrl(csr_lane).inst);
+    if is_csr_access(v.a.ctrl(csr_lane).inst) then
+      v.a.csr.category    := csr_category(csr_access_addr(v, a));
+    else
+      v.a.csr.category    := (others => '0');
+    end if;
     v.a.csr.ctrl          := csralu_gen(v.a.ctrl(csr_lane).inst);
 
     de_bhto_taken := de_rvc_bhto_taken;
@@ -10389,11 +11773,17 @@ begin
     v.a.raso.hit   := de_raso.hit;
     v.a.raso.rdata := de_raso.rdata;
 
-    branch_misc(v.a.ctrl(branch_lane),
+    branch_misc(active_extensions,
+                v.a.ctrl(branch_lane).fusel,
+                v.a.ctrl(branch_lane).valid,
+                v.a.ctrl(branch_lane).xc,
+                v.a.ctrl(branch_lane).pc,
+                v.a.ctrl(branch_lane).comp,
                 de_bhto_taken(branch_lane),
                 de_btbo_hit(branch_lane),
                 de_bj_imm,
                 de_swap,
+                branch_lane,
                 de_branch_valid,
                 de_branch_taken,
                 de_branch_hit,
@@ -10407,16 +11797,14 @@ begin
     v.a.ctrl(branch_lane).branch.addr  := de_branch_addr;
     v.a.ctrl(branch_lane).branch.naddr := de_branch_next;
     v.a.ctrl(branch_lane).branch.taken := de_branch_taken;
-    v.a.ctrl(branch_lane).branch.dir   := de_bhto_dir1;
     v.a.ctrl(branch_lane).branch.hit   := de_branch_hit;
 
-    -- Invalid Second Instruction ----------------------------------------
-    if de_branch = '1' and v.a.swap = '1' then
-      v.a.ctrl(0).valid := '0';
-    end if;
 
     -- Early JAL ----------------------------------------------------------
-    ujump_resolve(v.a.ctrl(branch_lane),        -- in  : Instruction
+    ujump_resolve(active_extensions,
+                  v.a.ctrl(branch_lane).inst,   -- in  : Instruction
+                  v.a.ctrl(branch_lane).valid,  -- in  : Valid Instruction
+                  v.a.ctrl(branch_lane).xc,     -- in  : Exception
                   de_branch_addr,               -- in  : Computed Target
                   de_branch_next,               -- in  : Next Pc
                   de_bhto_taken(branch_lane),   -- in  : Prediction
@@ -10439,12 +11827,7 @@ begin
       if de_jump_xc = '1' then
         v.a.ctrl(branch_lane).xc    := '1';
         v.a.ctrl(branch_lane).cause := de_jump_cause;
-        v.a.ctrl(branch_lane).tval  := pc2xlen(de_jump_addr);
-      -- Jump from RAS
-      elsif de_ras_jump_xc = '1' then
-        v.a.ctrl(branch_lane).xc    := '1';
-        v.a.ctrl(branch_lane).cause := de_ras_jump_cause;
-        v.a.ctrl(branch_lane).tval  := de_ras_jump_tval;
+        v.a.ctrl(branch_lane).tval  := de_jump_tval;
       -- Early Branch
       elsif de_branch_xc = '1' then
         v.a.ctrl(branch_lane).xc    := '1';
@@ -10584,12 +11967,12 @@ begin
         if ico.way(IWAYMSB downto 0) = u2vec(i, IWAYMSB + 1) then
           v.d.inst(0) := ico.data(i);
           if single_issue /= 0 then
-            v.d.inst(0)(31 downto 0) := ico.data(i)(31 downto 0);
+            v.d.inst(0)(31 downto 0)     := ico.data(i)(31 downto 0);
             if r.f.pc(2) = '1' then
-              v.d.inst(0)(31 downto 0) := ico.data(i)(63 downto 32);
+              v.d.inst(0)(31 downto 0)   := ico.data(i)(63 downto 32);
             end if;
             if ico.mds = '0' then
-              v.d.inst(0)(31 downto 0) := ico.data(i)(31 downto 0);
+              v.d.inst(0)(31 downto 0)   := ico.data(i)(31 downto 0);
               if r.d.pc(2) = '1' then
                 v.d.inst(0)(31 downto 0) := ico.data(i)(63 downto 32);
               end if;
@@ -10601,7 +11984,7 @@ begin
       v.d.mexc        := ico.mexc;                    -- access exception
       v.d.exctype     := ico.exctype;
       v.d.exchyper    := ico.exchyper;
-      v.d.tval2       := ico.addrhyper(XLEN-1 downto 0);
+      v.d.tval2       := ico.addrhyper(XLEN - 1 downto 0);
       v.d.tval2type   := ico.typehyper;
       -- Progam buffer
       if f_pb_exec = '1' then
@@ -10697,6 +12080,10 @@ begin
     if r.f.valid = '1' then
       v.d.valid := '1';
     end if;
+
+--    if r.d.inull = '1' then
+--      v.d.valid := '0';
+--    end if;
 
     if de_nullify = '1' then
       for i in lanes'range loop
@@ -10857,6 +12244,10 @@ begin
     -- 7 -> BTB Hit from Decode Stage
     -- 8 -> Next Pc
 
+    v.f.btb_hit  := '0';
+    ras_hit_1st  := '0';
+    v.f.ras_hit  := '0';
+
     -- Hierarchical First Stage
     mux_valid    := '1';
     mux_reread   := '0';
@@ -10888,6 +12279,7 @@ begin
     -- First Stage ---------------------------------------------------------
     elsif mux_valid = '1' then
       v.f.pc     := mux_pc; -- From level 1 mux
+      v.f.ras_hit := ras_hit_1st;
     -- Control Flow Management ---------------------------------------------
     elsif ex_jump = '1' then
       v.f.pc     := ex_jump_addr; -- From AGU in Execute Stage
@@ -10902,6 +12294,7 @@ begin
     -- Branch Target Buffer Output -----------------------------------------
     elsif de_hit = '1' then
       v.f.pc     := de_target;
+      v.f.btb_hit := '1';
     -- Incremental PC ------------------------------------------------------
     else
       v.f.pc     := npc(r.f.pc);
@@ -10924,7 +12317,7 @@ begin
     -- Control Flow Management ---------------------------------------------
     elsif ex_jump = '1' then
       next_pc   := ex_jump_addr; -- From AGU in Execute Stage
-    -- early branch or JAL -----------------------------------------------------------------
+    -- Early branch or JAL -----------------------------------------------------------------
     elsif de_bjump = '1' then
       next_pc   := de_bjump_addr; -- Generated in Decode Stage
     -- Branch Target Buffer Output -----------------------------------------
@@ -11130,13 +12523,19 @@ begin
       v.csr.fflags := v.csr.fflags or r.wb.fpuflags;
     end if;
 
-    -- Speculative updating of FPU register dirty status
-    -- It does not matter that we sometimes set dirty for instructions
-    -- that are later nullified. This is allowed by the standard.
-    if (r.a.ctrl(fpu_lane).valid    = '1' and r.a.ctrl(fpu_lane).xc = '0' and
-        is_fpu_modify(r.a.ctrl(fpu_lane).inst)) or
-       (r.a.ctrl(memory_lane).valid = '1' and r.a.ctrl(memory_lane).xc = '0' and
-        is_fpu_modify(r.a.ctrl(memory_lane).inst)) then
+    -- Any FPU instruction that commits and has an FPU register destination
+    -- must mark the FPU registers as dirty.
+    -- It is not a problem if the operation actually completes later.
+    if (
+        (r.x.ctrl(fpu_lane).valid = '1') and
+        is_fpu_modify(r.x.ctrl(fpu_lane).inst) and
+        (x_xc_flush(fpu_lane) or x_flush) = '0'
+       ) or
+       (
+        (r.x.ctrl(memory_lane).valid = '1') and
+        is_fpu_modify(r.x.ctrl(memory_lane).inst) and
+        (x_xc_flush(memory_lane) or x_flush) = '0'
+       ) then
       v.csr.mstatus.fs    := "11";
       if r.csr.v = '1' then
         v.csr.vsstatus.fs := "11";
@@ -11145,7 +12544,7 @@ begin
     -- Force always dirty?
     if v.csr.dfeaturesen.fs_dirty = '1' then
       if v.csr.mstatus.fs /= "00" then
-        v.csr.mstatus.fs := "11";
+        v.csr.mstatus.fs  := "11";
       end if;
       if v.csr.vsstatus.fs /= "00" then
         v.csr.vsstatus.fs := "11";
@@ -11154,23 +12553,36 @@ begin
 
     if holdn = '0' then
       -- Things that update during hold.
-      v.evt(CSR_HPM_HOLD)         := '1';
+      v.evt(CSR_HPM_HOLD)            := '1';
     else
-      v.evt(CSR_HPM_DUAL_ISSUE)   := to_bit(single_issue = 0) and v.wb.ctrl(0).valid and v.wb.ctrl(one).valid;
-      v.evt(CSR_HPM_SINGLE_ISSUE) := v.wb.ctrl(0).valid xor (to_bit(single_issue = 0) and v.wb.ctrl(one).valid);
-      v.evt(CSR_HPM_BRANCH_MISS)  := (mem_branch or wb_branch);
-      v.evt(CSR_HPM_HOLD_ISSUE)   := de_hold_pc;
-      v.evt(CSR_HPM_BRANCH)       := to_bit(v_fusel_eq(v, wb, branch_lane, BRANCH));
-      v.evt(CSR_HPM_LOAD_DEP)     := ic_lddp;
-      v.evt(CSR_HPM_STORE_B2B)    := ic_stb2b;
-      v.evt(CSR_HPM_JALR)         := to_bit(v_fusel_eq(v, wb, branch_lane, JALR));
-      v.evt(CSR_HPM_JAL)          := to_bit(v_fusel_eq(v, wb, branch_lane, JAL));
+      v.evt(CSR_HPM_DUAL_ISSUE)      := to_bit(single_issue = 0) and r.wb.ctrl(0).valid and r.wb.ctrl(one).valid;
+      v.evt(CSR_HPM_SINGLE_ISSUE)    := r.wb.ctrl(0).valid xor (to_bit(single_issue = 0) and r.wb.ctrl(one).valid);
+      v.evt(CSR_HPM_BTB_HIT)         := r.f.btb_hit;
+      v.evt(CSR_HPM_BRANCH_MISS)     := (mem_branch or wb_branch);
+      v.evt(CSR_HPM_HOLD_ISSUE)      := de_hold_pc;
+      v.evt(CSR_HPM_BRANCH)          := to_bit(v_fusel_eq(r, wb, branch_lane, BRANCH));
+      v.evt(CSR_HPM_LOAD_DEP)        := ic_lddp;
+      v.evt(CSR_HPM_STORE_B2B)       := ic_stb2b;
+      v.evt(CSR_HPM_JALR)            := to_bit(v_fusel_eq(r, wb, branch_lane, JALR));
+      v.evt(CSR_HPM_JAL)             := to_bit(v_fusel_eq(r, wb, branch_lane, JAL));
+      v.evt(CSR_HPM_RAS_HIT)         := r.f.ras_hit;
     end if;
-    v.evt(CSR_HPM_ICACHE_MISS)    := perf(0);
-    v.evt(CSR_HPM_ITLB_MISS)      := perf(1);
-    v.evt(CSR_HPM_DCACHE_MISS)    := perf(2);
-    v.evt(CSR_HPM_DTLB_MISS)      := perf(3);
-    v.evt(CSR_HPM_DCACHE_FLUSH)   := perf(4);
+    v.evt(CSR_HPM_ICACHE_MISS)       := perf(0);
+    v.evt(CSR_HPM_ITLB_MISS)         := perf(1);
+    v.evt(CSR_HPM_DCACHE_MISS)       := perf(2);
+    v.evt(CSR_HPM_DTLB_MISS)         := perf(3);
+    v.evt(CSR_HPM_DCACHE_FLUSH)      := perf(4);
+    v.evt(CSR_HPM_DCACHE_ACCESS)     := perf(7);
+    v.evt(CSR_HPM_DCACHE_LOAD)       := perf(6);
+    v.evt(CSR_HPM_DCACHE_STORE)      := perf(9);
+    v.evt(CSR_HPM_DCACHE_LOAD_HIT)   := perf(5);
+    v.evt(CSR_HPM_DCACHE_STORE_HIT)  := perf(8);
+    v.evt(CSR_HPM_DCACHE_STBUF_FULL) := perf(10);
+    v.evt(CSR_HPM_HTLB_MISS)         := perf(11);
+    v.evt(CSR_HPM_ICACHE_STREAM)     := perf(12);
+    v.evt(CSR_HPM_DTLB_ENTRY_FLUSH)  := perf(13);
+    v.evt(CSR_HPM_ITLB_ENTRY_FLUSH)  := perf(14);
+    v.evt(CSR_HPM_HTLB_ENTRY_FLUSH)  := perf(15);
 
     v.evt(CSR_HPM_FPU_LOW to CSR_HPM_FPU_LOW + fpevt_t'length - 1) := fpuo.events(fpevt_t'length - 1 downto 0);
 
@@ -11269,18 +12681,23 @@ begin
     -----------------------------------------------------------------------
 
     -- There is an IU pipeline flush on writes to these CSRs, so no harm is done.
-    v.mmu             := nv_csr_out_type_none;
+    v.mmu              := nv_csr_out_type_none;
     -- Writes to these (in the exception stage) will cause a pipeline flush
     -- in the writeback stage, so there is time to register the data once
     -- before it is required.
-    v.mmu.satp        := r.csr.satp;
-    v.mmu.vsatp       := r.csr.vsatp;
-    v.mmu.hgatp       := r.csr.hgatp;
-    v.mmu.mmu_adfault := r.csr.dfeaturesen.mmu_adfault;
+    v.mmu.satp         := r.csr.satp;
+    v.mmu.vsatp        := r.csr.vsatp;
+    v.mmu.hgatp        := r.csr.hgatp;
+    v.mmu.mmu_adfault  := r.csr.dfeaturesen.mmu_adfault;
+    v.mmu.mmu_sptfault := r.csr.dfeaturesen.mmu_sptfault;
+    v.mmu.mmu_hptfault := r.csr.dfeaturesen.mmu_hptfault;
+    v.mmu.mmu_oldfence := r.csr.dfeaturesen.mmu_oldfence;
     -- These only flush when lock bits are set, but they also do not affect
     -- anything otherwise (machine mode vs others) , so pipelining is OK.
-    v.mmu.pmpcfg0     := r.csr.pmpcfg0;
-    v.mmu.pmpcfg2     := r.csr.pmpcfg2;
+    v.mmu.pmpcfg0      := r.csr.pmpcfg0;
+    v.mmu.pmpcfg2      := r.csr.pmpcfg2;
+    v.mmu.mmwp         := r.csr.mseccfg.mmwp;
+    v.mmu.mml          := r.csr.mseccfg.mml;
 
 
     -----------------------------------------------------------------------
@@ -11297,11 +12714,11 @@ begin
       end loop;
     end if;
 
-    if csr_ok(r, m) then
+    if csr_ok(r, m) and is_csr_access(r, m) then
       v.x.csraxc := csr_write_xc(
 --                                 active_extensions, TRIGGER,
                                  envcfg,
-                                 csr_addr(r.m.ctrl(csr_lane).inst), r.x.rstate, r.csr);
+                                 csr_addr(r, m), r.x.rstate, r.csr);
     else
       v.x.csraxc := '0';
     end if;
@@ -11318,6 +12735,31 @@ begin
       for i in lanes'range loop
         ex_alu_preforward(v, e, x, i, v.e.aluforw(i), v.e.alupreforw1(i), v.e.alupreforw2(i));
       end loop;
+    end if;
+
+
+    -- CSR address going to RA same as one earlier one in pipeline?
+    -- Related to CSR write hold checks in access stage
+    v.a.csrw_eq        := (others => '0');
+    if csr_addr(v, a) = csr_addr(r, a) then
+      if csr_ok(r, a) then
+        v.a.csrw_eq(0) := '1';
+      end if;
+    end if;
+    if csr_addr(v, a) = csr_addr(r, e) then
+      if csr_ok(r, e) then
+        v.a.csrw_eq(1) := '1';
+      end if;
+    end if;
+    if csr_addr(v, a) = csr_addr(r, m) then
+      if csr_ok(r, m) then
+        v.a.csrw_eq(2) := '1';
+      end if;
+    end if;
+    if csr_addr(v, a) = csr_addr(r, x) then
+      if csr_ok(r, x) then
+        v.a.csrw_eq(3) := '1';
+      end if;
     end if;
 
 
@@ -11344,6 +12786,33 @@ begin
     end if;
 
     -- Constant registers -------------------------------------------------
+
+    -- Forced disabling of NOEL-V extensions?
+    -- (It will not be possible to turn them back on without reset,
+    --  since access to csr.features will no longer be available.)
+    if ext_noelv = 1 and r.csr.dfeaturesen.x0 = '1' then
+      v.csr.misa(x_ctrl) := '0';
+    end if;
+
+    -- Does a lock bit force "Rule Locking Bypass" to stay deasserted?
+    if (ext_smepmp = 1
+        ) and r.csr.mseccfg.rlb = '0' then
+      for i in 0 to pmp_entries - 1 loop
+        if pmpcfg(pmp_entries, r.csr, i)(7) = '1' then
+          v.csr.mseccfg.rlb := '0';
+        end if;
+      end loop;
+    end if;
+
+    -- Once enabled, "Machine Mode Whitelist Policy" cannot be disabled.
+    if ext_smepmp = 1 and r.csr.mseccfg.mmwp = '1' then
+      v.csr.mseccfg.mmwp := '1';
+    end if;
+
+    -- Once enabled, "Machine Mode Lockdown" cannot be disabled.
+    if ext_smepmp = 1 and r.csr.mseccfg.mml = '1' then
+      v.csr.mseccfg.mml   := '1';
+    end if;
 
     -- Big-endian not supported
     v.csr.mstatus.sbe   := '0';
@@ -11407,7 +12876,17 @@ begin
       v.csr.mie         := v.csr.mie     and not CSR_SIE_MASK;
       v.csr.mideleg     := v.csr.mideleg and not CSR_SIE_MASK;
       v.mmu.satp        := (others => '0');
-      v.mmu.mmu_adfault := '0';
+      v.mmu.mmu_adfault  := '0';
+      v.mmu.mmu_sptfault := '0';
+      v.mmu.mmu_hptfault := '0';
+    end if;
+    -- No MMU (normally also no S-mode, but just in case)
+    if mmuen = 0 then
+      v.csr.satp         := (others => '0');
+      v.mmu.satp         := (others => '0');
+      v.mmu.mmu_adfault  := '0';
+      v.mmu.mmu_sptfault := '0';
+      v.mmu.mmu_hptfault := '0';
     end if;
     -- U-mode not implemented
     if mode_u = 0 then
@@ -11439,12 +12918,28 @@ begin
     end if;
     -- PMP not implemented
     if pmp_entries = 0 then
+      v.csr.mseccfg.rlb  := '0';
+      v.csr.mseccfg.mml  := '0';
+      v.csr.mseccfg.mmwp := '0';
       v.csr.pmpaddr     := (others => pmpaddrzero);
       v.csr.pmpcfg0     := (others => '0');
       v.csr.pmpcfg2     := (others => '0');
       v.csr.pmp_precalc := PMPPRECALCRES;
       v.mmu.pmpcfg0     := (others => '0');
       v.mmu.pmpcfg2     := (others => '0');
+      v.mmu.mmwp        := '0';
+      v.mmu.mml         := '0';
+    end if;
+    -- No extended PMP
+    if ext_smepmp = 0 then
+      v.csr.mseccfg.mml  := '0';
+      v.csr.mseccfg.mmwp := '0';
+      v.mmu.mmwp         := '0';
+      v.mmu.mml          := '0';
+    end if;
+    if ext_smepmp = 0
+       then
+      v.csr.mseccfg.rlb  := '0';
     end if;
     -- Clear non-existing performance counters
     -- Should not be needed, but makes things clearer.
@@ -11467,6 +12962,10 @@ begin
     for i in r.csr.hpmcounter'range loop
       v.csr.hpmcounter(i)(v.csr.hpmcounter(0)'high downto perf_bits) := (others => '0');
     end loop;
+    -- No NOEL-V extensions
+    if ext_noelv = 0 then
+      v.csr.misa(x_ctrl) := '0';
+    end if;
 
     -- Trace Code ----------------------------------------------------
     if v_fusel_eq(r, m, memory_lane, ST) then
@@ -11488,6 +12987,10 @@ begin
     end if;
     v.wb.fsd_hi                   := r.x.fsd_hi;
 
+    -- To the FPU ---------------------------------------------------------
+    v.e.fpu_valid          := to_bit(is_valid_fpu(v, e));
+    v.x.data_valid_fpu     := to_bit(is_valid_fpu(v, x) and is_fpu_from_int(v.x.ctrl(fpu_lane).inst));
+    v.wb.commit_fpu        := to_bit(is_valid_fpu(v, wb) and is_fpu_rd(v.wb.ctrl(fpu_lane).inst));
     -----------------------------------------------------------------------
     -- OUTPUTS
     -----------------------------------------------------------------------
@@ -11546,6 +13049,7 @@ begin
     irqo.irqack         <= '0';
 
     -- To the Debug Module ------------------------------------------------
+    dbgo                <= nv_debug_out_none;
     if dmen = 1 then
       dbgo.dsu          <= '1';
       dbgo.error        <= dbg_error;
@@ -11590,31 +13094,38 @@ begin
     end if;
 
     -- To the FPU ---------------------------------------------------------
+
     vfpui                  := fpu5_in_none;
     if ext_f = 1 then
       -- From Execute Stage
       fpu_ctrl             := r.e.ctrl(fpu_lane);
       vfpui.inst           := fpu_ctrl.inst;
-      vfpui.e_valid        := to_bit(is_valid_fpu(r, e));
+      vfpui.e_valid        := r.e.fpu_valid;
       vfpui.issue_id       := fpu_ctrl.fpu;
       vfpui.csrfrm         := r.csr.frm;
       vfpui.mode           := r.csr.v & r.csr.prv;
-      -- qqq This must be wrong, right?
-      --     The reasonable thing would be ex_flush.
---      vfpui.e_nullify    := v.wb.flushall or mem_branch;
       vfpui.e_nullify      := ex_flush or ex_fpu_flush or me_fpu_flush;
+
       -- From Exception Stage
-      if holdn = '1' then
-        vfpui.data_id      := r.x.ctrl(fpu_lane).fpu;
-        vfpui.data         := r.x.data(0);   -- Assume load
-        -- Floating point and not load?
-        if r.x.ctrl(fpu_lane).inst(6 downto 0) = OP_FP then
-          vfpui.data       := to64(x_alu_op1(fpu_lane));
-        end if;
-        if is_valid_fpu(r, x) and is_fpu_from_int(r.x.ctrl(fpu_lane).inst) then
-          vfpui.data_valid := '1';
+      fpu_ctrl           := r.x.ctrl(fpu_lane);
+      vfpui.data_id      := fpu_ctrl.fpu;
+      vfpui.data         := r.x.data(0);   -- Assume load
+      -- Floating point and not load?
+      -- Mux after clock!
+      if opcode(fpu_ctrl.inst) = OP_FP then
+        vfpui.data       := to64(x_alu_op1(fpu_lane));
+        -- FMVP.D.X
+        if ext_zfa = 1 and is_rv32 and funct7(fpu_ctrl.inst) = R_FMVP_D_X and
+           funct3(fpu_ctrl.inst) = "000" then
+          set_hi(vfpui.data, x_alu_op2(fpu_lane));
+        -- FLI.S/D/H
+        elsif ext_zfa = 1 and funct5(fpu_ctrl.inst) = R_FMV_W_X and
+              rs2(fpu_ctrl.inst) = "00001" and funct3(fpu_ctrl.inst) = "000" then
+          vfpui.data     := r.x.fpu_imm;
         end if;
       end if;
+      vfpui.data_valid   := r.x.data_valid_fpu;
+
       -- Flush in various stages
       -- Every FPU operation must be flushed or committed.
       -- These are mostly the same as the masking of valid flags from one
@@ -11625,13 +13136,13 @@ begin
       vfpui.flush(2)    := r.fpflush(2);
       vfpui.flush(3)    := r.fpflush(3);
       vfpui.flush(4)    := r.fpflush(4);
-      -- Commit
+
+      -- Commit / unissue
       fpu_ctrl          := r.wb.ctrl(fpu_lane);
-      vfpui.commit      := holdn and to_bit(is_valid_fpu(r, wb) and
-                                            is_fpu_rd(fpu_ctrl.inst));
+      vfpui.commit      := r.wb.commit_fpu;  -- FPU checks holdn
       vfpui.commit_id   := fpu_ctrl.fpu;
 --      vfpui.unissue     := holdn and fpu_ctrl.fpu_flush and to_bit(is_fpu_rd(fpu_ctrl.inst));
-      vfpui.unissue     := holdn and fpu_ctrl.fpu_flush;
+      vfpui.unissue     := fpu_ctrl.fpu_flush;  -- FPU checks holdn
       vfpui.unissue_id  := fpu_ctrl.fpu;
       if fpu_debug /= 0 then
         vfpui.ctrl      := r.csr.fctrl;
@@ -11660,6 +13171,7 @@ begin
           r.cevt           <= rin.cevt;
           r.evtirq         <= rin.evtirq;
           r.csr.mip(13)    <= rin.csr.mip(13);
+          r.csr.mip(1)    <= rin.csr.mip(1);
           r.csr.hpmcounter <= rin.csr.hpmcounter;
           for i in 3 to r.cevt'high loop
             r.csr.hpmevent(i).overflow <= rin.csr.hpmevent(i).overflow;

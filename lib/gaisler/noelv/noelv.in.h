@@ -34,3 +34,10 @@
 #define CONFIG_IU_DISAS 0
 #endif
 
+#ifndef CONFIG_DOMAINS_NUM
+#define CONFIG_DOMAINS_NUM 4
+#endif
+
+#ifndef CONFIG_EIID_NUM
+#define CONFIG_EIID_NUM 63
+#endif

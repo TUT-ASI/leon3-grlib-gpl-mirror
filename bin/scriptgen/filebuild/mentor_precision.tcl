@@ -38,6 +38,9 @@ proc append_file_mentor_precision {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

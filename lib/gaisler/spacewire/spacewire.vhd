@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -655,7 +656,8 @@ package spacewire is
       pewdata     : in  std_logic_vector(ports downto 0);
       perdata     : out std_logic_vector(ports downto 0);
       perror      : out std_logic_vector((ports+8)/8-1 downto 0);
-      pevalid     : out std_logic_vector(255 downto 0));
+      pevalid     : out std_logic_vector(255 downto 0);
+      addro       : out std_logic_vector(7 downto 0));
   end component;
 
   component grspwrouter is

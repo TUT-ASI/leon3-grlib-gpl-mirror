@@ -74,6 +74,14 @@ bool 'Enable NOELV RISC-V Processor' CONFIG_NOELV
 #   if [ "$CONFIG_NOELV_CUSTOM" = "y" ]; then
 #   fi
 
+    if [ "$CONFIG_NOELV_HP" = "y" -o "$CONFIG_NOELV_GP" = "y" -a "$CONFIG_NOELV_FULL" = "y" ]; then
+     mainmenu_option next_comment
+       comment 'Interrupt settings       '
+       int 'Number of APLIC domains' CONFIG_DOMAINS_NUM 4
+       int 'Number of External Interrupt Identities' CONFIG_EIID_NUM 63
+     endmenu
+    fi 
+
     mainmenu_option next_comment
       comment 'VHDL debug settings       '
       bool 'Processor disassembly to console         ' CONFIG_IU_DISAS

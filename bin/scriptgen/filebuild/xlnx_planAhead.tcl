@@ -53,6 +53,9 @@ proc append_file_xlnx_planAhead {f finfo} {
 			return
 		}
 		"vhdlxile" {
+			return
+		}
+		"vhdlxise" {
 			global VIVADOVHDL
 			upvar planAhead_contents pc
 			append pc "\n$VIVADOVHDL $bn $f"

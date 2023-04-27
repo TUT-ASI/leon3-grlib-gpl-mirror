@@ -5,4 +5,7 @@
   constant CFG_CFG              : integer := CONFIG_PROC_TYP*256 + CONFIG_PROC_LITE*128 + CONFIG_PROC_NOFPU*2 + CONFIG_PROC_S;
   constant CFG_NODBUS           : integer := CONFIG_PROC_NODBUS;
   constant CFG_DISAS            : integer := 3*CONFIG_IU_DISAS;
+-- Interrupts
+  constant CFG_APLIC_NDOM       : integer := CONFIG_DOMAINS_NUM;
+  constant CFG_NEIID            : integer := CONFIG_EIID_NUM;
 

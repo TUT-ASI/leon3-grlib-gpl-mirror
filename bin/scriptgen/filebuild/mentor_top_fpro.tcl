@@ -27,6 +27,9 @@ proc append_file_mentor_top_fpro {f finfo fpro_fs} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			upvar $fpro_fs fprofs
 			set fprofs "$fprofs $f"

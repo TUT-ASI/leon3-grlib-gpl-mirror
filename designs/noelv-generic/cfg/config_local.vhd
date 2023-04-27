@@ -13,6 +13,8 @@ package config_local is
   constant CFG_LOCAL_CFG          : integer := CFG_CFG;
   constant CFG_LOCAL_NODBUS       : integer := CFG_NODBUS;
   constant CFG_LOCAL_DISAS        : integer := CFG_DISAS;
+  constant CFG_LOCAL_APLIC_NDOM   : integer := CFG_APLIC_NDOM;
+  constant CFG_LOCAL_NEIID        : integer := CFG_NEIID;
   constant CFG_LOCAL_ETH_IPL      : integer := CFG_ETH_IPL;
   constant CFG_LOCAL_ETH_ENL      : integer := CFG_ETH_ENL;
   constant CFG_LOCAL_ETH_GMII     : integer := 0;

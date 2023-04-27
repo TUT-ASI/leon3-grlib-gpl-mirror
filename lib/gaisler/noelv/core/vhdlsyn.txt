@@ -14,14 +14,11 @@ mul64.vhd
 div64.vhd
 regfile64sramnv.vhd
 regfile64dffnv.vhd
-progbuf.vhd
 alunv.vhd
 rvvi.vhd
 iunv.vhd
 itracenv.vhd
 cpucorenv.vhd
-rvdmx.vhd
-rvdm.vhd
 cctrlnv.vhd
 mulfp.vhd
 nanofpunv.vhd

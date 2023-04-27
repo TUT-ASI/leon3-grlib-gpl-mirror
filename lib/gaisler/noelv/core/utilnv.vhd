@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,12 +34,15 @@ use grlib.stdlib.print;
 use grlib.stdlib.notx;
 
 package utilnv is
-
   function tost(v : unsigned) return string;
   function tost(v : signed) return string;
+  function tost(v : bit_vector) return string;
 
   procedure log(enabled : boolean; comment : string);
 
+  function cond(c : boolean;
+                t : std_ulogic;
+                f : std_ulogic) return std_ulogic;
   function cond(c : boolean;
                 t : std_logic_vector;
                 f : std_logic_vector) return std_logic_vector;
@@ -59,6 +63,11 @@ package utilnv is
   function to_bit(v : boolean) return std_ulogic;
   function to_bit(v : integer) return std_ulogic;
 
+  function get_ones(bits : integer) return std_logic_vector;
+  function get_ones(template : std_logic_vector) return std_logic_vector;
+  function get_zeros(bits : integer) return std_logic_vector;
+  function get_zeros(template : std_logic_vector) return std_logic_vector;
+
   procedure set(dest : inout std_logic_vector; start : integer;
                 data : std_logic_vector);
   procedure set(dest : inout std_logic_vector; start : integer;
@@ -67,14 +76,28 @@ package utilnv is
                    data : std_logic_vector);
   procedure set_hi(dest : inout std_logic_vector;
                    d    : std_logic);
+  procedure set_lo(dest : inout std_logic_vector;
+                   data : std_logic_vector);
   function set(data : std_logic_vector; n : integer) return std_logic_vector;
   function get(data  : std_logic_vector;
                start : integer; bits : integer) return std_logic_vector;
+  function get(data  : std_logic_vector;
+               start : integer; template : std_logic_vector) return std_logic_vector;
+  function get(data  : unsigned;
+               start : integer; bits : integer) return unsigned;
+  function get(data  : signed;
+               start : integer; bits : integer) return signed;
   function get_hi(data : std_logic_vector;
                   bits : integer) return std_logic_vector;
   function get_hi(data : std_logic_vector) return std_logic;
   function get_hi(data : signed) return std_logic;
   function get_hi(data : unsigned) return std_logic;
+  function get_lo(data : std_logic_vector;
+                  bits : integer) return std_logic_vector;
+  function get_lo(data : unsigned;
+                  bits : integer) return unsigned;
+  function get_lo(data : signed;
+                  bits : integer) return signed;
   function lo_h(v : std_logic_vector) return std_logic_vector;
   function hi_h(v : std_logic_vector) return std_logic_vector;
   procedure uadd_range(src : std_logic_vector; addend : integer; dst : out std_logic_vector);
@@ -96,6 +119,8 @@ package utilnv is
   function u2vec(data : integer; bits : integer) return std_logic_vector;
   function u2vec(data : integer; template : unsigned) return unsigned;
   function u2vec(data : integer; template : std_logic_vector) return std_logic_vector;
+  function u2vec(data : boolean; bits : integer) return std_logic_vector;
+  function u2vec(data : boolean; template : std_logic_vector) return std_logic_vector;
   function s2vec(data : integer; bits : integer) return signed;
   function s2vec(data : integer; bits : integer) return std_logic_vector;
   function s2vec(data : integer; template : signed) return signed;
@@ -103,14 +128,18 @@ package utilnv is
   function notx(data : unsigned) return boolean;
   function notx(data : signed) return boolean;
   function u2i(data : std_logic_vector) return integer;
+  function u2i(data : bit_vector) return integer;
   function u2i(data : unsigned) return integer;
   function u2i(data : std_logic) return integer;
+  function u2i(data : boolean) return integer;
   function s2i(data : std_logic_vector) return integer;
   function s2i(data : signed) return integer;
   function s2i(data : std_logic) return integer;
   function b2i(data : boolean) return integer;
   function sext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
   function sext(v : std_logic_vector; length : integer) return std_logic_vector;
+  function sext(v : signed; template : std_logic_vector) return std_logic_vector;
+  function sext(v : signed; length : integer) return std_logic_vector;
   function uext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
   function uext(v : std_logic_vector; length : integer) return std_logic_vector;
   function uext(v : unsigned; template : std_logic_vector) return std_logic_vector;
@@ -122,6 +151,17 @@ package utilnv is
 end;
 
 package body utilnv is
+
+  function cond(c : boolean;
+                t : std_ulogic;
+                f : std_ulogic) return std_ulogic is
+  begin
+    if c then
+      return t;
+    else
+      return f;
+    end if;
+  end;
 
   function cond(c : boolean;
                 t : std_logic_vector;
@@ -162,6 +202,14 @@ package body utilnv is
   begin
 -- pragma translate_off
     return tost(std_logic_vector(v));
+-- pragma translate_on
+    return "";
+  end;
+
+  function tost(v : bit_vector) return string is
+  begin
+-- pragma translate_off
+    return tost(to_stdlogicvector(v));
 -- pragma translate_on
     return "";
   end;
@@ -286,8 +334,19 @@ package body utilnv is
     end if;
   end;
 
+  function u2i(data : bit_vector) return integer is
+  begin
+    return to_integer(unsigned(to_stdlogicvector(data)));
+  end;
+
   function u2i(data : std_logic) return integer is
     variable v : std_logic_vector(0 downto 0) := (others => data);
+  begin
+    return u2i(v);
+  end;
+
+  function u2i(data : boolean) return integer is
+    variable v : std_ulogic := to_bit(data);
   begin
     return u2i(v);
   end;
@@ -345,6 +404,11 @@ package body utilnv is
     return ext;
   end;
 
+  function sext(v : signed; length : integer) return std_logic_vector is
+  begin
+    return sext(std_logic_vector(v), length);
+  end;
+
   function sext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector is
     -- Non-constant
     variable ext : std_logic_vector(template'range);
@@ -352,6 +416,11 @@ package body utilnv is
     ext := sext(v, template'length);
 
     return ext;
+  end;
+
+  function sext(v : signed; template : std_logic_vector) return std_logic_vector is
+  begin
+    return sext(std_logic_vector(v), template);
   end;
 
   -- Zero-extend
@@ -420,6 +489,16 @@ package body utilnv is
   end;
 
   function u2vec(data : integer; template : std_logic_vector) return std_logic_vector is
+  begin
+    return u2vec(data, template'length);
+  end;
+
+  function u2vec(data : boolean; bits : integer) return std_logic_vector is
+  begin
+    return u2vec(u2i(data), bits);
+  end;
+
+  function u2vec(data : boolean; template : std_logic_vector) return std_logic_vector is
   begin
     return u2vec(data, template'length);
   end;
@@ -577,6 +656,38 @@ package body utilnv is
     return std_logic_vector(dst);
   end;
 
+  function get_slv(d : std_ulogic; template : std_logic_vector) return std_logic_vector is
+    variable v : std_logic_vector(template'range) := (others => d);
+  begin
+    return v;
+  end;
+  
+  function get_slv(d : std_ulogic; bits : integer) return std_logic_vector is
+    variable v : std_logic_vector(bits - 1 downto 0) := (others => d);
+  begin
+    return v;
+  end;
+  
+  function get_zeros(template : std_logic_vector) return std_logic_vector is
+  begin
+    return get_slv('0', template);
+  end;
+
+  function get_zeros(bits : integer) return std_logic_vector is
+  begin
+    return get_slv('0', bits);
+  end;
+
+  function get_ones(template : std_logic_vector) return std_logic_vector is
+  begin
+    return get_slv('1', template);
+  end;
+
+  function get_ones(bits : integer) return std_logic_vector is
+  begin
+    return get_slv('1', bits);
+  end;
+
   -- Return bits from start in data, away from bit 0.
   function get(data  : std_logic_vector;
                start : integer; bits : integer) return std_logic_vector is
@@ -588,11 +699,33 @@ package body utilnv is
     end if;
   end;
 
+  function get(data  : std_logic_vector;
+               start : integer; template : std_logic_vector) return std_logic_vector is
+  begin
+    return get(data, start, template'length);
+  end;
+
+  function get(data  : unsigned;
+               start : integer; bits : integer) return unsigned is
+  begin
+    return unsigned(get(std_logic_vector(data), start, bits));
+  end;
+
+  function get(data  : signed;
+               start : integer; bits : integer) return signed is
+  begin
+    return signed(get(std_logic_vector(data), start, bits));
+  end;
+
   -- Return high bits from data.
   function get_hi(data : std_logic_vector;
                   bits : integer) return std_logic_vector is
   begin
-    return get(data, data'high - bits + 1, bits);
+    if bits >= 0 then
+      return get(data, data'high - bits + 1, bits);
+    else
+      return get(data, data'low - bits, data'length + bits);
+    end if;
   end;
 
   -- Return high bit from data.
@@ -609,6 +742,29 @@ package body utilnv is
   function get_hi(data : unsigned) return std_logic is
   begin
     return get_hi(std_logic_vector(data));
+  end;
+
+  -- Return low bits from data.
+  function get_lo(data : std_logic_vector;
+                  bits : integer) return std_logic_vector is
+  begin
+    if bits >= 0 then
+      return get(data, data'low, bits);
+    else
+      return get(data, data'low, data'length + bits);
+    end if;
+  end;
+
+  function get_lo(data : unsigned;
+                  bits : integer) return unsigned is
+  begin
+    return unsigned(get_lo(std_logic_vector(data), bits));
+  end;
+
+  function get_lo(data : signed;
+                  bits : integer) return signed is
+  begin
+    return signed(get_lo(std_logic_vector(data), bits));
   end;
 
   -- Sets data in dest from start, away from bit 0.
@@ -652,6 +808,14 @@ package body utilnv is
     variable data : std_logic_vector(0 downto 0) := (others => d);
   begin
     set_hi(dest, data);
+  end;
+
+  -- Sets low data in dest.
+  procedure set_lo(dest : inout std_logic_vector;
+                   data : std_logic_vector) is
+    constant bits : integer := data'length;
+  begin
+    set(dest, 0, data);
   end;
 
   -- Return lower half of input.

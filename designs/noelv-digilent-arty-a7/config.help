@@ -9,7 +9,7 @@ CONFIG_SYN_INFERRED
     is capable of inferring RAMs and pads automatically.
 
   - Actel ProAsic/P/3, IGLOO/2, RTG4, PolarFire and Axcelerator FPGAs
-  - Aeroflex UT25CRH Rad-Hard 0.25 um CMOS
+  - Aeroflex UT130HBD, UT90RHBD
   - Altera: Most Altera FPGA families
   - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
   - Altera-Stratix: Altera Stratix FPGA family
@@ -19,6 +19,7 @@ CONFIG_SYN_INFERRED
   - Altera-StratixV: Altera Stratix-V FPGA family
   - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
   - NanoXploree : Brave-Medium 
+  - Lattice: Nexus
   - Quicklogic : Eclipse/E/II FPGAs
   - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
   - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries
@@ -200,6 +201,17 @@ NOEL-V subsystem GPL settings
 CONFIG_PROC_NODBUS
   Remove IPs not included in the GPL release.
 
+Select number of APLIC domains
+CONFIG_DOMAINS_NUM
+  Number of supported APLIC interrupt domains.
+
+Select number of External Interrupt Identities
+CONFIG_EIID_NUM
+  Number of supported External Interrupt Identities:
+
+  It is the number of interrupt identities supported by 
+  an IMSIC interrupt file. It must be one less than a multiple 
+  of 64, and must be a minimum of 63 and a maximum of 2047.
 L2 Associativity
 CONFIG_L2_ASSO1
   Select how many cache ways the L2 cache should have.

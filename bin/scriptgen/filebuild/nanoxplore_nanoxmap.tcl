@@ -53,6 +53,9 @@ proc append_file_nanoxplore_nanoxmap {f finfo} {
 	"vhdlxile" {
 	    return
 	}
+	"vhdlxise" {
+	    return
+	}
 	"vhdlfpro" {
 	    return
 	}

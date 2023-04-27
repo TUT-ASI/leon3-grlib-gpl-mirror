@@ -37,6 +37,9 @@ proc append_file_ghdl_make {f finfo qpath} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

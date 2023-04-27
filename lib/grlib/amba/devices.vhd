@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 -----------------------------------------------------------------------------
 -- Entity:      devices
 -- File:        devices.vhd
--- Author:      Cobham Gaisler AB
+-- Author:      Frontgrade Gaisler AB
 -- Description: Vendor and devices IDs for AMBA plug&play
 ------------------------------------------------------------------------------
 
@@ -80,7 +81,7 @@ package devices is
   constant VENDOR_NASA_GSFC  : amba_vendor_type := 16#FC#;
   constant VENDOR_AZST       : amba_vendor_type := 16#FE#;
 
--- Cobham Gaisler device ids
+-- Frontgrade Gaisler device ids
 
   constant GAISLER_LEON2DSU      : amba_device_type := 16#002#;
   constant GAISLER_LEON3         : amba_device_type := 16#003#;
@@ -283,7 +284,14 @@ package devices is
   constant GAISLER_ETRACE        : amba_device_type := 16#0CA#;
   constant GAISLER_LEON5ADSU     : amba_device_type := 16#0CB#;
   constant GAISLER_LEON5DMAB     : amba_device_type := 16#0CC#;
+  constant GAISLER_ACLINT        : amba_device_type := 16#0CD#;
+  constant GAISLER_IMSIC         : amba_device_type := 16#0CE#;
+  constant GAISLER_GRAPLIC       : amba_device_type := 16#0CF#;
   constant GAISLER_L2CL          : amba_device_type := 16#0D0#;
+  constant GAISLER_L2CACHE_IO    : amba_device_type := 16#0D1#;
+  constant GAISLER_AHB2AHB_STR   : amba_device_type := 16#0D2#;
+  constant GAISLER_GRIOMMURV     : amba_device_type := 16#0D3#;
+  constant GAISLER_SGMII_VCU118  : amba_device_type := 16#0D4#;
 
 -- Sun Microsystems
 
@@ -508,7 +516,7 @@ package devices is
   constant ESA_SSDP              : system_device_type := 16#ADA2#;
 -- pragma translate_off
 
-  constant GAISLER_DESC : vendor_description := "Cobham Gaisler          ";
+  constant GAISLER_DESC : vendor_description := "Frontgrade Gaisler      ";
 
   constant gaisler_device_table : device_table_type := (
     GAISLER_LEON2DSU      => "LEON2 Debug Support Unit        ",
@@ -552,6 +560,7 @@ package devices is
     GAISLER_GPIO          => "General Purpose I/O port        ",
     GAISLER_AHBROM        => "Generic AHB ROM                 ",
     GAISLER_AHB2AHB       => "AHB-to-AHB Bridge               ",
+    GAISLER_AHB2AHB_STR   => "AHB/AHB Stripe Bridge           ",
     GAISLER_AHBDMA        => "Simple AHB DMA controller       ",
     GAISLER_NUHOSP3       => "Nuhorizons Spartan3 IO I/F      ",
     GAISLER_CLKGATE       => "Clock gating unit               ",
@@ -621,6 +630,7 @@ package devices is
     GAISLER_LEON4DSU      => "LEON4 Debug Support Unit        ",
     GAISLER_PWM           => "PWM generator                   ",
     GAISLER_L2CACHE       => "L2-Cache Controller             ",
+    GAISLER_L2CACHE_IO    => "L2-Cache Controller I/O Port    ",
     GAISLER_SDCTRL64      => "64-bit PC133 SDRAM Controller   ",
     GAISLER_MP7WRAP       => "CoreMP7 wrapper                 ",
     GAISLER_GRSYSMON      => "AMBA wrapper for System Monitor ",
@@ -637,6 +647,7 @@ package devices is
     GAISLER_1553TST       => "MIL-STD-1553B Test Device       ",
     GAISLER_MEMSCRUB      => "AHB Memory Scrubber             ",
     GAISLER_GRIOMMU       => "IO Memory Management Unit       ",
+    GAISLER_GRIOMMURV     => "RISCV IO Memory Management Unit ",
     GAISLER_SPW2_DMA      => "GRSPW Router DMA interface      ",
     GAISLER_SPWROUTER     => "GRSPW Router                    ",
     GAISLER_EDCLMST       => "EDCL master interface           ",
@@ -656,6 +667,7 @@ package devices is
     GAISLER_MIG_7SERIES   => "Xilinx MIG Controller           ",
     GAISLER_GRSPW2_SIST   => "GRSPW Router SIST               ",
     GAISLER_SGMII         => "XILINX SGMII Interface          ",
+    GAISLER_SGMII_VCU118  => "VCU118 SGMII Interface          ",
     GAISLER_RGMII         => "Gaisler RGMII Interface         ",
     GAISLER_IRQGEN        => "Interrupt generator             ",
     GAISLER_GRDMAC        => "GRDMAC DMA Controller           ",
@@ -712,6 +724,9 @@ package devices is
     GAISLER_ETRACE        => "RISC-V E-trace encoder          ",
     GAISLER_LEON5ADSU     => "LEON5 Advanced Debug Unit       ",
     GAISLER_LEON5DMAB     => "LEON5 IOMMU and DMA bridge      ",
+    GAISLER_ACLINT        => "RISC-V ACLINT                   ",
+    GAISLER_GRAPLIC       => "RISC-V APLIC                    ",
+    GAISLER_IMSIC         => "RISC-V IMSIC                    ",
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
     others                => "Unknown Device                  ");
 

@@ -39,6 +39,9 @@ proc append_file_cdns_ncsim {f finfo} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

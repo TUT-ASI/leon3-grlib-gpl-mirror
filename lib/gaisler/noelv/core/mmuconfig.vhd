@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -406,26 +407,31 @@ package body mmucacheconfig is
     end if;
   end;
 
-  function is_valid_pte(what : va_type;
+  function is_valid_pte(what : va_type; 
                         data : std_logic_vector; mask : std_logic_vector;
                         physaddr : integer range 32 to 56) return boolean is
   begin
     if what = sparc then
       return true;
     else
-      -- W without R is reserved!
-      if data(rv_pte_w downto rv_pte_r) = "10" then
-        return false;
-      end if;
-      if mask(mask'high) = '0' and not all_0(data(18 downto 10)) then
-        return false;
-      end if;
-      if mask(mask'high - 1) = '0' and not all_0(data(27 downto 19)) then
-        return false;
-      end if;
-      if what = sv48 then
-        if mask(mask'high - 2) = '0' and not all_0(data(36 downto 28)) then
+      if what = sv32 then
+        if mask(mask'high) = '0' and not all_0(data(19 downto 10)) then
           return false;
+        end if;
+        if mask(mask'high - 1) = '0' and not all_0(data(31 downto 20)) then
+          return false;
+        end if;
+      else
+        if mask(mask'high) = '0' and not all_0(data(18 downto 10)) then
+          return false;
+        end if;
+        if mask(mask'high - 1) = '0' and not all_0(data(27 downto 19)) then
+          return false;
+        end if;
+        if what = sv48 then
+          if mask(mask'high - 2) = '0' and not all_0(data(36 downto 28)) then
+            return false;
+          end if;
         end if;
       end if;
 
@@ -594,11 +600,11 @@ package body mmucacheconfig is
   function pt_addr(what  : va_type;
                    data  : std_logic_vector; mask : std_logic_vector;
                    vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector is
-    constant pa_tmp : std_logic_vector               := pa(what);  -- constant
+    --constant pa_tmp : std_logic_vector               := pa(what);  -- constant
     variable index  : integer range 1 to mask'length := mask'length - u2i(code);
     variable lowbit : integer                        := 11 - va_size(what, index) + 1;
     -- Non-constant
-    variable addr   : std_logic_vector(pa_tmp'range) := (others => '0');
+    variable addr   : std_logic_vector(pa_msb(what) downto 0) := (others => '0');
     variable pos    : integer;
   begin
     if what = sparc then
@@ -617,7 +623,7 @@ package body mmucacheconfig is
     else
       -- Every page table is the size of one page (thus downto 12).
       -- 12 due to smallest page size, 10 are the information bits.
-      addr(addr'high downto 12) := data(pa_tmp'high - 12 + 10 downto 10);
+      addr(addr'high downto 12) := data(addr'high - 12 + 10 downto 10);
       pos := 12;
       for i in mask'length downto 1 loop
         if i > u2i(code) then
@@ -661,11 +667,12 @@ package body mmucacheconfig is
 
   function pte_cached(what : va_type;
                       data : std_logic_vector) return std_logic is
+    variable pbmt : std_logic_vector(rv_pte_pbmt'range) := data(rv_pte_pbmt'range);
   begin
     if what = sparc then
       return data(PTE_C);
     else
-      case data(rv_pte_pbmt'range) is
+      case pbmt is
         when "01"   => return '0';  -- NC
         when "10"   => return '0';  -- I/O
         when others => return '1';  -- PMA (reserved for "11")

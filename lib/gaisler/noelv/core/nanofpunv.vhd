@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,6 +27,7 @@
 
 -- This is a small non-pipelined IEEE754-2008 compliant implementation
 -- of an FPC and FPU for providing hardware FPU operations on NOEL-V.
+-- No support for Zfa or Zfh[min].
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -48,14 +50,19 @@ use gaisler.utilnv.uaddx;
 use gaisler.utilnv.usubx;
 use gaisler.utilnv.s2i;
 use gaisler.utilnv.uext;
+use gaisler.utilnv.u2vec;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.all_1;
 use gaisler.utilnv.get_hi;
 use gaisler.utilnv.to_bit;
 use gaisler.noelvint.fpu_id;
-use gaisler.noelvint.reg_t;
+use gaisler.noelvint.flags_t;
+use gaisler.noelvint.fpu5_in_type;
+use gaisler.noelvint.fpu5_out_type;
 use gaisler.nvsupport.word64;
 use gaisler.nvsupport.word;
+use gaisler.nvsupport.word2;
+use gaisler.nvsupport.word3;
 use gaisler.nvsupport.zerow64;
 
 entity nanofpunv is
@@ -70,58 +77,58 @@ entity nanofpunv is
   port (
     clk           : in  std_ulogic;
     rstn          : in  std_ulogic;
-    -- Pipeline interface
-    --   Issue interface
     holdn         : in  std_ulogic;
-    issue_id      : in  fpu_id;
-    e_inst        : in  word;
-    e_valid       : in  std_ulogic;
-    e_nullify     : in  std_ulogic;
-    csrfrm        : in  rm_t;
-    mode_in       : in  std_logic_vector(2 downto 0);
-    fpu_holdn     : out std_ulogic;
-    ready_flop    : out std_ulogic;
-    --   Commit interface
-    commit        : in  std_ulogic;
-    commit_id     : in  fpu_id;
-    lddata_id     : in  fpu_id;
-    lddata_now    : in  std_ulogic;
-    lddata        : in  word64;
-    --   Mispredict/trap interface
-    unissue       : in  std_ulogic;
-    unissue_id    : in  fpu_id;
+
+    fpi           : in  fpu5_in_type;
+    fpo           : out fpu5_out_type;
+
+
     -- Register file read interface
-    rs1           : out std_logic_vector(4 downto 0);
-    rs2           : out std_logic_vector(4 downto 0);
-    rs3           : out std_logic_vector(4 downto 0);
+    rs1           : out reg_t;
+    rs2           : out reg_t;
+    rs3           : out reg_t;
     ren           : out std_logic_vector(1 to 3);
     s1            : in  word64;   -- All FPU register file data here
     s2            : in  word64;   -- Unused
-    s3            : in  word64;   -- Unused (for muladd)
-    -- Result data interface
-    rd            : out std_logic_vector(4 downto 0);
-    wen           : out std_ulogic;
-    stdata        : out word64;
-    flags_wen     : out std_ulogic;
-    flags         : out std_logic_vector(4 downto 0);
-    now2int       : out std_ulogic;
-    id2int        : out fpu_id;
-    stdata2int    : out word64;
-    flags2int     : out std_logic_vector(4 downto 0);
-    wb_mode       : out std_logic_vector(2 downto 0);
-    wb_id         : out fpu_id;
-    idle          : out std_ulogic;
-    events        : out word64
-    -- Debug
-    ; state_d     : out std_logic_vector(7 downto 0)
---    ; data_d      : out std_logic_vector(56 * 2 - 2 - 1 downto 2 * 2)
-    ; data_d      : out std_logic_vector(127 downto 0)
+    s3            : in  word64    -- Unused (for muladd)
   );
 end;
 
 architecture rtl of nanofpunv is
 
-  constant FPUVER : std_logic_vector(2 downto 0) := std_logic_vector(to_unsigned(5, 3));
+  -- qqq Temporary input signals
+  signal e_inst        : word;
+  signal e_valid       : std_ulogic;
+  signal issue_id      : fpu_id;
+  signal csrfrm        : word3;
+  signal e_nullify     : std_ulogic;
+  signal mode_in       : word3;
+  signal commit        : std_ulogic;
+  signal commit_id     : fpu_id;
+  signal lddata_id     : fpu_id;
+  signal lddata_now    : std_ulogic;
+  signal lddata        : word64;
+  signal unissue       : std_ulogic;
+  signal unissue_id    : fpu_id;
+
+  -- qqq Temporary output signals
+  signal fpu_holdn     : std_ulogic;
+  signal ready_flop    : std_ulogic;
+  signal rd            : reg_t;
+  signal wen           : std_ulogic;
+  signal stdata        : word64;
+  signal flags_wen     : std_ulogic;
+  signal flags         : flags_t;
+  signal now2int       : std_ulogic;
+  signal id2int        : fpu_id;
+  signal stdata2int    : word64;
+  signal flags2int     : flags_t;
+  signal wb_mode       : word3;
+  signal wb_id         : fpu_id;
+  signal idle          : std_ulogic;
+  signal events        : word64;
+
+  constant FPUVER : word3 := u2vec(5, 3);
 
   type nanofpu_state is (nf_idle, nf_flopr, nf_flop0, nf_flop1,
                          nf_load2, nf_fromint, nf_store2, nf_mvxw2, nf_min2,
@@ -192,23 +199,23 @@ architecture rtl of nanofpunv is
     swap        : std_ulogic;              -- Muladd operands need swapping
     inexact     : std_ulogic;              -- Low bits in extended muladd shifted out
     res         : word64;
-    exc         : std_logic_vector(4 downto 0);
+    exc         : flags_t;
     now2int     : std_ulogic;
     res2int     : word64;
-    exc2int     : std_logic_vector(4 downto 0);
+    exc2int     : flags_t;
     rddp        : std_ulogic;              -- Double precision operation
     rddp_real   : std_ulogic;              --   actual in case of internal change
     flop        : fpuop_t;
     rmb         : rm_t;
-    rs1         : std_logic_vector(4 downto 0);
-    rs2         : std_logic_vector(4 downto 0);
-    rs3         : std_logic_vector(4 downto 0);
+    rs1         : reg_t;
+    rs2         : reg_t;
+    rs3         : reg_t;
     ren         : std_logic_vector(1 to 3);
-    rd          : std_logic_vector(4 downto 0);
+    rd          : reg_t;
     wen         : std_ulogic;
     flags_wen   : std_ulogic;
     committed   : std_ulogic;              -- Operation marked as committed by IU
-    mode        : std_logic_vector(2 downto 0);  -- Pass along for logging
+    mode        : word3;                   -- Pass along for logging
     op1         : float;
     op2         : float;
     op3neg      : boolean;
@@ -346,6 +353,38 @@ architecture rtl of nanofpunv is
 
 begin
 
+  -- qqq Temporary input signals
+  e_inst     <= fpi.inst;
+  e_valid    <= fpi.e_valid;
+  issue_id   <= fpi.issue_id;
+  csrfrm     <= fpi.csrfrm;
+  e_nullify  <= fpi.e_nullify;
+  mode_in    <= fpi.mode;
+  commit     <= fpi.commit;
+  commit_id  <= fpi.commit_id;
+  lddata_id  <= fpi.data_id;
+  lddata_now <= fpi.data_valid;
+  lddata     <= fpi.data;
+  unissue    <= fpi.unissue;
+  unissue_id <= fpi.unissue_id;
+
+  -- qqq Temporary output signals
+  fpo.holdn      <= fpu_holdn;
+  fpo.ready      <= ready_flop;
+  fpo.rd         <= rd;
+  fpo.wen        <= wen;
+  fpo.data       <= stdata;
+  fpo.flags_wen  <= flags_wen;
+  fpo.flags      <= flags;
+  fpo.now2int    <= now2int;
+  fpo.id2int     <= id2int;
+  fpo.data2int   <= stdata2int;
+  fpo.flags2int  <= flags2int;
+  fpo.mode       <= wb_mode;
+  fpo.wb_id      <= wb_id;
+  fpo.idle       <= idle;
+  fpo.events     <= events;
+
   mulfp_gen: if extmul = 1 generate
     mulfp_i: entity gaisler.mulfp
       generic map (
@@ -362,7 +401,6 @@ begin
         bottom   => mulbottom,
         lo0      => mullo0,
         done     => muldone
---        , data_d => data_d(56 * 2 - 2 - 1 downto 2 * 2)  -- mul_dbg
       );
   end generate;
 
@@ -385,12 +423,12 @@ begin
     variable vtmpexp  : signed(12 downto 0);
     variable vadj     : signed(6 downto 0);
     variable vgrd     : std_ulogic;
-    variable vrndbits : std_logic_vector(2 downto 0);
+    variable vrndbits : word3;
     variable vrndup   : boolean;
     variable vop      : float;
     variable inf_1x2  : float;
     variable defnan   : word64;
-    variable fcc      : std_logic_vector(1 downto 0);
+    variable fcc      : word2;
     variable use_fs2  : boolean;
     variable n        : integer range 0 to 7;
     variable sign     : std_ulogic;
@@ -401,7 +439,7 @@ begin
     variable adjusted : float;
     variable adjusted_mant0b : std_logic_vector(0 to 1);
     variable rounded  : float;
-    variable roundexc : std_logic_vector(4 downto 0);
+    variable roundexc : flags_t;
     variable issue_op  : fpunv_op;
     variable issue_cmd : std_ulogic;
     variable roundadd : integer;
@@ -821,7 +859,7 @@ begin
         v.rd          := issue_op.rd;
         v.rm          := issue_op.rm;
         v.rmb         := issue_op.opx;
-        v.rddp        := not issue_op.sp;
+        v.rddp        := to_bit(issue_op.fmt /= "00");
         v.flop        := issue_op.op;
         v.mode        := mode_in;
         v.committed   := '0';
@@ -841,11 +879,6 @@ begin
           v.committed := commit;
           if issue_op.op = FPU_LOAD or issue_op.op = FPU_MV_W_X then
             v.s       := nf_load2;
-            if issue_op.op = FPU_LOAD then
-              fpu_event(evt, FPEVT_LOAD);
-            else
-              fpu_event(evt, FPEVT_X2F);
-            end if;
           elsif issue_op.op = FPU_STORE then
             v.rs1     := issue_op.rs(2);
             v.ren     := issue_op.ren;
@@ -853,7 +886,6 @@ begin
           elsif issue_op.op = FPU_CVT_S_W then
             v.rs2     := issue_op.rs(2);  -- Used for instruction disambiguation
             v.s       := nf_fromint;
-            fpu_event(evt, FPEVT_I2F);
           else
             v.rs1     := issue_op.rs(1);
             v.rs2     := issue_op.rs(2);
@@ -863,7 +895,7 @@ begin
           end if;
           -- The source is the other size for fcvt.s/d.d/s!
           if issue_op.op = FPU_CVT_S_D then
-            v.rddp    := issue_op.sp;
+            v.rddp    := to_bit(issue_op.fmt = "00");
           end if;
           -- Some operations require the integer pipeline to wait on completion.
           if issue_op.op = FPU_STORE  or issue_op.op = FPU_CMP or
@@ -914,7 +946,6 @@ begin
               v.res2int(63 downto 32) := r.s2(31 downto 0);
             end if;
             v.s                   := nf_store2;
-            fpu_event(evt, FPEVT_STORE);
           when FPU_MADD | FPU_MSUB | FPU_NMSUB | FPU_NMADD =>
             if no_muladd = 0 then
               v.muladd   := '1';
@@ -923,21 +954,10 @@ begin
               to_idle    := true;
               v.s        := nf_idle;
             end if;
-            fpu_event(evt, FPEVT_MADD);
           when FPU_CMP =>
             v.s          := nf_cmp2;
-            if r.rmb = R_FEQ then
-              fpu_event(evt, FPEVT_EQ);
-            else
-              fpu_event(evt, FPEVT_CMP);
-            end if;
           when FPU_MV_X_W =>
             v.s          := nf_mvxw2;
-            if r.rmb = "000" then
-              fpu_event(evt, FPEVT_F2X);
-            else
-              fpu_event(evt, FPEVT_CLASS);
-            end if;
           when FPU_CVT_S_D =>        -- Also D_S
             -- Swap around for result!
             v.rddp       := not r.rddp;
@@ -948,43 +968,29 @@ begin
             v.op2        := r.op1;
             v.normadjsel := 2;
             v.s          := nf_sd2;
-            -- qqq Is this the right way around?
-            if r.rddp = '1' then
-              fpu_event(evt, FPEVT_S2D);
-            else
-              fpu_event(evt, FPEVT_D2S);
-            end if;
           when FPU_CVT_W_S =>
             v.op2       := r.op1;
             v.s         := nf_fstoi2;
-            fpu_event(evt, FPEVT_F2I);
           when FPU_SGN =>
             v.s         := nf_sgn2;
-            fpu_event(evt, FPEVT_SGN);
           when FPU_MIN =>
             v.s         := nf_min2;
-            fpu_event(evt, FPEVT_MINMAX);
           when FPU_ADD | FPU_SUB =>
             v.s         := nf_addsub2;
-            fpu_event(evt, FPEVT_ADD);
           when FPU_MUL =>
             v.s         := nf_mul2;
-            fpu_event(evt, FPEVT_MUL);
           when FPU_DIV =>
             v.res       := (others => '0');
             v.s         := nf_div2;
-            fpu_event(evt, FPEVT_DIV);
           when FPU_SQRT =>
             v.res       := (others => '0');
             v.op2       := r.op1;
             v.normadjsel := 2;
             v.s         := nf_sqrt2;
             v.naeven    := '1';
-            fpu_event(evt, FPEVT_SQRT);
           when others =>
             to_idle     := true;
             v.s         := nf_idle;
-            fpu_event(evt, FPEVT_UNKNOWN);
         end case;
 
       when nf_load2 =>
@@ -2206,7 +2212,7 @@ begin
 
       -- Finish and write back result when committed
       when nf_opdone =>
-        if commit = '1' or r.committed = '1' then
+        if (commit = '1' and holdn = '1') or r.committed = '1' then
           v.wen       := '1';
           v.flags_wen := '1';
           v.s         := nf_rdwrite;
@@ -2620,7 +2626,7 @@ begin
     end case;
 
 
-    if unissue = '1' and v.id = unissue_id then
+    if unissue = '1' and holdn = '1' and v.id = unissue_id then
       fpu_event(evt, FPEVT_UNISSUE_1ST);
       to_idle     := true;
       v.s         := nf_idle;
@@ -2712,8 +2718,6 @@ begin
 
     events       <= uext(r.events_pipe, events'length);
 
-  -- For debugging
-    state_d      <= std_logic_vector(to_unsigned(nanofpu_state'pos(v.s), state_d'length));
 
   end process;
 

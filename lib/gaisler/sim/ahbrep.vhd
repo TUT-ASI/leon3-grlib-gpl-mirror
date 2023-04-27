@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,7 +47,8 @@ entity ahbrep is
     hindex  : integer := 0;
     haddr   : integer := 0;
     hmask   : integer := 16#fff#;
-    halt    : integer := 1); 
+    halt    : integer := 1;
+    delay_stop : integer := 0); 
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -89,8 +91,18 @@ begin
   variable addr : std_logic_vector(21 downto 2);
   variable hwdata : std_logic_vector(31 downto 0);
   variable v : reg_type;
+  variable delayed : integer := 0;
   begin
   if falling_edge(clk) then
+    if delay_stop /= 0 then
+      if rst = '0' then
+        errcnt := 0;
+      end if;
+      if delayed > 0 then
+        delayed := delayed - 1;
+        assert delayed > 0 severity failure;
+      end if;
+    end if;
     if (ahbsi.hready = '1') then
       v.haddr := ahbsi.haddr; v.hsel := ahbsi.hsel(hindex);
       v.hwrite := ahbsi.hwrite; v.htrans := ahbsi.htrans;
@@ -129,7 +141,8 @@ begin
           print (tost(errcnt) & " errors detected, halting with IU error mode");
         end if;
         print ("");
-        assert false severity failure;
+        delayed := delay_stop;
+        assert delayed > 0 severity failure;
       when "000110" =>
         grlib.testlib.print("Checkpoint " & tost(conv_integer(hwdata(15 downto 0))));
       when "000111" =>

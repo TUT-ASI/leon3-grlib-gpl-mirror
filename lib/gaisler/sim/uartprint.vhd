@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -154,12 +155,16 @@ begin
           -- print("UART: Detected character code " & tost(to_integer(unsigned(dbits(10*c+1 to 10*c+8)))) & "/" & tost(to_integer(dbits2)) & " spos:" & tost(spos) & " bitrate: " & tost(integer'(bitper / (1 ns))) & " et: " & tost(integer'(et / (1 ns))));
           dbits2(7) := '0';
           lbufd(lbufp) := character'val(to_integer(dbits2));
-          lbufp := lbufp+1;
-          if lbufd(lbufp-1)=cr or lbufd(lbufp-1)=lf then
-            if lbufp>2 then
-              print("UART: " & lbufd(1 to lbufp-2));
+          if lbufd(lbufp)=cr or lbufd(lbufp)=lf then
+            if lbufp>1 then
+              print("UART: " & lbufd(1 to lbufp-1));
             end if;
             lbufp := 1;
+          elsif lbufp=lbufl then
+            print("UART: " & lbufd & "(conts)");
+            lbufp := 1;
+          else
+            lbufp := lbufp+1;
           end if;
         end loop;
         exit;

@@ -2,7 +2,8 @@
 --  This file is a part of the GRLIB VHDL IP LIBRARY
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2022, Cobham Gaisler
+--  Copyright (C) 2015 - 2023, Cobham Gaisler
+--  Copyright (C) 2023,        Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,6 +50,7 @@ library grlib;
 use grlib.config.all;
 use grlib.config_types.all;
 use grlib.stdlib.all;
+use grlib.dftlib.trstmux;
 
 entity generic_fifo is
   generic (
@@ -62,7 +64,10 @@ entity generic_fifo is
     ft: integer := 0;
     custombits : integer := 1;
     rdhold : integer := 0;
-    extrempty : integer := 0
+    extrempty : integer := 0;
+    scantest: integer := 0;
+    arstr: integer := 0;
+    arstw: integer := 0
   );
   port (
     rclk    : in std_logic;  -- read clock
@@ -84,6 +89,7 @@ entity generic_fifo is
     dynsync : in std_ulogic;
     rextempty: in std_ulogic;           -- External empty signal from pipeline stage
     testin  : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+    testrst : in std_ulogic := '0';
     error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0); -- FT only
     errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0') -- FT only
     );
@@ -137,6 +143,8 @@ architecture rtl_fifo of generic_fifo is
   signal dataout_valid: std_ulogic;
 --pragma translate_on
 
+  signal warstn, rarstn: std_ulogic;
+
 
 begin
 
@@ -182,10 +190,12 @@ begin
 
     -- synchronous reset
     if wrstn = '0' then
-      wr_v.waddr := (others =>'0');
-      wr_v.waddr_gray := (others =>'0');
-      wr_v.full := '0';
-      wr_v.waddr_ds1 := (others => '0');
+      if arstw=0 then
+        wr_v.waddr := (others =>'0');
+        wr_v.waddr_gray := (others =>'0');
+        wr_v.waddr_ds1 := (others => '0');
+      end if;
+      wr_v.full := '0';                 -- used combinatorially below
     end if;
 
     -- assign wusedw and almost full fifo output
@@ -209,12 +219,31 @@ begin
 
   end process;
 
-  wr_sync: process(wclk)
-  begin
-    if rising_edge(wclk) then
+  wrsyncgen: if arstw=0 generate
+    warstn <= '0';
+    wr_sync: process(wclk)
+    begin
+      if rising_edge(wclk) then
         wr_r <= wr_rin;
-    end if;
-  end process;
+      end if;
+    end process;
+  end generate;
+  wrasyncgen: if arstw/=0 generate
+    wtm0: trstmux
+      generic map (scantest => scantest)
+      port map (arsti => wrstn, testrst => testrst, testen => testin(TESTIN_WIDTH-1), arsto => warstn);
+    wr_async: process(wclk,warstn)
+    begin
+      if warstn='0' then
+        wr_r <= (waddr => (others => '0'),
+                 waddr_gray => (others => '0'),
+                 full => '0',
+                 waddr_ds1 => (others => '0'));
+      elsif rising_edge(wclk) then
+        wr_r <= wr_rin;
+      end if;
+    end process;
+  end generate;
 
 
   sync_reg: if sepclk = 1 generate
@@ -310,10 +339,12 @@ begin
 
     -- synchronous reset
     if rrstn = '0' then
-      rd_v.raddr := (others =>'0');
-      rd_v.raddr_gray := (others =>'0');
-      rd_v.empty := '1';
-      rd_v.raddr_ds1 := (others => '0');
+      if arstr=0 then
+        rd_v.raddr := (others =>'0');
+        rd_v.raddr_gray := (others =>'0');
+        rd_v.raddr_ds1 := (others => '0');
+      end if;
+      rd_v.empty := '1';  -- used combinatorially below
     end if;
 
     -- assign almost empty
@@ -367,16 +398,42 @@ begin
     end if;
   end process;
 
-  rd_sync: process(rclk)
-  begin
-    if rising_edge(rclk) then
-      rd_r <= rd_rin;
-    end if;
-  end process;
+  rdsyncgen: if arstr=0 generate
+    rarstn <= '0';
+    rd_sync: process(rclk)
+    begin
+      if rising_edge(rclk) then
+        rd_r <= rd_rin;
+      end if;
+    end process;
+  end generate;
+  rdasyncgen: if arstr/=0 generate
+    rtm0: trstmux
+      generic map (scantest => scantest)
+      port map (arsti => rrstn, testrst => testrst, testen => testin(TESTIN_WIDTH-1), arsto => rarstn);
+    rd_async: process(rclk,rarstn)
+    begin
+      if rarstn='0' then
+        rd_r <= (raddr => (others => '0'),
+                 raddr_gray => (others => '0'),
+                 raddr_ds1 => (others => '0'),
+                 empty => '1',
+                 waddr_ds1_del => (others => '0'),
+                 extempty => '1'
+--pragma translate_off
+                 ,
+                 prev_renable => '0'
+--pragma translate_on
+                 );
+      elsif rising_edge(rclk) then
+        rd_r <= rd_rin;
+      end if;
+    end process;
+  end generate;
 
   -- memory instantiation
   nofwft_gen: if fwft = 0 and ft = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits, rdhold => rdhold)
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, testen => scantest, custombits => custombits, rdhold => rdhold)
       port map (rclk => rclk, renable => renable, raddress => rd_r.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
@@ -384,7 +441,7 @@ begin
   end generate;
 
   fwft_gen: if fwft /= 0 and sepclk = 0 and ft = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1, custombits => custombits, rdhold => fwft_rdhold)
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, wrfst => 1, testen => scantest, custombits => custombits, rdhold => fwft_rdhold)
       port map (rclk => rclk, renable => '1', raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin
@@ -392,7 +449,7 @@ begin
   end generate;
 
   fwftsep_gen: if fwft /= 0 and sepclk /= 0 and ft = 0 generate
-    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, custombits => custombits, rdhold => fwft_rdhold)
+    ram0 : syncram_2p generic map ( tech => tech, abits => abits, dbits => dbits, sepclk => sepclk, testen => scantest, custombits => custombits, rdhold => fwft_rdhold)
       port map (rclk => rclk, renable => sepfwft_rden, raddress => rd_rin.raddr(abits-1 downto 0), dataout => dataout_i,
                 wclk => wclk, write => write, waddress => wr_r.waddr(abits-1 downto 0), datain => datain,
                 testin => testin

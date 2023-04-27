@@ -19,6 +19,9 @@ proc append_file_top_files {f finfo} {
 			return
 		}
 		"vhdlxile" {
+			return
+		}
+		"vhdlxise" {
 			global TOP
 			upvar TOP_files_prj_contents tfpc
 			append tfpc "\nvhdl $bn $f"

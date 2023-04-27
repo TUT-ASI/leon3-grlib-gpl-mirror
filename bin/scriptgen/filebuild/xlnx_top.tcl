@@ -54,6 +54,9 @@ proc append_file_xlnx_top {f finfo} {
 			return
 		}
 		"vhdlxile" {
+			return
+		}
+		"vhdlxise" {
 			upvar tmp_npl_contents mnc
 			append mnc "LIBFILE $f $bn vhdl\n"
 			return

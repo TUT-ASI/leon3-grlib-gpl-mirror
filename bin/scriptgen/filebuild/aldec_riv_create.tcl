@@ -53,6 +53,9 @@ proc append_file_aldec_riv_create {f finfo riv_fs riv_path} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}

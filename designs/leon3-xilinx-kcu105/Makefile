@@ -117,7 +117,7 @@ LIBADD = testgrouppolito
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest \
 	ascs slink  \
 	pwm gr1553b iommu ac97 secureip canfd \
-	nand grrm mma lram riscv noelv noelv/subsys
+	nand grrm mma lram leon5 leon5v0 riscv noelv noelv/subsys
 ifeq ("$(CONFIG_LEON4)","")
 DIRSKIP+=leon4v0
 endif

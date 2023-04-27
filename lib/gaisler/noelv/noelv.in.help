@@ -32,3 +32,14 @@ NOEL-V subsystem GPL settings
 CONFIG_PROC_NODBUS
   Remove IPs not included in the GPL release.
 
+Select number of APLIC domains
+CONFIG_DOMAINS_NUM
+  Number of supported APLIC interrupt domains.
+
+Select number of External Interrupt Identities
+CONFIG_EIID_NUM
+  Number of supported External Interrupt Identities:
+
+  It is the number of interrupt identities supported by 
+  an IMSIC interrupt file. It must be one less than a multiple 
+  of 64, and must be a minimum of 63 and a maximum of 2047.

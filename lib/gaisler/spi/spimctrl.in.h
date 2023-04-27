@@ -62,3 +62,4 @@
 #ifndef CONFIG_SPIMCTRL_RECONF
 #define CONFIG_SPIMCTRL_RECONF 0
 #endif
+

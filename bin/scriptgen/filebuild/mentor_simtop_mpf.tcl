@@ -44,6 +44,9 @@ proc append_file_mentor_simtop_mpf {f finfo nfiles} {
 		"vhdlxile" {
 			return
 		}
+		"vhdlxise" {
+			return
+		}
 		"vhdlfpro" {
 			return
 		}
