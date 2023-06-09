@@ -14,6 +14,24 @@ CONFIG_FPU_NANOFPU
   performance than the NanoFPU but also uses more area. The GRFPU5 is not
   available in all versions of GRLIB.
 
+Cache/TLB performance configuration
+CONFIG_LEON5_HP
+  The cache controller supports different size configuration. See
+  leon5sys section in grip.pdf for further information
+
+Cache memory Configuration
+CONFIG_LEON5_CMCFG_TAG
+  Data cache tag configuration:
+  0 - two memories (one two-port, one one-port), valid bits in two-
+      port memory
+  1 - one dual port memory, valid bits in flip flops
+  2 - two single port memories, valid bits in flip flops
+  3 - reserved
+CONFIG_LEON5_CMCFG_DATA
+  Data cache data configuration:
+  0 - Use standard 32-bit one-port memories for data
+  4 - Use one-port memories with byte writes for data
+
 AHB data width
 CONFIG_AHB_32BIT
   If there are AHB slaves connected to the LEON5 system that support

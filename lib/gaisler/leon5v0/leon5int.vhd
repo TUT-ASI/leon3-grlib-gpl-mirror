@@ -341,13 +341,13 @@ package leon5int is
     data             : cdatatype5;
     way              : std_logic_vector(1 downto 0);
     mexc             : std_ulogic;
+    mexcdata         : std_logic_vector(7 downto 0);
     hold             : std_ulogic;
     flush            : std_ulogic; -- flush in progress
     mds              : std_ulogic; -- memory data strobe
     cfg              : std_logic_vector(31 downto 0);
     bpmiss           : std_ulogic;
     eocl             : std_ulogic;
-    badtag           : std_ulogic;
     ics_btb          : std_logic_vector(1 downto 0);
     btb_flush        : std_logic;
     ctxswitch        : std_ulogic;
@@ -376,6 +376,11 @@ package leon5int is
     intack           : std_ulogic;
     eread            : std_ulogic;
     mmucacheclr      : std_ulogic;
+    trapack          : std_ulogic;
+    trapacktt        : std_logic_vector(7 downto 0);
+    trapackpc        : std_logic_vector(31 downto 0);
+    trapackidata     : std_logic_vector(7 downto 0);
+    bar              : std_logic_vector(2 downto 0);
     iudiag_miso      : l5_intreg_miso_type;
   end record;
 
@@ -385,10 +390,11 @@ package leon5int is
     mexc             : std_ulogic;
     hold             : std_ulogic;
     mds              : std_ulogic;
-    werr             : std_ulogic;
+    dtrapet1         : std_ulogic;
+    dtrapet0         : std_ulogic;
+    dtraptt          : std_logic_vector(5 downto 0);
     cache            : std_ulogic;
     wbhold           : std_ulogic; -- write buffer hold
-    badtag           : std_ulogic;
     iudiag_mosi      : l5_intreg_mosi_type;
     iuctrl           : iu_control_reg_type;
   end record;

@@ -5,6 +5,62 @@ comment 'LEON5 Processor system'
   choice 'FPU type              ' \
     "nanofpu    CONFIG_FPU_NANOFPU \
      grfpu5     CONFIG_FPU_GRFPU5" nanofpu
+  choice 'Cache/TLB performance configuration ' \
+    "Highest-performance CONFIG_LEON5_HP \
+     General-purpose     CONFIG_LEON5_GP \
+     Minimal             CONFIG_LEON5_EP " Highest-performance
+  if [ "$CONFIG_LEON5_HP" = "y" ]; then
+    define_int  CONFIG_LEON5_PERFCFG 0
+  fi
+  if [ "$CONFIG_LEON5_GP" = "y" ]; then
+    define_int  CONFIG_LEON5_PERFCFG 1
+  fi
+  if [ "$CONFIG_LEON5_EP" = "y" ]; then
+    define_int  CONFIG_LEON5_PERFCFG 2
+  fi
+  choice 'Register File implementation ' \
+    "2-port-memories CONFIG_LEON5_RF_0 \
+     flip-flops      CONFIG_LEON5_RF_1 " 2-port-memories
+  if [ "$CONFIG_LEON5_RF_0" = "y" ]; then
+    define_int  CONFIG_LEON5_RFCFG 0
+  fi
+  if [ "$CONFIG_LEON5_RF_1" = "y" ]; then
+    define_int  CONFIG_LEON5_RFCFG 1
+  fi
+  mainmenu_option next_comment
+  comment 'Cache memory Configuration  '
+      int 'Data Cache Tag ' CONFIG_LEON5_CMCFG_TAG 0
+      int 'Data Cache Data' CONFIG_LEON5_CMCFG_DATA 0
+  endmenu
+  mainmenu_option next_comment
+  comment 'Fault-tolerance  '      
+      choice 'IU Register file protection     ' \
+	"None		CONFIG_IUFT_NONE \
+	FPGA-builtin-error-correction	CONFIG_IUFT_TECHSPEC \
+	RTL-based-error-correction	CONFIG_IUFT_RTL" None
+      choice 'Cache memory protection     ' \
+	  "None		CONFIG_CACHE_FT_NONE \
+           FPGA-builtin-error-correction CONFIG_CACHE_FT_TECHSPEC \
+	   RTL-based-error-correction	CONFIG_CACHE_FT_RTL" None
+  endmenu
+  if [ "$CONFIG_IUFT_NONE" = "y" ]; then
+    define_int  CONFIG_LEON5_RF_FTCFG 0
+  fi
+  if [ "$CONFIG_IUFT_TECHSPEC" = "y" ]; then
+    define_int  CONFIG_LEON5_RF_FTCFG 16
+  fi
+  if [ "$CONFIG_IUFT_RTL" = "y" ]; then
+    define_int  CONFIG_LEON5_RF_FTCFG 32
+  fi
+  if [ "$CONFIG_CACHE_FT_NONE" = "y" ]; then
+    define_int  CONFIG_LEON5_CACHE_FTCFG 0
+  fi
+  if [ "$CONFIG_CACHE_FT_TECHSPEC" = "y" ]; then
+    define_int  CONFIG_LEON5_CACHE_FTCFG 16
+  fi
+  if [ "$CONFIG_CACHE_FT_RTL" = "y" ]; then
+    define_int  CONFIG_LEON5_CACHE_FTCFG 32
+  fi
   choice 'AHB data width for wide slaves' \
         "32-bit                 CONFIG_AHB_32BIT \
          64-bit                 CONFIG_AHB_64BIT \
@@ -13,5 +69,6 @@ comment 'LEON5 Processor system'
     hex 'Wide slave AHB bus map                         ' CONFIG_BWMASK 0000
   fi
   hex 'Fixed cacheability map  ' CONFIG_CACHE_FIXED 0
+
 endmenu
 

@@ -60,7 +60,8 @@ component ahbjtag
     scantest : integer := 0;
     oepol  : integer := 1;
     tcknen : integer := 0;
-    versel : integer range 0 to 1 := 1);
+    versel : integer range 0 to 1 := 1;
+    taptecharg : integer := 0);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;

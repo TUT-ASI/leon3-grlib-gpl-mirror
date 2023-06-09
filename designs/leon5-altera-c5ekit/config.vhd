@@ -15,8 +15,8 @@ package config is
 --LEON5 processor system
   constant CFG_NCPU : integer := (1);
   constant CFG_FPUTYPE : integer := 0;
-  constant CFG_AHBW : integer := 32;
-  constant CFG_BWMASK : integer := 16#0000#;
+  constant CFG_AHBW : integer := 64;
+  constant CFG_BWMASK : integer := 16#00f0#;
   constant CFG_DFIXED : integer := 16#0#;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;

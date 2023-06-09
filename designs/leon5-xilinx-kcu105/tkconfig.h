@@ -42,8 +42,8 @@
 #define CONFIG_SYN_TECH ihp25
 #elif defined CONFIG_SYN_IHP25RH
 #define CONFIG_SYN_TECH ihp25rh
-#elif defined CONFIG_SYN_CMOS9SF
-#define CONFIG_SYN_TECH cmos9sf
+#elif defined CONFIG_SYN_NEXUS
+#define CONFIG_SYN_TECH nexus
 #elif defined CONFIG_SYN_BRAVEMED
 #define CONFIG_SYN_TECH nx
 #elif defined CONFIG_SYN_ECLIPSE
@@ -260,6 +260,30 @@
 #define CONFIG_FPU 1
 #else
 #define CONFIG_FPU 0
+#endif
+
+#ifndef CONFIG_LEON5_PERFCFG
+#define CONFIG_LEON5_PERFCFG 0
+#endif
+
+#ifndef CONFIG_LEON5_RFCFG
+#define CONFIG_LEON5_RFCFG 0
+#endif
+
+#ifndef CONFIG_LEON5_RF_FTCFG
+#define CONFIG_LEON5_RF_FTCFG 0
+#endif
+
+#ifndef CONFIG_LEON5_CMCFG_TAG
+#define CONFIG_LEON5_CMCFG_TAG 0
+#endif
+
+#ifndef CONFIG_LEON5_CMCFG_DATA
+#define CONFIG_LEON5_CMCFG_DATA 0
+#endif
+
+#ifndef CONFIG_LEON5_CACHE_FTCFG
+#define CONFIG_LEON5_CACHE_FTCFG 0
 #endif
 
 #if defined CONFIG_AHB_128BIT

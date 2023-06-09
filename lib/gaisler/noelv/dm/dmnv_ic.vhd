@@ -279,7 +279,7 @@ begin
 
     l_endian := (cbmi.endian = '1');
 
-    odmami := (others => ahbm_in_none);
+    odmami := (others => cbmi);
     for i in ndmamst-1 downto 0 loop
       odmami(i).hgrant := (others => '1');
       odmami(i).hready := r.dma(i).hready;

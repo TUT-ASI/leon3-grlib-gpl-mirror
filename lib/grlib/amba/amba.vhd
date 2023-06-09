@@ -751,6 +751,10 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     shadow      : integer range 0 to 1 := 0;  -- Allow overlapping memory areas
     unmapslv    : integer := 0;
     ahbendian   : integer := GRLIB_ENDIAN
+-- pragma translate_off
+    ;
+    dbgtag      : string := "" -- Prefix for AHB trace printout
+-- pragma translate_on
   );
   port (
     rst     : in  std_ulogic;

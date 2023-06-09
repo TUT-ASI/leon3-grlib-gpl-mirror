@@ -1,3 +1,4 @@
+GRLIB_CONFIG=grlib_config.vhd
 GRLIB=../..
 TOP=leon5mp
 BOARD=altera-c5ekit

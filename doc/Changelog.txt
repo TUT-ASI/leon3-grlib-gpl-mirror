@@ -1,3 +1,34 @@
+----------------------- Release 2023.2-b4283 ---------------------------
+
+2023-06-09	LEON5 updates:
+		- Implemented data_store_error trap with configurable handling
+		  of special cases (such as interrupt between store and error)
+		- Implemented internal cache error trap for critical errors
+		  (duplicated tags detected)
+		- Add cache trap register to record delivered and pending and
+		  traps from cache controller.
+		- Support write combining mode based on explicit hint
+		  instructions instead of always waiting for following store
+		- Add full barrier and write combining hint using existing
+		  STBAR opcode (consistent with SPARC V9 MEMBAR)
+
+2023-05-25	AHBCTRL simulation trace updates:
+		- Print correct slice for narrow accesses on little endian
+		  buses.
+		- Trace SPLIT and RETRY responses in addition to OKAY and ERROR.
+		- Optionally prefix each trace line with bus index and/or a
+		  custom debug tag provided as a generic. Intended for
+		  multi-bus systems.
+
+2023-05-25	AHBJTAG and TAP techmap:
+		- TAP techmap now uses BSCANE2_TAP for all Xilinx technologies
+		  where the built-in TAP is accessed using a BSCANE2 primitive.
+		- Added new generic taptecharg in AHBJTAG which is passed to
+		  the TAP techmap. Currently used only by BSCANE2_TAP to
+		  select an alternate user scan chain.
+		- JTAGTST jread procedure now supports custom ainst/dinst/isize.
+		- AHBJTAG documentation updated.
+
 ----------------------- Release 2023.1-b4282 ---------------------------
 
 2023-04-27	LEON5: Minor fix to snooping on stores. Stores and atomics to

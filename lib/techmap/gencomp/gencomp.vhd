@@ -1424,7 +1424,8 @@ component tap
     trsten : integer range 0 to 1 := 1;
     scantest : integer := 0;
     oepol  : integer := 1;
-    tcknen : integer := 0);
+    tcknen : integer := 0;
+    techarg : integer := 0);
   port (
     trst         : in std_ulogic;
     tck         : in std_ulogic;

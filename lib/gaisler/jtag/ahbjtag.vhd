@@ -51,7 +51,8 @@ entity ahbjtag is
     scantest : integer := 0;
     oepol  : integer := 1;
     tcknen : integer := 0;
-    versel : integer range 0 to 1 := 1);
+    versel : integer range 0 to 1 := 1;
+    taptecharg : integer := 0);
   port (
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
@@ -110,8 +111,8 @@ begin
     port map (rst, clk, dmai, dmao, ahbi, ahbo);
 
   tap0 : tap generic map (tech => tech, irlen => 6, idcode => idcode, 
-	manf => manf, part => part, ver => ver, scantest => scantest, oepol => oepol,
-        tcknen => tcknen)
+        manf => manf, part => part, ver => ver, scantest => scantest, oepol => oepol,
+        tcknen => tcknen, techarg => taptecharg)
     port map (trst, tck, tms, tdi, tdo, lltck, ltapo.tdi, ltapo.inst, ltapo.reset, ltapo.capt,
               ltapo.shift, lupd, ltapo.asel, ltapo.dsel, ltapi.en, ltapi.tdo, tapi_tdo,
               tapo_ninst, tapo_iupd, lltckn,

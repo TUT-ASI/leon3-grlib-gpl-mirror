@@ -4,7 +4,7 @@ GRLIB=../..
 TOP=leon3mp
 
 BOARD=digilent-arty-a7
-DESIGN=thesign
+DESIGN=leon3-digilent-arty-a7
 BOARDDIR=$(GRLIB)/boards/$(BOARD)
 include $(BOARDDIR)/Makefile.inc
 

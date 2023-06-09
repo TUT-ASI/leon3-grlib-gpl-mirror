@@ -229,7 +229,10 @@ begin
       ahbendian => 0,
       split     => ahbsplit,
       ioen      => 1,
-      ioaddr    => 16#FFF#
+      ioaddr    => 16#FFF#,
+      enbusmon  => 1,
+      assertwarn => 0,
+      asserterr => 1
       )
     port map (
       rst  => rstn,

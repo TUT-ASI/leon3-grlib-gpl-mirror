@@ -46,7 +46,8 @@ entity tap is
     trsten : integer range 0 to 1 := 1;
     scantest : integer := 0;
     oepol  : integer := 1;
-    tcknen: integer := 0);
+    tcknen: integer := 0;
+    techarg : integer := 0);
   port (
     trst        : in std_ulogic;
     tck         : in std_ulogic;
@@ -121,54 +122,17 @@ begin
      tapo_tck <= ltck; tapo_tckn <= not ltck;
    end generate;
 
-   xc7v : if tech = virtex7 generate
-     u0 : virtex7_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
+   bscane2_tap_gen : if tech = virtex7 or tech = kintex7 or tech = artix7 or
+                       tech = zynq7000 or
+                       tech = kintexu or tech = virtexup generate
+     u0 : bscane2_tap
+       generic map (altchain => techarg)
+       port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
+                 tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
      tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
      tapo_ninst <= (others => '0'); tapo_iupd <= '0';
      tapo_tck <= ltck; tapo_tckn <= not ltck;
    end generate;
-
-   kc7v : if tech = kintex7 generate
-     u0 : kintex7_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
-     tapo_tck <= ltck; tapo_tckn <= not ltck;
-   end generate;
-
-   xcku : if tech = kintexu generate
-     u0 : kintexu_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
-     tapo_tck <= ltck; tapo_tckn <= not ltck;
-   end generate;
-
-   xcvup : if tech = virtexup generate
-     u0 : virtexup_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
-     tapo_tck <= ltck; tapo_tckn <= not ltck;
-   end generate;
-
-   ac7v : if tech = artix7 generate
-     u0 : artix7_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
-     tapo_tck <= ltck; tapo_tckn <= not ltck;
-   end generate;
-
-   zynq7v : if tech = zynq7000 generate
-     u0 : virtex7_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,
-                                tapo_capt, tapo_shft, tapo_upd, tapo_xsel1, tapo_xsel2);
-     tapo_inst <= (others => '0'); tdoen <= '0'; tdo <= '0';
-     tapo_ninst <= (others => '0'); tapo_iupd <= '0';
-     tapo_tck <= ltck; tapo_tckn <= not ltck;
-   end generate;
-
 
    xc3s : if (tech = spartan3) or (tech = spartan3e) generate  
      u0 : spartan3_tap port map (tapi_tdo1, tapi_tdo1, ltck, tapo_tdi, tapo_rst,

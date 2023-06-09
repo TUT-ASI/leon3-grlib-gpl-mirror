@@ -524,8 +524,9 @@ begin
       wbmask   => CFG_BWMASK,
       busw     => CFG_AHBW,
       fpuconf  => CFG_FPUTYPE,
-      cmemconf => 0,
-      rfconf   => 0,
+      perfcfg  => CFG_PERFCFG,
+      cmemconf => CFG_CMEMCONF,
+      rfconf   => CFG_RFCONF,
       disas    => disas,
       ahbtrace => ahbtrace,
       devid    => LEON5_XILINX_KCU105

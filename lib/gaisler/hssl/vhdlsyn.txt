@@ -12,3 +12,5 @@ grspfi_ahb.vhd
 grspfi_axi.vhd
 grwizl_ahb.vhd
 grwizl_axi.vhd
+grspfi_spwdatabr.vhd
+grspfi_spwtcbr.vhd

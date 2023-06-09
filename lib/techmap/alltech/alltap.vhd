@@ -269,67 +269,10 @@ port (
     );
 end component;
 
-component virtex7_tap 
-port (
-     tapi_tdo1   : in std_ulogic;
-     tapi_tdo2   : in std_ulogic;
-     tapo_tck    : out std_ulogic;
-     tapo_tdi    : out std_ulogic;
-     tapo_rst    : out std_ulogic;
-     tapo_capt   : out std_ulogic;
-     tapo_shft   : out std_ulogic;
-     tapo_upd    : out std_ulogic;
-     tapo_xsel1  : out std_ulogic;
-     tapo_xsel2  : out std_ulogic
+component bscane2_tap
+generic (
+     altchain : in integer range 0 to 1 := 0
     );
-end component;
-
-component kintex7_tap 
-port (
-     tapi_tdo1   : in std_ulogic;
-     tapi_tdo2   : in std_ulogic;
-     tapo_tck    : out std_ulogic;
-     tapo_tdi    : out std_ulogic;
-     tapo_rst    : out std_ulogic;
-     tapo_capt   : out std_ulogic;
-     tapo_shft   : out std_ulogic;
-     tapo_upd    : out std_ulogic;
-     tapo_xsel1  : out std_ulogic;
-     tapo_xsel2  : out std_ulogic
-    );
-end component;
-
-component kintexu_tap 
-port (
-     tapi_tdo1   : in std_ulogic;
-     tapi_tdo2   : in std_ulogic;
-     tapo_tck    : out std_ulogic;
-     tapo_tdi    : out std_ulogic;
-     tapo_rst    : out std_ulogic;
-     tapo_capt   : out std_ulogic;
-     tapo_shft   : out std_ulogic;
-     tapo_upd    : out std_ulogic;
-     tapo_xsel1  : out std_ulogic;
-     tapo_xsel2  : out std_ulogic
-    );
-end component;
-
-component virtexup_tap 
-port (
-     tapi_tdo1   : in std_ulogic;
-     tapi_tdo2   : in std_ulogic;
-     tapo_tck    : out std_ulogic;
-     tapo_tdi    : out std_ulogic;
-     tapo_rst    : out std_ulogic;
-     tapo_capt   : out std_ulogic;
-     tapo_shft   : out std_ulogic;
-     tapo_upd    : out std_ulogic;
-     tapo_xsel1  : out std_ulogic;
-     tapo_xsel2  : out std_ulogic
-    );
-end component;
-
-component artix7_tap 
 port (
      tapi_tdo1   : in std_ulogic;
      tapi_tdo2   : in std_ulogic;

@@ -73,6 +73,10 @@ entity ahbctrl is
     shadow      : integer range 0 to 1 := 0;  -- Allow memory area shadowing
     unmapslv    : integer := 0;    -- to redirect unmapped areas to slave, set to 256+bar*32+slv
     ahbendian   : integer := GRLIB_ENDIAN
+-- pragma translate_off
+    ;
+    dbgtag      : string  := "" -- Prefix for AHB trace printout
+-- pragma translate_on
   );
   port (
     rst     : in  std_ulogic;
@@ -775,34 +779,63 @@ begin
     variable htrans : std_logic_vector(1 downto 0) := "00";
     variable hmaster : std_logic_vector(3 downto 0);
     variable haddr : std_logic_vector(31 downto 0);
-    variable hwdata, hrdata : std_logic_vector(127 downto 0);
+    variable hdata : std_logic_vector(AHBDW-1 downto 0);
     variable mbit, bitoffs : integer;
-    variable t : integer;
+
+    function select_string(c : boolean; s1 : string; s2 : string) return string is
+    begin
+      if c then
+        return s1;
+      else
+        return s2;
+      end if;
+    end function;
+    function hresp_string(hresp : std_logic_vector(1 downto 0)) return string is
+    begin
+      case hresp is
+        when HRESP_OKAY =>
+          return ""; -- don't clutter output with OKAY responses
+        when HRESP_ERROR =>
+          return " - ERROR!";
+        when HRESP_RETRY =>
+          return " - RETRY";
+        when HRESP_SPLIT =>
+          return " - SPLIT";
+        when others =>
+          return "";
+      end case;
+    end function;
+
+    -- The prefix to use before each trace line depends on the generic
+    -- ahbtrace. The prototypical prefix is "[dbgtag ][busX ]mstY" where
+    -- brackets indicate optional parts that can be enabled individually via
+    -- bits in ahbtrace.
+    constant prefix : string :=
+      select_string(dbgtag'length = 0, "", dbgtag & " ") &
+      select_string((ahbtrace/2) mod 2 = 0, "", "bus" & tost(index) & " ") &
+      "mst";
+
     begin
       if rising_edge(clk) then
-        if htrans(1)='1' then
+        if (htrans(1) and lmsti.hready) = '1' then
           mbit :=  2**conv_integer(hsize)*8;
           bitoffs := 0;
           if mbit < ahbdw then
             bitoffs := mbit * conv_integer(haddr(log2(ahbdw/8)-1 downto conv_integer(hsize)));
-            bitoffs := lslvi.hwdata'length-mbit-bitoffs;
+            if lslvi.endian = '0' then -- big endian conversion
+              bitoffs := lslvi.hwdata'length-mbit-bitoffs;
+            end if;
           end if;
-		end if;
-        if htrans(1)='1' and lmsti.hready='0' and (lmsti.hresp="01") then
-          if hwrite = '1' then
-            -- grlib.testlib.print("mbit" & tost(mbit) & " bitoffs " & tost(bitoffs));
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+          if hwrite='1' then
+            hdata(mbit-1 downto 0) := lslvi.hwdata(mbit-1+bitoffs downto bitoffs);
           else
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "] - ERROR!");
+            hdata(mbit-1 downto 0) := lmsti.hrdata(mbit-1+bitoffs downto bitoffs);
           end if;
-        end if;
-        if ((htrans(1) and lmsti.hready) = '1') and (lmsti.hresp = "00") then
-          t := (now/1 ns);
-          if hwrite = '1' then
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    write " & tost(mbit/8) & " bytes  [" & tost(lslvi.hwdata(mbit-1+bitoffs downto bitoffs)) & "]");
-          else
-            grlib.testlib.print("mst" & tost(hmaster) & ": " & tost(haddr) & "    read  " & tost(mbit/8) & " bytes  [" & tost(lmsti.hrdata(mbit-1+bitoffs downto bitoffs)) & "]");
-          end if;
+          grlib.testlib.print(
+            prefix & tost(hmaster) & ": " & tost(haddr) &
+            select_string(hwrite='1', "    write ", "    read  ") &
+            tost(mbit/8) & " bytes  [" & tost(hdata(mbit-1 downto 0)) & "]" &
+            hresp_string(lmsti.hresp));
         end if;
         if lmsti.hready = '1' then
           hwrite := lslvi.hwrite;

@@ -366,10 +366,12 @@ architecture rtl of cctrl5 is
     -- "01" - might combine with next
     -- "11" - can be combined with next
     wcomb: std_logic_vector(1 downto 0);
+    -- 1: store made before trap, write error should be "lost"
+    maskwtrap: std_ulogic;
   end record;
   type stbufarr is array(natural range <>) of stbufent;
 
-  constant stbufent_zero: stbufent := ((others => '0'), (others => '0'), (others => '0'), (others => '0'), '0','0',"11");
+  constant stbufent_zero: stbufent := ((others => '0'), (others => '0'), (others => '0'), (others => '0'), '0','0',"11",'0');
 
   type cctrl5_state is (as_normal, as_flush, as_icfetch,
                         as_dcfetch, as_dcfetch2,
@@ -389,7 +391,11 @@ architecture rtl of cctrl5 is
     dcs     : std_logic_vector(1 downto 0);      -- dcache state
     ics     : std_logic_vector(1 downto 0);      -- icache state
     ics_btb : std_logic_vector(1 downto 0);     -- icache state output to btb
-    wcomben : std_ulogic;                       -- write combining enable
+    wcomben : std_ulogic;                       -- automatic write combining enable
+    wchinten: std_ulogic;                       -- write combining hint enable
+    diaemru : std_ulogic;               -- defer instruction access exception
+                                        -- mmu register updates until trap is
+                                        -- taken
   end record;
 
   constant M_CTX_SZ       : integer := 8;
@@ -470,6 +476,7 @@ architecture rtl of cctrl5 is
     dflushpend: std_ulogic;
     slowwrpend: std_ulogic;
     dbgaccpend: std_ulogic;
+    syncbar: std_ulogic;
     holdn: std_ulogic;
     ramreload: std_ulogic;
     fastwr_rdy: std_ulogic;
@@ -489,6 +496,7 @@ architecture rtl of cctrl5 is
     ahb_hprot: std_logic_vector(3 downto 0);
     ahb_hwdata: std_logic_vector(xbusw-1 downto 0);
     ahb_snoopmask: std_logic_vector(0 to DWAYS-1);
+    ahb_maskwtrap: std_ulogic;
     -- AHB delayed registers
     ahb3_inacc: std_ulogic;
     ahb3_rdbuf: std_logic_vector(LINESZMAX*32-1 downto 0);
@@ -503,12 +511,11 @@ architecture rtl of cctrl5 is
     ahb2_haddr42: std_logic_vector(4 downto 2);
     ahb2_hburst0: std_ulogic;
     ahb2_hsize10: std_logic_vector(1 downto 0);
+    ahb2_maskwtrap: std_ulogic;
     -- AHB grant tracking
     granted: std_ulogic;
     -- Track if we are performing retry (for tag update logic)
     ahb_retrying: std_ulogic;
-    -- write error
-    werr: std_ulogic;
     -- MMU TLBs
     itlb: tlbentarr(0 to itlbnum-1);
     dtlb: tlbentarr(0 to dtlbnum-1);
@@ -611,6 +618,7 @@ architecture rtl of cctrl5 is
     dregval64: std_logic_vector(31 downto 0);
     dregerr: std_ulogic;
     dtlbrecheck: std_ulogic;
+    dwchint: std_ulogic;
     -- LRU
     ilru: lruarr(0 to 2**IOFFSET_BITS-1);
     dlru: lruarr(0 to 2**DOFFSET_BITS-1);
@@ -632,6 +640,22 @@ architecture rtl of cctrl5 is
     fsmidle : std_ulogic;
     dbgacc : std_logic_vector(1 downto 0);
     dbgaccwr : std_ulogic;
+    -- pending and lost trap state
+    itrappend: std_logic_vector(2 downto 0);  -- 0:AHB error 1:MMU error 2:TCM perm error
+    itraplost: std_logic_vector(2 downto 0);  -- 0:AHB error 1:MMU error 2:TCM perm error
+    itraptype: std_logic_vector(1 downto 0);  -- Reason for most recent instruction
+                                              -- access exception
+    wtrappend: std_logic_vector(1 downto 0);  -- 0:AHB error, 1:MMU writeback error
+    wtraplost: std_logic_vector(1 downto 0);
+    wtraptype: std_ulogic;
+    ahbwtrapmode: std_logic_vector(1 downto 0);
+    mmuwtrapmode: std_logic_vector(1 downto 0);
+    ctrappend: std_logic_vector(3 downto 0);
+    ctraptype: std_logic_vector(1 downto 0);
+    ctrapacc: std_logic_vector(3 downto 0);
+    dtrapet0: std_ulogic;
+    dtrapet1: std_ulogic;
+    dtraptt: std_logic_vector(5 downto 0);
     perf     : std_logic_vector(31 downto 0);
   end record;
 
@@ -641,7 +665,8 @@ architecture rtl of cctrl5 is
     v := (
       cctrl => (dfrz => '0', ifrz => '0', dsnoop => '0',
                 dcs => (others => '0'), ics => (others => '0'),
-                ics_btb => (others=>'0'), wcomben => '0'
+                ics_btb => (others=>'0'), wcomben => '0', wchinten => '1',
+                diaemru => '0'
                 ),
       mmctrl1 => mmctrl_type1_none, mmfsr => mmctrl_fs_zero, mmfar => (others => '0'),
       regflmask => (others => '0'), regfladdr => (others => '0'), iregflush => '0', dregflush => '0',
@@ -652,7 +677,7 @@ architecture rtl of cctrl5 is
       dtcmenp => '0', dtcmenva => '0', dtcmenvc => '0', dtcmperm => "0000",
       dtcmaddr => (others => '0'), dtcmctx => (others => '0'), itcmwipe => '0', dtcmwipe => '0',
       s => as_normal, imisspend => '0', dmisspend => '0',
-      iflushpend => '1', dflushpend => '1', slowwrpend => '0', dbgaccpend => '0',
+      iflushpend => '1', dflushpend => '1', slowwrpend => '0', dbgaccpend => '0', syncbar => '0',
       holdn => '1',
       ramreload => '0', fastwr_rdy => '1', stbuffull => '0',
       flushwrd => (others => '0'), flushwri => (others => '0'), regflpipe => (others => regfl_pipe_entry_zero),
@@ -661,12 +686,13 @@ architecture rtl of cctrl5 is
       ahb_hbusreq => '0', ahb_hlock => '0', ahb_htrans => "00",
       ahb_haddr => (others => '0'), ahb_hwrite => '0', ahb_hsize => "010",
       ahb_hburst => HBURST_SINGLE, ahb_hprot => "0000", ahb_hwdata => (others => '0'),
-      ahb_snoopmask => (others => '0'),
+      ahb_snoopmask => (others => '0'), ahb_maskwtrap => '0',
       ahb3_inacc => '0', ahb3_rdbuf => (others => '0'), ahb3_error => '0', ahb3_rdbvalid => (others => '0'),
       ahb3_rdberr => (others => '0'),
       ahb2_inacc => '0', ahb2_hwrite => '0', ahb2_addrmask => (others => '0'),
       ahb2_ifetch => '0', ahb2_dacc => '0', ahb2_haddr42 => (others => '0'), ahb2_hburst0 => '0', ahb2_hsize10 => "00",
-      granted => '0', ahb_retrying => '0', werr => '0',
+      ahb2_maskwtrap => '0',
+      granted => '0', ahb_retrying => '0',
       itlb => tlb_def, dtlb => tlb_def, tlbflush => '0', newent => tlbent_empty, mmuerr => mmctrl_fs_zero,
       curerrclass => "00", newerrclass => "00",
       itlbpmru => (others => '0'), dtlbpmru => (others => '0'),
@@ -700,10 +726,16 @@ architecture rtl of cctrl5 is
       dregval => (others => '0'), dregval64 => (others => '0'), dregerr => '0', dtlbrecheck => '0',
       ilru => (others => (others => '0')), dlru => (others => (others => '0')),
       flushctr => (others => '0'), flushpart => (others => '0'), dtflushdone => '0',
+      dwchint => '0',
       mmusel => (others => '0'), fpc_mosi => l5_intreg_mosi_none, c2c_mosi => l5_intreg_mosi_none,
       iudiag_mosi => l5_intreg_mosi_none,
       ctxswitch => '0',
-      fsmidle => '0', dbgacc => "00", dbgaccwr => '0'
+      fsmidle => '0', dbgacc => "00", dbgaccwr => '0',
+      itrappend => "000", itraplost => "000", itraptype => "00",
+      wtrappend => "00", wtraplost => "00", wtraptype => '0',
+      ahbwtrapmode => "01", mmuwtrapmode => "10",
+      ctrappend => "0000", ctraptype => "00", ctrapacc => "0000",
+      dtrapet0 => '0', dtrapet1 => '0', dtraptt => "000000"
       , perf => (others => '0')
       );
     return v;
@@ -1007,7 +1039,7 @@ begin
     variable odco: dcache_out_type5;
     variable oahbo: ahb_mst_out_type;
     variable ocrami: cram_in_type5;
-    variable ihit, ivalid, ibufaddrmatch: std_ulogic;
+    variable ihit, ivalid, ibufaddrmatch, idblhit: std_ulogic;
     variable ihitv, ivalidv: std_logic_vector(0 to IWAYS-1);
     variable itcmhit: std_ulogic;
     variable iway: std_logic_vector(1 downto 0);
@@ -1025,7 +1057,7 @@ begin
     variable itcmact: std_ulogic;
     variable dctagsv: cram_tags;
     variable dhitv, dvalidv: std_logic_vector(0 to DWAYS-1);
-    variable dhit, dvalid: std_ulogic;
+    variable dhit, dvalid, ddblhit: std_ulogic;
     variable dtcmhit: std_ulogic;
     variable dway: std_logic_vector(1 downto 0);
     variable dasi: std_logic_vector(7 downto 0);
@@ -1089,6 +1121,7 @@ begin
 
     variable vvalididx: std_logic_vector(DOFFSET_HIGH-DOFFSET_LOW downto 0);
     variable vvalidclr, vvalidset: std_logic_vector(0 to DWAYS-1);
+    variable vmaskwtrap: std_logic_vector(1 downto 0);
 
     function get_ccr(r: cctrl5_regs; rs: cctrl5_snoop_regs) return std_logic_vector is
       variable ccr: std_logic_vector(31 downto 0);
@@ -1267,6 +1300,10 @@ begin
     oico.data := cramo.idatadout;
     oico.way := "00";
     oico.mexc := '0';
+    oico.mexcdata := (others => '0');
+    oico.mexcdata(7 downto 6) := r.mmuerr.l;
+    oico.mexcdata(5) := r.mmuerr.at_su;
+    oico.mexcdata(4 downto 2) := r.mmuerr.ft;
     oico.hold := r.holdn;
     oico.flush := r.flushpart(1);
     oico.mds := '1';
@@ -1276,7 +1313,6 @@ begin
     if r.i2pc(2)='1' and r.i2pc(3)='1' and (ilinesize=4 or r.i2pc(4)='1') then
       oico.eocl := '1';
     end if;
-    oico.badtag := '0';
     oico.ics_btb := r.cctrl.ics_btb;
     oico.btb_flush := r.flushpart(1);
     oico.parked := '0';
@@ -1286,10 +1322,11 @@ begin
     odco.mexc := '0';
     odco.hold := r.holdn;
     odco.mds := '1';
-    odco.werr := r.werr;
+    odco.dtrapet1 := r.dtrapet1;
+    odco.dtrapet0 := r.dtrapet0;
+    odco.dtraptt := r.dtraptt;
     odco.cache := '0';
     odco.wbhold := '0';
-    odco.badtag := '0';
     odco.iudiag_mosi := r.iudiag_mosi;
     odco.iuctrl := r.iuctrl;
     oahbo.hbusreq := r.ahb_hbusreq or rs.raisereq;
@@ -1399,6 +1436,76 @@ begin
 
 
     --------------------------------------------------------------------------
+    -- Trap handshake management
+    --------------------------------------------------------------------------
+    v.mmuerr.fav := '0';
+    vmaskwtrap := "00";
+    if r.holdn='1' and dci.trapack='1' then
+      if dci.trapacktt=x"01" then           -- Instruction access exception
+        v.itraptype := dci.trapackidata(1 downto 0);
+        case v.itraptype is
+          when "00" =>
+            v.itrappend(0) := '0';
+          when "01" =>
+            v.itrappend(1) := '0';
+            if r.cctrl.diaemru='1' then
+              v.newerrclass := "01";
+              v.newent.vaddr := dci.trapackpc(31 downto 12);
+              v.mmuerr.fav := '1';
+              v.mmuerr.l := dci.trapackidata(7 downto 6);
+              v.mmuerr.at_ls := '0';        -- Load/Execute
+              v.mmuerr.at_id := '1';        -- Instruction space
+              v.mmuerr.at_su := dci.trapackidata(5);
+              v.mmuerr.ft := dci.trapackidata(4 downto 2);
+            end if;
+          when others =>
+            v.itrappend(2) := '0';
+        end case;
+      end if;
+      v.itraplost := v.itraplost or v.itrappend;
+      v.itrappend := (others => '0');
+      -- Write error
+      if dci.trapacktt=x"2b" then
+        v.wtraptype := r.wtrappend(1);
+        if v.wtraptype='0' then
+          v.wtrappend(0) := '0';
+        else
+          v.wtrappend(1) := '0';
+        end if;
+      end if;
+      if r.ahbwtrapmode="01" then
+        v.wtraplost(0) := v.wtraplost(0) or v.wtrappend(0);
+        v.wtrappend(0) := '0';
+        vmaskwtrap(0) := '1';
+      end if;
+      if r.mmuwtrapmode="01" then
+        v.wtraplost(1) := v.wtraplost(1) or v.wtrappend(1);
+        v.wtrappend(1) := '0';
+        vmaskwtrap(1) := '1';
+      end if;
+      -- Internal error
+      if dci.trapacktt=x"60" then
+        v.ctraptype := "00";
+        for x in r.ctrappend'range loop
+          if r.ctrappend(x)='1' then
+            v.ctraptype := std_logic_vector(to_unsigned(x,2));
+          end if;
+        end loop;
+        for x in r.ctrappend'range loop
+          if v.ctraptype=std_logic_vector(to_unsigned(x,2)) then
+            v.ctrappend(x) := '0';
+          end if;
+        end loop;
+      end if;
+    end if;
+    if r.ahbwtrapmode="00" then
+      vmaskwtrap(0) := '1';
+    end if;
+    if r.mmuwtrapmode="00" then
+      vmaskwtrap(1) := '1';
+    end if;
+
+    --------------------------------------------------------------------------
     -- ICache logic
     --------------------------------------------------------------------------
 
@@ -1472,11 +1579,12 @@ begin
     ihit := '0';
     iway := "00";
     ivalid := '0';
+    idblhit := '0';
     for i in IWAYS-1 downto 0 loop
       if ( (cramo.itagdout(i)(ITAG_HIGH-ITAG_LOW+1 downto 1) = itlbpaddr(ITAG_HIGH downto ITAG_LOW)) and
            r.i1ten='1' and itlbhit='1') then
         ihitv(i) := '1';
-        if ihit='1' then oico.badtag:='1'; end if;
+        if ihit='1' then idblhit := '1'; end if;  -- duplicated itag detected
         ihit := '1';
         iway := iway or std_logic_vector(to_unsigned(i,2));
       end if;
@@ -1502,10 +1610,13 @@ begin
         ihit := '1';
         ihitv := (others => '0');
         iway := "00";
+        idblhit := '0';
         oico.data(0) := cramo.itcmdout;
         if r.holdn='1' then
           if (r.itcmperm(0)='0' and r.i1su='0') or (r.itcmperm(1)='0' and r.i1su='1') then
             oico.mexc := '1';
+            oico.mexcdata(1 downto 0) := "10";
+            v.itrappend(1) := '1';
           end if;
         end if;
       end if;
@@ -1518,6 +1629,7 @@ begin
       ihit := ihitv(to_integer(unsigned(iway)));
       ivalid := ivalidv(to_integer(unsigned(iway)));
       ihit := ihit and ivalid;
+      idblhit := '0';
       oico.data := r.irepdata;
       itlbhit := r.ireptlbhit;
       itlbpaddr := r.ireptlbpaddr;
@@ -1528,6 +1640,7 @@ begin
     ibufaddrmatch := '0';
     if r.irdbufen='1' then
       ihit := '0';
+      idblhit := '0';
       if r.i1pc(31 downto r.irdbufvaddr'low)=r.irdbufvaddr then
         ibufaddrmatch := '1';
         if (not ENDIAN) then
@@ -1547,6 +1660,7 @@ begin
       ihit := orv(r.i2hitv) or r.i2tcmhit;
       ivalid := orv(r.i2validv);
       iway := "00";
+      idblhit := '0';
       for x in 0 to IWAYS-1 loop
         if ihitv(x)='1' then
           iway := iway or std_logic_vector(to_unsigned(x,2));
@@ -1656,6 +1770,9 @@ begin
         v.ireptlbhit := itlbhit;
         v.ireptlbpaddr := itlbpaddr;
         v.ireptlbid := itlbid;
+      end if;
+      if idblhit='1' then
+        v.ctrappend(0) := '1';
       end if;
     end if;
     -- Stage 0 drive addresses (insn in pre-fetch stage)
@@ -1820,11 +1937,12 @@ begin
     dway := "00";
     dvalid := '0';
     dvalidv := (others => '0');
+    ddblhit := '0';
     for i in DWAYS-1 downto 0 loop
       if ( (dctagsv(i)(DTAG_HIGH-DTAG_LOW+1 downto 1) = dtlbpaddr(DTAG_HIGH downto DTAG_LOW)) and
            r.d1ten='1' and dtlbhit='1') then
         dhitv(i) := '1';
-        if dhit='1' then odco.badtag:='1'; end if;
+        if dhit='1' then ddblhit := '1'; end if;  -- duplicated dtag detected
         dhit := '1';
         dway := dway or std_logic_vector(to_unsigned(i,2));
       end if;
@@ -1952,7 +2070,8 @@ begin
           r.d2stbuf(x).su=r.d2stbuf((x+1) mod 4).su and
           r.d2stbuf(x).addr(4 downto 3)/="11" and
           add(r.d2stbuf(x).addr(4 downto 3),1)=r.d2stbuf((x+1) mod 4).addr(4 downto 3) and
-          r.d2stbuf(x).snoopmask=r.d2stbuf((x+1) mod 4).snoopmask then
+          r.d2stbuf(x).snoopmask=r.d2stbuf((x+1) mod 4).snoopmask and
+          r.d2stbuf(x).maskwtrap=r.d2stbuf((x+1) mod 4).maskwtrap then
           v.d2stbuf(x).wcomb(1) := '1';
         else
           v.d2stbuf(x).wcomb := "00";
@@ -1988,7 +2107,8 @@ begin
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).su := v.d2su;
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).nb64 := '0';
       v.d2stbuf(to_integer(unsigned(r.d2stbw))).wcomb := "00";
-      if v.d2size="11" then
+      v.d2stbuf(to_integer(unsigned(r.d2stbw))).maskwtrap := '0';
+      if v.d2size="11" and (r.cctrl.wcomben='1' or r.dwchint='1') then
         v.d2stbuf(to_integer(unsigned(r.d2stbw))).wcomb := "01";
       end if;
       if v.d2size="11" and v.d2busw='0' then
@@ -2028,7 +2148,7 @@ begin
           if v.d2busw='0' and v.d2size="11" then
             fastwr_nb64 := '1';
           end if;
-          if v.d2size="11" and r.cctrl.wcomben='1' then
+          if v.d2size="11" and (r.cctrl.wcomben='1' or r.dwchint='1') then
             fastwr_wcomb := '1';
           end if;
         else
@@ -2037,6 +2157,9 @@ begin
           dbg(2) <= '1';
           v.slowwrpend := '1';
         end if;
+      end if;
+      if ddblhit='1' then
+        v.ctrappend(1) := '1';
       end if;
     end if;
 
@@ -2411,7 +2534,6 @@ begin
         v.mmfsr.ow := '1';
       end if;
     end if;
-    v.mmuerr.fav := '0';
     v.mmuerr.ow := '0';
     v.mmuerr.ebe := (others => '0');
 
@@ -2499,7 +2621,6 @@ begin
       end loop;
     end if;
     -- Read data buffer pipeline, advance with AHB hready
-    v.werr := '0';
     if ahbi.hready='1' then
       dbg(3) <= '1';
       v.ahb3_inacc := r.ahb2_inacc;
@@ -2520,7 +2641,19 @@ begin
       end if;
       if r.ahb2_inacc='1' and r.ahb2_hwrite='1' then
         if ahbi.hresp="01" then
-          v.werr := '1';
+          if r.ahb2_dacc='1' then
+            if r.ahb2_maskwtrap='0' and vmaskwtrap(0)='0' then
+              v.wtrappend(0) := '1';
+            else
+              v.wtraplost(0) := '1';
+            end if;
+          else
+            if r.ahb2_maskwtrap='0' and vmaskwtrap(1)='0' then
+              v.wtrappend(1) := '1';
+            else
+              v.wtraplost(1) := '1';
+            end if;
+          end if;
         end if;
       end if;
       if r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
@@ -2540,6 +2673,7 @@ begin
       v.ahb2_haddr42 := r.ahb_haddr(4 downto 2);
       v.ahb2_hburst0 := r.ahb_hburst(0);
       v.ahb2_hsize10 := r.ahb_hsize(1 downto 0);
+      v.ahb2_maskwtrap := r.ahb_maskwtrap;
     end if;
     v.ahb3_rdbvalid := v.ahb3_rdbvalid or r.ahb3_rdberr;
     -- set rdberr during first cycle of response to get another cycle to clear
@@ -2577,6 +2711,23 @@ begin
       end if;
     end if;
 
+    -- memory barrier
+    if dci.bar(1 downto 0) /= "00" and r.holdn='1' then
+      -- for now the store/load barrier is implemented as a full synchronizing
+      -- barrier for simplicity. This case may be optimized later.
+      v.syncbar := '1';
+    end if;
+    -- write combining hint
+    if dci.bar(2)/='0' and r.holdn='1' then
+      v.dwchint := '1';
+    end if;
+    if r.holdn='1' and dci.trapack='1' then
+      -- drop write hint on trap
+      v.dwchint := '0';
+    end if;
+    if r.cctrl.wchinten='0' then
+      v.dwchint := '0';
+    end if;
 
     v.newent.valid := '1';
     v.dtlbrecheck := '0';
@@ -2605,6 +2756,7 @@ begin
         v.ahb_hwrite := '0';
         v.ahb_hburst := HBURST_INCR;
         v.ahb_snoopmask := (others => '0');
+        v.ahb_maskwtrap := '0';
         if v.d2nocache='0' then
           v.ahb_snoopmask := (others => '1');
         end if;
@@ -2725,6 +2877,9 @@ begin
           end if;
         elsif v.slowwrpend='1' then
           v.s := as_slowwr;
+        elsif v.syncbar='1' then
+          v.syncbar := '0';
+          if r.d1chk='1' then v.ramreload := '1'; end if;
         else
           v.fsmidle := '1';
           if ici.parkreq='1' then
@@ -2876,6 +3031,7 @@ begin
         oico.mexc := r.ahb3_error and not r.icignerr;
         if r.ahb3_error='1' and r.icignerr='0' then
           v.iflushpend := '1';
+          v.itrappend(0) := '1';
         end if;
         ocrami.itcmen := '0';
 
@@ -3180,6 +3336,13 @@ begin
             v.mmuerr.fav := '1';
           end if;
         end if;
+        -- If DIAEMRU is set, we do not set FAV here for instruction
+        -- MMU miss, we handle that in the trap ack so that we only
+        -- update the FSR/FAR if the trapping instruction is actually
+        -- executed
+        if r.cctrl.diaemru='1' and r.mmusel="000" then
+          v.mmuerr.fav := '0';
+        end if;
         if r.mmusel(0)='0' then
           v.i2paddr := v.newent.paddr & r.i2pc(11 downto 0);
           if r.newent.mask1='0' then
@@ -3233,6 +3396,7 @@ begin
             oico.mds := '0';
             if r.mmctrl1.nf='0' then
               oico.mexc := '1';
+              v.itrappend(2) := '1';
             end if;
             v.imisspend := '0';
           else
@@ -3252,6 +3416,7 @@ begin
           v.s := as_rdasi2;
         end if;
         v.dregval := (others => '0');
+        oico.mexcdata(1 downto 0) := "01";
 
       when as_mmuwalk4 =>
         if r.ahb3_error='1' then
@@ -3259,7 +3424,9 @@ begin
           v.s := as_mmuwalk3;
           v.newerrclass := "11";
           v.mmuerr.ft := "100";       -- Translation error
-          v.mmuerr.fav := '1';
+          if r.mmusel /= "000" then
+            v.mmuerr.fav := '1';
+          end if;
         elsif rdb32v='1' then
           vstd32 := r.ahb_hwdata(31 downto 0);
           vstd32set := '1';
@@ -3290,6 +3457,8 @@ begin
         -- Write PTE and recheck tags stage 1
         v.s := as_wptectag2;
         -- Continue PTE writeback
+        -- Note r.ahb2_inacc is always 0 in this state, branches kept for
+        -- symmetry with as_wptectag2/3 stages
         if r.ahb_htrans="00" and r.ahb2_inacc='0' then
           null;
         elsif ahbi.hready='1' and r.ahb2_inacc='1' and ahbi.hresp(1)='0' then
@@ -3348,8 +3517,7 @@ begin
           -- Done!
           v.s := as_normal;
           if ahbi.hresp(0)='1' then
-            -- PTE writeback error
-            v.werr := '1';
+            v.wtrappend(1) := '1';
           end if;
         elsif ahbi.hready='0' and r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
           v.ahb_htrans := "00";
@@ -3418,7 +3586,7 @@ begin
           v.s := as_normal;
           if ahbi.hresp(0)='1' then
             -- PTE writeback error
-            v.werr := '1';
+            v.wtrappend(1) := '1';
           end if;
         elsif ahbi.hready='0' and r.ahb2_inacc='1' and ahbi.hresp(1)='1' then
           v.ahb_htrans := "00";
@@ -3463,7 +3631,7 @@ begin
           end if;
           v.ahb_htrans := "00";
           if v.d2stba /= r.d2stbw or r.stbuffull='1' then
-            v.ahb_htrans := "1" & v.d2stbcont;
+              v.ahb_htrans := "1" & v.d2stbcont;
           end if;
         end if;
 
@@ -3471,6 +3639,7 @@ begin
         v.ahb_haddr := r.d2stbuf(to_integer(unsigned(v.d2stba))).addr;
         v.ahb_hsize := '0' & r.d2stbuf(to_integer(unsigned(v.d2stba))).size;
         v.ahb_snoopmask := r.d2stbuf(to_integer(unsigned(v.d2stba))).snoopmask;
+        v.ahb_maskwtrap := r.d2stbuf(to_integer(unsigned(v.d2stba))).maskwtrap;
         vstd64 := r.d2stbuf(to_integer(unsigned(v.d2stbd))).data;
         vstd64set := '1';
         if v.d2nb64dctr='0' then
@@ -3496,10 +3665,30 @@ begin
 
         v.d2wcctr := "11";
         v.d2wchold := "000";
-        if (v.d2stba /= r.d2stbw or r.stbuffull='1') and r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb(1)='1' and r.ahb_htrans(1)='0' and not (r.ahb2_inacc='1' and ahbi.hresp(1)='1') and r.d2nb64ctr='0' then
+        if vrflag='1' then
+          -- Don't activate write combining during retry since the original
+          -- non-combined access has already been seen on the AHB bus
+          null;
+        elsif r.ahb_htrans(1)='1' and r.granted='1' and ahbi.hready='0' then
+          -- Don't activate write combining for write that has already been
+          -- "shown" in address phase on the AHB bus
+          null;
+        elsif v.d2stbcont='1' then
+          -- Don't activate write combining mid-burst
+          null;
+        elsif r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb="11" then
+          -- Activate write combining as soon as any ongoing accesses have finished
+          -- we may fall into this branch by accident when there is nothing in
+          -- the store buffer but htrans is 00 anyway in that case.
           v.ahb_htrans := "00";
-          v.s := as_wrcomb1;
-        elsif r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb(0)='1' and v.d2stbcont='0' and r.cctrl.wcomben='1' and not (r.holdn='0' and r.stbuffull='0' and r.ramreload='0') and r.d2wchold/="111" then
+          if r.ahb_htrans(1)='1' or (r.ahb2_inacc='1' and ahbi.hready='0') then
+            -- Wait for current access to complete
+            null;
+          elsif (v.d2stba /= r.d2stbw or r.stbuffull='1') then
+            v.s := as_wrcomb1;
+          end if;
+        elsif r.d2stbuf(to_integer(unsigned(v.d2stba))).wcomb(0)='1' and not (r.holdn='0' and r.stbuffull='0' and r.ramreload='0') and r.d2wchold/="111" then
+          -- Wait for additional writes to resolve write combining decision
           v.ahb_htrans := "00";
           if r.d2wchold /= "111" then
             v.d2wchold := std_logic_vector(unsigned(r.d2wchold)+1);
@@ -3528,6 +3717,7 @@ begin
             v.ahb_haddr := v.d2paddr;
             v.ahb_hsize := "0" & v.d2size;
             v.ahb_snoopmask := (others => (not v.d2nocache));
+            v.ahb_maskwtrap := '0';
             vstoresu := r.d1su;
             v.d2nb64en := '0';
             if fastwr_nb64='1' then
@@ -3538,7 +3728,6 @@ begin
             end if;
             if fastwr_wcomb='1' then
               v.ahb_htrans := "00";
-              v.s := as_wrcomb1;
             end if;
           end if;
         end if;
@@ -3548,25 +3737,14 @@ begin
           v.d2stbw := "00";
           v.d2stba := "00";
           v.d2stbd := "00";
+          v.dwchint := '0';
         end if;
 
       when as_wrcomb1 =>
         v.d2stbcont := '0';
         vrflag := '0';
         v.ahb_htrans := "00";
-        if r.ahb2_inacc='1' and ahbi.hresp(1)='1' and ahbi.hready='0' then
-          -- Go back into store state to handle retry on previous access
-          vrflag := '1';
-          v.d2stba := std_logic_vector(unsigned(r.d2stba)-1);
-          v.s := as_store;
-        else
-          if ahbi.hready='1' or r.ahb2_inacc='0' then
-            v.d2stbd := r.d2stba;
-            v.d2nb64den := r.d2nb64en;
-            v.d2nb64dctr := r.d2nb64ctr;
-          end if;
-        end if;
-        if r.ahb2_inacc='0' and (r.d2stba /= r.d2stbw or r.stbuffull='1') and r.d2stbuf(to_integer(unsigned(r.d2stba))).wcomb="11" then
+        if (r.d2stba /= r.d2stbw or r.stbuffull='1') and r.d2stbuf(to_integer(unsigned(r.d2stba))).wcomb="11" then
           v.d2stba := std_logic_vector(unsigned(r.d2stba)+1);
           v.d2wcctr := std_logic_vector(unsigned(r.d2wcctr)+1);
           v.d2nb64ctr := '0';
@@ -3585,23 +3763,7 @@ begin
 
         v.ahb_hwrite := '1';
         v.ahb_hsize := '0' & r.d2stbuf(to_integer(unsigned(v.d2stba))).size;
-        v.ahb_hburst := HBURST_SINGLE;
-        if r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64='1' then
-          v.ahb_hburst := HBURST_INCR;
-          keepreq := '1';
-        end if;
-        if vrflag='1' then
-          v.d2nb64en := r.d2stbuf(to_integer(unsigned(v.d2stba))).nb64;
-          if v.d2nb64en='1' then v.d2nb64ctr:='1'; end if;
-        end if;
-        if v.d2nb64en='1' then
-          v.ahb_hsize(0) := '0';
-        end if;
-        if vrflag='1' then
-          v.ahb_haddr := r.d2stbuf(to_integer(unsigned(v.d2stba))).addr;
-          if v.d2nb64ctr='1' then v.ahb_haddr(2):='1'; end if;
-          vstoresu := r.d2stbuf(to_integer(unsigned(v.d2stba))).su;
-        elsif xbusw>32 and r.d2nb64en='0' then
+        if xbusw>32 and r.d2nb64en='0' then
           if r.d2wcctr="11" or r.ahb_haddr(3)='1' or xbusw<128 then
             v.ahb_hsize := "011";
           else
@@ -3620,6 +3782,7 @@ begin
         end if;
 
 
+        v.d2stbd := r.d2stba;
         if r.d2stbd /= r.d2stbw then
           v.stbuffull := '0';
         end if;
@@ -3745,6 +3908,7 @@ begin
         if r.ahb_htrans="00" and ahbi.hresp(1)='0' and v.ahb2_inacc='0' then
           if r.d2stbw=r.d2stbd and r.stbuffull='0' and fastwr='0' then
             v.s := as_normal;
+            v.dwchint := '0';
           else
             v.s := as_store;
           end if;
@@ -3772,7 +3936,8 @@ begin
         v.d2stbuf(0).su := r.d2su;
         v.d2stbuf(0).nb64 := '0';
         v.d2stbuf(0).wcomb := "00";
-        if v.d2size="11" then
+        v.d2stbuf(0).maskwtrap := '0';
+        if v.d2size="11" and (r.cctrl.wcomben='1' or r.dwchint='1') then
           v.d2stbuf(0).wcomb := "01";
         end if;
         if r.d2size="11" and r.d2busw='0' then
@@ -3806,7 +3971,7 @@ begin
           if r.d1ten='1' then
             v.ramreload := '1';
           end if;
-          if r.d2size="11" and r.cctrl.wcomben='1' then
+          if r.d2size="11" and (r.cctrl.wcomben='1' or r.dwchint='1') then
             v.ahb_htrans := "00";
           end if;
         end if;
@@ -3845,6 +4010,8 @@ begin
               when "00011" =>     -- DCache configuration register
                 null;
               when "00100" =>     -- LEON5 configuration register
+                v.cctrl.diaemru       := r.d2data(32+13);
+                v.cctrl.wchinten      := r.d2data(32+12);
                 v.cctrl.wcomben       := r.d2data(32+11);
                 v.iuctrl.staticd      := r.d2data(32+10);
                 --bit9 is reserved
@@ -3869,6 +4036,8 @@ begin
                 v.dflushpend := v.dflushpend or v.dregflush;
 
               when "01000" =>            -- AHB error register
+                v.mmuwtrapmode := r.d2data(32+31 downto 32+30);
+                v.ahbwtrapmode := r.d2data(32+29 downto 32+28);
                 v.icignerr     := r.d2data(32+27);
                 v.dcerrmaskval := r.d2data(32+26);
                 v.dcerrmask    := r.d2data(32+25);
@@ -3879,6 +4048,16 @@ begin
                 if r.d2data(32+1)='1' then vs.ahboerr := '0'; end if;
                 if r.d2data(32+0)='1' then vs.ahberr := '0'; end if;
 
+              when "01011" =>           -- Trap register
+                v.ctrapacc  := v.ctrapacc  and not r.d2data(25 downto 22);
+                v.ctrappend := v.ctrappend and not r.d2data(21 downto 18);
+                v.ctraptype := v.ctraptype and not r.d2data(17 downto 16);
+                v.wtraplost := v.wtraplost and not r.d2data(12 downto 11);
+                v.wtrappend := v.wtrappend and not r.d2data(10 downto 9);
+                v.wtraptype := v.wtraptype and not r.d2data(8);
+                v.itraplost := v.itraplost and not r.d2data(7 downto 5);
+                v.itrappend := v.itrappend and not r.d2data(4 downto 2);
+                v.itraptype := v.itraptype and not r.d2data(1 downto 0);
 
               when "10000" => -- TCM configuration register
                 if itcmen=0 and dtcmen=0 then
@@ -4303,6 +4482,9 @@ begin
                   v.dregval(27) := '1';
                 end if;
                 v.dregval(26) := '0';   -- GRLIB AHB bus implementation
+                v.dregval(25 downto 23) := "001";  -- Revision 1
+                v.dregval(13) := r.cctrl.diaemru;
+                v.dregval(12) := r.cctrl.wchinten;
                 v.dregval(11) := r.cctrl.wcomben;
                 v.dregval(10) := r.iuctrl.staticd;
                 v.dregval(8)  := r.iuctrl.staticbp;
@@ -4325,6 +4507,8 @@ begin
 
               when "01000" =>    -- AHB error register
                 v.dregval := (others => '0');
+                v.dregval(31 downto 30) := r.mmuwtrapmode;
+                v.dregval(29 downto 28) := r.ahbwtrapmode;
                 v.dregval(27) := r.icignerr;
                 v.dregval(26) := r.dcerrmaskval;
                 v.dregval(25) := r.dcerrmask;
@@ -4347,6 +4531,17 @@ begin
                 -- of LEON5 (LEON5 config reg bit 26 is 0)
                 v.dregerr := '1';
 
+              when "01011" =>    -- Trap register
+                v.dregval := (others => '0');
+                v.dregval(25 downto 22) := r.ctrapacc;
+                v.dregval(21 downto 18) := r.ctrappend;
+                v.dregval(17 downto 16) := r.ctraptype;
+                v.dregval(12 downto 11) := r.wtraplost;
+                v.dregval(10 downto 9)  := r.wtrappend;
+                v.dregval(8)            := r.wtraptype;
+                v.dregval(7 downto 5)   := r.itraplost;
+                v.dregval(4 downto 2)   := r.itrappend;
+                v.dregval(1 downto 0)   := r.itraptype;
 
               when "01111" =>    -- Boot word
                 v.dregval := bootword;
@@ -4998,7 +5193,7 @@ begin
     v.holdn := '1';
     if ( v.imisspend='1' or v.dmisspend='1' or v.slowwrpend='1' or
          v.iflushpend='1' or v.dflushpend='1' or v.ramreload='1' or
-         v.stbuffull='1' or v.dbgaccpend='1' or freeze='1') then
+         v.stbuffull='1' or v.syncbar='1' or v.dbgaccpend='1' or freeze='1') then
       v.holdn := '0';
     end if;
 
@@ -5102,6 +5297,8 @@ begin
         v.cctrl.ics_btb  := RRES.cctrl.ics_btb;
         v.cctrl.dsnoop   := RRES.cctrl.dsnoop;
         v.cctrl.wcomben  := RRES.cctrl.wcomben;
+        v.cctrl.wchinten := RRES.cctrl.wchinten;
+        v.cctrl.diaemru  := RRES.cctrl.diaemru;
         v.iuctrl         := RRES.iuctrl;
         v.icignerr       := RRES.icignerr;
         v.dcignerr       := RRES.dcignerr;
@@ -5138,6 +5335,7 @@ begin
         v.iflushpend     := RRES.iflushpend;
         v.dflushpend     := RRES.dflushpend;
         v.slowwrpend     := RRES.slowwrpend;
+        v.syncbar        := RRES.syncbar;
         v.irdbufen       := RRES.irdbufen;
         v.holdn          := RRES.holdn;
         v.ahb_hbusreq    := RRES.ahb_hbusreq;
@@ -5150,6 +5348,14 @@ begin
         v.i1rep          := RRES.i1rep;
         v.ibpmiss        := RRES.ibpmiss;
         v.d1ten          := RRES.d1ten;
+        v.dwchint        := RRES.dwchint;
+        v.itrappend      := RRES.itrappend;
+        v.itraplost      := RRES.itraplost;
+        v.wtrappend      := RRES.wtrappend;
+        v.wtraplost      := RRES.wtraplost;
+        v.ahbwtrapmode   := RRES.ahbwtrapmode;
+        v.mmuwtrapmode   := RRES.mmuwtrapmode;
+        v.ctrappend      := RRES.ctrappend;
         vs.sgranted      := RSRES.sgranted;
         if dtagconf=0 then
           vs.validarr    := RSRES.validarr;

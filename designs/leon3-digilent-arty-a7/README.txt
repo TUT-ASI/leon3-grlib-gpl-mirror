@@ -9,7 +9,7 @@ vivado' to run the complete flow, or 'make vivado-launch' for an
 interactive session with Vivado. To program the FPGA in batch mode, use
 'make vivprog'. To program the configuration flash, use 'make vivrom'.
 
-XC7A35T is the default target FPGA. To change the target to XC7A100T,
+XC7A100T is the default target FPGA. To change the target to XC7A35T,
 change FPGA type in xconfig in the "Synthesis" section.
 
 The design uses the Xilinx MIG memory interface with an AHB-2.0

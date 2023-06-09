@@ -65,6 +65,7 @@ package devices is
   constant VENDOR_JHUAPL_SES : amba_vendor_type := 16#27#;
   constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
   constant VENDOR_NEC        : amba_vendor_type := 16#29#;
+  constant VENDOR_HONEYWELL  : amba_vendor_type := 16#2A#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
@@ -1160,6 +1161,17 @@ package devices is
     vendorid     => VENDOR_NEC,
     vendordesc   => NEC_DESC,
     device_table => nec_device_table
+    );
+
+  constant HONEYWELL_DESC : vendor_description := "Honeywell International ";
+
+  constant honeywell_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+
+  constant honeywell_lib : vendor_library_type := (
+    vendorid     => VENDOR_HONEYWELL,
+    vendordesc   => HONEYWELL_DESC,
+    device_table => honeywell_device_table
     );
 
   constant NASA_GSFC_DESC : vendor_description := "NASA GSFC               ";

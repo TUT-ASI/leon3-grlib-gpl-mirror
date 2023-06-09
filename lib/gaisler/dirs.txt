@@ -62,3 +62,4 @@ socbridge
 l2c_lite
 bch
 nandfctrl2
+griommu2

@@ -25,6 +25,9 @@ package config is
 --LEON5 processor system
   constant CFG_NCPU : integer := (1);
   constant CFG_FPUTYPE : integer := 0;
+  constant CFG_PERFCFG : integer := (0);
+  constant CFG_RFCONF : integer := (0) + (0);
+  constant CFG_CMEMCONF : integer := (0) + (0) + (0);
   constant CFG_AHBW : integer := 128;
   constant CFG_BWMASK : integer := 16#00FF#;
   constant CFG_DFIXED : integer := 16#0#;

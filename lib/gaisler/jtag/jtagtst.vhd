@@ -114,14 +114,16 @@ package jtagtst is
                   reread               : in boolean := false;
                   assertions           : in boolean := false);
 
-  procedure jread(addr                 : in  std_logic_vector;
-                  hsize                : in  std_logic_vector;
+  procedure jread(addr, hsize          : in  std_logic_vector;
                   data                 : out std_logic_vector;
                   signal tck, tms, tdi : out std_ulogic;
                   signal tdo           : in std_ulogic;
                   cp                   : in integer;
                   reread               : in boolean := false;
-                  assertions           : in boolean := false);
+                  assertions           : in boolean := false;
+                  ainst                : in integer := 2;
+                  dinst                : in integer := 3;
+                  isize                : in integer := 6);
 
   procedure bscantest(signal tdo : in std_ulogic;
                       signal tck, tms, tdi : out std_ulogic;
@@ -178,56 +180,43 @@ package body jtagtst is
   procedure jwrite(addr, data           : in std_logic_vector;
                    signal tck, tms, tdi : out std_ulogic;
                    signal tdo           : in std_ulogic;
-                  cp                    : in integer) is
-    variable tmp : std_logic_vector(32 downto 0);
-    variable tmp2 : std_logic_vector(34 downto 0);
-    variable dr : std_logic_vector(32 downto 0);
-    variable dr2 : std_logic_vector(34 downto 0);
-    variable hsize : std_logic_vector(1 downto 0);        
+                   cp                   : in integer) is
   begin
-    hsize := "10";
-    wait for 10 * cp * 1 ns;
-    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
-    wait for 5 * cp * 1 ns;
-    tmp2 := '1' & hsize & addr;    
-    shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
-    wait for 5 * cp * 1 ns;
-    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
-    wait for 5 * cp * 1 ns;
-    tmp := '0' & data;
-    shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- write data reg
+    jwrite(addr, "10", data, tck, tms, tdi, tdo, cp);
   end;
 
-  procedure jwrite(addr, hsize, data    : in std_logic_vector;
-                   signal tck, tms, tdi : out std_ulogic;
-                   signal tdo           : in std_ulogic;
-                   cp                   : in integer;
-                   ainst                : in integer := 2;
-                   dinst                : in integer := 3;
-                   isize                : in integer := 6) is
+  procedure jwrite(
+    addr, hsize, data    : in std_logic_vector;
+    signal tck, tms, tdi : out std_ulogic;
+    signal tdo           : in std_ulogic;
+    cp                   : in integer;
+    ainst                : in integer := 2;
+    dinst                : in integer := 3;
+    isize                : in integer := 6)
+  is
     variable tmp : std_logic_vector(32 downto 0);
     variable tmp2 : std_logic_vector(34 downto 0);
     variable dr : std_logic_vector(32 downto 0);
     variable dr2 : std_logic_vector(34 downto 0);
-    variable v_ainst : std_logic_vector(0 to 7);
-    variable v_dinst : std_logic_vector(0 to 7);
-    variable tmp3 : std_logic_vector(7 downto 0);
-    variable tmp4 : std_logic_vector(7 downto 0);
+    variable v_ainst : std_logic_vector(0 to isize-1);
+    variable v_dinst : std_logic_vector(0 to isize-1);
+    variable tmp3 : std_logic_vector(isize-1 downto 0);
+    variable tmp4 : std_logic_vector(isize-1 downto 0);
   begin
-    tmp3 := conv_std_logic_vector(ainst,8);
-    tmp4 := conv_std_logic_vector(dinst,8);
-    for i in 0 to 7 loop
+    tmp3 := conv_std_logic_vector(ainst,isize);
+    tmp4 := conv_std_logic_vector(dinst,isize);
+    for i in 0 to isize-1 loop
       v_ainst(i) := tmp3(i);
       v_dinst(i) := tmp4(i);
     end loop;
 
     wait for 10 * cp * 1 ns;
-    shift(false, isize, v_ainst(0 to isize-1), dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
+    shift(false, isize, v_ainst, dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
     wait for 5 * cp * 1 ns;
     tmp2 := '1' & hsize & addr;    
     shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
     wait for 5 * cp * 1 ns;
-    shift(false, isize, v_dinst(0 to isize-1), dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
+    shift(false, isize, v_dinst, dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
     wait for 5 * cp * 1 ns;
     tmp := '0' & data;
     shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- write data reg
@@ -240,54 +229,45 @@ package body jtagtst is
                   cp                   : in integer;
                   reread               : in boolean := false;
                   assertions           : in boolean := false) is
-    variable tmp : std_logic_vector(32 downto 0);
-    variable tmp2 : std_logic_vector(34 downto 0);
-    variable dr : std_logic_vector(32 downto 0);
-    variable dr2 : std_logic_vector(34 downto 0);
-    variable hsize : std_logic_vector(1 downto 0);            
   begin
-    hsize := "10";    
-    wait for 10 * cp * 1 ns;
-    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
-    wait for 5 * cp * 1 ns;    
-    tmp2 := '0' & hsize & addr;    
-    shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
-    wait for 5 * cp * 1 ns;
-    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
-    wait for 5 * cp * 1 ns;
-    tmp := (others => '0'); --tmp(32) := '1'; 
-    shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
-    assert dr(32) = '1' or not assertions
-      report "JTAG READ: data read out before AHB access completed"
-      severity warning;
-    while dr(32) /= '1' and reread loop
-      assert not assertions report "Re-reading JTAG data register" severity note;
-      tmp := (others => '0');
-      shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
-    end loop;
-    data := dr(31 downto 0);
+    jread(addr, "10", data, tck, tms, tdi, tdo, cp, reread, assertions);
   end;
 
-  procedure jread(addr                 : in  std_logic_vector;
-                  hsize                : in  std_logic_vector;
-                  data                 : out std_logic_vector;
-                  signal tck, tms, tdi : out std_ulogic;
-                  signal tdo           : in std_ulogic;
-                  cp                   : in integer;
-                  reread               : in boolean := false;
-                  assertions           : in boolean := false) is
+  procedure jread(
+    addr, hsize          : in  std_logic_vector;
+    data                 : out std_logic_vector;
+    signal tck, tms, tdi : out std_ulogic;
+    signal tdo           : in std_ulogic;
+    cp                   : in integer;
+    reread               : in boolean := false;
+    assertions           : in boolean := false;
+    ainst                : in integer := 2;
+    dinst                : in integer := 3;
+    isize                : in integer := 6)
+  is
     variable tmp : std_logic_vector(32 downto 0);
     variable tmp2 : std_logic_vector(34 downto 0);
     variable dr : std_logic_vector(32 downto 0);
     variable dr2 : std_logic_vector(34 downto 0);
+    variable v_ainst : std_logic_vector(0 to isize-1);
+    variable v_dinst : std_logic_vector(0 to isize-1);
+    variable tmp3 : std_logic_vector(isize-1 downto 0);
+    variable tmp4 : std_logic_vector(isize-1 downto 0);
   begin
+    tmp3 := conv_std_logic_vector(ainst,isize);
+    tmp4 := conv_std_logic_vector(dinst,isize);
+    for i in 0 to isize-1 loop
+      v_ainst(i) := tmp3(i);
+      v_dinst(i) := tmp4(i);
+    end loop;
+
     wait for 10 * cp * 1 ns;
-    shift(false, 6, B"010000", dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
+    shift(false, isize, v_ainst, dr, tck, tms, tdi, tdo, cp);  -- inst = addrreg
     wait for 5 * cp * 1 ns;    
     tmp2 := '0' & hsize & addr;
     shift(true, 35, tmp2, dr2, tck, tms, tdi, tdo, cp); -- write add reg
     wait for 5 * cp * 1 ns;
-    shift(false, 6, B"110000", dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
+    shift(false, isize, v_dinst, dr, tck, tms, tdi, tdo, cp);  -- inst = datareg
     wait for 5 * cp * 1 ns;
     tmp := (others => '0'); --tmp(32) := '1';
     shift(true, 33, tmp, dr, tck, tms, tdi, tdo, cp); -- read data reg
