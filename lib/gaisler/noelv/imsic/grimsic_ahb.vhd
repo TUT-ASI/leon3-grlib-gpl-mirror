@@ -74,10 +74,10 @@ entity grimsic_ahb is
     clk         : in  std_ulogic;
     ahbi        : in  ahb_slv_in_type;
     ahbo        : out ahb_slv_out_type;
-    plic_meip   : in  std_logic_vector(ncpu-1 downto 0);
-    plic_seip   : in  std_logic_vector(ncpu-1 downto 0);
-    imsici      : in  imsic_in_vector(ncpu-1 downto 0);
-    imsico      : out imsic_out_vector(ncpu-1 downto 0);
+    plic_meip   : in  std_logic_vector(0 to ncpu-1);
+    plic_seip   : in  std_logic_vector(0 to ncpu-1);
+    imsici      : in  imsic_in_vector(0 to ncpu-1);
+    imsico      : out imsic_out_vector(0 to ncpu-1);
     eip         : out nv_irq_in_vector(0 to ncpu-1)
     );
 end;
@@ -337,6 +337,11 @@ begin
   out_gen : for i in 0 to ncpu-1 generate
     eip(i).ueip    <= '0'; -- not implemented
     eip(i).heip    <= '0'; -- not implemented
+    -- These are added elsewhere
+    eip(i).mtip    <= '0';
+    eip(i).msip    <= '0';
+    eip(i).ssip    <= '0';
+    eip(i).stime   <= (others => '0');
   end generate out_gen;
 
   comb : process (r, ahbi)
@@ -420,7 +425,7 @@ begin
 
     -- MEMORY MAP WIHTOUT GROUPS:
     -- For machine interrupt-file registers
-    -- ('0' | vcpu_bits | ncpu bits | 0x000)   when GEILEN > 0  (vcpubits bits are always zero, they just indicate the number of zeros between the '1' and the 'ncpu bits')  
+    -- ('0' | vcpu_bits | ncpu bits | 0x000)   when GEILEN > 0  (vcpubits bits are always zero, they just influence the number of zeros between the '1' and the 'ncpu bits')  
     --             ('0' | ncpu bits | 0x000)   when GEILEN = 0
     -- For supervisor and guest interrupt-file registers
     -- ('1' | ncpu bits | vcpu_bits | 0x000)   when GEILEN > 0
@@ -430,7 +435,7 @@ begin
     -- and vcpu_bits the number of bits needed to address every virtual hart plus 
     -- one (because zero is used to address the supervisor hart).
     -- The MSB is used to determine if supervisor/guest or machine file register is selected,
-    -- if supervisor mode is not active, that bit is not employed.
+    -- if supervisor mode is not active, that bit is always zero.
 
 
     -- MEMORY MAP WIHT GROUPS:
@@ -490,13 +495,17 @@ begin
     mhart_sel := conv_integer(mhart_off);
     shart_sel := conv_integer(shart_off);
     ghart_sel := conv_integer(ghart_off);
-    group_sel := conv_integer(group_off);
+    if (groups /= 0) then
+      group_sel := conv_integer(group_off);
+    else
+      group_sel := 0;
+    end if;
 
     -- Endianness
     if endianness_off = "0" then -- little endian
-      ewdata := wdata(7 downto 0) & wdata(15 downto 8) & wdata(23 downto 16) & wdata(31 downto 24);
-    else -- big endian
       ewdata := wdata;
+    else -- big endian
+      ewdata := wdata(7 downto 0) & wdata(15 downto 8) & wdata(23 downto 16) & wdata(31 downto 24);
     end if;
 
 

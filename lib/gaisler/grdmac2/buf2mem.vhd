@@ -385,27 +385,28 @@ begin
     -- Bus master data write from FIFO. syncfifo_2p does not provide read_hold
     -- signal of syncram_2p. Logic below helps to register FIFO output data and
     -- writes correct data to the destination memory without missing any data.
-    if buffer_out.ren = '0' and r.buf_latched = '0' then
+    --if buffer_out.ren = '0' and r.buf_latched = '0' then
+      --v.buf_rd_data := buf_in.rdata(127 downto (128-dbits));
+    --end if;
       v.buf_rd_data := buf_in.rdata(127 downto (128-dbits));
-    end if;
 
     v.buf_rd_en := '0';
     if buffer_out.ren = '1' then
       v.buf_rd_en := '1';
     end if;
 
-    if r.buf_rd_en = '1' and b2m_bmi.wr_full = '1' then
-      v.buf_latched := '1';
-    end if;
+    --if r.buf_rd_en = '1' and b2m_bmi.wr_full = '1' then
+      --v.buf_latched := '1';
+    --end if;
 
-    if buffer_out.ren = '1' or r.b2m_state = idle then
-      v.buf_latched := '0';
-    end if;
+    --if buffer_out.ren = '1' or r.b2m_state = idle then
+      --v.buf_latched := '0';
+    --end if;
 
     b2m_bmo.wr_data <= buf_in.rdata(127 downto (128-dbits)) & zero128(127-dbits downto 0);
-    if r.buf_latched = '1' then
-      b2m_bmo.wr_data <= r.buf_rd_data & zero128(127-dbits downto 0);
-    end if;
+    --if r.buf_latched = '1' then
+      --b2m_bmo.wr_data <= r.buf_rd_data & zero128(127-dbits downto 0);
+    --end if;
 
     -- FIFO error monitoring for uncorrectable errors
     if r.buf_rd_en = '1' then

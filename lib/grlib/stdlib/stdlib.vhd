@@ -112,6 +112,7 @@ function sub (a, b : std_logic_vector) return std_logic_vector;
 function unsigned_mul (a, b : std_logic_vector) return std_logic_vector;
 function signed_mul (a, b : std_logic_vector) return std_logic_vector;
 function mixed_mul (a, b : std_logic_vector; sign : std_logic) return std_logic_vector;
+function ceil_div (a, b : integer) return integer;
 --function ">" (a, b : std_logic_vector) return boolean;
 function "<" (i : integer; b : std_logic_vector) return boolean;
 function conv_integer(v : std_logic_vector) return integer;
@@ -328,6 +329,13 @@ begin
 -- pragma translate_on
 end;
 
+-- ceil division: ceil(a/b)
+function ceil_div (a, b : integer) return integer is
+variable result : integer;
+begin
+  result := integer(real(a+b-1)/real(b));
+  return result;
+end;
 -- unsigned addition
 
 function "+" (a, b : std_logic_vector) return std_logic_vector is

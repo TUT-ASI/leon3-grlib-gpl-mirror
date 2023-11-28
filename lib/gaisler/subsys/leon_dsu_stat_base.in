@@ -182,7 +182,7 @@ comment 'Processor            '
 	  choice 'GRFPU-LITE controller' \
 	   "Simple                CONFIG_FPU_GRFPC0 \
 	    Data-forwarding       CONFIG_FPU_GRFPC1 \
-	    Non-blocking          CONFIG_FPU_GRFPC2" Simple 	
+	    Non-blocking          CONFIG_FPU_GRFPC2" Simple
         fi
         bool 'Use VHDL netlist          ' CONFIG_FPU_NETLIST
         bool 'Use inferred tech for FP register file' CONFIG_FPU_RFINF
@@ -283,7 +283,7 @@ comment 'Processor            '
         hex '64/128-bit AHB bus map (only affects LEON4)    ' CONFIG_BWMASK 0000
         choice 'Cache and AHB data width (only affects LEON4)' \
         	"64-bit		CONFIG_CACHE_64BIT \
-                	128-bit		CONFIG_CACHE_128BIT" 64-bit 
+                	128-bit		CONFIG_CACHE_128BIT" 64-bit
 #    fi
     if [ "$CONFIG_LEON3" = "y" ]; then
      if [ "$CONFIG_MMU_ENABLE" != "y" ]; then
@@ -316,7 +316,7 @@ comment 'Processor            '
 	   split		CONFIG_MMU_SPLIT" combined
       choice 'TLB replacement sheme              ' \
 	  "LRU      	CONFIG_MMU_REPARRAY \
-	   Increment	CONFIG_MMU_REPINCREMENT" Increment 
+	   Increment	CONFIG_MMU_REPINCREMENT" Increment
          choice 'Instruction (or combined) TLB entries' \
 	  "2		CONFIG_MMU_I2 \
 	  4		CONFIG_MMU_I4 \
@@ -389,6 +389,7 @@ comment 'Processor            '
         if [ "$CONFIG_FPU_ENABLE" = "y" ]; then
           choice 'FPU Register file protection     ' \
 	    "None		CONFIG_FPUFT_NONE \
+       FPU_dependent CONFIG_FPUFT_EN \
 	     Parity		CONFIG_FPUFT_PAR \
  	     PDMR 		CONFIG_FPUFT_DMR \
 	     TMR		CONFIG_FPUFT_TMR" None
@@ -418,4 +419,3 @@ comment 'Processor            '
   endmenu
 fi
 endmenu
-

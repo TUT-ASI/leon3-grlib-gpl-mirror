@@ -112,5 +112,32 @@ package flash is
     );
   end component;
   
+    component spsram_as3016204 is 
+      port(
+         IO3     : inout std_logic;
+         WPn_IO2 : inout std_logic;
+         SO_IO1  : inout std_logic;
+         SI_IO0  : inout std_logic;
+         CSn     : inout std_logic;
+         CLK     : inout std_logic
+      );
+     end component;
+     
+     
+    component spsram_as302g208 is
+      port(
+        IO     : inout std_logic_vector(7 downto 0);
+        CLK1   : in    std_logic;
+        CLK2   : in    std_logic;
+        INT1n  : out   std_logic;
+        INT2n  : out   std_logic;
+        CS1n   : in    std_logic;
+        CS2n   : in    std_logic;
+        HBP    : in    std_logic_vector(2 downto 0);
+        HTBSEL : in    std_logic;
+        RESETn : in    std_logic
+      );
+      end component;
+  
 end flash;
 

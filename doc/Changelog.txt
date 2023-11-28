@@ -1,3 +1,74 @@
+----------------------- Release 2023.4-b4288 ---------------------------
+
+2023-11-28	NOEL-V: updates
+		- Trigger updates:
+		  - Added interrupt and exception triggers
+		  - Update to mcontrol6
+		  - Fixed watchpoint triggering on sfence instructions
+		- Debug module: Added halt and resume groups
+		- Misaligned load/stores didn't write a transformed instruction 
+		  into [mh]tinst
+		- Updated performance counter event encoding
+
+2023-11-06	LEON3,LEON5: Allow clearing high bits of time stamp
+		counter through debug interface to allow clean restart
+		through GRMON.
+
+2023-11-06	LEON5: Support 63-bit wide time stamp counter in HP
+		configuration (perfcfg=0).
+
+2023-10-27	NOEL-V: updates
+		- Reenable RAS
+		- Added Svinval extension
+		- Instruction trace updated
+		- Fixed half-persision fsqrt inexact issue
+		- Fixed minor issue related to H extension (HIE, GVA, MVP, HGEIP, HGSATP)
+		- Fault type could be wrong related to page-tables
+		- Fixed access issue for Sstc CSRs
+
+2023-10-27	APLIC: Added support for interrupt domains
+
+2023-10-23	GRDMAC2: Issue fix for timeout mechanism checking TRST register
+		even when TE bit is not set in CTRL register.
+
+2023-10-02	LEON5-ALTERA-C5EKIT: Set edclsepahb signal to Ethernet
+		cores to route EDCL accesses to debug module.
+
+2023-10-02	LEON5: Instruction TCM bugfixes.
+
+		Under some conditions following a pipeline stall when executing
+		out of ITCM, the cache controller could deliver stale data
+		from the Icache RAMs instead of from the ITCM data memories.
+
+		Write to ASI 0x26 could in some cases also cause a write into
+		instruction cache data RAMs.
+
+2023-10-02	LEON5: Code reorganization. Move decoding of perfcfg generic
+		up to leon5sys level.
+
+2023-10-02	LEON3/LEON5-ALTERA-C5EKIT: Change default IRQ assignment of
+		Ethernet cores.
+
+2023-09-29	NOEL-V: updates
+		- Code rewrite to support Synopsys DC and FM better.
+
+2023-08-15	L2C-Lite: Major architectural update. Backends available:
+		AHB, AXI3, AXI4. Functional updates:
+		- Turn on/off Cache.
+		- Select replacement policy, 0 -> random, 1 -> psuedo LRU
+		  (Probe bit to see if pLRU can enabled).
+		- New flush modes: Flush, Flush+Invalidate, Invalidate,
+		  Flush address, Flush+Invalidate address.
+		- Diagnostics interface: Read/write cachelines and tag+v+d
+		  data.
+
+2023-08-15	AHB2AXIB: Added support for BUSY HTRANS.
+
+2023-07-25	AHBCTRL simulation trace:
+		Added option to select between printing either full HWDATA/
+		HRDATA contents, or the subword selected by HSIZE/HADDR/
+		ahbendian.
+
 ----------------------- Release 2023.2-b4283 ---------------------------
 
 2023-06-09	LEON5 updates:

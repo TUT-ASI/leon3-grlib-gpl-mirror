@@ -63,3 +63,4 @@ l2c_lite
 bch
 nandfctrl2
 griommu2
+nandfctrl2_phy

@@ -1,4 +1,5 @@
 utilnv.vhd
+noelvtypes.vhd
 noelvint.vhd
 nvsupport.vhd
 mmuconfig.vhd

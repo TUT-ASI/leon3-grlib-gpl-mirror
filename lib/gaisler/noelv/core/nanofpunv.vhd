@@ -41,6 +41,7 @@ use grlib.stdlib.tost_bits;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 library gaisler;
+use gaisler.noelvtypes.all;
 use gaisler.fputilnv.all;
 use gaisler.utilnv.log;
 use gaisler.utilnv.notx;
@@ -55,15 +56,10 @@ use gaisler.utilnv.all_0;
 use gaisler.utilnv.all_1;
 use gaisler.utilnv.get_hi;
 use gaisler.utilnv.to_bit;
-use gaisler.noelvint.fpu_id;
-use gaisler.noelvint.flags_t;
 use gaisler.noelvint.fpu5_in_type;
+use gaisler.noelvint.fpu5_in_async_type;
 use gaisler.noelvint.fpu5_out_type;
-use gaisler.nvsupport.word64;
-use gaisler.nvsupport.word;
-use gaisler.nvsupport.word2;
-use gaisler.nvsupport.word3;
-use gaisler.nvsupport.zerow64;
+use gaisler.noelvint.fpu5_out_async_type;
 
 entity nanofpunv is
   generic (
@@ -80,7 +76,9 @@ entity nanofpunv is
     holdn         : in  std_ulogic;
 
     fpi           : in  fpu5_in_type;
+    fpia          : in  fpu5_in_async_type;
     fpo           : out fpu5_out_type;
+    fpoa          : out fpu5_out_async_type;
 
 
     -- Register file read interface
@@ -96,7 +94,6 @@ end;
 
 architecture rtl of nanofpunv is
 
-  -- qqq Temporary input signals
   signal e_inst        : word;
   signal e_valid       : std_ulogic;
   signal issue_id      : fpu_id;
@@ -111,7 +108,6 @@ architecture rtl of nanofpunv is
   signal unissue       : std_ulogic;
   signal unissue_id    : fpu_id;
 
-  -- qqq Temporary output signals
   signal fpu_holdn     : std_ulogic;
   signal ready_flop    : std_ulogic;
   signal rd            : reg_t;
@@ -353,36 +349,36 @@ architecture rtl of nanofpunv is
 
 begin
 
-  -- qqq Temporary input signals
   e_inst     <= fpi.inst;
   e_valid    <= fpi.e_valid;
   issue_id   <= fpi.issue_id;
   csrfrm     <= fpi.csrfrm;
-  e_nullify  <= fpi.e_nullify;
+--  e_nullify  <= fpi.e_nullify;
+  e_nullify  <= fpia.e_nullify;
   mode_in    <= fpi.mode;
   commit     <= fpi.commit;
   commit_id  <= fpi.commit_id;
   lddata_id  <= fpi.data_id;
   lddata_now <= fpi.data_valid;
-  lddata     <= fpi.data;
+--  lddata     <= fpi.data;
+  lddata     <= fpia.data;
   unissue    <= fpi.unissue;
   unissue_id <= fpi.unissue_id;
 
-  -- qqq Temporary output signals
-  fpo.holdn      <= fpu_holdn;
-  fpo.ready      <= ready_flop;
+  fpoa.holdn     <= fpu_holdn;
+  fpoa.ready     <= ready_flop;
   fpo.rd         <= rd;
   fpo.wen        <= wen;
   fpo.data       <= stdata;
   fpo.flags_wen  <= flags_wen;
   fpo.flags      <= flags;
-  fpo.now2int    <= now2int;
-  fpo.id2int     <= id2int;
-  fpo.data2int   <= stdata2int;
-  fpo.flags2int  <= flags2int;
+  fpoa.now2int   <= now2int;
+  fpoa.id2int    <= id2int;
+  fpoa.data2int  <= stdata2int;
+  fpoa.flags2int <= flags2int;
   fpo.mode       <= wb_mode;
   fpo.wb_id      <= wb_id;
-  fpo.idle       <= idle;
+  fpoa.idle      <= idle;
   fpo.events     <= events;
 
   mulfp_gen: if extmul = 1 generate
@@ -2668,8 +2664,6 @@ begin
       v.s1(28 + 32 downto 32) := std_logic_vector(divrem2);
     end if;
 
---jk      v.op1.w := (others => '0');
---jk      v.op2.w := (others => '0');
 
     v.events_pipe := r.events;
     v.events      := evt;

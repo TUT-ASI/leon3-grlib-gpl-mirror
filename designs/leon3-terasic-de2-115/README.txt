@@ -132,8 +132,8 @@ grmon3> flash
 
 3. UART
 
-The single RS232 port can be use as console when switch SW0 is
-off, or as debug link for GRMON when SW0 is on.
+The single RS232 port can be use as console when switch SW17 is
+off, or as debug link for GRMON when SW17 is on.
 
 
 4. Ethernet
@@ -162,11 +162,18 @@ Design signal  SPI signal   JP5 pin
   gpio(29)       sck          34
   gpio(28)      slv. sel.     33
 
+
+6. GPIO
+
 The general purpose I/O port (GRGPIO) is enabled by default in the
-design and maps gpio(0) to gpio(30). If SPI2AHB is enabled then the
-number of GPIO lines must be decreased to 28.
+design and gpio0 maps gpio(0) to gpio(30). If SPI2AHB is enabled then
+the number of GPIO lines must be decreased to 28.
+
+gpio1 is connected to the board signals sw(0) to sw(16).
+
+gpio2 is connected to the board signals ledg(0) to ledg(8).
 
 
-6. Other functions
+7. Other functions
 
 Not yet supported: PS/2, SSRAM, VGA, video grabber, USB, audio ...

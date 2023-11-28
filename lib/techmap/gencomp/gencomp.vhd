@@ -38,7 +38,7 @@ package gencomp is
 
 -- technologies and libraries
 
-constant NTECH : integer := 68;
+constant NTECH : integer := 69;
 type tech_ability_type is array (0 to NTECH) of integer;
 
 constant inferred    : integer := 0;
@@ -115,6 +115,7 @@ constant kintexup    : integer := 65;
 constant rhs28       : integer := 66;
 constant techres1    : integer := 67;
 constant nexus       : integer := 68;
+constant versal      : integer := 69;
 
 
 constant DEFMEMTECH  : integer := inferred;
@@ -131,7 +132,7 @@ constant is_fpga : tech_ability_type :=
 	 stratix4 => 1, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1,
 	 stratix5 => 1, ultrascale => 1, ultrascalep => 1, polarfire => 1,
-         nx =>1, nexus => 1, others => 0);
+         nx =>1, nexus => 1, versal => 1, others => 0);
 
 constant infer_mul : tech_ability_type := is_fpga;
 
@@ -168,11 +169,11 @@ constant regfile_4p_infer : tech_ability_type :=
 
 constant syncram_2p_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1, ut130 => 1, rhs65 => 0,
-         igloo2 => 1, rtg4 => 1, polarfire => 1,nx=>1, others => 0);
+         igloo2 => 1, rtg4 => 1, polarfire => 0, nx=>1, others => 0);
 
 constant syncram_dp_dest_rw_collision : tech_ability_type :=
         (memartisan => 1, smic013 => 1, easic45 => 1,
-         rtg4 => 1, polarfire => 1,nx=>1, others => 0);
+         rtg4 => 1, polarfire => 0, nx=>1, others => 0);
 
 -- The readhold table should be set to 1 if the techology mapping's
 -- memory blocks keep the read-data bus stable at its current value
@@ -182,18 +183,21 @@ constant syncram_dp_dest_rw_collision : tech_ability_type :=
 constant syncram_readhold : tech_ability_type :=
         (rhs65 => 1, memrhs65b => 1, gf22 => 1, rhs28 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1,
+         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1,
+         polarfire => 0,
          others => 0);
 
 constant syncram_2p_readhold : tech_ability_type :=
         (rhs65 => 1, memrhs65b => 1, gf22 => 1, rhs28 => 1,
          spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1,
+         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1,
+         polarfire => 0,
          others => 0);
 
 constant syncram_dp_readhold : tech_ability_type :=
         (spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1,
+         artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1,
+         polarfire => 0,
          others => 0);
 
 constant regfile_3p_readhold : tech_ability_type :=
@@ -219,9 +223,9 @@ constant syncram_add_scan_bypass : tech_ability_type := (others => 0);
 -- value will use inferred implementation (can be overriden by grlib_config)
 constant syncram_abits_min    : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
                                                       artix7 => 7, zynq7000 => 6, ultrascale => 6, ultrascalep => 6,
-                                                      rhs28 => 5, dare65t => 6, others => 0);
+                                                      rhs28 => 5, dare65t => 6, versal => 6, others => 0);
 constant syncram_2p_abits_min : tech_ability_type := (spartan6 => 6, virtex6 => 6, virtex7 => 6, kintex7 => 6,
-                                                      artix7 => 6, zynq7000 => 6, ultrascale => 6, ultrascalep => 6, gf22 => 6, rhs28 => 7,
+                                                      artix7 => 6, zynq7000 => 6, ultrascale => 6, ultrascalep => 6, gf22 => 6, rhs28 => 7, versal => 6,
                                                       others => 0);
 
 
@@ -241,37 +245,37 @@ constant has_dpram : tech_ability_type :=
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
 	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
          dare => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1,
-         nx=>1, nexus => 1,others => 0);
+         nx=>1, nexus => 1, versal => 1, others => 0);
 
 constant has_sram64 : tech_ability_type :=
 	(inferred => 0, virtex2 => 1, spartan3 => 1, virtex4 => 1,
 	 spartan3e => 1, memartisan => 1, virtex5 => 1, smic013 => 1,
 	 spartan6 => 1, virtex6 => 1, easic45 => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_sram128bw : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
 	spartan3e => 1, spartan6 => 1, virtex6 => 1,  virtex7 => 1, kintex7 => 1,
 	altera => 1, cyclone3 => 1, stratix2 => 1, stratix3 => 1, stratix4 => 1,
-	ut90 => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+	ut90 => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_sram128 : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
 	spartan3e => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-	tm65gplus => 0, easic45 => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+	tm65gplus => 0, easic45 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_sram156bw : tech_ability_type := (
 	virtex2 => 0, virtex4 => 0, virtex5 => 0, spartan3 => 0,
 	spartan3e => 0, spartan6 => 0, virtex6 => 0, virtex7 => 0, kintex7 => 0,
 	altera => 0, cyclone3 => 0, stratix2 => 0, stratix3 => 0, stratix4 => 0,
 	tm65gplus => 0, custom1 => 1, ut90 => 1, rhs65 => 1, memrhs65b => 1, dare65t => 1, stratix5 => 1,
-        ultrascale => 0, ultrascalep=> 0, gf22 => 1, others => 0);
+        ultrascale => 0, ultrascalep=> 0, gf22 => 1, versal => 1, others => 0);
 
 constant has_sram256bw : tech_ability_type := (
 	virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1,
 	spartan3e => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
 	altera => 1, cyclone3 => 1, stratix2 => 1, stratix3 => 1, stratix4 => 1,
-	tm65gplus => 0, cmos9sf => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+	tm65gplus => 0, cmos9sf => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_sram_2pbw : tech_ability_type := (
     easic45 => 1, others => 0);
@@ -283,7 +287,7 @@ constant has_srambw : tech_ability_type := (easic45 => 255, virtex => 0, virtex2
 	      virtex4 => 0, virtex5 => 15, spartan3 => 0, spartan3e => 0, spartan6 => 0,
 	      virtex6 => 15, virtex7 => 15, kintex7 => 15, artix7 => 15, zynq7000 => 15,
               rtg4 => 11, igloo2 => 11, polarfire => 11, stratix5 => 255,
-              nx=> 12,others => 0);
+              nx=> 12, versal => 15, others => 0);
 
 constant has_2pfifo : tech_ability_type := (
   altera    => 1, stratix1  => 1, stratix2 => 1, stratix3 => 1,
@@ -305,7 +309,7 @@ constant ram_raw_latency : tech_ability_type := (easic45 => 1, others => 0);
 -- has_sram_ecc(tech) = 1 -> target tech has SECDED capabilities for SRAM
 constant has_sram_ecc :  tech_ability_type :=
   (rtg4 => 1, virtex5 => 1, virtex6 => 1, artix7 => 1, kintex7 => 1, virtex7 => 1,
-   ultrascale => 1, ultrascalep => 1, polarfire => 1, others => 0);
+   ultrascale => 1, ultrascalep => 1, polarfire => 1, versal => 1, others => 0);
 
 -- Support for built in pipeline register in SRAM macro
 constant has_sram_pipe : tech_ability_type :=
@@ -313,14 +317,14 @@ constant has_sram_pipe : tech_ability_type :=
 
 -- Support for build in pipeline register in SRAM macro ECC
 constant has_sram_ecc_pipe : tech_ability_type :=
-  (rtg4 => 1, polarfire => 1, others => 0);
+  (rtg4 => 1, polarfire => 0, others => 0);
 
 -- Support for target (memory) technology FT features with
 -- error injection
 constant has_sram_ecc_errinj : tech_ability_type :=
   (rtg4 => 0, polarfire => 0, virtex5 => 1, virtex6 => 1,
    artix7 => 1, kintex7 => 1, virtex7 => 1,
-   ultrascale => 1, ultrascalep => 1, others => 0);
+   ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant padoen_polarity : tech_ability_type :=
         (axcel => 1, proasic => 1, umc => 1, rhumc => 1, saed32 => 1, rhs65 => 0, dare => 1, apa3 => 1,
@@ -337,7 +341,7 @@ constant has_pads : tech_ability_type :=
 	 easic90 => 1, atc18rha => 1, spartan6 => 1, virtex6 => 1,
          actfus => 1, apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
          ut90 => 1, virtex7 => 1, kintex7 => 1, nx => 1,
-         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, nexus => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, nexus => 1, versal => 1, others => 0);
 
 constant has_ds_pads : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, memvirage => 0,
@@ -347,7 +351,7 @@ constant has_ds_pads : tech_ability_type :=
 	 ut25 => 1, spartan3e => 1, virtex5 => 1, axdsp => 1,
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 apa3e => 1, apa3l => 1, ut130 => 0, easic45 => 1, virtex7 => 1, kintex7 => 1,
-         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+         artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_ds_combo : tech_ability_type :=
 	( rhumc => 1, ut25 => 1, ut130 => 1, dare => 1, others => 0);
@@ -359,14 +363,14 @@ constant has_clkand : tech_ability_type :=
 	  virtex5 => 1, ut25 => 1, rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1,
-	  dare => 1, dare65t => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, rhs28 => 1, others => 0);
+	  dare => 1, dare65t => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, rhs28 => 1, versal => 1, others => 0);
 
 constant has_clkmux : tech_ability_type :=
 	( virtex => 1, virtex2 => 1, spartan3 => 1, spartan3e => 1,
 	  virtex4 => 1, virtex5 => 1,  rhlib18t => 1,
           spartan6 => 1, virtex6 => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, saed32 => 1, dare => 1, dare65t => 1,
-	  rhumc => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, others => 0);
+	  rhumc => 1, rhs65 => 1, ultrascale => 1, ultrascalep => 1, gf22 => 1, versal => 1, others => 0);
 
 constant has_clkinv : tech_ability_type :=
 	( saed32 => 1, dare => 1, rhs65 => 1, dare65t => 1, others => 0);
@@ -377,7 +381,7 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, nexus => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, nexus => 1, versal => 1, others => 0);
 
 constant has_techbuf_triplicated : tech_ability_type :=
         ( rtg4 => 1, others => 0);
@@ -386,7 +390,7 @@ constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1,
 	 spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, others => 0);
+	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant tap_tck_gated : tech_ability_type :=
   ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1, spartan3e => 1,
@@ -403,7 +407,7 @@ constant is_unisim : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1,
 	  spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1,
-	  ultrascale => 1, ultrascalep => 1, others => 0);
+	  ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant is_ultrascale : tech_ability_type :=
         (ultrascale => 1, ultrascalep => 1, others => 0);
@@ -417,7 +421,7 @@ constant has_tap : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1,
-	 ultrascale => 1, ultrascalep => 1, others => 0);
+	 ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
 
 constant has_clkgen : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 1,
@@ -428,7 +432,8 @@ constant has_clkgen : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1, easic90 => 1,
 	 stratix4 => 1, easic45 => 1, apa3e => 1, apa3l => 1,
 	 rhlib18t => 1, ut130 => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1,
-         zynq7000 => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1,nx=>1, others => 0);
+         zynq7000 => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1, nx=>1, versal => 1,
+         others => 0);
 
 constant has_ddr2phy: tech_ability_type :=
   (inferred => 0, stratix2 => 1, stratix3 => 1, stratix4 => 1, spartan3 => 1,
@@ -546,7 +551,7 @@ constant has_transceivers : tech_ability_type := (
   nx        => "nx        ", dare65t   => "dare65t   ",
   gf22      => "gf22      ", virtexup  => "uscaleplus",
   rhs28     => "rhs28     ", techres1  => "techres1  ",
-  nexus     => "nexus     "
+  nexus     => "nexus     ", versal    => "versal    "
   );
 
 -- pragma translate_on

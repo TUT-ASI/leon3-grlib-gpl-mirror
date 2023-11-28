@@ -198,12 +198,14 @@ int main() {
     addr_t aclint_addr = ACLINT_ADDR_SYSTEST;
     addr_t imsic_addr  = IMSIC_ADDR_SYSTEST;
     addr_t aplic_addr  = APLIC_ADDR_SYSTEST;
-    int cpus    = 1;  // Number of CPUS in the system
-    int geilen  = 16; // GEILEN constant of the RISCV system
-    int domains = 4;  // APLIC implemented domains
-    int lite    = 1;  // Executes a shorter version of the test
+    int cpus      = 1;  // Number of CPUS in the system
+    int geilen    = 16; // GEILEN constant of the RISCV system
+    int domains   = 4;  // APLIC implemented domains
+    int lite      = 1;  // Executes a shorter version of the test
+    int smstateen = 1;  // Smstateen exntension is implemented
+    int smrnmi    = 0;  // Smrnmi exntension is implemented
     test_failed |= aia_test(aclint_addr, imsic_addr, aplic_addr, 
-                            cpus, geilen, domains, 1);
+                            cpus, geilen, domains, lite, smstateen, smrnmi);
     print_test_result(test_failed, "AIA");
   }
   //print_test_result(test_failed, "All");

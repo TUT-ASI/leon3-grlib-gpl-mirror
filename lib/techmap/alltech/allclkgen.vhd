@@ -157,7 +157,27 @@ component clkgen_virtexup
     cgi     : in clkgen_in_type;
     cgo     : out clkgen_out_type
     );
-end component; 
+end component;
+
+component clkgen_versal is
+  generic (
+    clk_mul : integer;
+    clk_div : integer;
+    sdramen : integer;
+    noclkfb : integer;
+    freq    : integer
+  );
+  port (
+    clkin : in  std_ulogic;
+    clk   : out std_ulogic;
+    clk90 : out std_ulogic;
+    clkio : out std_ulogic;
+    sdclk : out std_ulogic;
+    cgi   : in  clkgen_in_type;
+    cgo   : out clkgen_out_type
+  );
+end component clkgen_versal;
+
 
 component clkgen_axcelerator 
   generic (

@@ -386,7 +386,9 @@ begin  -- rtl
       sepclk   => 0,
       afullwl  => 0,
       aemptyrl => 0,
-      ft       => ft)
+      ft       => ft,
+      rdhold    => 1
+     )
     port map (
       rclk    => clk,
       rrstn   => buf_in.clr_n,

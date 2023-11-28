@@ -199,7 +199,7 @@ begin
         srcbits         => srcbits
         )
       port map (
-        priority        => pr_out_array(i),
+        prio            => pr_out_array(i),
         threshold       => threshold(i),
         irqreq          => irqreq(i)
         );

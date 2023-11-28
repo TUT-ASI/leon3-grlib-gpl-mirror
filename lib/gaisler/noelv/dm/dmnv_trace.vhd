@@ -69,7 +69,7 @@ architecture rtl of dmnv_trace is
 
   constant TRACEN       : boolean := (kbytes /= 0);
   constant AHBWATCH     : boolean := TRACEN and (ahbwp /= 0);
-  constant TBUFABITS    : integer := 6; -- NW FIXME: Calculate the size from kB
+  constant TBUFABITS    : integer := 6;
 
   constant nbus : integer := 1  -- conventional
                              ;
@@ -127,8 +127,6 @@ architecture rtl of dmnv_trace is
     s1hmaster     : std_logic_vector(3 downto 0);
     s1hmastlock   : std_logic;
     aindex        : std_logic_vector(TBUFABITS - 1 downto 0); -- buffer index
-    -- NW FIXME:
-    --buf_ptr       : integer range 0 to nstripes;
     buf_ptr       : integer range 0 to 7;
   end record;
 
@@ -156,13 +154,9 @@ architecture rtl of dmnv_trace is
   type trace_reg_array is array(0 to nbus-1) of trace_reg_type;
 
   type trace_ctrl_type is record
-    -- NW FIXME:
-    --buf_ptr       : integer range 0 to nstripes;
     buf_ptr       : integer range 0 to 7;
     aindex        : std_logic_vector(TBUFABITS - 1 downto 0); -- buffer index
     enable        : std_logic;  -- trace enable
-    -- NW FIXME:
-    --buf_out       : integer range 0 to nstripes; -- buffer muxed to output
     buf_out       : integer range 0 to 7; -- buffer muxed to output
     bphit         : std_logic;  -- AHB breakpoint hit
     bphit2        : std_logic;  -- delayed bphit
@@ -281,7 +275,7 @@ begin
   arst        <= tri.testrst when (ASYNC_RESET and scantest/=0 and tri.testen/='0') else
                  rstn when ASYNC_RESET else '1';
 
-  comb : process (r, tri, cbmi, cbsi,
+  comb : process (r, tri, cbmi, cbsi, timer,
                   tbo)
     variable v                  : reg_type;
 --    -- AHB Interface
@@ -298,12 +292,8 @@ begin
     variable tr_buses       : ahb_slv_in_vector;
     variable rd_array       : rd_array_type;
     variable resp_array     : resp_array_type;
-    -- NW FIXME:
-    --variable buf_ptr        : integer range 0 to nstripes := 0;
     variable buf_ptr        : integer range 0 to 7 := 0;
     variable aindex         : std_logic_vector(TBUFABITS - 1 downto 0); 
-    -- NW FIXME:
-    --variable buf_out_index  : integer range 0 to nstripes := 0;
     variable buf_out_index  : integer range 0 to 7 := 0;
     variable tr_hit         : std_ulogic;
 
@@ -312,7 +302,8 @@ begin
       wr      : in  std_ulogic;
       wdata   : in  std_logic_vector;
       rdata   : out std_logic_vector) is
-      variable vrd, vwd: std_logic_vector(31 downto 0);
+      variable vrd     : std_logic_vector(31 downto 0);
+      variable vwd     : std_logic_vector(wdata'length - 1 downto 0);
       variable hasel2  : std_logic_vector(8 downto 2) := addr(8 downto 2);
     begin
       vwd := wdata;
@@ -474,7 +465,8 @@ begin
       hold    : in  std_ulogic;
       wdata   : in  std_logic_vector;
       rdata   : out std_logic_vector) is
-      variable vrd, vwd: std_logic_vector(31 downto 0);
+      variable vrd     : std_logic_vector(31 downto 0);
+      variable vwd     : std_logic_vector(wdata'length - 1 downto 0);
       variable first   : std_ulogic;
       variable hasel3  : std_logic_vector(4 downto 2) := addr(4 downto 2);
     begin
@@ -482,7 +474,6 @@ begin
       vrd := (others => '0');
       first := not hold;
 
-      -- NW FIXME: integer range...
       buf_out_index := r.tr_ctrl.buf_out;
       otbi(buf_out_index).addr := addr(otbi(0).addr'length+4 downto 5);
       

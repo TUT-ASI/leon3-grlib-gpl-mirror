@@ -90,7 +90,7 @@ architecture rtl of dmnv is
   signal tri  : dev_reg_in_type;
   signal tro  : dev_reg_out_type;
 begin
-  interconnect : entity work.dmnv_ic
+  intercnct : entity work.dmnv_ic
     generic map (
       ndmamst   => ndbgmst,
       -- conv bus
@@ -159,9 +159,6 @@ begin
 
   debug_module : entity work.dmnvx
     generic map(
-      --tech            => memtech,
-      -- Debug Module
-      -- NW FIXME: ...
       nharts          => ncpu,
       datacount       => 4,
       nscratch        => 2,
@@ -195,7 +192,6 @@ begin
       tro         => tro,
       cbmi        => cbmi,
       cbsi        => cbsi,
-      -- NW FIXME:
       timer       => dbgi(0).mcycle(tbits-1 downto 0)
     );
 end;

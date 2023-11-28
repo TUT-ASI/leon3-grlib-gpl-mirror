@@ -45,8 +45,8 @@ entity tbufmemnv_mbus is
     );
   port (
     clk : in std_ulogic;
-    di  : in tracebuf_mbus_in_array;
-    do  : out tracebuf_mbus_out_array;
+    trace_in  : in tracebuf_mbus_in_array;
+    trace_out  : out tracebuf_mbus_out_array;
     testin : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end;
@@ -60,41 +60,41 @@ signal enable : enable_type;
 begin
 
   mbus_trace_mem : for b in 0 to nbus generate
-    enable(b) <= di(b).enable & di(b).enable;
+    enable(b) <= trace_in(b).enable & trace_in(b).enable;
     mem64 : for i in 0 to 4 generate -- 32x5 syncrams standard to cover 64-bit bus
       ram0 : syncram generic map (tech => tech, abits => addrbits, dbits => 32, testen => testen, custombits => memtest_vlen)
-        port map ( clk, di(b).addr(addrbits-1 downto 0), di(b).data(((i*32)+31) downto (i*32)),
-                  do(b).data(((i*32)+31) downto (i*32)), di(b).enable ,di(b).write(i), testin);
+        port map ( clk, trace_in(b).addr(addrbits-1 downto 0), trace_in(b).data(((i*32)+31) downto (i*32)),
+                  trace_out(b).data(((i*32)+31) downto (i*32)), trace_in(b).enable, trace_in(b).write(i), testin);
     end generate;
 
     mem128 : if dwidth > 64 generate -- extra data buffer for 128-bit bus 
       ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
-      port map ( clk, di(b).addr(addrbits-1 downto 0), di(b).data(223 downto 160),
-                do(b).data(223 downto 160), enable(b) ,di(b).write(6 downto 5), testin);
+      port map ( clk, trace_in(b).addr(addrbits-1 downto 0), trace_in(b).data(223 downto 160),
+                trace_out(b).data(223 downto 160), enable(b), trace_in(b).write(6 downto 5), testin);
     end generate;
 
     nomem128 : if dwidth < 128 and proc = 0 generate -- no extra data buffer for 128-bit bus
-      do(b).data((223) downto (160)) <= (others => '0');
+      trace_out(b).data((223) downto (160)) <= (others => '0');
     end generate;
   end generate;
 
 
   -- mem32 : for i in 0 to 1+proc*2 generate  -- basic 128 buffer
   --   ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
-  --     port map ( clk, di.addr(addrbits-1 downto 0), di.data(((i*64)+63) downto (i*64)),
-  --         do.data(((i*64)+63) downto (i*64)), enable ,di.write(i*2+1 downto i*2), testin);
+  --     port map ( clk, trace_in.addr(addrbits-1 downto 0), trace_in.data(((i*64)+63) downto (i*64)),
+  --         trace_out.data(((i*64)+63) downto (i*64)), enable, trace_in.write(i*2+1 downto i*2), testin);
   -- end generate;
 
   -- mem64 : if dwidth > 32 generate -- extra data buffer for 64-bit bus
   --   ram0 : syncram generic map (tech => tech, abits => addrbits, dbits => 32, testen => testen, custombits => memtest_vlen)
-  --     port map ( clk, di.addr(addrbits-1 downto 0), di.data((128+31) downto 128),
-  --         do.data((128+31) downto 128), di.enable, di.write(7), testin);
+  --     port map ( clk, trace_in.addr(addrbits-1 downto 0), trace_in.data((128+31) downto 128),
+  --         trace_out.data((128+31) downto 128), trace_in.enable, trace_in.write(7), testin);
   -- end generate;
 
   -- mem128 : if dwidth > 64 generate -- extra data buffer for 128-bit bus
   --   ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
-  --     port map ( clk, di.addr(addrbits-1 downto 0), di.data((128+95) downto (128+32)),
-  --         do.data((128+95) downto (128+32)), enable ,di.write(6 downto 5), testin);
+  --     port map ( clk, trace_in.addr(addrbits-1 downto 0), trace_in.data((128+95) downto (128+32)),
+  --         trace_out.data((128+95) downto (128+32)), enable, trace_in.write(6 downto 5), testin);
 
   -- end generate;
 

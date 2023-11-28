@@ -25,7 +25,7 @@ ifeq ($(XLEN), 64)
 else
 	RISCV_ABI ?= ilp$(XLEN)
 endif	
-RISCV_ARCH ?= rv$(XLEN)ima
+RISCV_ARCH ?= rv$(XLEN)ima_zicsr_zifencei
 RISCV_PREFIX ?= riscv-gaisler-elf-
 #RISCV_PREFIX ?= riscv64-unknown-elf-
 

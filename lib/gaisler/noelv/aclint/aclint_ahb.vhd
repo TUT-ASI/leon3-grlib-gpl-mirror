@@ -176,7 +176,7 @@ begin
 
     v.hsel    := (others => '0');
     v.hready  := '1';
-    v.hresp   := HRESP_OKAY; 
+    v.hresp   := HRESP_OKAY;
 
     rdata       := (others => '0');
 
@@ -218,8 +218,8 @@ begin
     -- enabled and the MTIE bit is set in the mie register.
 
     for i in 0 to ncpu-1 loop
-      
-      if (r.mtime >= r.mtimecmp(i)) then
+
+      if (unsigned(r.mtime) >= unsigned(r.mtimecmp(i))) then
         v.mtip(i)       := '1';
       else
         v.mtip(i)       := '0';
@@ -310,6 +310,15 @@ begin
               end if;
             end if;
           end if;
+          -- Replicate data for 32-bit access either the low
+          -- or the high part of the register
+          if r.hsize = "010" then
+            if r.haddr(2) = '0' then
+              rdata(63 downto 32) := rdata(31 downto 0);
+            else
+              rdata(31 downto 0) := rdata(63 downto 32);
+            end if;
+          end if;
         when "011" => -- (SETSSIP)
           -- Read-only zero
         when "100" => -- Watchdog
@@ -323,11 +332,7 @@ begin
       end case;
       -- Replicate data for 32-bit access
       if r.hsize = "010" then
-        if r.haddr(2) = '0' then
-          rdata(63 downto 32) := rdata(31 downto 0);
-        else
-          rdata(31 downto 0) := rdata(63 downto 32);
-        end if;
+        rdata(63 downto 32) := rdata(31 downto 0);
       end if;
       v.hrdata := rdata;
     end if;
@@ -336,7 +341,7 @@ begin
     if r.hsel(1) = '1' and r.haddr(19 downto 17) = "000" and r.hwrite = '1' and (r.hsize = "010" or r.hsize = "011") then
       case offset is
         when "000" => -- MSIP
-          if mswi = 1 then 
+          if mswi = 1 then
             if selcpu < ncpu then
               v.msip(selcpu) := wdata(0);
             end if;
@@ -368,7 +373,7 @@ begin
             end if;
           end if;
         when "011" => -- (SETSSIP)
-          if sswi = 1 then 
+          if sswi = 1 then
             if selcpu < ncpu then
               ssip(selcpu) := wdata(0);
             end if;
@@ -381,7 +386,7 @@ begin
             v.wtocnt := wdata(13 downto 4);
             v.cnt := v.wtocnt;
           end if;
-        when others => 
+        when others =>
       end case;
     end if;
 
@@ -417,6 +422,7 @@ begin
     rin <= v;
 
     -- AHB Interface
+    ahbo                <= ahbs_none;
     ahbo.hready         <= r.hready;
     ahbo.hrdata         <= ahbdrivedata(hrdata);
     ahbo.hresp          <= r.hresp;
@@ -433,6 +439,7 @@ begin
     end if;
 
     -- IRQ Interface
+    irqo              <= (others => nv_irq_in_none);
     for i in 0 to ncpu-1 loop
       irqo(i).mtip    <= '0';
       irqo(i).msip    <= '0';
@@ -445,22 +452,22 @@ begin
       irqo(i).stime   <= stime;
     end loop;
 
-    if mswi = 1 then 
+    if mswi = 1 then
       for i in 0 to ncpu-1 loop
         irqo(i).msip           <= r.msip(i);
       end loop;
     end if;
-    if mtimer = 1 then 
+    if mtimer = 1 then
       for i in 0 to ncpu-1 loop
         irqo(i).mtip           <= r.mtip(i);
       end loop;
     end if;
-    if sswi = 1 then 
+    if sswi = 1 then
       for i in 0 to ncpu-1 loop
         irqo(i).ssip           <= ssip(i);
       end loop;
     end if;
-    
+
   end process;
 
   regs : process(clk)
@@ -474,4 +481,3 @@ begin
   end process;
 
 end rtl;
-

@@ -408,9 +408,11 @@ begin  -- rtl
     end if;
 
     -- Counter for timeout check for conditional desc. Decremented every clock cycle
-    if r.tm_start = '0' then
+    if ctrl.te /= '1' then
+      v.timeout_cntr := (others => '1');
+    elsif r.tm_start = '0' then
       v.timeout_cntr := trst.trst_val;
-    elsif (r.tm_start = '1' and conv_integer(r.timeout_cntr) /= 0 and ctrl.te = '1') then
+    elsif (r.tm_start = '1' and conv_integer(r.timeout_cntr) /= 0 ) then
       v.timeout_cntr := r.timeout_cntr - 1;
     end if;
 

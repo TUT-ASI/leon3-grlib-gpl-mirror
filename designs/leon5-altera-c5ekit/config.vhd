@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- LEON3 Demonstration design test bench configuration
+-- LEON5 Demonstration design test bench configuration
 -- Copyright (C) 2009 Aeroflex Gaisler
 ------------------------------------------------------------------------------
 library techmap;
@@ -15,6 +15,10 @@ package config is
 --LEON5 processor system
   constant CFG_NCPU : integer := (1);
   constant CFG_FPUTYPE : integer := 0;
+  constant CFG_PERFCFG : integer := (0);
+  constant CFG_RFCONF : integer := (0) + (0);
+  constant CFG_CMEMCONF : integer := (0) + (0) + (0);
+  constant CFG_TCMCONF : integer := (0) + 256*(0);
   constant CFG_AHBW : integer := 64;
   constant CFG_BWMASK : integer := 16#00f0#;
   constant CFG_DFIXED : integer := 16#0#;
@@ -50,6 +54,7 @@ package config is
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
   constant CFG_GRETH_FMC : integer := 0;
+  constant CFG_ETH_PHY_ADDR : integer := (1);
 -- Gaisler Ethernet core
   constant CFG_GRETH2 : integer := 1;
   constant CFG_GRETH21G : integer := 0;

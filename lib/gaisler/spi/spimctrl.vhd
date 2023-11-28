@@ -52,31 +52,35 @@ use gaisler.spi.all;
 
 entity spimctrl is
   generic (
-    hindex      : integer := 0;            -- AHB slave index
-    hirq        : integer := 0;            -- Interrupt line
-    faddr       : integer := 16#000#;      -- Flash map base address
-    fmask       : integer := 16#fff#;      -- Flash area mask
-    ioaddr      : integer := 16#000#;      -- I/O base address
-    iomask      : integer := 16#fff#;      -- I/O mask
-    spliten     : integer := 0;            -- AMBA SPLIT support
-    oepol       : integer := 0;            -- Output enable polarity
-    sdcard      : integer range 0 to 0   := 0;  -- Unused
-    readcmd     : integer range 0 to 255 := 16#0B#;  -- Mem. dev. READ command
-    dummybyte   : integer range 0 to 1   := 1;  -- Dummy byte after cmd (8 cycles)
-    dualoutput  : integer range 0 to 1   := 0;  -- Enable dual output (Data phase)
-    scaler      : integer range 1 to 512 := 1; -- SCK scaler
-    altscaler   : integer range 1 to 512 := 1; -- Alternate SCK scaler
-    pwrupcnt    : integer  := 0;               -- Unused
-    maxahbaccsz : integer range 0 to 256 := AHBDW; -- Max AHB access size
-    offset      : integer := 0;
-    quadoutput  : integer range 0 to 1   := 0;  -- Enable quad output (Data phase)
-    dualinput   : integer range 0 to 1   := 0;  -- Enable dual input (Addr phase)
-    quadinput   : integer range 0 to 1   := 0;  -- Enable quad input (Addr phase)
-    dummycycles : integer range 0 to 15  := 0;  -- # dummy cycles after cmd (not used if dummybyte=1)
-    DSPI        : integer range 0 to 1   := 0;  -- Full Dual SPI mode (all transactins 2-2-2)
-    QSPI        : integer range 0 to 1   := 0;  -- Full Quad SPI mode (all transactins 4-4-4)
-    extaddr     : integer range 0 to 1   := 0;  -- Extended address mode (0=>3-Bytes, 1=>4-Bytes)
-    reconf      : integer range 0 to 1   := 0   -- Enables changing configuration through reg. interface
+    hindex       : integer := 0;            -- AHB slave index
+    hirq         : integer := 0;            -- Interrupt line
+    faddr        : integer := 16#000#;      -- Flash map base address
+    fmask        : integer := 16#fff#;      -- Flash area mask
+    ioaddr       : integer := 16#000#;      -- I/O base address
+    iomask       : integer := 16#fff#;      -- I/O mask
+    spliten      : integer := 0;            -- AMBA SPLIT support
+    oepol        : integer := 0;            -- Output enable polarity
+    sdcard       : integer range 0 to 0   := 0;  -- Unused
+    readcmd      : integer range 0 to 255 := 16#0B#;  -- Mem. dev. READ command
+    dummybyte    : integer range 0 to 1   := 1;  -- Dummy byte after cmd (8 cycles)
+    dualoutput   : integer range 0 to 1   := 0;  -- Enable dual output (Data phase)
+    scaler       : integer range 1 to 512 := 1; -- SCK scaler
+    altscaler    : integer range 1 to 512 := 1; -- Alternate SCK scaler
+    pwrupcnt     : integer  := 0;               -- Unused
+    maxahbaccsz  : integer range 0 to 256 := AHBDW; -- Max AHB access size
+    offset       : integer := 0;
+    quadoutput   : integer range 0 to 1   := 0;  -- Enable quad output (Data phase)
+    dualinput    : integer range 0 to 1   := 0;  -- Enable dual input (Addr phase)
+    quadinput    : integer range 0 to 1   := 0;  -- Enable quad input (Addr phase)
+    dummycycles  : integer range 0 to 15  := 0;  -- # dummy cycles after cmd (not used if dummybyte=1)
+    DSPI         : integer range 0 to 1   := 0;  -- Full Dual SPI mode (all transactins 2-2-2)
+    QSPI         : integer range 0 to 1   := 0;  -- Full Quad SPI mode (all transactins 4-4-4)
+    extaddr      : integer range 0 to 1   := 0;  -- Extended address mode (0=>3-Bytes, 1=>4-Bytes)
+    reconf       : integer range 0 to 1   := 0;  -- Enables changing configuration through reg. interface
+    writecmd     : integer range 0 to 255 := 16#02#; -- Mem. dev. write command
+    allow_writes : integer range 0 to 1   := 0;  -- Allow writes to the memory area. Otherwise return error resp.
+    xip_byte     : integer range 0 to 1   := 0;  -- Send XIP byte after address phase
+    xip_polarity : integer range 0 to 1   := 1   -- Value shifted into the memory in the xip byte and dummy cycles phase
     );
   port (
     rstn    : in  std_ulogic;
@@ -140,6 +144,17 @@ architecture rtl of spimctrl is
     end if;
     return scaler;
   end timer_size;
+  
+  -- Description: Determines the polarity of the bit shifted to memory device during
+  -- xip byte and dummy cycles phase.
+  function bit_pol
+    return std_ulogic is
+    begin
+      if xip_polarity /= 0 then 
+        return '1';
+      end if;
+      return '0';
+    end bit_pol;
 
   -- Description: Returns the number of bits required for the haddr vector to
   -- be able to save the Flash area address.
@@ -268,6 +283,7 @@ architecture rtl of spimctrl is
        hsize  : std_logic_vector(2 downto 0);  -- Size of access
        hburst : std_logic_vector(0 downto 0);  -- Incremental burst
   end record;
+  constant spiflash_none : spiflash_type := (SPI_READY, "00000", "000", "0");
 
   type spimctrl_in_array is array (1 downto 0) of spimctrl_in_type;
   
@@ -277,8 +293,8 @@ architecture rtl of spimctrl is
        rst            : std_ulogic;      -- Reset
        reg            : spim_regif_type; -- Register bank
        timer          : std_logic_vector((timer_size-1) downto 0);
-       sample         : std_logic_vector(1 downto 0);  -- Sample data line
-       bd             : std_ulogic;
+       sample         : std_logic_vector(2 downto 0);  -- Sample data line
+       bd             : std_logic_vector(1 downto 0);
        sreg           : std_logic_vector(7 downto 0);  -- Shiftreg
        bcnt           : std_logic_vector(2 downto 0);  -- Bit counter
        go             : std_ulogic;     -- SPI comm. active
@@ -289,6 +305,7 @@ architecture rtl of spimctrl is
        unsplit        : std_ulogic;     -- SPLIT complete not issued
        --
        readcmd        : std_logic_vector(7 downto 0); -- Mem. dev. READ command
+       writecmd       : std_logic_vector(7 downto 0); -- Mem. dev. WRITE command
        dualoutput     : std_ulogic;     -- Dual mode in data phase on reads
        quadoutput     : std_ulogic;     -- Quad mode in data phase on reads
        dualinput      : std_ulogic;     -- Dual mode in address phase on reads
@@ -298,6 +315,7 @@ architecture rtl of spimctrl is
        DSPI           : std_ulogic;     -- Full Dual SPI mode (all transactins 2-2-2)
        QSPI           : std_ulogic;     -- Full Quad SPI mode (all transactins 4-4-4)
        extaddr        : std_ulogic;     -- Extended address mode (0 -> 3 Bytes, 1 -> 4 Bytes)
+       xip_byte       : std_ulogic;     -- Write XIP (disable) byte after address phase.
        -- SPI flash device
        spi            : spiflash_type;
        -- AHB
@@ -307,6 +325,7 @@ architecture rtl of spimctrl is
        hsel           : std_ulogic;
        hmbsel         : std_logic_vector(0 to 1);
        haddr          : std_logic_vector((req_addr_bits-1) downto 0);
+       hwdata         : std_logic_vector(MAXDW-1 downto 0);
        hready         : std_ulogic;
        frdata         : std_logic_vector(MAXDW-1 downto 0);  -- Flash response data
        rrdata         : std_logic_vector(31 downto 0);  -- Register response data
@@ -374,14 +393,13 @@ begin  -- rtl
     variable read_flash       : boolean;
     variable hrdata           : std_logic_vector(MAXDW-1 downto 0);
     variable hwdatax          : std_logic_vector(31 downto 0);
-    variable hwdata           : std_logic_vector(7 downto 0);
+    variable samplecmp        : std_logic_vector(1 downto 0);
   begin  -- process comb
 
-    v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(0) & '0';
-    change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1';
+    v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(1 downto 0) & '0';
+    change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1'; v.bd := r.bd(0) & '0';
     regaddr := r.haddr(7 downto 2); hsplit := (others => '0');
-    hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2));
-    hwdata := hwdatax(7 downto 0);
+    hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2), conv_integer(ahbsi.endian));
     ahbirq := (others => '0'); ahbirq(hirq) := r.irq;
     read_flash := false;
     enable_altscaler := r.reg.ctrl.eas = '1';
@@ -396,32 +414,16 @@ begin  -- rtl
           (r.spi.state = SPI_ADDR and getInputMode(r) = 1) or
           (r.spi.state = SPI_DATA and getOutputMode(r) = 1)  then
       lastbit := andv(r.bcnt(1 downto 0));
-
-    elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.QSPI = '0' and r.DSPI = '0') or 
-          (r.spi.state = SPI_ADDR and getInputMode(r) = 0) or
-          (r.spi.state = SPI_DATA and getOutputMode(r) = 0)  then
-      lastbit := andv(r.bcnt);
-
     else 
       lastbit := andv(r.bcnt);
     end if;
-    v.bd := lastbit and r.sample(0); 
+    v.bd(0) := lastbit and r.sample(0); 
 
     if r.spimstate = IDLE then
       v.spio.io2 := '1';
       v.spio.io3 := '1';
     end if;
 
-    if getOutputMode(r) = 0 then
-      v.spio.mosioen := OUTPUT;
-      v.spio.misooen := INPUT;
-    end if;
-    if getOutputMode(r) < 2 then
-      v.spio.iooen := OUTPUT;
-    end if;
-    if getInputMode(r) = 0 then
-      v.spio.misooen := INPUT;
-    end if;
 
     ---------------------------------------------------------------------------
     -- AHB communication
@@ -440,7 +442,7 @@ begin  -- rtl
           if ahbsi.hmbsel(FLASH_BANK) = '1' then
             v.hburst(r.hburst'range) := ahbsi.hburst(r.hburst'range);
             v.seq := ahbsi.htrans(0);
-            if ahbsi.hwrite = '1' or disable_flash then
+            if (allow_writes=0 and ahbsi.hwrite = '1') or disable_flash then
               v.hresp := HRESP_ERROR;
               v.hsel := '0';
             else
@@ -492,12 +494,16 @@ begin  -- rtl
           v.rrdata(QUADOUT_INDEX)     := r.quadoutput;
           v.rrdata(DUALIN_INDEX)      := r.dualinput;
           v.rrdata(QUADIN_INDEX)      := r.quadinput;
+          v.rrdata(WRITECMD_RANGE)    := r.writecmd;
+          v.rrdata(XIP_INDEX)         := r.xip_byte;
+          
         when CTRL_REG_OFF =>
           v.rrdata(3) := r.spio.csn;
           v.rrdata(2) := r.reg.ctrl.eas;
           v.rrdata(1) := r.reg.ctrl.ien;
           v.rrdata(0) := r.reg.ctrl.usrc;
         when STAT_REG_OFF =>
+          v.rrdata(7) := to_ulogic(allow_writes);
           v.rrdata(6) := to_ulogic(reconf);
           v.rrdata(2) := '1';
           v.rrdata(1) := r.reg.stat.busy;
@@ -522,28 +528,58 @@ begin  -- rtl
           v.quadoutput  := hwdatax(QUADOUT_INDEX);
           v.dualinput   := hwdatax(DUALIN_INDEX);
           v.quadinput   := hwdatax(QUADIN_INDEX);
+          v.writecmd    := hwdatax(WRITECMD_RANGE);
+          v.xip_byte    := hwdatax(XIP_INDEX);
+          
         end if;
         when CTRL_REG_OFF =>
-          v.rst           := hwdata(4);
-          if (r.reg.ctrl.usrc and not hwdata(0)) = '1' then
+          v.rst           := hwdatax(4);
+          if (r.reg.ctrl.usrc and not hwdatax(0)) = '1' then
             v.spio.csn := '1';
-          elsif hwdata(0) = '1' then
-            v.spio.csn := hwdata(3);
+          elsif hwdatax(0) = '1' then
+            v.spio.csn := hwdatax(3);
           end if;
-          v.reg.ctrl.eas  := hwdata(2);
-          v.reg.ctrl.ien  := hwdata(1);
-          v.reg.ctrl.usrc := hwdata(0);
+          v.reg.ctrl.eas  := hwdatax(2);
+          v.reg.ctrl.ien  := hwdatax(1);
+          v.reg.ctrl.usrc := hwdatax(0);
         when STAT_REG_OFF =>
---          v.spio.errorn := r.spio.errorn or hwdata(3);
-          v.reg.stat.done := r.reg.stat.done and not hwdata(0);
+          v.reg.stat.done := r.reg.stat.done and not hwdatax(0);
         when RX_REG_OFF => 
           v.sreg := (others => '0');
         when TX_REG_OFF =>
           if r.reg.ctrl.usrc = '1' then
-            v.sreg := hwdata(7 downto 0);
+            v.sreg := hwdatax(7 downto 0);
           end if;
         when others => null;
       end case;
+    end if;
+    
+    -- Write access to memory area 
+    if (r.hsel and r.hmbsel(FLASH_BANK) and r.hwrite) = '1' then
+      -- Select correct data depending on hsize
+      v.hwdata := ahbselectdata(ahbsi.hwdata, r.haddr(4 downto 2), r.hsize, conv_integer(ahbsi.endian));
+      
+      -- Do endian byte swap
+      v.hwdata := spimctrl_endian_swap(v.hwdata, ahbsi.endian);
+      
+      -- ahbselectdata only works for 256-32 bit accesses.
+      -- Need to select correct data in 8 & 16 bit case:
+      if r.hsize = "001" then
+        -- 16b
+        if r.haddr(1)='0' then
+          v.hwdata := ahbdrivedata(v.hwdata(31 downto 16));
+        else
+          v.hwdata := ahbdrivedata(v.hwdata(15 downto 0));
+        end if;
+      elsif r.hsize = "000" then
+        -- 8b
+        case r.haddr(1 downto 0) is
+          when "00"   => v.hwdata := ahbdrivedata(v.hwdata(31 downto 24));
+          when "01"   => v.hwdata := ahbdrivedata(v.hwdata(23 downto 16));
+          when "10"   => v.hwdata := ahbdrivedata(v.hwdata(15 downto 8));
+          when others => v.hwdata := ahbdrivedata(v.hwdata(7 downto 0));
+        end case;
+      end if;
     end if;
     
     ---------------------------------------------------------------------------
@@ -568,8 +604,8 @@ begin  -- rtl
           end if;
           if ((spliten = 0 or v.ahbcancel = '0') and
               (spliten = 0 or ahbsi.hmaster = r.splmst or r.insplit = '0') and
-              (((ahbsi.hsel(hindex) and ahbsi.hready and ahbsi.htrans(1)) = '1') or
-               ((spliten = 0 or r.insplit = '0') and r.hready = '0' and r.hresp = HRESP_OKAY))) then
+              (((ahbsi.hsel(hindex) and ahbsi.hready and ahbsi.htrans(1)) = '1') 
+              or ((spliten = 0 or r.insplit = '0') and r.hready = '0' and r.hresp = HRESP_OKAY))) then
             v.spimstate := IDLE;
             v.hresp := HRESP_OKAY;
             if spliten /= 0 then
@@ -578,10 +614,6 @@ begin  -- rtl
             end if;
             v.hready := '1';
             v.hsel := '0';
---             if r.spio.errorn = '0' then
---               v.hready := '0';
---               v.hresp := HRESP_ERROR;
---             end if;
           elsif spliten /= 0 and v.ahbcancel = '1' then
             v.spimstate := IDLE;
             v.ahbcancel := '0';
@@ -589,7 +621,7 @@ begin  -- rtl
         end if; 
         
       when USER_SPI =>
-        if r.bd = '1' then
+        if r.bd(1) = '1' then
           v.spimstate := BUSY;
           v.hold := '1';
         end if;
@@ -659,8 +691,8 @@ begin  -- rtl
           v.go := '1';
           change := '1';
         end if;
-        v.spi.cnt := cslv(SPI_ADDR_LENGTH + conv_integer(r.extaddr), r.spi.cnt'length);
-        if v.bd = '1' then
+        v.spi.cnt := cslv(SPI_ADDR_LENGTH + conv_integer(r.extaddr) + conv_integer(r.xip_byte), r.spi.cnt'length);
+        if v.bd(0) = '1' then
           -- Read command have been sent, prepare for address phase
           if r.extaddr = '1' then
             v.sreg := r.ar((23+8) downto (16 + 8));
@@ -674,55 +706,55 @@ begin  -- rtl
               v.spio.iooen := OUTPUT;
             end if;
           end if;
+          
+          v.hold := '0';
         end if;
-        if r.bd = '1' then
+        if r.bd(0) = '1' then
           v.hold := '0';
           v.spi.state := SPI_ADDR;
         end if;
 
       when SPI_ADDR =>
-        if v.bd = '1' then
-          -- When entering ADDR phase one cycle of data has already been sent
-          -- and the ar register been shifted. Need to account for this.
+        if v.bd(0) = '1' then
           if r.extaddr = '0' then
-            case getInputMode(r) is
-              when 0 =>       -- serial
-                v.sreg := r.ar(22 downto 15);
-              when 1 =>       -- dual
-                v.sreg := r.ar(21 downto 14);
-              when others =>  -- quad
-                v.sreg := r.ar(19 downto 12);
-            end case;
-          else 
-            case getInputMode(r) is
-              when 0 =>       -- serial
-                v.sreg := r.ar(30 downto 23);
-              when 1 =>       -- dual
-                v.sreg := r.ar(29 downto 22);
-              when others =>  -- quad
-                v.sreg := r.ar(27 downto 20);
-            end case;
+            v.sreg := r.ar(23 downto 16);
+          else
+            v.sreg := r.ar(31 downto 24);
           end if;
 
-          if r.spi.cnt = zero32(r.spi.cnt'range) and (r.dummybyte = '0' and r.dummycycles = "0000") then
+          if r.spi.cnt = zero32(r.spi.cnt'range) and ((r.dummybyte = '0' and r.dummycycles = "0000") or r.hwrite = '1') then
+            
             v.spio.misooen := INPUT;
             v.spio.mosioen := OUTPUT;
             v.spio.iooen   := OUTPUT;
-            if getOutputMode(r) > 0 then
-              v.spio.mosioen := INPUT;
-              if getOutputMode(r) = 2 then
-                v.spio.iooen := INPUT;
+            
+            if r.hwrite = '1' then 
+              -- Set ar and sreg registers to use the write data
+              v.ar   := r.hwdata;
+              v.sreg := r.hwdata(r.hwdata'length-1 downto r.hwdata'length-8);
+              if getOutputMode(r) > 0 then
+                v.spio.misooen := OUTPUT;
+                if getOutputMode(r) = 2 then
+                  v.spio.iooen := OUTPUT;
+                end if;
+              end if;
+            else
+              if getOutputMode(r) > 0 then
+                v.spio.mosioen := INPUT;
+                if getOutputMode(r) = 2 then
+                  v.spio.iooen := INPUT;
+                end if;
               end if;
             end if;
-
           end if;
           
         end if;
-        if r.bd = '1' then
+        if r.bd(0) = '1' then 
           if r.spi.cnt = zero32(r.spi.cnt'range) then
-            if r.dummybyte = '0' and r.dummycycles = "0000" then
+            if (r.dummybyte = '0' and r.dummycycles = "0000") or r.hwrite = '1' then
               v.spi.state := SPI_DATA;
               v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+              v.sample := (others => '0');
             else 
               v.spi.state := SPI_DUMMY;
               v.hold := '1';
@@ -744,6 +776,7 @@ begin  -- rtl
         if r.spi.cnt = zero32(r.spi.cnt'range) then
           v.spi.state := SPI_DATA;
           v.spi.cnt := calc_spi_cnt(r.spi.hsize);
+          v.sample := (others => '0');
           v.hold := '0';
           v.bcnt := "000";
         elsif r.spi.cnt = cslv(1, r.spi.cnt'length) then
@@ -760,13 +793,15 @@ begin  -- rtl
         end if;
           
       when SPI_DATA =>
-        if v.bd = '1' then
+        if v.bd(0) = '1' then
           v.spi.cnt := r.spi.cnt - 1;
+          -- Update sreg with data from ar (used for memory writes)
+          v.sreg := r.ar(AHBDW-1 downto AHBDW-8);
         end if;
         if lastbit = '1' and r.spi.cnt = zero32(r.spi.cnt'range) then
           v.stop := r.go;
         end if;
-        if (r.go or r.spio.sck) = '0' then
+        if (r.go or r.spio.sck) = '0' and r.bd ="00" then
           if r.spi.hburst(0) = '0' then   -- not an incrementing burst
             v.spi.state := SPI_CSWAIT;  -- CSN wait              
             v.spio.csn := '1';
@@ -804,30 +839,61 @@ begin  -- rtl
             -- Continuation of burst
             v.spi.state := SPI_DATA;
             v.hold := '0';
-
-            v.spio.misooen := INPUT;
-            if getOutputMode(r) > 0 then
-              v.spio.mosioen := INPUT;
-              if getoutputmode(r) = 2 then
-                v.spio.iooen := INPUT;
+            
+            if r.hwrite = '1' then 
+              -- Set ar and sreg registers to use the write data
+              v.ar   := v.hwdata;
+              v.sreg := v.ar(v.ar'length-1 downto v.ar'length-8);
+              change := '1';
+              -- Need to trigger sample(1) so AR is shifted and data is not out of sync
+              v.sample(1) := '1';
+              -- Set io-en values
+              v.spio.misooen := INPUT;
+              v.spio.mosioen := OUTPUT;
+              v.spio.iooen   := OUTPUT;
+              if getOutputMode(r) > 0 then
+                v.spio.misooen := OUTPUT;
+                if getOutputMode(r) = 2 then
+                  v.spio.iooen := OUTPUT;
+                end if;
+              end if;
+            else
+              v.spio.misooen := INPUT;
+              v.spio.mosioen := OUTPUT;
+              v.spio.iooen   := OUTPUT;
+              if getOutputMode(r) > 0 then
+                v.spio.mosioen := INPUT;
+                if getOutputMode(r) = 2 then
+                  v.spio.iooen := INPUT;
+                end if;
               end if;
             end if;
-
+            
           else
             -- Burst ended and new access
-            v.stop := '1';
-            v.spio.csn := '1';
             v.spi.state := SPI_CSWAIT;
+            v.spio.csn := '1';
+            v.stop := '1';
             v.bcnt := "011";
           end if;
-          v.ar := (others => '0');
-          if offset /= 0 then
-            v.ar(r.haddr'range) := r.haddr + cslv(offset, req_addr_bits);
-          else
-            v.ar(r.haddr'range) := r.haddr;
-          end if;
+
           v.spio.ready := '0';
-          v.sreg := r.readcmd;
+          
+          if (r.spio.csn = '1') or (r.seq = '0') then
+            -- New access. Set command and address of incoming access
+            v.ar := (others => '0');
+            if offset /= 0 then
+              v.ar(r.haddr'range) := r.haddr + cslv(offset, req_addr_bits);
+            else
+              v.ar(r.haddr'range) := r.haddr;
+            end if;
+
+            if r.hwrite = '0' then
+              v.sreg := r.readcmd;
+            else
+              v.sreg := r.writecmd;
+            end if;
+          end if;
 
         end if;
         if r.spio.ready = '0' then
@@ -898,8 +964,10 @@ begin  -- rtl
           else
             v.spi.state := SPI_READ;
             v.spio.csn := '0';
-
+            
+            v.spio.misooen := INPUT;
             v.spio.mosioen := OUTPUT;
+            v.spio.iooen   := OUTPUT;
             if r.DSPI = '1' or r.QSPI = '1' then
               v.spio.misooen := OUTPUT;
               if r.QSPI = '1' then
@@ -928,32 +996,45 @@ begin  -- rtl
         end if;
       end if;
     else
-      v.timer := (others => '1');
+      v.timer := (others => '0');
     end if;
 
     if r.sample(0) = '1' then
       v.bcnt := r.bcnt + 1;
     end if;
     
-    if r.sample(1) = '1' then
+    -- Use different timings for when to Shift AR depending if we are reading or writing
+    -- to the SPI memory. Reading should wait one more cycle so the data is ready in
+    -- r.spii(1) (which is a Two flip-flop synchronizer)
+    if ((r.spi.state = SPI_DATA) and (r.hwrite = '0')) or r.spimstate = USER_SPI then
+      samplecmp := "10";
+    else
+      samplecmp := "01";
+    end if;
+    
+    if r.sample(2 downto 1) = samplecmp then
       if r.hold = '0' then
 
         -- Shift ar register if in CMD or ADDR phase
         if ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.QSPI = '1' and r.spio.mosioen = OUTPUT) or 
-           (r.spi.state = SPI_ADDR and getInputMode(r) = 2) then
-          v.ar := r.ar(r.ar'left-4 downto 0) & "1111";
+           (v.spi.state = SPI_ADDR and getInputMode(r) = 2) then
+          v.ar := r.ar(r.ar'left-4 downto 0) & bit_pol & bit_pol & bit_pol & bit_pol;
 
         elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.DSPI = '1' and r.spio.mosioen = OUTPUT) or 
-              (r.spi.state = SPI_ADDR and getInputMode(r) = 1) then
-          v.ar := r.ar(r.ar'left-2 downto 0) & "11";
+              (v.spi.state = SPI_ADDR and getInputMode(r) = 1) then
+          v.ar := r.ar(r.ar'left-2 downto 0) & bit_pol & bit_pol;
 
-        elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.QSPI = '0' and r.DSPI = '0') or 
-              (r.spi.state = SPI_ADDR and getInputMode(r) = 0) then
+        elsif (r.spi.state = SPI_READ and r.QSPI = '0' and r.DSPI = '0') or (v.spi.state = SPI_ADDR) then
+          v.ar := r.ar(r.ar'left-1 downto 0) & bit_pol;
+
+        elsif (r.spimstate = USER_SPI and r.QSPI = '0' and r.DSPI = '0') then
+          -- To keep backwards compatibility where a write to the TX register was used for both reading and writing
+          -- to memory while in ESPI USER mode, r.spii(1).miso is shifted into the ar register here.
           v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1).miso;
         end if;
-
+        
         -- Receive data from the memory and shift it into the ar register
-        if r.spi.state = SPI_DATA or ((r.spimstate = USER_SPI or r.spi.state = SPI_READ) and r.spio.mosioen = INPUT) then
+        if v.spi.state = SPI_DATA or ((r.spimstate = USER_SPI) and r.spio.mosioen = INPUT) then
           case getOutputMode(r) is
             when 0 =>
               v.ar := r.ar(r.ar'left-1 downto 0) & r.spii(1).miso;
@@ -967,35 +1048,27 @@ begin  -- rtl
       end if;
     end if;
     
-    if change = '1' then
+    if change = '1' and r.spi.state /= SPI_CSWAIT then
 
-      -- Output data to the memory by shifting the sreg register
-      if v.spio.misooen = OUTPUT then
-        if (v.spimstate = USER_SPI  and r.QSPI = '1') or
-           (v.spimstate /= USER_SPI and getInputMode(r) = 2) then
-          v.spio.mosi := v.sreg(4);
-          v.spio.miso := v.sreg(5);
-          v.spio.io2  := v.sreg(6);
-          v.spio.io3  := v.sreg(7);
-          v.sreg(7 downto 0) := v.sreg(3 downto 0) & "1111";
-        elsif (v.spimstate = USER_SPI  and r.DSPI = '1') or
-              (v.spimstate /= USER_SPI and getInputMode(r) = 1) then
-          v.spio.mosi := v.sreg(6);
-          v.spio.miso := v.sreg(7);
-          v.sreg(7 downto 0) := v.sreg(5 downto 0) & "11";
-        else
-          v.spio.mosi := v.sreg(7);
-          v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
-        end if;
- 
-      else 
+      -- Output data to the memory by shifting an appropriate number of bits in the sreg register
+      if v.spio.misooen = INPUT  then
+        -- If miso is in INPUT mode we are always to shift 1 bit as output
         v.spio.mosi := v.sreg(7);
-        if r.spi.state /= SPI_CSWAIT then
-          v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
-        end if;
-
+        v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
+      elsif (v.spimstate = USER_SPI  and r.QSPI = '1') or
+            (v.spimstate /= USER_SPI and getInputMode(r) = 2) then
+        v.spio.mosi := v.sreg(4);
+        v.spio.miso := v.sreg(5);
+        v.spio.io2  := v.sreg(6);
+        v.spio.io3  := v.sreg(7);
+        v.sreg(7 downto 0) := v.sreg(3 downto 0) & "1111";
+      else 
+        -- Default to dual mode if neither single or quad mode
+        v.spio.mosi := v.sreg(6);
+        v.spio.miso := v.sreg(7);
+        v.sreg(7 downto 0) := v.sreg(5 downto 0) & "11";
       end if;
-     
+      
     end if;
     
     ---------------------------------------------------------------------------
@@ -1015,15 +1088,19 @@ begin  -- rtl
       v.sreg             := (others => '1');
       v.bcnt             := (others => '0');
       v.go               := '0';
+      v.seq              := '0';
       v.stop             := '0';
       v.hold             := '1';
       v.unsplit          := '0';
+      v.insplit          := '0';
+      v.spi              := spiflash_none;
       --
       v.hready           := '1';
       v.hwrite           := '0';
       v.hsel             := '0';
       v.hmbsel           := (others => '0');
       v.ahbcancel        := '0';
+      v.hwdata           := (others => '0');
       --
       v.spio.sck         := '0';
       v.spio.mosi        := '1';
@@ -1037,6 +1114,7 @@ begin  -- rtl
 --       v.spio.errorn      := '1';
       --
       v.readcmd          := cslv(readcmd,8);
+      v.writecmd         := cslv(writecmd,8);
       v.dualoutput       := to_ulogic(dualoutput);
       v.quadoutput       := to_ulogic(quadoutput);
       v.dualinput        := to_ulogic(dualinput);
@@ -1046,6 +1124,7 @@ begin  -- rtl
       v.DSPI             := to_ulogic(DSPI);
       v.QSPI             := to_ulogic(QSPI);
       v.extaddr          := to_ulogic(extaddr);
+      v.xip_byte         := to_ulogic(xip_byte);
       --
       v.spio.ready       := '0';      
     end if;

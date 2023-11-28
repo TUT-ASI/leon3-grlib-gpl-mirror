@@ -34,279 +34,240 @@ use techmap.gencomp.all;
 
 package l2c_lite is
 
-    constant bm_dw              : integer                       := 128; 
-    constant max_linesize       : integer                       := 256; 
-    constant endianess          : integer                       := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-    constant active_mem_banks   : std_logic_vector(0 to 3)      := "1000";
-    constant active_IO_banks    : std_logic_vector(0 to 3)      := "0100";
-    constant IO_ADDR_MASK       : integer                       := 16#F00#;
+  constant bm_dw        : integer := 128;
+  constant max_linesize : integer := 256;
+  constant endianess    : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
+  constant IO_ADDR_MASK : integer := 16#FFC#;  -- 1 KiB
 
-    -- Generic bus master
-    constant async_reset        : boolean                       := true;
-    constant be_rd_pipe         : integer                       := 1;
-    constant unalign_load_opt   : integer                       := 1;
-    constant addr_width         : integer                       := 32;
-    constant max_size           : integer                       := 256;
+  -- Generic bus master
+  constant async_reset      : boolean := false;
+  constant be_rd_pipe       : integer := 1;
+  constant unalign_load_opt : integer := 0;
+  constant addr_width       : integer := 32;
+  constant max_size         : integer := 256;
 
-    constant register_count     : integer                       := 5;
-    constant DIRTY_BIT          : integer                       := 0;
-    constant VALID_BIT          : integer                       := 1;
+  constant DIRTY_BIT : integer := 0;
+  constant VALID_BIT : integer := 1;
+  -- STATE MACHINES -- 
+  type state_type is (READ_S, IDLE_S, WRITE_S, R_INCR_S, W_INCR_S, BACKEND_READ_S, DIRECT_READ_S, DIRECT_WRITE_S, FLUSH_S, FLUSH_READ_S, TAG_MATCH_1_S, TAG_MATCH_2_S, DIAG_S);
+  type bw_state_type is (BACKEND_WRITE_S, IDLE_S);
 
+  ---- FUNCTION DESCRIPTION:
+  --          Checks whether or not data should be cached. Returns "true" if the address is cacheable.
+  function is_cachable(constant address : std_logic_vector;
+    constant address_mask               : std_logic_vector
+  ) return boolean;
 
-    -- STATE MACHINES -- 
-    type state_type is (READ_S, IDLE_S, WRITE_S, R_INCR_S, W_INCR_S, BACKEND_READ_S, DIRECT_READ_S, DIRECT_WRITE_S, FLUSH_S);
-    type bw_state_type is (BACKEND_WRITE_S, IDLE_S);
+  ---- FUNCTION DESCRIPTION:
+  --          Reverses data, used for little endian implementations. 
+  --          Ex: input - AB 01 03 C0 ; output - 0C 03 01 AB;
+  function reversedata(data : std_logic_vector; step : integer
+  ) return std_logic_vector;
 
-    type cache_ctrli_type is record
-        cachectrl_s           : state_type;
-        backendw_s            : bw_state_type;
-        cache_data_in_backend : std_logic_vector(max_linesize * 8 - 1 downto 0);
-        fetch_ready           : std_ulogic;
-        seq_restart           : std_ulogic;
-    end record;
+  ---- FUNCTION DESCRIPTION:
+  --          Converts from HSIZE constants to integers.
+  function size_vector_to_int (size : std_logic_vector(2 downto 0)) return integer;
 
-    type cache_ctrlo_type is record
-        c_hit, c_miss, evict, f_done : std_ulogic;
-        frontend_buf                 : std_logic_vector(max_linesize * 8 - 1 downto 0);
-        backend_buf                  : std_logic_vector(max_linesize * 8 - 1 downto 0);
-        backend_buf_addr             : std_logic_vector(31 downto 0);
-    end record;
+  ---- FUNCTION DESCRIPTION:
+  --          Generates P&P bar for hconfig.
+  function gen_pnp_bar (
+    constant addr     : integer;
+    constant mask     : integer;
+    constant btype    : integer;
+    constant cache    : integer;
+    constant prefetch : integer
+  ) return amba_config_word;
 
-    type bm_out_type is record
+  component l2c_lite_ahb
+    generic (
+      tech     :    integer := 0;
+      hmindex  :    integer := 0;
+      hsindex  :    integer := 0;
+      ways     :    integer := 2;
+      waysize  :    integer := 64;
+      linesize :    integer := 32;
+      repl     :    integer := 0;
+      haddr    :    integer := 16#000#;
+      hmask    :    integer := 16#000#;
+      ioaddr   :    integer := 16#000#;
+      cached   :    integer := 16#FFFF#;
+      be_dw    :    integer := 32);
+    port (
+      rstn     : in std_ulogic;
+      clk      : in std_ulogic;
 
-        -- READ SIGNALS
-        bmrd_req_granted : std_logic;
-        bmrd_data        : std_logic_vector(bm_dw - 1 downto 0);
-        bmrd_valid       : std_logic;
-        bmrd_done        : std_logic;
-        bmrd_error       : std_logic;
+      ---- CACHE FRONTEND ----
+      ahbsi : in  ahb_slv_in_type;
+      ahbso : out ahb_slv_out_type;
 
-        -- WRITE SIGNALS
-        bmwr_full        : std_logic;
-        bmwr_done        : std_logic;
-        bmwr_error       : std_logic;
-        bmwr_req_granted : std_logic;
+      ---- CACHE BACKEND ----
+      ahbmi : in  ahb_mst_in_type;
+      ahbmo : out ahb_mst_out_type
 
-    end record;
+    );
 
-    type bm_in_type is record
+  end component;
 
-        -- READ SIGNALS
-        bmrd_addr : std_logic_vector(32 - 1 downto 0);
-        bmrd_size : std_logic_vector(log2ext(max_size) - 1 downto 0);
-        bmrd_req  : std_logic;
+  component l2c_lite_axi4
+    generic (
+      tech     :    integer := 0;
+      hmindex  :    integer := 0;
+      hsindex  :    integer := 0;
+      ways     :    integer := 2;
+      waysize  :    integer := 64;
+      linesize :    integer := 32;
+      repl     :    integer := 0;
+      haddr    :    integer := 16#000#;
+      hmask    :    integer := 16#000#;
+      ioaddr   :    integer := 16#000#;
+      cached   :    integer := 16#FFFF#;
+      be_dw    :    integer := 32);
+    port (
+      rstn     : in std_ulogic;
+      clk      : in std_ulogic;
 
-        -- WRITE SIGNALS
-        bmwr_addr : std_logic_vector(32 - 1 downto 0);
-        bmwr_size : std_logic_vector(log2ext(max_size) - 1 downto 0);
-        bmwr_req  : std_logic;
-        bmwr_data : std_logic_vector(bm_dw - 1 downto 0);
+      ---- CACHE FRONTEND ----
+      ahbsi : in  ahb_slv_in_type;
+      ahbso : out ahb_slv_out_type;
 
-    end record;
+      ---- CACHE BACKEND ----
+      aximi : in  axi_somi_type;
+      aximo : out axi4_mosi_type
+    );
 
-    ---- FUNCTION DESCRIPTION:
-    --          Checks whether or not data should be cached. Returns "true" if the address is cacheable.
-    function is_cachable(constant address : std_logic_vector;
-                         constant address_mask : std_logic_vector) return boolean;
+  end component;
 
-    ---- FUNCTION DESCRIPTION:
-    --          Reverses data, used for little endian implementations. 
-    --          Ex: input - AB 01 03 C0 ; output - 0C 03 01 AB;
-    function reversedata(data : std_logic_vector; step : integer)
-                            return std_logic_vector;
+  component l2c_lite_axi3
+    generic (
+      tech     :    integer := 0;
+      hmindex  :    integer := 0;
+      hsindex  :    integer := 0;
+      ways     :    integer := 2;
+      waysize  :    integer := 64;
+      linesize :    integer := 32;
+      repl     :    integer := 0;
+      haddr    :    integer := 16#000#;
+      hmask    :    integer := 16#000#;
+      ioaddr   :    integer := 16#000#;
+      cached   :    integer := 16#FFFF#;
+      be_dw    :    integer := 32);
+    port (
+      rstn     : in std_ulogic;
+      clk      : in std_ulogic;
 
-    ---- FUNCTION DESCRIPTION:
-    --          Converts from HSIZE constants to integers.
-    function size_vector_to_int (size : std_logic_vector(2 downto 0)) return integer;
+      ---- CACHE FRONTEND ----
+      ahbsi : in  ahb_slv_in_type;
+      ahbso : out ahb_slv_out_type;
 
-    ---- FUNCTION DESCRIPTION:
-    --          Checks the which bank to access. Used to differentiate between caching access and I/O access.
-    function bank_select(constant sel_vec : std_logic_vector(3 downto 0)) return boolean;
+      ---- CACHE BACKEND ----
+      aximi : in  axi_somi_type;
+      aximo : out axi_mosi_type
+    );
 
-    ---- FUNCTION DESCRIPTION:
-    --          Calculates the offset to use when accessing the I/O registers.
-    function IO_offset(constant haddr : std_logic_vector) return integer;
+  end component;
 
-    ---- FUNCTION DESCRIPTION:
-    --          Generates P&P bar for hconfig.
-    function gen_pnp_bar (
-        constant addr     : integer;
-        constant mask     : integer;
-        constant btype    : integer;
-        constant cache    : integer;
-        constant prefetch : integer
-    ) return amba_config_word;
-
-    component l2c_lite_ahb
-    generic (tech : integer := 0;
-             hmindex : integer := 0;
-             hsindex : integer := 0;
-             ways    : integer := 2;
-             waysize: integer := 64;
-             linesize : integer := 32;
-             repl : integer := 0;
-             haddr : integer := 16#000#;
-             hmask : integer := 16#000#;
-             ioaddr : integer := 16#000#;
-             cached : std_logic_vector := x"FFFF";
-             be_dw      : integer := 32 );
-        port (rstn       : in std_ulogic;
-              clk        : in std_ulogic;
-
-              ---- CACHE FRONTEND ----
-              ahbsi      : in ahb_slv_in_type;
-              ahbso      : out ahb_slv_out_type;
-
-              ---- CACHE BACKEND ----
-              ahbmi      : in ahb_mst_in_type;
-              ahbmo      : out ahb_mst_out_type
-
-        );
-
-    end component;
-
-    component l2c_lite_axi
-        generic(tech : integer := 0;
-                hmindex : integer := 0;
-                hsindex : integer := 0;
-                ways    : integer := 2;
-                waysize: integer := 64;
-                linesize : integer := 32;
-                repl : integer := 0;
-                haddr : integer := 16#000#;
-                hmask : integer := 16#000#;
-                ioaddr : integer := 16#000#;
-                cached : std_logic_vector := x"FFFF";
-                be_dw      : integer := 32 );
-        port (rstn  : in std_ulogic;
-              clk   : in std_ulogic;
-    
-              ---- CACHE FRONTEND ----
-              ahbsi : in ahb_slv_in_type;
-              ahbso : out ahb_slv_out_type;
-    
-              ---- CACHE BACKEND ----
-              aximi : in axi_somi_type;
-              aximo : out axi4_mosi_type
-    
-        );
-
-    end component;
-
-    component l2c_lite_mem
-    generic (hsindex : integer := 0;
-            tech : integer := 0;
-            waysize : integer := 32;
-            linesize : integer := 32;
-            ways : integer := 2;
-            repl : integer := 0);
-        port (rstn       : in std_ulogic;
-              clk        : in std_ulogic;
-              ctrli      : in cache_ctrli_type;
-              ctrlo      : out cache_ctrlo_type;
-              ahbsi      : in ahb_slv_in_type );
-
-    end component;
-
-    component l2c_lite_ctrl
-    generic (hsindex : integer := 0;
-             haddr : integer := 16#000#;
-             hmask : integer := 16#000#;
-             ioaddr : integer := 16#000#;
-             waysize : integer := 32;
-             linesize : integer := 32;
-             cached : std_logic_vector := x"FFFF";
-             repl : integer := 0;
-             ways    : integer := 2);
-        port (
-            rstn   : in std_ulogic;
-            clk    : in std_ulogic;
-            ctrlo  : out cache_ctrli_type; 
-            ctrli  : in cache_ctrlo_type;
-            ahbsi  : in ahb_slv_in_type;
-            ahbso  : out ahb_slv_out_type;
-            bm_out : in bm_out_type;
-            bm_in  : out bm_in_type);
+  component l2c_lite_core
+    generic (
+      hsindex          :     integer;
+      tech             :     integer;
+      haddr            :     integer;
+      hmask            :     integer;
+      ioaddr           :     integer;
+      waysize          :     integer;
+      linesize         :     integer;
+      cached           :     integer;
+      repl             :     integer;
+      ways             :     integer;
+      bm_dw_l          :     integer range 32 to 512 := 128;
+      addr_width       :     integer range 32 to 52  := 32);
+    port (
+      rstn             : in  std_ulogic;
+      clk              : in  std_ulogic;
+      ahbsi            : in  ahb_slv_in_type;
+      ahbso            : out ahb_slv_out_type;
+      --Read Channel
+      bmrd_addr        : out std_logic_vector(addr_width-1 downto 0);
+      bmrd_size        : out std_logic_vector(log2ext(max_size)-1 downto 0);
+      bmrd_req         : out std_logic;
+      bmrd_req_granted : in std_logic;
+      bmrd_data        : in std_logic_vector(bm_dw_l-1 downto 0);
+      bmrd_valid       : in std_logic;
+      bmrd_done        : in std_logic;
+      bmrd_error       : in std_logic;
+      --Write Channel
+      bmwr_addr        : out std_logic_vector(addr_width-1 downto 0);
+      bmwr_size        : out std_logic_vector(log2ext(max_size)-1 downto 0);
+      bmwr_req         : out std_logic;
+      bmwr_req_granted : in std_logic;
+      bmwr_data        : out std_logic_vector(bm_dw_l-1 downto 0);
+      bmwr_full        : in std_logic;
+      bmwr_done        : in std_logic;
+      bmwr_error       : in std_logic );
     end component;
 
 end package;
 
 package body l2c_lite is
 
-    function size_vector_to_int (size : std_logic_vector(2 downto 0)) return integer is
-                        variable size_int : integer range 0 to 128;
-    begin
-        case size is
-            when HSIZE_BYTE   => size_int := 1;
-            when HSIZE_HWORD  => size_int := 2;
-            when HSIZE_WORD   => size_int := 4;
-            when HSIZE_DWORD  => size_int := 8;
-            when HSIZE_4WORD  => size_int := 16;
-            when HSIZE_8WORD  => size_int := 32;
-            when HSIZE_16WORD => size_int := 64;
-            when HSIZE_32WORD => size_int := 128;
-            when others       => null;
-        end case;
-        return size_int;
-    end size_vector_to_int;
+  function size_vector_to_int (size : std_logic_vector(2 downto 0)) return integer is
+    variable size_int                 : integer range 0 to 128;
+  begin
+    case size is
+      when HSIZE_BYTE   => size_int := 1;
+      when HSIZE_HWORD  => size_int := 2;
+      when HSIZE_WORD   => size_int := 4;
+      when HSIZE_DWORD  => size_int := 8;
+      when HSIZE_4WORD  => size_int := 16;
+      when HSIZE_8WORD  => size_int := 32;
+      when HSIZE_16WORD => size_int := 64;
+      when HSIZE_32WORD => size_int := 128;
+      when others       => null;
+    end case;
+    return size_int;
+  end size_vector_to_int;
 
-    function is_cachable(constant address : std_logic_vector;
-        constant address_mask : std_logic_vector) return boolean is 
-    begin
-        if address_mask(to_integer(unsigned(address))) = '1' then
-            return true;
-        end if;
-        return false;
-    end is_cachable;
+  function is_cachable(constant address : std_logic_vector;
+    constant address_mask                 : std_logic_vector) return boolean is
+  begin
+    if address_mask(to_integer(unsigned(address))) = '1' then
+      return true;
+    end if;
+    return false;
+  end is_cachable;
 
-    function reversedata(data : std_logic_vector; step : integer)
-        return std_logic_vector is
-        variable rdata: std_logic_vector(data'length-1 downto 0);
-    begin
-        for i in 0 to (data'length/step-1) loop
-        rdata(i*step+step-1 downto i*step) := data(data'length-i*step-1 downto data'length-i*step-step);
-        end loop;
-        return rdata;
-    end function reversedata;
+  function reversedata(data : std_logic_vector; step : integer)
+    return std_logic_vector is
+    variable rdata : std_logic_vector(data'length - 1 downto 0);
+  begin
+    for i in 0 to (data'length/step - 1) loop
+      rdata(i * step + step - 1 downto i * step) := data(data'length - i * step - 1 downto data'length - i * step - step);
+    end loop;
+    return rdata;
+  end function reversedata;
 
-    function bank_select(constant sel_vec : std_logic_vector(3 downto 0)) return boolean is
-    begin
-        for i in 0 to 3 loop
-            if sel_vec(i) = '1' then
-                return(true);
-            end if;
-        end loop;
-        return(false);
-    end bank_select;
-
-    function IO_offset(constant haddr : std_logic_vector) return integer is
-    begin
-        return (to_integer(unsigned(haddr(7 downto 0)))/4);
-    end IO_offset;
-
-    function gen_pnp_bar (
-        constant addr     : integer;
-        constant mask     : integer;
-        constant btype    : integer;
-        constant cache    : integer;
-        constant prefetch : integer)
-        return amba_config_word is
-        variable c, p : std_ulogic;
-    begin
-        if btype = 1 then
-            return ahb_iobar(addr, mask);
-        end if;
-        if cache /= 0 then
-            c := '1';
-        else
-            c := '0';
-        end if;
-        if prefetch /= 0 then
-            p := '1';
-        else
-            p := '0';
-        end if;
-        return ahb_membar(addr, c, p, mask);
-    end gen_pnp_bar;
+  function gen_pnp_bar (
+    constant addr     : integer;
+    constant mask     : integer;
+    constant btype    : integer;
+    constant cache    : integer;
+    constant prefetch : integer)
+    return amba_config_word is
+    variable c, p : std_ulogic;
+  begin
+    if btype = 1 then
+      return ahb_iobar(addr, mask);
+    end if;
+    if cache /= 0 then
+      c := '1';
+    else
+      c := '0';
+    end if;
+    if prefetch /= 0 then
+      p := '1';
+    else
+      p := '0';
+    end if;
+    return ahb_membar(addr, c, p, mask);
+  end gen_pnp_bar;
 
 end package body;

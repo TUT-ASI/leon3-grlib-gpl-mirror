@@ -66,8 +66,10 @@ package config_types is
   constant grlib_polarfire_disable_ram_ecc : integer := 14;
   -- Avoid clkmux to make inverted clocks non-inverted in scan test mode
   constant grlib_testmode_noclkmux         : integer := 15;
+  -- Disable mapping to uSRAM blocks in Polarfire
+  constant grlib_polarfire_nouram          : integer := 16;
 
-  type grlib_config_array_type is array (0 to 16) of integer;
+  type grlib_config_array_type is array (0 to 17) of integer;
 
 end;
 

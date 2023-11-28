@@ -158,18 +158,7 @@ begin  -- rtl
 
   comb : process(r, bhti, rstn, holdn, pht_rdata)
     variable v                     : reg_type;
-    variable rindex                : std_logic_vector(BHTBITS - 1 downto OFFSET);
     variable windex                : std_logic_vector(BHTBITS - 1 downto OFFSET);
-    variable history               : bhthistory;
-    variable whistory              : bhthistory;
-    variable rhistory0             : bhthistory;
-    variable rhistory1             : bhthistory;
-    variable rphthistory0          : std_logic_vector(PHTBITS - 1 downto 0);
-    variable rphthistory1          : std_logic_vector(PHTBITS - 1 downto 0);
-    variable rpht0                 : phto;
-    variable rpht1                 : phto;
-    variable pht0                  : std_logic_vector(MAX_PREDICTOR_BITS - 1 downto 0);
-    variable pht1                  : std_logic_vector(MAX_PREDICTOR_BITS - 1 downto 0);
     variable wdata                 : std_logic_vector(COUNTERBITS - 1 downto 0);
     variable taken                 : std_logic_vector(3 downto 0);
 
@@ -182,8 +171,10 @@ begin  -- rtl
     variable bhti_wdata            : std_logic_vector( 1 downto 0);
     variable bhti_phistory_temp    : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
     variable bhistory_new          : std_logic_vector(hlength - 1 downto 0);
-    variable pht_rev,pht_wev       : std_ulogic;
-    variable pht_raddrv,pht_waddrv : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    variable pht_rev               : std_ulogic;
+    variable pht_wev               : std_ulogic;
+    variable pht_raddrv            : std_logic_vector(log2ext(nentries) - 1 downto 0);
+    variable pht_waddrv            : std_logic_vector(log2ext(nentries) - 1 downto 0);
     variable pht_rdatav            : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
     variable pht_wdatav            : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
   begin

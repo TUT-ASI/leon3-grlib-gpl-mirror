@@ -75,6 +75,18 @@ architecture rtl of syncram128 is
   );
   end component;
 
+  component versal_syncram128
+  generic ( abits : integer := 9);
+  port (
+    clk     : in  std_ulogic;
+    address : in  std_logic_vector (abits -1 downto 0);
+    datain  : in  std_logic_vector (127 downto 0);
+    dataout : out std_logic_vector (127 downto 0);
+    enable  : in  std_logic_vector (3 downto 0);
+    write   : in  std_logic_vector (3 downto 0)
+  );
+  end component;
+
   constant DPIPE : integer := pipeline mod 16;
   constant ECCPIPE : integer := pipeline / 16;
   
@@ -97,14 +109,19 @@ begin
 
 nopar : if paren = 0 generate
   s128 : if has_sram128(tech) = 1 and (rdhold=0 or syncram_readhold(tech)/=0) generate
-    uni : if  (is_unisim(tech) = 1) and (is_ultrascale(tech) = 0)  generate 
+    uni : if  (is_unisim(tech) = 1) and (is_ultrascale(tech) = 0) and (tech /= versal) generate 
       x0 : unisim_syncram128 generic map (abits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
-    xu : if  (is_unisim(tech) = 1) and (is_ultrascale(tech) = 1)  generate 
+    xu : if  (is_unisim(tech) = 1) and (is_ultrascale(tech) = 1) and (tech /= versal) generate 
       x0 : ultrascale_syncram128 generic map (abits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
     end generate;
+    xversal : if (tech = versal)  generate
+      x0 : versal_syncram128 generic map (abits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+    end generate;
+
     n2x : if (tech = easic45) generate
       x0 : n2x_syncram_we generic map (abits => abits, dbits => 128)
         port map(clk, address, datain, dataoutx, xenable, xwrite);

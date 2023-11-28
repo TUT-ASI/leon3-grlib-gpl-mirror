@@ -27,6 +27,7 @@ use ieee.std_logic_1164.all;
 library gaisler;
 use gaisler.leon5.all;
 use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 library techmap;
 use techmap.gencomp.all;
 library grlib;

@@ -32,11 +32,6 @@ use grlib.config.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
 use grlib.amba.all;
---GAISLER_COM_END
---GRLIB_INTERNAL_END
---use grlib.ahbstripe.all;
---GAISLER_COM_END
---GRLIB_INTERNAL_END
 
 entity dmnv_ic is
   generic (
@@ -82,7 +77,6 @@ architecture rtl of dmnv_ic is
                              ) 
                              ;
 
-  -- NW FIXME:
   constant RVDM_VERSION : integer := 2;
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_RVDM, 0, RVDM_VERSION, 0),
@@ -96,6 +90,8 @@ architecture rtl of dmnv_ic is
     hresp   : std_logic_vector(1 downto 0);
     hrdata  : std_logic_vector(127 downto 0);
   end record;
+  constant dm_ic_bif_mst_in_none : dm_ic_bif_mst_in_type := ((others => '0'), '0', "00", (others => '0'));
+
   type dm_ic_bif_mst_in_vector is array (nbus-1 downto 0) of dm_ic_bif_mst_in_type;
 
   type dm_ic_dma_state is (dsidle, dsreq, dswtfr, dsrtfr);
@@ -144,8 +140,6 @@ architecture rtl of dmnv_ic is
     inacc   : std_ulogic;
     mstgnt  : std_ulogic;
     arbmst  : std_logic_vector(3 downto 0);
-    -- NW FIXME: maybe only one buffer...
-    --databuf : std_logic_vector(31 downto 0);
     databuf : dm_ic_bif_databuf;
     wvalid  : std_logic_vector(0 to 15);
     inaccpw : std_ulogic;
@@ -235,7 +229,6 @@ architecture rtl of dmnv_ic is
     if (addrbits and hmaskv) = (haddrv and hmaskv) then return '1'; else return '0'; end if;
   end;
 
-  -- NW FIXME: ???
   function is_conv(addr : std_logic_vector) return boolean is
   begin
     return true;
@@ -270,6 +263,10 @@ begin
     variable vmst     : unsigned(5 downto 0);
 
     variable l_endian : boolean;
+
+    type word_arr is array(integer range <>) of std_logic_vector(31 downto 0); 
+    variable tmpa : word_arr(63 downto 0);
+    variable tmp  : std_logic_vector(31 downto 0);
   begin
     --------------------------------------------------------------------------
     -- Default
@@ -283,7 +280,6 @@ begin
     for i in ndmamst-1 downto 0 loop
       odmami(i).hgrant := (others => '1');
       odmami(i).hready := r.dma(i).hready;
-      -- NW FIXME: support error response ???
       odmami(i).hresp := "00";
       odmami(i).hrdata := ahbdrivedata(r.dma(i).mhdata);
     end loop;
@@ -298,7 +294,6 @@ begin
     ocbmo.hprot       := "0000";
     ocbmo.hwdata      := ahbdrivedata(r.bif(CONV).databuf(0));
     ocbmo.hconfig(0)  := hconfig(0);
-    -- NW FIXME: missing master index
     ocbmo.hindex      := cbmidx;
 
     odmmo := ahbm_none;
@@ -311,10 +306,10 @@ begin
     odmmo.hprot       := "0000";
     odmmo.hwdata      := ahbdrivedata(r.bif(DM).databuf(0));
     odmmo.hconfig(0)  := hconfig(0);
-    -- NW FIXME: missing master index
     odmmo.hindex      := cbmidx;
 
     --
+    bifmi := (others => dm_ic_bif_mst_in_none);
     bifmi(CONV).hgrant := cbmi.hgrant;
     bifmi(CONV).hready := cbmi.hready;
     bifmi(CONV).hresp  := cbmi.hresp;
@@ -322,24 +317,22 @@ begin
 
     -- Add PnP for debug masters and debug-module
     --if bifmi(CONV).hready='1' then -- I/O bus handling
-      if r.bif(CONV).inacc='1' then
-        if ( maskmatch(r.bif(CONV).haddr(31 downto 20), pnpaddrhi, 16#fff#)='1' and
-            maskmatch(r.bif(CONV).haddr(19 downto  8), pnpaddrlo, 16#ff0#)='1' and
-            r.bif(CONV).haddr(11)='1' and r.bif(CONV).haddr(10 downto 5)=
-            std_logic_vector(to_unsigned(dmslvidx,6))) then
+      if r.bif(CONV).inacc = '1' then
+        if (maskmatch(r.bif(CONV).haddr(31 downto 20), pnpaddrhi, 16#fff#) = '1' and
+            maskmatch(r.bif(CONV).haddr(19 downto  8), pnpaddrlo, 16#ff0#) = '1' and
+            r.bif(CONV).haddr(11) = '1' and r.bif(CONV).haddr(10 downto 5) =
+            std_logic_vector(to_unsigned(dmslvidx, 6))) then
           bifmi(CONV).hrdata := rep_data(hconfig(to_integer(unsigned(r.bif(CONV).haddr(4 downto 2)))), 128);
         elsif ( maskmatch(r.bif(CONV).haddr(31 downto 20), pnpaddrhi, 16#fff#)='1' and
             maskmatch(r.bif(CONV).haddr(19 downto  8), pnpaddrlo, 16#ff0#)='1' and
             r.bif(CONV).haddr(11)='0' and
             unsigned(r.bif(CONV).haddr(10 downto 5))>=to_unsigned(dmmstidx,6) ) then
           vmst := unsigned(r.bif(CONV).haddr(10 downto 5))-dmmstidx;
-          if vmst >= ndmamst then
-            bifmi(CONV).hrdata := (others => '0');
-          else
-            bifmi(CONV).hrdata := rep_data(dmamo(to_integer(unsigned(vmst))).hconfig(to_integer(unsigned(r.bif(CONV).haddr(4 downto 2)))), 128);
-          end if;
-        --elsif r.bif(CONV).hwrite='0' then
-        --  bifmi(CONV).hrdata := ahbreadword(cbmi.hrdata, r.mst_haddr(4 downto 2));
+            if vmst >= ndmamst then
+              bifmi(CONV).hrdata := (others => '0');
+            else
+              bifmi(CONV).hrdata := rep_data(dmamo(to_integer(unsigned(vmst))).hconfig(to_integer(unsigned(r.bif(CONV).haddr(4 downto 2)))), 128);
+            end if;
         end if;
       end if;
     --end if;
@@ -413,8 +406,6 @@ begin
             if r.dma(i).hwrite='1' then
               v.dma(i).hready := '1';
               v.dma(i).ds := dswtfr;
-              -- NW FIXME: remove this to transfer the first data word correctly (delay transfer)
-              --v.dma(i).bifwen := '1';
             else
               v.dma(i).ds := dsrtfr;
               v.dma(i).hready := '1';
@@ -452,7 +443,6 @@ begin
       if vmcopyrd='1' then
         for b in 0 to nbus-1 loop
           if r.dma(i).bifreq(b)='1' then
-            -- NW FIXME: changed to use v.dma... to select correct read data
             v.dma(i).mhdata := r.bif(b).databuf(to_integer(unsigned(v.dma(i).bifaddr(5 downto 2))));
           end if;
         end loop;
@@ -494,7 +484,6 @@ begin
               v.bif(b).databuf(to_integer(unsigned(v.bif(b).haddr(5 downto 2)))) :=
                 r.dma(to_integer(unsigned(r.bif(b).arbmst))).mhdata;
               v.bif(b).wvalid(to_integer(unsigned(v.bif(b).haddr(5 downto 2)))) := '1';
-              -- NW FIXME: need to increment databuf/wvalid pointer (haddr)
               v.bif(b).haddr(5 downto 2) :=
                 std_logic_vector(unsigned(r.bif(b).haddr(5 downto 2))+1);
             else
@@ -517,7 +506,6 @@ begin
                 v.bif(b).htrans := "10";
                 if r.bif(b).hburst0='1' then
                   v.bif(b).haddr(5 downto 0) := "000000";
-                  -- NW FIXME: need to set size = bus width for reads and full-buffer writes
                   if busw = 64 then 
                     v.bif(b).hsize := "011";
                   elsif busw = 128 then
@@ -534,7 +522,6 @@ begin
             v.bif(b).htrans := "10";
             if r.bif(b).hburst0='1' then
               v.bif(b).haddr(5 downto 0) := "000000";
-              -- NW FIXME: need to set size = bus width for reads and full-buffer writes
               if busw = 64 then 
                 v.bif(b).hsize := "011";
               elsif busw = 128 then
@@ -631,8 +618,6 @@ begin
             v.bif(b).haddr(5 downto 2) :=
               std_logic_vector(unsigned(r.bif(b).haddr(5 downto 2))+1);
             v.bif(b).wvalid := r.bif(b).wvalid(1 to 15) & '0';
-            -- NW FIXME: correct offset, when to shift data buffer
-            --if (busw=64 and r.bif(b).haddr(3 downto 2)="11") or (busw=128 and r.bif(b).haddr(4 downto 2)="111") then
             if (busw=64 and r.bif(b).haddr(2)='1') or (busw=128 and r.bif(b).haddr(3 downto 2)="11") then
               v.bif(b).inaccpw := '1';
             end if;

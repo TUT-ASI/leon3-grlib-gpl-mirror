@@ -43,8 +43,7 @@
 library ieee;
 library techmap;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.">";
-use ieee.std_logic_unsigned."<";
+use ieee.numeric_std.all;
 use techmap.gencomp.all;
 library grlib;
 use grlib.config.all;
@@ -200,7 +199,7 @@ begin
 
     -- assign wusedw and almost full fifo output
     if notx(v_wusedw) then
-      if v_wusedw > (2**abits-1-afullwl) then
+      if unsigned(v_wusedw) > (2**abits-1-afullwl) then
         afull <= '1';
       end if;
     end if;
@@ -349,7 +348,7 @@ begin
 
     -- assign almost empty
     if notx(v_rusedw) then
-      if v_rusedw < (aemptyrl+1) then
+      if unsigned(v_rusedw) < (aemptyrl+1) then
         aempty <= '1';
       end if;
     end if;

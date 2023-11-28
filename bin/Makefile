@@ -1,5 +1,5 @@
-VER=$(VNAME)2023.2
-BID=4283
+VER=$(VNAME)2023.4
+BID=4288
 CC=gcc
 SED=sed
 
@@ -187,6 +187,7 @@ help:
 	@echo "   make quartus         : synthesize and place&route using Quartus"
 	@echo "   make quartus-map     : synthesize design using Quartus"
 	@echo "   make quartus-synp    : synthesize with synplify, place&route with Quartus"
+	@echo "   make radiant         : synthesize and place&route and generate bitstreams with Radiant"
 	@echo "   make synplify        : synthesize design using synplify"
 	@echo "   make vivado          : synthesize and place&route with Xilinx Vivado"
 	@echo "   make nanoxpython     : synthesize and place&route with NanoXplore NanoXmap"
@@ -332,7 +333,7 @@ riviera-run: riviera_ws
 ifeq ("$(VSIMOPT)","")
 	vsimsa -c -do "$(RIVIERA_DO); do $(realpath $(GRLIB))/bin/runvsim.do"
 else
-	vsimsa -c $(ASIMOPT) -do "$(RIVIERA_DO); $(ASIMDO)" 
+	vsimsa -c $(ASIMOPT) -do "$(RIVIERA_DO); $(ASIMDO)"
 endif
 
 riviera-launch: riviera_ws
@@ -372,14 +373,20 @@ SIMPRIMSRC = $(XILINX)/vhdl/src/simprims/simprim_Vpackage.vhd  \
 	$(XILINX)/vhdl/src/simprims/simprim_VITAL.vhd
 
 vsim: make.work
+ifeq ("$(VMAKESKIP)","")
 	@make -f make.work
+endif
 
 make.work: compile.vsim modelsim
 	@make -f make.vsim
+ifeq ("$(VMAKESKIP)","")
 	@echo "" > make.work
 	@for i in `cat libs.txt`; do vmake $$i >> make.work ; done
 	@cat make.work | sed 's/\([a-zA-Z]\)\(:[\\\/]\)/\/cygdrive\/\L\1\//' > make.work2
 	@mv make.work2 make.work
+else
+	@echo "Note: Skipping vmake"
+endif
 
 # If we have paths with ':' we assume that we are running on Cygwin:
 vsim-fix:
@@ -532,16 +539,7 @@ export FOUNDRY=$(GRLIB_LATTICE_RADIANT)/ispfpga
 #Setting Modelsim path by checking where vsim is, unless already set
 GRLIB_LATTICE_RADIANT_SIM_PATH?=$(dir $(shell which vsim))
 
-$(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl
-	@for ip_cfg in ${LATTICE_IP}; do \
-		if [ ! -f "./lattice_ips/$${ip_cfg}.cfg" ]; then \
-			echo "Copying IP cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
-			mkdir -p lattice_ips/$${ip_cfg}; \
-			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
-		else \
-			echo "IP cfg $${ip_cfg} already in lattice_ips folder. We use that one."; \
-		fi; \
-	done;
+$(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl radiant-ips
 	@mkdir -p $(TOP)_radiant
 	@echo "Calling radiant in CLI mode to create project"
 	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiantc"; then \
@@ -552,6 +550,27 @@ $(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl
 		echo "radiant executable not found"; \
 	fi;
 	@echo "radiant finished"
+
+#radiant-ips just takes care of generating the Lattice IPs from the cfg files
+#set in LATTICE_IP in the design Makefile
+radiant-ips: $(TOP)_radiant_gen_ips.tcl
+	@for ip_cfg in ${LATTICE_IP}; do \
+		if [ ! -d "./lattice_ips/$${ip_cfg}" ]; then \
+			echo "Copying IP cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
+			mkdir -p lattice_ips/$${ip_cfg}; \
+			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
+		else \
+			echo "IP cfg $${ip_cfg} already in lattice_ips folder. We use that one."; \
+		fi; \
+	done;
+	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiantc"; then \
+		radiantc $(TOP)_radiant_gen_ips.tcl; \
+	elif test -r "$(GRLIB_LATTICE_RADIANT)/bin/nt64/pnmainc.exe"; then \
+		pnmainc.exe $(TOP)_radiant_gen_ips.tcl; \
+	else \
+		echo "radiant executable not found"; \
+	fi;
+	@echo "radiant IP generation finished"
 
 radiant: $(TOP)_radiant.rdf
 	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiant"; then \
@@ -590,7 +609,7 @@ else
 	fi;
 endif
 
-map-radiant-simlibs: modelsim.ini install-radiant-simlibs
+map-radiant-simlibs: modelsim.ini install-radiant-simlibs radiant-ips
 	@echo "Mapping radiant libs"
 	@if [ -d $(GRLIB)/lib/tech/lattice/$(GRLIB_LATTICE_RADIANT_SIM_DEVICE) ]; then \
 		vmap nexus_sim $(GRLIB)/lib/tech/lattice/$(GRLIB_LATTICE_RADIANT_SIM_DEVICE) ; \
@@ -599,6 +618,9 @@ map-radiant-simlibs: modelsim.ini install-radiant-simlibs
 remove-radiant-simlibs:
 	@echo "Removing simulation libraries under $(GRLIB)/lib/tech/lattice/"
 	@-rm -rf $(GRLIB)/lib/tech/lattice/{ice40up*,lfd2nx*,lfcpnx*,lfmxo5*,lifcl*,modelsim.ini,tplus.f,uaplatform.f,vmap.log}
+
+remove-radiant-ips:
+	-rm -rf lattice_ips
 
 radiant-clean:
 	-rm -rf $(TOP)_radiant* reportview.xml .recovery .setting.ini .ng_run_manager.ini
@@ -1059,7 +1081,7 @@ else
 endif
 
 remove-secureip uninstall-secureip remove-unisim uninstall-unisim:
-	@-rm $(GRLIB)/lib/tech/secureip/ise/*.vp $(GRLIB)/lib/tech/secureip_ver/ise/*.vp 
+	@-rm $(GRLIB)/lib/tech/secureip/ise/*.vp $(GRLIB)/lib/tech/secureip_ver/ise/*.vp
 	@-rm -r $(GRLIB)/lib/tech/unisims_ver/ise $(GRLIB)/lib/tech/xilinxcorelib_ver/ise
 	@-rm $(GRLIB)/lib/tech/unisim/ise/*.vhd
 
@@ -1087,7 +1109,7 @@ GRLIB_XIL_compxlib_Simulator=questasim
 endif
 endif
 
-# Simulator vivado 
+# Simulator vivado
 ifeq ("$(GRLIB_XIL_simlib_Simulator)","")
 # Set default to ModelSim for GRLIB_XIL_simlib_Simulator
 export GRLIB_XIL_simlib_Simulator=modelsim
@@ -1181,7 +1203,7 @@ endif
 clean-xilinx-lib:
 	-rm -rf xilinx_lib compxlib.* .cxl.*.version
 
-ip_7series_generate: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES) 
+ip_7series_generate: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 ifeq ($(CONFIG_MIG_7SERIES),y)
 	@if [ -d ./vivado/$(DESIGN)/$(DESIGN).srcs/sources_1/ip ]; then \
 	echo "Xilinx IPs already generated!"; else \
@@ -1307,7 +1329,7 @@ endif
 PLANAHEAD_SIMSET=sim_1
 
 planahead-launch: planahead/$(TOP)_planAhead.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
-	planAhead -mode gui -source ./planahead/$(TOP)_planAhead.tcl 
+	planAhead -mode gui -source ./planahead/$(TOP)_planAhead.tcl
 	@if test -r ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
 	  cp ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
 	  cp ./planahead/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
@@ -1652,7 +1674,7 @@ remove-dare:
 ######### Microsemi targets ###############
 PROASIC3LIBS = proasic3 proasic3e proasic3l
 XLIBEROLIBSKIP = $(ASICLIBS) $(LATTICELIBS) $(GLS_LIBS) \
-	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4 polarfire 
+	$(ALTERALIBS) $(XILINXLIBS) $(PROASIC3LIBS) fusion smartfusion2 axcelerator rtg4 polarfire
 LIBEROLIBSKIP = $(XLIBEROLIBSKIP:%=%|) dummy
 LIBERODIRSKIPX = $(ASICLIBS) $(XILINXLIBS) $(ALTERALIBS) $(LATTICELIBS)
 LIBERODIRSKIP = $(LIBERODIRSKIPX:%=%|) dummy
@@ -1833,7 +1855,7 @@ rc-clean:
 # 4. The .vhdp files from later tool versions require VHDL 2008.
 # The following has been successfully tested with nxdesignsuite-22.3.0.2 and
 # NXmap-22.1.0.1 (though ModelSim does report some unresolved warnings).
-install-nxlibrary: 
+install-nxlibrary:
 ifeq ("$(NANOXLIBPATH)","")
 	@echo "NANOXLIBPATH is not set. NanoXplore library installation failed"
 else
@@ -1884,7 +1906,7 @@ nanoxpython: nanoxmap-gen
 nx-prog-fpga:
 	nxbase2_cli -i -c "chip bitstream load  $(TOP)_bitfile.nxb"
 
-#Write the generate bitstream into the SPI flash daughter board and validate the memory content 
+#Write the generate bitstream into the SPI flash daughter board and validate the memory content
 nx-prog-prom:
 	nxbase2_cli -i -c "board spi flash program  $(TOP)_bitfile.nxb" -c "board spi flash validate $(TOP)_bitfile.nxb"
 
@@ -1929,7 +1951,7 @@ empty:=
 s:= $(empty) $(empty)
 u:= |
 
-scripts: $(prereqtools) 
+scripts: $(prereqtools)
 
 $(targettools): scriptgendone
 

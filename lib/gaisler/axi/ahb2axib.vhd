@@ -186,6 +186,7 @@ architecture rtl of ahb2axib is
     b2b_single_write      : std_logic;
     b2b_single_write_del  : std_logic;
     wr_transmit_req_pipe  : std_logic;
+    busy_resp             : std_logic;
   end record;
   
   constant rac_reset : axix_ar_mosi_type := (id    => (others => '0'), addr => (others => '0'),
@@ -260,7 +261,8 @@ architecture rtl of ahb2axib is
     resp_wait_read        => '0',
     b2b_single_write      => '0',
     b2b_single_write_del  => '0',
-    wr_transmit_req_pipe  => '0'
+    wr_transmit_req_pipe  => '0',
+    busy_resp             => '0'
     );
 
 
@@ -654,6 +656,11 @@ begin
           v.aximout.r.ready  := '1';
         end if;
 
+        -- Release busy stall on AXI side        
+        if (r.busy_resp = '1') and (ahbsi.htrans /= HTRANS_BUSY) then 
+          v.busy_resp := '0'; 
+          v.aximout.r.ready  := '1';
+        end if;
 
         if ((ahbsi.hsel(hindex) = '0' or
              ((ahbsi.htrans = HTRANS_IDLE or ahbsi.htrans = HTRANS_NONSEQ) and (ahbsi.hsel(hindex) = '1')))
@@ -662,7 +669,7 @@ begin
         end if;
 
         rdata_error         := aximi.r.resp(1) and v.rburst_valid;
-        rdata_avail         := aximi.r.valid and r.aximout.r.ready and r.rburst_valid;
+        rdata_avail         := aximi.r.valid and r.rburst_valid and (r.aximout.r.ready or r.busy_resp);
         rdata_avail_noerror := rdata_avail and not(rdata_error);
 
         --hready is asserted if undefined length burst is finished but
@@ -672,6 +679,13 @@ begin
         v.ahbsout.hready := rdata_avail_noerror or (not(r.rburst_valid) and not(r.b2b)) or r.rerror;
 
         if rdata_avail = '1' then
+
+          -- Stall on AXI side if AHB side is busy
+          if ahbsi.htrans = HTRANS_BUSY then 
+            v.busy_resp := '1'; 
+            v.aximout.r.ready  := '0';
+          end if;
+
           if CORE_ACDM /= 0 then
             --IF ACMD is enabled on the ahbctrl then there is no need
             --for read replication on the bridge

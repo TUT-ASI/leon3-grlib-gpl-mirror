@@ -118,17 +118,24 @@ begin
     -- Irq edge detection
     v.irqsync           := irqi;
 
+    
     -- Irq pending counter with edge-triggered interrupts
-    if r.irqsync = '0' and irqi = '1' then
+    if (r.irqsync = '0' and irqi = '1') and 
+       (r.decr = '1' and r.pending /= zeros) then
+      -- pending should increase due to the new interrupt
+      -- but decrease becasue one interrupt was claimed.
+      -- As a result v.pending value doesn't change
+      null;
+    elsif r.irqsync = '0' and irqi = '1' then
       if r.pending /= max then
         v.pending       := r.pending + 1;
       end if;
-    end if;
-
-    if (r.decr = '1' and r.pending /= zeros) then
+    elsif (r.decr = '1' and r.pending /= zeros) then
       v.pending       := r.pending - 1;
     end if;
-    
+
+
+
     ---------------------------------------------------
     -- Interrupt Generation
     ---------------------------------------------------

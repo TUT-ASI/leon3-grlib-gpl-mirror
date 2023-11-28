@@ -75,10 +75,12 @@ package riscv_disas is
                        wren_f   : std_ulogic;
                        wcdata   : std_logic_vector;
                        wcen     : std_ulogic;
+                       memen    : std_ulogic;
                        inst     : std_logic_vector(31 downto 0);
                        cinst    : std_logic_vector(15 downto 0);
                        comp     : std_ulogic;
                        prv      : std_logic_vector(1 downto 0);
+                       v        : std_ulogic;
                        trap     : std_ulogic;
                        cause    : std_logic_vector;
                        tval     : std_logic_vector);
@@ -1191,7 +1193,7 @@ package body riscv_disas is
       -- Custom Read-only Registers
       when CSR_CAPABILITY       => return "capability";
       when CSR_CAPABILITYH      => return "capabilityh";
-      when others                => return "unknown";
+      when others               => return "unknown";
     end case;
   end;
 
@@ -1285,6 +1287,17 @@ package body riscv_disas is
     end if;
   end;
 
+  function fpsize(insn : std_logic_vector) return string is
+    variable funct7 : funct7_type := insn(31 downto 25);
+  begin
+    case funct7(1 downto 0) is
+      when "00"   => return ".s";
+      when "01"   => return ".d";
+      when "10"   => return ".h";
+      when others => return ".q";
+    end case;
+  end;
+
   function fp2str(insn : std_logic_vector) return string is
     variable rs1    : reg_t       := insn(19 downto 15);
     variable rs2    : reg_t       := insn(24 downto 20);
@@ -1300,15 +1313,8 @@ package body riscv_disas is
     constant fdi1   : string :=  " " & fpreg2st(rd) & ", " &   reg2st(rs1);
     constant fdi1i2 : string :=  " " & fpreg2st(rd) & ", " &   reg2st(rs1) & ", " &   reg2st(rs2);
     constant idf1   : string :=  " " &   reg2st(rd) & ", " & fpreg2st(rs1);
-    variable size   : string(1 to 2);
+    variable size   : string(1 to 2) := fpsize(insn);
   begin
-    case funct7(1 downto 0) is
-      when "00"   => size := ".s";
-      when "01"   => size := ".d";
-      when "10"   => size := ".h";
-      when others => size := ".q";
-    end case;
-
     case funct7(6 downto 2) is
       when R_FADD  => return "fadd"  & size & fdf1f2 & rnd2str(insn);
       when R_FSUB  => return "fsub"  & size & fdf1f2 & rnd2str(insn);
@@ -1360,9 +1366,9 @@ package body riscv_disas is
         end if;
       when R_FCMP =>
         case funct3 is
-          when R_FEQ  => return "feq" & size & idf1f2;
-          when R_FLT  => return "flt" & size & idf1f2;
-          when R_FLE  => return "fle" & size & idf1f2;
+          when R_FEQ  => return "feq"  & size & idf1f2;
+          when R_FLT  => return "flt"  & size & idf1f2;
+          when R_FLE  => return "fle"  & size & idf1f2;
           when R_FLTQ => return "fltq" & size & idf1f2;
           when R_FLEQ => return "fleq" & size & idf1f2;
           when others => return "xxx";
@@ -1382,11 +1388,12 @@ package body riscv_disas is
         end if;
       when R_FCVT_S_D =>
         case rs2(2 downto 0) is
-          when "000"  => return "fcvt" & size & ".s" & fdf1 & rnd2str(insn);
-          when "001"  => return "fcvt" & size & ".d" & fdf1 & rnd2str(insn);
-          when "010"  => return "fcvt" & size & ".h" & fdf1 & rnd2str(insn);
-          when "011"  => return "fcvt" & size & ".q" & fdf1 & rnd2str(insn);
-          when "100"  => return "fround" & size & fdf1 & rnd2str(insn);
+          when "000"  => return "fcvt"     & size & ".s" & fdf1 & rnd2str(insn);
+          when "001"  => return "fcvt"     & size & ".d" & fdf1 & rnd2str(insn);
+          when "010"  => return "fcvt"     & size & ".h" & fdf1 & rnd2str(insn);
+          when "011"  => return "fcvt"     & size & ".q" & fdf1 & rnd2str(insn);
+          when "100"  => return "fround"   & size & fdf1 & rnd2str(insn);
+          when "101"  => return "froundnx" & size & fdf1 & rnd2str(insn);
           when others => return "xxx";
         end case;
       when R_FMVP_5_X =>
@@ -1450,6 +1457,8 @@ package body riscv_disas is
     variable target_op  : std_logic_vector(63 downto 0);
 
   begin
+    disas := strpad("unknown instruction", disas'length);
+
     case opcode is
 
       ----------------------------------------------------------------------------
@@ -1458,43 +1467,40 @@ package body riscv_disas is
 
       when LUI =>
         disas := strpad("lui " & reg2st(rd) & ", " & tostf(imm20), disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when AUIPC =>
-        disas := strpad("auipc " & reg2st(rd) & ", " & tostf(imm20), disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
+        if rd = "00000" then
+          disas := strpad("lpad " & tostf(imm20), disas'length);
+        else
+          disas := strpad("auipc " & reg2st(rd) & ", " & tostf(imm20), disas'length);
+        end if;
 
       when OP_JAL =>
         imm20 := insn(31) & insn(19 downto 12) & insn(20) & insn(30 downto 21);
         imm   := (others => insn(31));
         imm(20 downto 0) := imm20 & '0';
         disas := strpad("jal " & reg2st(rd) & ", " & tosti(imm), disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_JALR =>
         imm                     := (others => insn(31));
         imm(11 downto 0)        := imm12;
         disas := strpad("jalr " & reg2st(rd) & ", " & tosti(imm) & "(" & reg2st(rs1) & ")", disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_BRANCH =>
         target_op               := (others => insn(31));
         target_op(12 downto 0)  := insn(31) & insn(7) & insn(30 downto 25) & insn(11 downto 8) & '0';
         target                  := std_logic_vector(signed('0' & pc) + signed(insn(31) & target_op));
         disas := strpad(branch2str(funct3) & " " & reg2st(rs1) & ", " & reg2st(rs2) & ", " & tostf(target), disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_LOAD =>
         imm                     := (others => insn(31));
         imm(11 downto 0)        := imm12;
         disas := strpad(load2str(funct3) & " " & reg2st(rd) & ", " & tosti(imm) & "(" & reg2st(rs1) & ")", disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_STORE =>
         imm                     := (others => insn(31));
-        imm(11 downto 0)        := insn(31 downto 25) & insn(11 downto 7);
+        imm(11 downto 0)        := funct7 & insn(11 downto 7);
         disas := strpad(store2str(funct3) & " " & reg2st(rs2) & ", " & tosti(imm) & "(" & reg2st(rs1) & ")", disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_IMM =>
         imm                   := (others => insn(31));
@@ -1558,10 +1564,9 @@ package body riscv_disas is
           when others =>
             disas := strpad(imm2str(funct3, insn(30)) & " " & reg2st(rd) & ", " & reg2st(rs1) & ", " & tosti(imm), disas'length);
         end case;
-        if funct3 = "000" and insn(19 downto 15) = "00000" and insn(11 downto 7) = "00000" and insn(31 downto 20) = "000000000000" then --nop
-          return insn2string(insn, pc, strpad("nop", disas'length), cinsn, comp);
-        else
-          return insn2string(insn, pc, disas, cinsn, comp);
+        if funct3 = "000" and insn(19 downto 15) = "00000" and insn(11 downto 7) = "00000" and
+           insn(31 downto 20) = "000000000000" then --nop
+          disas := strpad("nop", disas'length);
         end if;
 
       when OP_REG =>
@@ -1628,123 +1633,93 @@ package body riscv_disas is
               disas := strpad("xxx " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
           end case;
         end if;
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_FENCE =>
         case funct3 is
-          when "000" => return insn2string(insn, pc, strpad("fence", disas'length), cinsn, comp);
-          when "001" => return insn2string(insn, pc, strpad("fence.i", disas'length), cinsn, comp);
-          when "010" => return insn2string(insn, pc, strpad(cbo2str(funct12, rd) & " 0(" & reg2st(rs1) & ")", disas'length), cinsn, comp);
-          when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+          when "000"  => disas := strpad("fence", disas'length);
+          when "001"  => disas := strpad("fence.i", disas'length);
+          when "010"  => disas := strpad(cbo2str(funct12, rd) & " 0(" & reg2st(rs1) & ")", disas'length);
+          when others => null;
         end case;
 
       when OP_SYSTEM =>
         case funct3 is
           when "000" =>
-            if rd = "00000" and insn(31 downto 25) = "0001001" then
-              disas := strpad("sfence.vma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
-              return insn2string(insn, pc, disas, cinsn, comp);
-            elsif rd = "00000" and insn(31 downto 25) = "0010001" then
-              disas := strpad("hfence.vvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
-              return insn2string(insn, pc, disas, cinsn, comp);
-            elsif rd = "00000" and insn(31 downto 25) = "0110001" then
-              disas := strpad("hfence.gvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
-              return insn2string(insn, pc, disas, cinsn, comp);
-            elsif rd = "00000" and rs1 = "00000" then
-              case insn(31 downto 20) is
-                when "000000000000" => return insn2string(insn, pc, strpad("ecall", disas'length), cinsn, comp);
-                when "000000000001" => return insn2string(insn, pc, strpad("ebreak", disas'length), cinsn, comp);
-                when "000000000010" => return insn2string(insn, pc, strpad("uret", disas'length), cinsn, comp);
-                when "000100000010" => return insn2string(insn, pc, strpad("sret", disas'length), cinsn, comp);
-                when "001100000010" => return insn2string(insn, pc, strpad("mret", disas'length), cinsn, comp);
-                when "000100000101" => return insn2string(insn, pc, strpad("wfi", disas'length), cinsn, comp);
-                when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
-              end case; -- insn(31 downto 25)
-            elsif rd = "00000" then
-              disas := strpad("sfence.vma " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
-              return insn2string(insn, pc, disas, cinsn, comp);
-            else
-              return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+            if rd = "00000" then
+              case funct7 is
+                when F7_SFENCE_VMA =>
+                  disas := strpad("sfence.vma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when F7_HFENCE_VVMA =>
+                  disas := strpad("hfence.vvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when F7_HFENCE_GVMA =>
+                  disas := strpad("hfence.gvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when F7_SFENCE_INVAL =>
+                  if    rs2 = "00000" then
+                    disas := strpad("sfence.w.inval", disas'length);
+                  elsif rs2 = "00001" then
+                    disas := strpad("sfence.inval.ir", disas'length);
+                  end if;
+              when F7_SINVAL_VMA =>
+                  disas := strpad("sinval.vma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when F7_HINVAL_VVMA =>
+                  disas := strpad("hinval.vvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when F7_HINVAL_GVMA =>
+                  disas := strpad("hinval.gvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
+                when others =>
+                  if rs1 = "00000" then
+                    case funct12 is
+                      when I_ECALL        => disas := strpad("ecall", disas'length);
+                      when I_EBREAK       => disas := strpad("ebreak", disas'length);
+                      when "000000000010" => disas := strpad("uret", disas'length);
+                      when "000100000010" => disas := strpad("sret", disas'length);
+                      when "001100000010" => disas := strpad("mret", disas'length);
+                      when "000100000101" => disas := strpad("wfi", disas'length);
+                      when others         => null;
+                    end case; -- funct12
+                  end if;
+              end case;
             end if;
           when "001" | "010" | "011" =>
             disas := strpad(csrop2str(funct3) & " " & reg2st(rd) & ", " & csr2str(imm12) & ", " & reg2st(rs1), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when "101" | "110" | "111" =>
             imm                 := (others => '0');
             imm(4 downto 0)     := rs1;
             disas := strpad(csrop2str(funct3) & " " & reg2st(rd) & ", " & csr2str(imm12) & ", " & tosti(imm), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when "100" =>
             case funct7 is
-              when F7_MOPR_000 =>
-                if funct12 = F12_SSPOP and rd /= "00000" and rs1 = "00000" then
-                  disas := strpad("sspop " & reg2st(rd), disas'length);
-                elsif funct12 = F12_SSPRR and rd /= "00000" and rs1 = "00000" then
-                  disas := strpad("ssprr " & reg2st(rd), disas'length);
+              when F7_MOPR_0  | F7_MOPR_4  | F7_MOPR_8  | F7_MOPR_12 |
+                   F7_MOPR_16 | F7_MOPR_20 | F7_MOPR_24 | F7_MOPR_28 =>
+                if    funct12 = F12_SSPOPCHK and rd = "00000" and (rs1 = "00001" or rs1 = "00101") then
+                  disas := strpad("sspopchk " & reg2st(rs1), disas'length);
+                elsif funct12 = F12_SSRDP and rd /= "00000" and rs1 = "00000" then
+                  disas := strpad("ssrdp " & reg2st(rd), disas'length);
                 else
-                  disas := strpad("mopr " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
+                  disas := strpad("mop.r." &
+                                  tost(funct12(10) & funct12(7 downto 6) & funct12(1 downto 0)) & " " &
+                                  reg2st(rd) & ", " & reg2st(rs1), disas'length);
                 end if;
-                return insn2string(insn, pc, disas, cinsn, comp);
-              when F7_MOPR_001 | F7_MOPR_010 | F7_MOPR_011 | F7_MOPR_100 |
-                   F7_MOPR_101 | F7_MOPR_110 | F7_MOPR_111 =>
-                disas := strpad("mopr " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
-                return insn2string(insn, pc, disas, cinsn, comp);
-              when F7_MOPRR_000 =>
-                if rd /= "00000" then
-                  disas := strpad("ssamoswap " & reg2st(rd) & ", " & reg2st(rs2) & ", (" & reg2st(rs1) & ")", disas'length);
-                elsif insn(24) = '0' then
-                  disas := strpad("lpsll " & tost(u2i(insn(23 downto 15))), disas'length);
-                else
-                  disas := strpad("lpcll " & tost(u2i(insn(23 downto 15))), disas'length);
-                end if;
-                return insn2string(insn, pc, disas, cinsn, comp);
-              when F7_MOPRR_001 =>
-                if rd = "00000" then
-                  case insn(24 downto 23) is
-                    when "00"   => disas := strpad("lpsml " & tost(u2i(insn(22 downto 15))), disas'length);
-                    when "01"   => disas := strpad("lpcml " & tost(u2i(insn(22 downto 15))), disas'length);
-                    when "10"   => disas := strpad("lpsul " & tost(u2i(insn(22 downto 15))), disas'length);
-                    when others => disas := strpad("lpcul " & tost(u2i(insn(22 downto 15))), disas'length);
-                  end case;
-                else
-                  disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
-                end if;
-                return insn2string(insn, pc, disas, cinsn, comp);
-              when F7_MOPRR_010 =>
-                if rd = "00000" and rs1 = "00101" and rs2 = "00001" then
-                  disas := strpad("sschkra rs5, rs1", disas'length);
-                elsif rd = "00000" and rs1 = "00000" and rs2 /= "00000" then
+               when F7_MOPRR_0 | F7_MOPRR_1 | F7_MOPRR_2 | F7_MOPRR_3 |
+                    F7_MOPRR_4 | F7_MOPRR_5 | F7_MOPRR_6 | F7_MOPRR_7  =>
+                 if funct7 = F7_SSPUSH and rd = "00000" and rs1 = "00000" and (rs2 = "00001" or rs2 = "00101") then
                   disas := strpad("sspush " & reg2st(rs2), disas'length);
                 else
-                  disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+                  disas := strpad("mop.rr." & tost(funct7(5) & funct7(2 downto 1)) & " " &
+                                  reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
                 end if;
-                return insn2string(insn, pc, disas, cinsn, comp);
-              when F7_MOPRR_011 | F7_MOPRR_100 | F7_MOPRR_101 |
-                   F7_MOPRR_110 | F7_MOPRR_111  =>
-                disas := strpad("moprr " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
-                return insn2string(insn, pc, disas, cinsn, comp);
               when others =>
                 if funct7(6 downto 3) = "0110" then
                   if funct7(0) = '0' then
                     if rs2(4 downto 2) = "000" then
                       disas := strpad(hlv2str(funct7(2 downto 0), rs2(1 downto 0)) & " " & reg2st(rd) & ", " & reg2st(rs1), disas'length);
-                      return insn2string(insn, pc, disas, cinsn, comp);
-                    else
-                      return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
                     end if;
                   else -- funct7(0) = '1'
                     if rd = "00000" then
                       disas := strpad(hsv2str(funct7(2 downto 0)) & " " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
-                      return insn2string(insn, pc, disas, cinsn, comp);
-                    else
-                      return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
                     end if;
                   end if;
-                else
-                  return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
                 end if;
             end case;
-          when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+          when others => null;
         end case;
 
         ----------------------------------------------------------------------------
@@ -1772,7 +1747,7 @@ package body riscv_disas is
                   when F7_ADDSLLIUW | F7_SLLIUW_I64 =>
                     disas := strpad("slli.uw " & reg2st(rd) & ", " & reg2st(rs1) & ", " & tostd(imm12(5 downto 0)), disas'length);
                   when others =>
-                    return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                    null;
                 end case;
             end case;
           when "101" =>
@@ -1782,12 +1757,11 @@ package body riscv_disas is
               when F7_ROT | F7_ROR_I64 =>
                 disas := strpad("roriw " & reg2st(rd) & ", " & reg2st(rs1) & ", " & tostd(imm12(5 downto 0)), disas'length);
               when others =>
-                return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+                null;
             end case;
           when others =>
-            return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+            null;
         end case;
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_32 =>
         -- Special case of PACK? (Really only on RV64.)
@@ -1819,7 +1793,6 @@ package body riscv_disas is
               disas := strpad("xxx " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
           end case;
         end if;
-        return insn2string(insn, pc, disas, cinsn, comp);
 
         ----------------------------------------------------------------------------
         -- RV[32/64]A Instruction Set
@@ -1831,7 +1804,6 @@ package body riscv_disas is
         else
           disas := strpad(amo2str(funct5, insn(12)) & " " & reg2st(rd) & ", " & reg2st(rs2) & ", (" & reg2st(rs1) & ")", disas'length);
         end if;
-        return insn2string(insn, pc, disas, cinsn, comp);
 
         ----------------------------------------------------------------------------
         -- RV[32/64][F/D] Instruction Set
@@ -1841,113 +1813,67 @@ package body riscv_disas is
         case funct3 is
           when R_WORD =>
             disas := strpad("flw " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when R_DOUBLE =>
             disas := strpad("fld " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when R_HALF =>
             disas := strpad("flh " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when others =>
             disas := strpad("flq " & fpreg2st(rd) & ", " & tosti(imm12) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
         end case;
 
       when OP_STORE_FP =>
         case funct3 is
           when R_WORD =>
             disas := strpad("fsw " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when R_DOUBLE =>
             disas := strpad("fsd " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when R_HALF =>
             disas := strpad("fsh " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
           when others =>
             disas := strpad("fsq " & fpreg2st(rs2) & ", " & tosti(insn(31 downto 25) & insn(11 downto 7)) & "(" & reg2st(rs1) & ")", disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
         end case;
 
       when OP_FP =>
         disas := strpad(fp2str(insn), disas'length);
-        return insn2string(insn, pc, disas, cinsn, comp);
 
       when OP_FMADD =>
-        case funct7(1 downto 0) is
-          when "00" =>
-            disas := strpad("fmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "01" =>
-            disas := strpad("fmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "10" =>
-            disas := strpad("fmadd.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when others =>
-            disas := strpad("fmadd.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-        end case;
+        disas := strpad("fmadd" & fpsize(insn) & " " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " &
+                        fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
 
       when OP_FMSUB =>
-        case funct7(1 downto 0) is
-          when "00" =>
-            disas := strpad("fmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "01" =>
-            disas := strpad("fmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "10" =>
-            disas := strpad("fmsub.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when others =>
-            disas := strpad("fmsub.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-        end case;
+        disas := strpad("fmsub" & fpsize(insn) & " " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " &
+                        fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
 
       when OP_FNMSUB =>
-        case funct7(1 downto 0) is
-          when "00" =>
-            disas := strpad("fnmsub.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "01" =>
-            disas := strpad("fnmsub.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "10" =>
-            disas := strpad("fnmsub.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when others =>
-            disas := strpad("fnmsub.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-        end case;
+        disas := strpad("fnmsub" & fpsize(insn) & " " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " &
+                        fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
 
       when OP_FNMADD =>
-        case funct7(1 downto 0) is
-          when "00" =>
-            disas := strpad("fnmadd.s " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "01" =>
-            disas := strpad("fnmadd.d " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when "10" =>
-            disas := strpad("fnmadd.h " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-          when others =>
-            disas := strpad("fnmadd.q " & fpreg2st(rd) & ", " & fpreg2st(rs1) & ", " & fpreg2st(rs2) & ", " & fpreg2st(funct5), disas'length);
-            return insn2string(insn, pc, disas, cinsn, comp);
-        end case;
+        disas := strpad("fnmadd" & fpsize(insn) & " " & fpreg2st(rd) & ", " &fpreg2st(rs1) & ", " &
+                        fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
 
       when OP_CUSTOM0 =>
         if funct3(2) = '0' then  -- Load
-          disas := strpad(custom0_diag2str(insn(23 downto 20), funct3, false) & " " & reg2st(rd) & ", " & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
+          disas := strpad(custom0_diag2str(insn(23 downto 20), funct3, false) & " " &
+                          reg2st(rd) & ", " & "(" & reg2st(rs1) & ")", disas'length);
         else                    -- Store
-          disas := strpad(custom0_diag2str(insn(10 downto 7), funct3, true) & " " & reg2st(rs2) & ", " & "(" & reg2st(rs1) & ")", disas'length);
-          return insn2string(insn, pc, disas, cinsn, comp);
+          disas := strpad(custom0_diag2str(insn(10 downto  7), funct3, true) & " " &
+                          reg2st(rs2) & ", " & "(" & reg2st(rs1) & ")", disas'length);
         end if;
 
-      when others => return insn2string(insn, pc, strpad("unknown instruction", disas'length), cinsn, comp);
+      when others =>
+        null;
     end case;
+
+    -- Unhandled compressed?
+    if comp = '1' and disas(1) = ' ' then
+      -- c.mop.n?
+      if cinsn(15 downto 11) = "01100" and cinsn(7 downto 0) = "10000001" then
+        disas := strpad("c.mop." & tost(cinsn(10 downto 8)), disas'length);
+      end if;
+    end if;
+
+    return insn2string(insn, pc, disas, cinsn, comp);
   end;
 
   function print_str(valid : std_logic; s : string) return string is
@@ -1975,10 +1901,12 @@ package body riscv_disas is
                        wren_f     : std_ulogic;
                        wcdata     : std_logic_vector;
                        wcen       : std_ulogic;
+                       memen      : std_ulogic;
                        inst       : std_logic_vector(31 downto 0);
                        cinst      : std_logic_vector(15 downto 0);
                        comp       : std_ulogic;
                        prv        : std_logic_vector(1 downto 0);
+                       v          : std_ulogic;
                        trap       : std_ulogic;
                        cause      : std_logic_vector;
                        tval       : std_logic_vector) is
@@ -2015,16 +1943,19 @@ package body riscv_disas is
     if PRINT_ALL or valid = '1' or trap = '1' then
 
       -- Print Instruction
-      grlib.testlib.print ("C" & tost(hndx) & " I" & tost(way) & " : " & strpad(tost(cycle), 8) & " [" &
-                           tost(valid) & "] " & insn2st(pc, inst, cinst, comp) &
-                           print_str(not wren_f,  "W[" & strpad(reg2st(rd),   3)) &
-                           print_str(    wren_f, "WF[" & strpad(fpreg2st(rd), 4)) & "=" &
-                           print_str(fsd, tost(fsd_hi & vwrdata)) & print_str(not fsd, tost(vwrdata)) &
-                           "][" & tost(wren) & "]" &
-                           " W[" & strpad(csr2str(csr), 14) & "=" & tost(wcdata) & "][" & tost(wcen) & "]" &
-                           " IPC = " & tost(ipc) & " Dual = " & tost(dual) &
-                           " E[cause =" & tost(vcause) & "] E[tval =" & tost(vtval) & "][" & tost(trap) & "]" &
-                           " PRV[" & tost(prv) & "]" & " Instruction Count = " & tost(instret));
+      grlib.testlib.print("C" & tost(hndx) & "-" & tost(way) & " " & prv2string(prv, v) &
+                          " : " & strpad(tost(cycle), 8) & " [" &
+                          tost(valid) & "] " & insn2st(pc, inst, cinst, comp) &
+                          print_str(not wren_f, "W[" & strpad(reg2st(rd),   3)) &
+                          print_str(    wren_f, "W[" & strpad(fpreg2st(rd), 4)) & "=" &
+                          print_str(fsd, tost(fsd_hi & vwrdata)) & print_str(not fsd, tost(vwrdata)) &
+                          "][" & tost(wren) & "]" &
+                          print_str(wcen, " C[" & strpad(csr2str(csr), 14) & "=" & tost(wcdata) & "][" & tost(wcen) & "]") &
+                          print_str(memen, " M[" & tost(wcdata) & "]") &
+--                          " IPC = " & tost(ipc) & " Dual = " & tost(dual) &
+                          print_str(trap, " E[cause =" & tost(vcause) & "] E[tval =" & tost(vtval) & "][" & tost(trap) & "]")
+--                          & " PRV[" & tost(prv) & "]" & " Instruction Count = " & tost(instret)
+                         );
     end if;
 
   end;

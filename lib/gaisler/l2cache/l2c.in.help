@@ -1,10 +1,15 @@
+L2 Cache Lite
+CONFIG_L2_LITE
+  When set to yes, it implements the L2 cache lite instead of
+  the regular L2 cache.
+
 L2 Associativity
 CONFIG_L2_ASSO1
   Select how many cache ways the L2 cache should have.
 
 L2 Way size
 CONFIG_L2_SZ1
-  Select the szie of each way in kbytes. The total L2 cache
+  Select the size of each way in kbytes. The total L2 cache
   size will be way size * number of ways.
 
 L2 cache line size

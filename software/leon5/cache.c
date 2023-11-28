@@ -1104,6 +1104,55 @@ void tcmtest5_prepare(void)
         wsysreg(0x40,(1<<31)|(1<<15)); /* Wipe ITCM and DTCM */
 }
 
+/* Function to be executed out of ITCM. Computes the number of primes
+ * smaller than the argument using a sieve. To prevent possible future
+ * compiler optimizations from breaking it, the assembler code generated
+ * by BCC2.2.1 with flags -S, -O2 and -mcpu=leon5 has been copied to
+ * cacheasm.S.
+ * tcmtest_itcmfunc_end is a pointer to the first instruction after the
+ * tcmtest_itcmfunc function.
+ */
+extern int tcmtest_itcmfunc(int b);
+extern int tcmtest_itcmfunc_size;
+int tmctest_itcmtfunc_c(int b) {
+      uint8_t p[b];
+      for(int i=0; i<b; i++) {
+            asm volatile ("nop"); /* prevent call to memset */
+            p[i] = 1;
+      }
+      p[0] = 0;
+      p[1] = 0;
+      int count = 0;
+      for(int i=0; i<b; i++) {
+            if(p[i] == 1) {
+                  count++;
+                  for(int j=i*i; j<b; j+=i) {
+                    p[j] = 0;
+                  }
+            }
+      }
+      return count;
+}
+
+static void tcmtest5_copy_itcmfunc(int itcmsz, unsigned long addr)
+{
+      int a;
+      if ((1 << itcmsz) >= tcmtest_itcmfunc_size) {
+            for(a=0; a<tcmtest_itcmfunc_size; a+=4) {
+              sta0x26(addr + a, *(unsigned long*)(a + (unsigned long)tcmtest_itcmfunc));
+            }
+      } else if(itcmsz > 0) {
+            /* fall back on simpler test if ITCM is very small
+             * The result of the function in general does not agree
+             * with the value from the larger function. But it does
+             * agree for some arguments, such as 96, 100, and 120.
+             * The minimum size is 16 bytes (1 address bit) */
+            sta0x26(addr+0x0, 0x9de3bfa0); /* save  %sp, -96, %sp */
+            sta0x26(addr+0x4, 0xb1362002); /* srl  %i0, 2, %i0 */
+            sta0x26(addr+0x8, 0x81c7e008); /* ret */
+            sta0x26(addr+0xc, 0x81e80000); /* restore */
+      }
+}
 
 void tcmtest5(void)
 {
@@ -1160,10 +1209,7 @@ void tcmtest5(void)
         wsysreg(0x18, ~0xfff);
         wsysreg(0x1c, (get_tbr() & (~0xfff)) | 2);
         /* Setup ITCM with simple function to call in test */
-        if (itcmsz > 0) {
-                sta0x26(0, 0x81c3e008); /* retl */
-                sta0x26(4, 0x912a2004); /* sll %o0, 4, %o0 */
-        }
+        tcmtest5_copy_itcmfunc(itcmsz, 0);
         /* Test ITCM in MMU-off configuration, all combinations of permissions */
         if (itcmsz > 0) {
                 i = tcmtest_iexc_ctr;
@@ -1174,7 +1220,7 @@ void tcmtest5(void)
                         wsysreg(0x48, 0x50000000 | 1 | (((sumode >> 1)&3)<<3) );
                         if ((sumode & 1) != 0) systest_enter_user();
                         asm volatile ("nop; nop; nop; nop");
-                        if (f(23) != (23<<4)) fail(3);
+                        if (f(96) != 24) fail(3);
                         if (tcmtest_iexc_ctr != i) {
                                 /* trap triggered */
                                 i++;
@@ -1244,8 +1290,7 @@ void tcmtest5(void)
                 test_func_addr |= 0x50000000;
                 test_func = (funcptr)test_func_addr;
                 /* Write test function via ASI so that it overlaps with the test function */
-                sta0x26(test_func_addr,   0x81c3e008); /* retl */
-                sta0x26(test_func_addr+4, 0x912a2004); /* sll %o0, 4, %o0 */
+                tcmtest5_copy_itcmfunc(itcmsz, test_func_addr);
                 for (i=0; i<5; i++) {
                         /* i=0: TCM disabled
                          * i=1: TCM enabled for MMU-off
@@ -1260,12 +1305,12 @@ void tcmtest5(void)
                         case 3:  wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 2 | 0x0100); break;
                         default: wsysreg(0x48, (test_func_addr & 0xffff0000) | 0x18 | 4); break;
                         }
-                        j = test_func(73);
-                        if (i == 0 && j != (73+3)) fail(21);
-                        if (i == 1 && j != (73+3)) fail(22);
-                        if (i == 2 && j != (73<<4)) fail(23);
-                        if (i == 3 && j != (73+3)) fail(24);
-                        if (i == 4 && j != (73<<4)) fail(25);
+                        j = test_func(100);
+                        if (i == 0 && j != (100+3)) fail(21);
+                        if (i == 1 && j != (100+3)) fail(22);
+                        if (i == 2 && j != 25) fail(23);
+                        if (i == 3 && j != (100+3)) fail(24);
+                        if (i == 4 && j != 25) fail(25);
                 }
         }
         /* DTCM virtual mapping test */
@@ -1320,8 +1365,7 @@ void tcmtest5(void)
                 if (cemode==0) correxp=1; else correxp=0;
                 if (do_fttest != 0 && itcmsz > 0) {
                         /* Enable ITCM */
-                        sta0x26(0, 0x81c3e008); /* retl */
-                        sta0x26(4, 0x912a2004); /* sll %o0, 4, %o0 */
+                        tcmtest5_copy_itcmfunc(itcmsz, 0);
                         wsysreg(0x48, 0x50000000 | 1 | (3<<3) );
                         wsysreg(0x44, cemode<<8);
                         /* Inject corr error into ITCM */
@@ -1330,7 +1374,7 @@ void tcmtest5(void)
                         /* A couple of NOPs to ensure code below is not already in pipeline */
                         asm volatile ("nop; nop; nop; nop");
                         /* Execute */
-                        if (f(6) != (6<<4)) fail(31);
+                        if (f(120) != 30) fail(31);
                         /* Check error ctr */
                         errctr = rsysreg(0x38);
                         if (errctr != ((correxp<<15)|(1<<24))) fail(32);

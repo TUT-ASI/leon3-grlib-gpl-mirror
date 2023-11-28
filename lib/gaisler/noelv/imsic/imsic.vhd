@@ -88,10 +88,10 @@ package imsic is
       clk         : in  std_ulogic;
       ahbi        : in  ahb_slv_in_type;
       ahbo        : out ahb_slv_out_type;
-      plic_meip   : in  std_logic_vector(ncpu-1 downto 0);
-      plic_seip   : in  std_logic_vector(ncpu-1 downto 0);
-      imsici      : in  imsic_in_vector(ncpu-1 downto 0);
-      imsico      : out imsic_out_vector(ncpu-1 downto 0);
+      plic_meip   : in  std_logic_vector(0 to ncpu-1);
+      plic_seip   : in  std_logic_vector(0 to ncpu-1);
+      imsici      : in  imsic_in_vector(0 to ncpu-1);
+      imsico      : out imsic_out_vector(0 to ncpu-1);
       eip         : out nv_irq_in_vector(0 to ncpu-1)
       );
   end component;

@@ -28,11 +28,13 @@ package config is
   constant CFG_PERFCFG : integer := (0);
   constant CFG_RFCONF : integer := (0) + (0);
   constant CFG_CMEMCONF : integer := (0) + (0) + (0);
+  constant CFG_TCMCONF : integer := (0) + 256*(0);
   constant CFG_AHBW : integer := 128;
   constant CFG_BWMASK : integer := 16#00FF#;
   constant CFG_DFIXED : integer := 16#0#;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
+  constant CFG_L2_LITE : integer := 0;
   constant CFG_L2_SIZE : integer := 128;
   constant CFG_L2_WAYS : integer := 4;
   constant CFG_L2_HPROT : integer := 0;
@@ -44,7 +46,7 @@ package config is
   constant CFG_L2_MAP : integer := 16#00F0#;
   constant CFG_L2_MTRR : integer := (0);
   constant CFG_L2_EDAC : integer := 0;
-  constant CFG_L2_AXI : integer := 1;
+  constant CFG_L2_AXI : integer := 0;
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface

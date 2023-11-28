@@ -36,6 +36,7 @@ use grlib.amba.hsize_dword;
 library gaisler;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.u2i;
+use gaisler.utilnv.cond;
 
 package mmucacheconfig is
 
@@ -285,7 +286,7 @@ package body mmucacheconfig is
     when sv48   => return 47;
     when others => return 31;
     end case;
-  end;  
+  end;
 
   function vpn(what : va_type) return std_logic_vector is
     constant va_tmp : std_logic_vector                        := va(what);  -- constant
@@ -407,7 +408,7 @@ package body mmucacheconfig is
     end if;
   end;
 
-  function is_valid_pte(what : va_type; 
+  function is_valid_pte(what : va_type;
                         data : std_logic_vector; mask : std_logic_vector;
                         physaddr : integer range 32 to 56) return boolean is
   begin
@@ -497,7 +498,7 @@ package body mmucacheconfig is
         return false;
       end if;
 
-      
+
       -- PTD also has D, A and U reserved, so enforce 0 (Spike does).
       if data(rv_pte_d) = '1' or data(rv_pte_a) = '1' or data(rv_pte_u) = '1' then
         return false;
@@ -529,7 +530,7 @@ package body mmucacheconfig is
     -- Non-constant
     variable base       : std_logic_vector(pa_tmp'range) := (others => '0');
   begin
-   
+
     case what is
     when sv32   => -- base(ppn_sv32'range) := satp(BASE_SV32'range);
       for i in ppn_sv32'high downto ppn_sv32'low loop
@@ -680,36 +681,52 @@ package body mmucacheconfig is
     end if;
   end;
 
-  -- Check if PTE will be modified (accessed/modified bits).
-  -- needwb     - writeback is needed
-  -- needwblock - lock is needed due to setting 'modified'
+  -- Check if PTE will be modified (Accessed/Dirty bits).
+  -- needwb     - writeback is needed since D and/or A is changed
+  -- needwblock - locked RMW writeback is needed due to not setting D
+  -- (It is safe to set D+A, but setting only A could, without locked RMW,
+  --  potentially over-write another CPU's "simultaneous" setting of D+A.)
   procedure pte_mark_modacc(what   : va_type;
                             data   : inout std_logic_vector; modified   : std_logic;
                             needwb : out std_logic;          needwblock : out std_logic) is
     -- Non-constant
-    variable was_modified : std_logic;
-    variable tmpneedwb    : std_logic := '0';  -- Since reading from out parameter is impossible.
+--    variable was_modified : std_logic;
+--    variable tmpneedwb    : std_logic := '0';  -- Since reading from out parameter is impossible.
+--    variable accessed     : std_logic;
+    variable accessed : std_logic := cond(what = sparc, data(PTE_R), data(rv_pte_a));
+    variable dirty    : std_logic := cond(what = sparc, data(PTE_M), data(rv_pte_d));
   begin
-    if what = sparc then
-      was_modified     := data(PTE_M);
-      if modified = '1' then
-        tmpneedwb      := not data(PTE_M);                  -- Mark if was not '1' already.
-        data(PTE_M)    := '1';
-      end if;
-      tmpneedwb        := tmpneedwb or not data(PTE_R);     -- Mark if was not '1' already.
-      data(PTE_R)      := '1';         -- Referenced
-    else
-      was_modified     := data(rv_pte_d);
-      if modified = '1' then
-        tmpneedwb      := not data(rv_pte_d);               -- Mark if was not '1' already.
-        data(rv_pte_d) := '1';
-      end if;
-      tmpneedwb        := tmpneedwb or not data(rv_pte_a);  -- Mark if was not '1' already.
-      data(rv_pte_a)   := '1';         -- Accessed
-    end if;
+--    if what = sparc then
+--      was_modified     := data(PTE_M);
+--      if modified = '1' then
+--        tmpneedwb      := not data(PTE_M);                  -- Mark if was not '1' already.
+--        data(PTE_M)    := '1';
+--      end if;
+--      tmpneedwb        := tmpneedwb or not data(PTE_R);     -- Mark if was not '1' already.
+--      data(PTE_R)      := '1';         -- Referenced
+--    else
+--      was_modified     := data(rv_pte_d);
+--      if modified = '1' then
+--        tmpneedwb      := not data(rv_pte_d);               -- Mark if was not '1' already.
+--        data(rv_pte_d) := '1';
+--      end if;
+--      tmpneedwb        := tmpneedwb or not data(rv_pte_a);  -- Mark if was not '1' already.
+--      data(rv_pte_a)   := '1';         -- Accessed
+--    end if;
+--
+--    needwblock := tmpneedwb and not was_modified;
+--    needwb     := tmpneedwb;
 
-    needwblock := tmpneedwb and not was_modified;
-    needwb     := tmpneedwb;
+    data(cond(what = sparc, PTE_R, rv_pte_a)) := '1';    -- Always accessed!
+
+    if modified = '1' then
+      data(cond(what = sparc, PTE_M, rv_pte_d)) := '1';  -- Now dirty!
+      needwb     := not dirty;                           -- First modification?
+      needwblock := '0';                                 -- No lock needed!
+    else
+      needwb     := not accessed;                        -- First access?
+      needwblock := not accessed;                        --  Then use locked RMW update.
+    end if;
   end;
 
   -- Convert virtual vaddr to physical paddr, using vmask to OR correct levels.

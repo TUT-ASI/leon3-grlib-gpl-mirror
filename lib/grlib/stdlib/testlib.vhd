@@ -101,7 +101,8 @@ package testlib is
    -----------------------------------------------------------------------------
    procedure tterminate(
       variable test:       inout boolean;
-      variable testcount:  inout integer);
+      variable testcount:  inout integer;
+      constant skipDelay:  in boolean := false);
 
    -----------------------------------------------------------------------------
    -- check std_logic_vector array
@@ -357,13 +358,16 @@ package body testlib is
    -----------------------------------------------------------------------------
    procedure tterminate(
       variable test:       inout boolean;
-      variable testcount:  inout integer) is
+      variable testcount:  inout integer;
+      constant skipDelay:  in boolean := false) is
       variable l:                line;
    begin
       --------------------------------------------------------------------------
       -- end of test
       --------------------------------------------------------------------------
-      wait for 1 ms;
+      if skipDelay = false then
+        wait for 1 ms;
+      end if;
       print("--=========================================================--");
       if testcount = 0  then
          print("*** test completed successfully                           ***");
@@ -380,7 +384,7 @@ package body testlib is
          severity failure;
       wait;
    end procedure tterminate;
-
+   
    -----------------------------------------------------------------------------
    -- check std_logic_vector array
    -----------------------------------------------------------------------------

@@ -199,7 +199,9 @@ begin
          port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
-  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex)  and (xtech /= kintex7) and (is_ultrascale(xtech) /= 1)  generate
+  xc2v : if (is_unisim(xtech) = 1) and (xtech /= virtex) and
+            (xtech /= kintex7) and (is_ultrascale(xtech) /= 1) and
+            (xtech /= versal ) generate
     x0 : unisim_syncram generic map (abits, dbits)
          port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
@@ -212,6 +214,11 @@ begin
   xku : if (is_ultrascale(xtech) = 1)  generate
     xku_s : ultrascale_syncram generic map (abits, dbits)
       port map (clk, address, datain, xenable, xwrite, dataoutx);
+  end generate;
+
+  xversal : if (xtech = versal) generate
+    xversal_s : versal_syncram generic map (abits, dbits)
+          port map (clk, address, datain, xenable, xwrite, dataoutx);
   end generate;
 
   vir  : if xtech = memvirage generate
@@ -247,9 +254,8 @@ begin
   end generate;
 
   pf : if (xtech = polarfire) generate
-    x0 : polarfire_syncram generic map (abits, dbits, 0, pipeline, 0)
-         port map (clk, address, datain, dataoutx, xenable, xwrite,
-                   open);
+    x0 : polarfire_syncram generic map (abits, dbits, pipeline, 0)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
   umc18  : if xtech = umc generate

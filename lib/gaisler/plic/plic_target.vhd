@@ -43,7 +43,7 @@ entity plic_target is
     srcbits     : integer := 4
     );
   port (
-    priority    : in  std_logic_vector(prbits-1 downto 0);
+    prio        : in  std_logic_vector(prbits-1 downto 0);
     threshold   : in  std_logic_vector(prbits-1 downto 0);
     irqreq      : out std_ulogic
     );
@@ -53,7 +53,7 @@ architecture rtl of plic_target is
 
 begin
 
-  comb : process (priority, threshold)
+  comb : process (prio, threshold)
     variable eip        : std_ulogic;
   begin
 
@@ -69,7 +69,7 @@ begin
     -- notification. If the target is a RISC-V hart context, the interrupt notifications arrive
     -- on the meip/seip/ueip bits depending on the privilege level of the hart context.
 
-    if (priority > threshold) then
+    if (unsigned(prio) > unsigned(threshold)) then
       eip       := '1';
     else
       eip       := '0';

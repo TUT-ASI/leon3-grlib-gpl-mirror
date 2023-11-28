@@ -780,7 +780,7 @@ begin
     variable hmaster : std_logic_vector(3 downto 0);
     variable haddr : std_logic_vector(31 downto 0);
     variable hdata : std_logic_vector(AHBDW-1 downto 0);
-    variable mbit, bitoffs : integer;
+    variable nbytes, mbit, bitoffs : integer;
 
     function select_string(c : boolean; s1 : string; s2 : string) return string is
     begin
@@ -818,10 +818,15 @@ begin
     begin
       if rising_edge(clk) then
         if (htrans(1) and lmsti.hready) = '1' then
-          mbit :=  2**conv_integer(hsize)*8;
+          nbytes :=2**conv_integer(hsize);
+          if (ahbtrace/4) mod 2 = 1 then
+            mbit := AHBDW;  -- Always print full data vector
+          else
+            mbit := nbytes*8;  -- Print only relevant subword, in case of subword access
+          end if;
           bitoffs := 0;
-          if mbit < ahbdw then
-            bitoffs := mbit * conv_integer(haddr(log2(ahbdw/8)-1 downto conv_integer(hsize)));
+          if mbit < AHBDW then
+            bitoffs := mbit * conv_integer(haddr(log2(AHBDW/8)-1 downto conv_integer(hsize)));
             if lslvi.endian = '0' then -- big endian conversion
               bitoffs := lslvi.hwdata'length-mbit-bitoffs;
             end if;
@@ -834,7 +839,7 @@ begin
           grlib.testlib.print(
             prefix & tost(hmaster) & ": " & tost(haddr) &
             select_string(hwrite='1', "    write ", "    read  ") &
-            tost(mbit/8) & " bytes  [" & tost(hdata(mbit-1 downto 0)) & "]" &
+            tost(nbytes) & " bytes  [" & tost(hdata(mbit-1 downto 0)) & "]" &
             hresp_string(lmsti.hresp));
         end if;
         if lmsti.hready = '1' then

@@ -146,6 +146,27 @@ architecture hier of leon5sys is
   signal cpuapbix: apb_slv_in_type;
   signal apbo_uart, apbo_timer, apbo_irqmp : apb_slv_out_type;
 
+  type perfcfg_table is array (0 to 2) of integer;
+  -----------------------------------------------------------------------------
+  --       perfcfg                             0     1     2
+  --                                          HP    GP   MIN
+  constant iways_tab   : perfcfg_table := (    4,    4,    1 );
+  constant iwsize_tab  : perfcfg_table := (    4,    4,    4 );
+  constant dways_tab   : perfcfg_table := (    4,    4,    1 );
+  constant dwsize_tab  : perfcfg_table := (    4,    4,    4 );
+  constant itlbnum_tab : perfcfg_table := (   24,   16,    4 );
+  constant dtlbnum_tab : perfcfg_table := (   24,   16,    4 );
+  constant widetime_tab: perfcfg_table := (    1,    0,    0 );
+  -----------------------------------------------------------------------------
+
+  constant iways    : integer := iways_tab(perfcfg);
+  constant iwaysize : integer := iwsize_tab(perfcfg);
+  constant dways    : integer := dways_tab(perfcfg);
+  constant dwaysize : integer := dwsize_tab(perfcfg);
+  constant itlbnum  : integer := itlbnum_tab(perfcfg);
+  constant dtlbnum  : integer := dtlbnum_tab(perfcfg);
+  constant widetime : integer := widetime_tab(perfcfg);
+
   type memmap_table is array(0 to 1) of integer;
   constant haddr_apbctrl : memmap_table := (16#800#,   16#FF9#);
   constant haddr_dsu     : memmap_table := (16#900#,   16#E00#);
@@ -332,7 +353,12 @@ begin
           rfconf   => rfconf,
           fpuconf  => fpuconf,
           tcmconf  => tcmconf,
-          perfcfg  => perfcfg,
+          iways    => iways,
+          iwaysize => iwaysize,
+          dways    => dways,
+          dwaysize => dwaysize,
+          itlbnum  => itlbnum,
+          dtlbnum  => dtlbnum,
           mulimpl  => mulimpl,
           rstaddr  => rstaddr_cpu(memmap),
           disas    => disas,
@@ -373,7 +399,12 @@ begin
           rfconf   => rfconf,
           fpuconf  => fpuconf,
           tcmconf  => tcmconf,
-          perfcfg  => perfcfg,
+          iways    => iways,
+          iwaysize => iwaysize,
+          dways    => dways,
+          dwaysize => dwaysize,
+          itlbnum  => itlbnum,
+          dtlbnum  => dtlbnum,
           mulimpl  => mulimpl,
           rstaddr  => rstaddr_cpu(memmap),
           disas    => disas,
@@ -422,7 +453,12 @@ begin
       dsuslvidx => nextslv+2,
       dsumstidx => ncpu+nextmst+1,
       bretryen  => breten,
-      plmdata => dbgmod_plmdata
+      plmdata => dbgmod_plmdata,
+      atkbytes => 4,
+      itentr => 256,
+      widetime => widetime,
+      cmemconf => cmemconf,
+      rfconf => rfconf
       )
     port map (
       clk      => clk,

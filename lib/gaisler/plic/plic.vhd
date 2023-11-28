@@ -123,7 +123,7 @@ package plic is
       srcbits         : integer := 4
       );
     port (
-      priority  : in  std_logic_vector(prbits-1 downto 0);
+      prio      : in  std_logic_vector(prbits-1 downto 0);
       threshold : in  std_logic_vector(prbits-1 downto 0);
       irqreq    : out std_ulogic
       );

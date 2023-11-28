@@ -342,7 +342,7 @@
 #undef  CONFIG_GPT_WDOGEN
 #define CONFIG_GRGPIO_ENABLE 1
 #define CONFIG_GRGPIO_WIDTH (32)
-#define CONFIG_GRGPIO_IMASK fe
+#define CONFIG_GRGPIO_IMASK 7fffffff
 /*
  * VHDL Debugging        
  */

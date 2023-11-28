@@ -108,11 +108,11 @@ begin
 
     if sepclk=0 and techrwcol=1 then
       if uaddress1=uaddress2 then
-        if v1.wren='1' then
+        if v1.wren='1' and (rdhold=0 or uenable2='1') then
           ven2 := '0';
           v2.mux := '1';
         end if;
-        if v2.wren='1' then
+        if v2.wren='1' and (rdhold=0 or uenable1='1') then
           ven1 := '0';
           v1.mux := '1';
         end if;

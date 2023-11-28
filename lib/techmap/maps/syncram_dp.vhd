@@ -265,8 +265,15 @@ begin
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;
 
-  xc2v : if (is_unisim(tech) = 1) and (tech /= virtex) and (tech /= kintex7) and (is_ultrascale(tech) /= 1)  generate
+  xc2v : if (is_unisim(tech) = 1) and (tech /= virtex) and (tech /= kintex7) and
+            (tech /= versal) and (is_ultrascale(tech) /= 1)  generate
     x0 : unisim_syncram_dp generic map (abits, dbits)
+         port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
+                   clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
+  end generate;
+
+  xversal : if (tech = versal)  generate
+    xversal : versal_syncram_dp generic map (abits, dbits, isepclk)
          port map (clk1, address1, datain1, dataout1x, xxenable1, xwrite1,
                    clk2, address2, datain2, dataout2x, xxenable2, xwrite2);
   end generate;

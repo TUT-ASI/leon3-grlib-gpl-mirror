@@ -23,12 +23,14 @@
   constant CFG_PERFCFG  : integer := CONFIG_LEON5_PERFCFG;
   constant CFG_RFCONF   : integer := CONFIG_LEON5_RFCFG + CONFIG_LEON5_RF_FTCFG;
   constant CFG_CMEMCONF : integer := CONFIG_LEON5_CMCFG_TAG + CONFIG_LEON5_CMCFG_DATA + CONFIG_LEON5_CACHE_FTCFG;
+  constant CFG_TCMCONF  : integer := CONFIG_LEON5_DTCMCFG + 256*CONFIG_LEON5_ITCMCFG;
   constant CFG_AHBW     : integer := CONFIG_AHBW;
   constant CFG_BWMASK   : integer := 16#CONFIG_BWMASK#;
   constant CFG_DFIXED   : integer := 16#CONFIG_CACHE_FIXED#;
 
 -- L2 Cache
   constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
+  constant CFG_L2_LITE  : integer := CONFIG_L2_LITE;
   constant CFG_L2_SIZE	: integer := CFG_L2_SZ;
   constant CFG_L2_WAYS	: integer := CFG_L2_ASSO;
   constant CFG_L2_HPROT	: integer := CONFIG_L2_HPROT;
@@ -40,7 +42,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
-  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
+  constant CFG_L2_AXI	: integer := CONFIG_L2_AXI;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;

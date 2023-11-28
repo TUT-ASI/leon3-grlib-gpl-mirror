@@ -34,6 +34,7 @@ use techmap.gencomp.all;
 use techmap.allmem.all;
 library gaisler;
 use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 
 entity regfile5_ram is
   generic (

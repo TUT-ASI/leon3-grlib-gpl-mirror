@@ -4136,7 +4136,7 @@ ar_atp_trans_gated_and.mstswdis           <= ar.atp_trans.mstswdis;
 -------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
 
-acomb : process(ar, rst, pr_pta_trans_gated_and, dmao0, dmao1, tm_fifoo_pta, ms_fifoo_pta, md_fifoo_ptd, ahbsi, apbi, dirq, pcii.int, pt_fifoo_ad, pt_fifoo_sig, pr.ptta_trans, pcisig, lahbm_rst, lahbs_rst, lahb_rst, iotmact)
+acomb : process(ar, rst, pr_pta_trans_gated_and, dmao0, dmao1, tm_fifoo_pta, ms_fifoo_pta, md_fifoo_ptd, ahbsi, apbi, tbapbi, dirq, pcii.int, pt_fifoo_ad, pt_fifoo_sig, pr.ptta_trans, pcisig, lahbm_rst, lahbs_rst, lahb_rst, iotmact)
 variable av       : amba_reg_type;
 variable pta_trans: pci_to_ahb_trans_type;
 variable first    : std_logic;

@@ -1014,6 +1014,7 @@ begin
     if r2.dsuen(2) = '1' and r.slv.hsel = '1' and  r.slv.haddr(AREA_H-1 downto AREA_L) = "000" and
        r.slv.haddr(8 downto 2) = "0000010" and  r.slv.hwrite = '1' then
       if hclken = '1' then
+        v2.timer := (others => '0');    -- clear high bits
         v2.timer(tbits_dsuif-1 downto 0) := hwdata(tbits_dsuif-1 downto 0);
       else v2.timer := r2.timer; end if;
     end if;

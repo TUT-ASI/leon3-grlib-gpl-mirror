@@ -69,3 +69,27 @@ CONFIG_SPIMCTRL_ASCALER
 Reconfigurable configuration
 CONFIG_SPIMCTRL_RECONF
   Enables writing to the configuration register.
+
+Write command
+CONFIG_SPIMCTRL_WRITECMD
+  Write instruction for SPI memory device (hex).
+
+Allow writes
+CONFIG_SPIMCTRL_WRITES
+  Writes to ROM area is accpeted. If not set, all AHB writes to the
+  ROM area of the core will give error responses.
+
+XIP byte
+CONFIG_SPIMCTRL_XIPBYTE
+  Send one byte worth of data after the address phase, containing
+  either 0x00 or 0xff depending on the value of xip_polarity. 
+  Used so commands which require XIP are supported for some 
+  memory devices.
+
+XIP polarity
+CONFIG_SPIMCTRL_XIPPOL
+  Sets bit value sent to the memory device while in the 
+  dummy cycles and XIP byte phase. Should be set so a XIP 
+  disable activation command is sent to the memory device.
+  Has to be either '0' or '1'.
+  

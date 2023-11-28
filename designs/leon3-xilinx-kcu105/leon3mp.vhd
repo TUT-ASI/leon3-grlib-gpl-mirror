@@ -1207,33 +1207,35 @@ begin
 
       -- For self-clock implementations we reuse the strobe input, otherwise we
       -- sample with the txclk
-      spw_rxclkiv(i) <= stmp(i) when CFG_SPW_INPUT /= 3 else spw_txclk;
+      spw_rxclkiv(i) <= stmp(i) when (CFG_SPW_INPUT < 2 or CFG_SPW_INPUT > 4) else spw_txclk;
 
       -- GRSPW2 PHY
       spw2_input : if CFG_SPW_GRSPW = 2 generate
+
         spw_phy0 : grspw2_phy
           generic map (
-            scantest            => 0,
-            tech                => fabtech,
-            input_type          => CFG_SPW_INPUT,
-            rxclkbuftype        => 1
+            scantest     => 0,
+            tech         => fabtech,
+            input_type   => CFG_SPW_INPUT,
+            rxclkbuftype => 1
           )
           port map (
-            rstn                => rstn,
-            rxclki              => spw_rxclkiv(i), -- Receiver Clock Input
-            rxclkin             => spw_rxclkin,
-            nrxclki             => spw_rxclkin,
-            di                  => dtmp(i), -- SpaceWire Data Input (from Pads)
-            si                  => stmp(i), -- SpaceWire Strobe Input (from Pads)
-            do                  => spwi(i).d(1 downto 0),  -- Recovered Data
-            dov                 => spwi(i).dv(1 downto 0), -- Data Valid
-            dconnect            => spwi(i).dconnect(1 downto 0), -- Disconnect
-            dconnect2           => spwi(i).dconnect2(1 downto 0),
-            dconnect3           => spwi(i).dconnect3(1 downto 0),
-            rxclko              => spw_rxclk0(i) -- Receiver Clock Output
-          );
+            rstn      => rstn,
+            rxclki    => spw_rxclkiv(i),                -- Receiver Clock Input
+            rxclkin   => spw_rxclkin,
+            nrxclki   => spw_rxclkin,
+            di        => dtmp(i),       -- SpaceWire Data Input (from Pads)
+            si        => stmp(i),       -- SpaceWire Strobe Input (from Pads)
+            do        => spwi(i).d(1 downto 0),         -- Recovered Data
+            dov       => spwi(i).dv(1 downto 0),        -- Data Valid
+            dconnect  => spwi(i).dconnect(1 downto 0),  -- Disconnect
+            dconnect2 => spwi(i).dconnect2(1 downto 0),
+            dconnect3 => spwi(i).dconnect3(1 downto 0),
+            rxclko    => spw_rxclk0(i)  -- Receiver Clock Output
+            );
 
-        spwi(i).nd      <= (others => '0');  -- Only used in GRSPW
+        spwi(i).nd <= (others => '0');  -- Only used in GRSPW
+
       end generate spw2_input;
 
       -- Single Port PHY
@@ -1250,96 +1252,97 @@ begin
 
       -- Dual Port PHY
       dualportphy : if CFG_SPW_PORTS = 2 generate
-        spw_rxclkiv(i * 2 + 1) <= stmp(i * 2 + 1) when CFG_SPW_INPUT /= 3 else spw_txclk;
 
-        spw_phy0 : grspw2_phy
+        spw_rxclkiv(i*2+1) <= stmp(i*2+1) when (CFG_SPW_INPUT < 2 or CFG_SPW_INPUT > 4) else spw_txclk;
+
+        spw_phy1 : grspw2_phy
           generic map (
-            scantest            => 0,
-            tech                => fabtech,
-            input_type          => CFG_SPW_INPUT,
-            rxclkbuftype        => 1
-          )
+            scantest     => 0,
+            tech         => fabtech,
+            input_type   => CFG_SPW_INPUT,
+            rxclkbuftype => 1)
           port map (
-            rstn                => rstn,
-            rxclki              => spw_rxclkiv(i * 2 + 1),
-            rxclkin             => spw_rxclkin,
-            nrxclki             => spw_rxclkin,
-            di                  => dtmp(i * 2 + 1),
-            si                  => stmp(i * 2 + 1),
-            do                  => spwi(i).d(3 downto 2),
-            dov                 => spwi(i).dv(3 downto 2),
-            dconnect            => spwi(i).dconnect(3 downto 2),
-            dconnect2           => spwi(i).dconnect2(3 downto 2),
-            dconnect3           => spwi(i).dconnect3(3 downto 2),
-            rxclko              => spw_rxclk1(i)
-          );
+            rstn      => rstn,
+            rxclki    => spw_rxclkiv(i * 2 + 1),
+            rxclkin   => spw_rxclkin,
+            nrxclki   => spw_rxclkin,
+            di        => dtmp(i * 2 + 1),
+            si        => stmp(i * 2 + 1),
+            do        => spwi(i).d(3 downto 2),
+            dov       => spwi(i).dv(3 downto 2),
+            dconnect  => spwi(i).dconnect(3 downto 2),
+            dconnect2 => spwi(i).dconnect2(3 downto 2),
+            dconnect3 => spwi(i).dconnect3(3 downto 2),
+            rxclko    => spw_rxclk1(i)
+            );
 
       end generate dualportphy;
 
       -- GRSPW Codec
       sw0 : grspwm
         generic map (
-          tech                  => fabtech,
-          hindex                => CFG_NCPU + CFG_AHB_UART + CFG_AHB_JTAG + CFG_GRETH + i,
-          pindex                => 5 + i,
-          paddr                 => 5 + i,
-          pirq                  => 5 + i,
-          sysfreq               => CPU_FREQ,
-          nsync                 => 1,
-          rmap                  => CFG_SPW_RMAP,
-          rmapcrc               => CFG_SPW_RMAPCRC,
-          fifosize1             => CFG_SPW_AHBFIFO,
-          fifosize2             => CFG_SPW_RXFIFO,
-          rxclkbuftype          => 1,
-          memtech               => memtech,
-          rmapbufs              => CFG_SPW_RMAPBUF,
-          ft                    => CFG_SPW_FT,
-          ports                 => CFG_SPW_PORTS,
-          dmachan               => CFG_SPW_DMACHAN,
-          netlist               => CFG_SPW_NETLIST,
-          spwcore               => CFG_SPW_GRSPW,
-          input_type            => CFG_SPW_INPUT,
-          output_type           => CFG_SPW_OUTPUT,
-          rxtx_sameclk          => CFG_SPW_RTSAME,
-          rxunaligned           => CFG_SPW_RXUNAL,
-          internalrstgen => 1
-        )
+          tech           => fabtech,
+          hindex         => CFG_NCPU + CFG_AHB_UART + CFG_AHB_JTAG + CFG_GRETH + i,
+          pindex         => 5 + i,
+          paddr          => 5 + i,
+          pirq           => 5 + i,
+          sysfreq        => CPU_FREQ,
+          nsync          => 1,
+          rmap           => CFG_SPW_RMAP,
+          rmapcrc        => CFG_SPW_RMAPCRC,
+          fifosize1      => CFG_SPW_AHBFIFO,
+          fifosize2      => CFG_SPW_RXFIFO,
+          rxclkbuftype   => 1,
+          memtech        => memtech,
+          rmapbufs       => CFG_SPW_RMAPBUF,
+          ft             => CFG_SPW_FT,
+          ports          => CFG_SPW_PORTS,
+          dmachan        => CFG_SPW_DMACHAN,
+          netlist        => CFG_SPW_NETLIST,
+          spwcore        => CFG_SPW_GRSPW,
+          input_type     => CFG_SPW_INPUT,
+          output_type    => CFG_SPW_OUTPUT,
+          rxtx_sameclk   => CFG_SPW_RTSAME,
+          rxunaligned    => CFG_SPW_RXUNAL,
+          internalrstgen => 1)
         port map (
-          rst                   => rstn,
-          clk                   => clkm,
-          rxasyncrst            => gnd,
-          rxsyncrst0            => gnd,
-          rxclk0                => spw_rxclk0(i), -- Receiver Clock for Port 0
-          rxsyncrst1            => gnd,
-          rxclk1                => spw_rxclk1(i), -- Receiver Clock for Port 1
-          txsyncrst             => gnd,
-          txclk                 => spw_txclk, -- Transmitter default run-state clock
-          txclkn                => spw_txclk, -- Transmitter inverted default run-state clock
-          ahbmi                 => ahbmi,
-          ahbmo                 => ahbmo(CFG_NCPU + CFG_AHB_UART + CFG_AHB_JTAG + CFG_GRETH + i),
-          apbi                  => apbi,
-          apbo                  => apbo(5+i),
-          swni                  => spwi(i), -- SpaceWire Input
-          swno                  => spwo(i)  -- SpaceWire Output
-        );
+          rst        => rstn,
+          clk        => clkm,
+          rxasyncrst => gnd,
+          rxsyncrst0 => gnd,
+          rxclk0     => spw_rxclk0(i),  -- Receiver Clock for Port 0
+          rxsyncrst1 => gnd,
+          rxclk1     => spw_rxclk1(i),  -- Receiver Clock for Port 1
+          txsyncrst  => gnd,
+          txclk      => spw_txclk,      -- Transmitter default run-state clock
+          txclkn     => spw_txclk,  -- Transmitter inverted default run-state clock
+          ahbmi      => ahbmi,
+          ahbmo      => ahbmo(CFG_NCPU + CFG_AHB_UART + CFG_AHB_JTAG + CFG_GRETH + i),
+          apbi       => apbi,
+          apbo       => apbo(5+i),
+          swni       => spwi(i),        -- SpaceWire Input
+          swno       => spwo(i)         -- SpaceWire Output
+          );
 
-      spwi(i).tickin            <= '0'; spwi(i).rmapen <= '0';
-      spwi(i).clkdiv10          <= conv_std_logic_vector(CPU_FREQ / 10000 - 1, 8);
-      spwi(i).dcrstval          <= (others => '0');
-      spwi(i).timerrstval       <= (others => '0');
-      spwi(i).pnpusn            <= (others => '0');
-      spwi(i).pnpuprodid        <= (others => '0');
-      spwi(i).pnpuvendid        <= (others => '0');
-      spwi(i).pnpen             <= '0';
-      spwi(i).irqtxdefault      <= (others => '0');
-      spwi(i).intcreload        <= (others => '0');
-      spwi(i).intiareload       <= (others => '0');
-      spwi(i).intpreload        <= (others => '0');
-      spwi(i).rmapnodeaddr      <= (others => '0');
-      spwi(i).timein            <= (others => '0');
-      spwi(i).tickinraw         <= '0';
+      spwi(i).tickin       <= '0';
+      spwi(i).rmapen       <= '0';
+      spwi(i).clkdiv10     <= conv_std_logic_vector(CPU_FREQ / 10000 - 1, 8);
+      spwi(i).dcrstval     <= (others => '0');
+      spwi(i).timerrstval  <= (others => '0');
+      spwi(i).pnpusn       <= (others => '0');
+      spwi(i).pnpuprodid   <= (others => '0');
+      spwi(i).pnpuvendid   <= (others => '0');
+      spwi(i).pnpen        <= '0';
+      spwi(i).irqtxdefault <= (others => '0');
+      spwi(i).intcreload   <= (others => '0');
+      spwi(i).intiareload  <= (others => '0');
+      spwi(i).intpreload   <= (others => '0');
+      spwi(i).rmapnodeaddr <= (others => '0');
+      spwi(i).timein       <= (others => '0');
+      spwi(i).tickinraw    <= '0';
 
       -- SpaceWire Pads
+
       spw_txd_pad : outpad_ds generic map (padtech, lvds, x33v)
         port map (spw_dout_p(i * CFG_SPW_PORTS + 1),
                   spw_dout_n(i * CFG_SPW_PORTS + 1),
@@ -1350,12 +1353,19 @@ begin
                   spw_sout_n(i * CFG_SPW_PORTS + 1),
                   spwo(i).s(0), gnd);
 
-      spwsampling : if CFG_SPW_INPUT = 3 generate
+      spwr_rxd_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
+        port map (
+          o  => dtmp(i*CFG_SPW_PORTS),
+          i  => spw_din_p(i*CFG_SPW_PORTS+1),
+          ib => spw_din_n(i*CFG_SPW_PORTS+1)
+          );
 
-        ---- SpaceWire inputs are sampling, propate receive data and strobe
-        -- Not supported!
-
-      end generate spwsampling;
+      spwr_rxs_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
+        port map (
+          o  => stmp(i*CFG_SPW_PORTS),
+          i  => spw_sin_p(i*CFG_SPW_PORTS+1),
+          ib => spw_sin_n(i*CFG_SPW_PORTS+1)
+          );
 
       dualport : if CFG_SPW_PORTS = 2 generate
 
@@ -1369,34 +1379,23 @@ begin
                     spw_sout_n(i * CFG_SPW_PORTS + 2),
                     spwo(i).s(1), gnd);
 
-        spwrsampling : if CFG_SPW_INPUT = 3 generate
-
-          -- SpaceWire inputs are sampling, propate receive data and strobe
-          spwr_rxd_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
-            port map (
-              o         => dtmp(i * CFG_SPW_PORTS + 1),
-              i         => spw_din_p(i * CFG_SPW_PORTS + 2),
-              ib        => spw_din_n(i * CFG_SPW_PORTS + 2)
+        spwr_rxd_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
+          port map (
+            o  => dtmp(i * CFG_SPW_PORTS + 1),
+            i  => spw_din_p(i * CFG_SPW_PORTS + 2),
+            ib => spw_din_n(i * CFG_SPW_PORTS + 2)
             );
 
-          spwr_rxs_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
-            port map (
-              o         => stmp(i * CFG_SPW_PORTS + 1),
-              i         => spw_sin_p(i * CFG_SPW_PORTS + 2),
-              ib        => spw_sin_n(i * CFG_SPW_PORTS + 2)
+        spwr_rxs_pad : IBUFDS generic map (DQS_BIAS => "FALSE", IOSTANDARD => "LVDS")
+          port map (
+            o  => stmp(i * CFG_SPW_PORTS + 1),
+            i  => spw_sin_p(i * CFG_SPW_PORTS + 2),
+            ib => spw_sin_n(i * CFG_SPW_PORTS + 2)
             );
-
-        end generate spwrsampling;
 
       end generate dualport;
 
     end generate spwloop;
-
-    -- loopback
-    dtmp(0) <= spwo(1).d(0);
-    stmp(0) <= spwo(1).s(0);
-    dtmp(1) <= spwo(0).d(0);
-    stmp(1) <= spwo(0).s(0);
 
   end generate spw;
 

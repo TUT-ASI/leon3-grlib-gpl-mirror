@@ -9,7 +9,7 @@ if {[info exists ::env(GRLIB)]} {
 }
 
 if {[expr ![string equal [glob -nocomplain -type d scriptgenwork] scriptgenwork ] ] } {
-	if {[expr ![string equal [glob -nocomplain -type d scriptgencfg] scriptgencfg ] ] } {    
+	if {[expr ![string equal [glob -nocomplain -type d scriptgencfg] scriptgencfg ] ] } {
 		file copy $GRLIB/bin/scriptgen/scriptgencfg scriptgenwork
 	} else {
 		file copy scriptgencfg scriptgenwork
@@ -41,7 +41,8 @@ foreach tool $tools {
 		}
 		"lattice" {
 			append toolsstring "$TOP\.ldf "
-			append toolsstring "$TOP\_radiant.tcl "
+      append toolsstring "$TOP\_radiant.tcl "
+      append toolsstring "$TOP\_radiant_gen_ips.tcl "
 			continue
 		}
 		"mentor" {

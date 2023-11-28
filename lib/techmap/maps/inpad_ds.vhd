@@ -54,6 +54,9 @@ begin
             or (tech = kintexu) or (tech = virtexup) generate
     u0 : virtex4_inpad_ds generic map (level, voltage) port map (padp, padn, o);
   end generate;
+  xcversal : if (tech = versal) generate
+    u0 : versal_inpad_ds generic map (level, voltage) port map (padp, padn, o);
+  end generate  ;
   axc : if (tech = axcel) or (tech = axdsp) generate
     u0 : axcel_inpad_ds generic map (level, voltage) port map (padp, padn, o);
   end generate;

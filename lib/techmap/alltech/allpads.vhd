@@ -684,6 +684,11 @@ component virtex4_inpad_ds
   port (padp, padn : in std_ulogic; o : out std_ulogic);
 end component; 
 
+component versal_inpad_ds
+  generic (level : integer := lvds; voltage : integer := x25v);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end component versal_inpad_ds;
+
 component virtex4_clkpad_ds is
   generic (level : integer := lvds; voltage : integer := x33v);
   port (padp, padn : in std_ulogic; o : out std_ulogic);

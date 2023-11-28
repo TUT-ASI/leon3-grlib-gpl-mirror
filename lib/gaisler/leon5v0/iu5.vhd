@@ -42,6 +42,7 @@ use techmap.gencomp.all;
 library gaisler;
 use gaisler.leon5.all;
 use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 use gaisler.arith.all;
 -- pragma translate_off
 use grlib.sparc_disas.all;

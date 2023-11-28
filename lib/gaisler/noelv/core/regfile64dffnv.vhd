@@ -37,7 +37,8 @@ entity regfile64dffnv is
   generic (
     tech        : integer;
     wrfst       : integer;
-    reg0write   : integer := 0
+    reg0write   : integer := 0;
+    forward     : integer := 1  -- Turn on internal forwarding
     );
   port (
     clk      : in  std_ulogic;
@@ -94,7 +95,7 @@ begin  -- rtl
     v := r;
 
     -- Register Input Address
-    if re1 = '1' and rdhold = '0'then
+    if re1 = '1' and rdhold = '0' then
       v.raddr1  := raddr1;
     end if;
 
@@ -127,62 +128,70 @@ begin  -- rtl
       if notx(r.raddr1) then
         rdata1v := r.entry(u2i(r.raddr1));
       end if;
-      
-      if (waddr1 = r.raddr1) and we1 = '1' then
-        rdata1v := wdata1;
-      end if;
 
-      if (waddr2 = r.raddr1) and we2 = '1' then
-        rdata1v := wdata2;
+      -- Bypass value currently being written?
+      if forward = 1 then
+        if (waddr1 = r.raddr1) and we1 = '1' then
+          rdata1v := wdata1;
+        end if;
+
+        if (waddr2 = r.raddr1) and we2 = '1' then
+          rdata1v := wdata2;
+        end if;
       end if;
-      
     end if;
-    
+
     if (r.raddr2 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr2) then
         rdata2v := r.entry(u2i(r.raddr2));
       end if;
-      
-      if (waddr1 = r.raddr2) and we1 = '1' then
-        rdata2v := wdata1;
-      end if;
 
-      if (waddr2 = r.raddr2) and we2 = '1' then
-        rdata2v := wdata2;
+      -- Bypass value currently being written?
+      if forward = 1 then
+        if (waddr1 = r.raddr2) and we1 = '1' then
+          rdata2v := wdata1;
+        end if;
+
+        if (waddr2 = r.raddr2) and we2 = '1' then
+          rdata2v := wdata2;
+        end if;
       end if;
-      
     end if;
 
     if (r.raddr3 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr3) then
         rdata3v := r.entry(u2i(r.raddr3));
       end if;
-      
-      if (waddr1 = r.raddr3) and we1 = '1' then
-        rdata3v := wdata1;
-      end if;
 
-      if (waddr2 = r.raddr3) and we2 = '1' then
-        rdata3v := wdata2;
+      -- Bypass value currently being written?
+      if forward = 1 then
+        if (waddr1 = r.raddr3) and we1 = '1' then
+          rdata3v := wdata1;
+        end if;
+
+        if (waddr2 = r.raddr3) and we2 = '1' then
+          rdata3v := wdata2;
+        end if;
       end if;
-      
     end if;
-    
+
     if (r.raddr4 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr4) then
         rdata4v := r.entry(u2i(r.raddr4));
       end if;
-      
-      if (waddr1 = r.raddr4) and we1 = '1' then
-        rdata4v := wdata1;
-      end if;
 
-      if (waddr2 = r.raddr4) and we2 = '1' then
-        rdata4v := wdata2;
+      -- Bypass value currently being written?
+      if forward = 1 then
+        if (waddr1 = r.raddr4) and we1 = '1' then
+          rdata4v := wdata1;
+        end if;
+
+        if (waddr2 = r.raddr4) and we2 = '1' then
+          rdata4v := wdata2;
+        end if;
       end if;
-      
     end if;
-    
+
     -- Output Signals
     rdata1 <= rdata1v;
     rdata2 <= rdata2v;

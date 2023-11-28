@@ -37,6 +37,7 @@ library gaisler;
 use gaisler.leon5int.all;
 use gaisler.leon5.leon5_bretry_in_type;
 use gaisler.leon5.leon5_bretry_out_type;
+use gaisler.cpucore5int.all;
 use gaisler.uart.all;
 library techmap;
 use techmap.gencomp.all;
@@ -56,7 +57,12 @@ entity dbgmod5 is
     dsuslvidx : integer;
     dsumstidx : integer;
     bretryen  : integer;
-    plmdata   : integer
+    plmdata   : integer;
+    atkbytes  : integer;
+    itentr    : integer;
+    widetime  : integer;
+    cmemconf  : integer;
+    rfconf    : integer
     );
   port (
     clk      : in  std_ulogic;
@@ -105,14 +111,13 @@ architecture rtl of dbgmod5 is
   constant PROC_L    : integer := 22;
   constant AREA_H    : integer := 21;
   constant AREA_L    : integer := 19;
-  constant kbytes    : integer := 4;
-  constant itentr    : integer := 256;
-  constant TBUFABITS : integer := log2(kbytes mod 16#10000#) + 6 - 10*(kbytes/16#10000#);
-  constant TRACEN    : boolean := (kbytes /= 0);
+  constant TBUFABITS : integer := log2(atkbytes mod 16#10000#) + 6 - 10*(atkbytes/16#10000#);
+  constant TRACEN    : boolean := (atkbytes /= 0);
   constant ITRACEN   : boolean := (itentr /= 0);
   constant ahbwp     : integer := 2;
   constant AHBWATCH  : boolean := TRACEN and (ahbwp /= 0);
-  constant tbits     : integer := 32;
+  constant tbits     : integer := 32 + widetime*31;
+  constant regtbits  : integer := min(tbits,32);
   constant ittbits   : integer := min(tbits,30);
   constant scantest  : integer := 0;      -- temp
 
@@ -279,7 +284,7 @@ architecture rtl of dbgmod5 is
 
   function ahbwp_nz return integer is
   begin
-    if (ahbwp /= 0) and (kbytes /= 0) then return 1; end if;
+    if (ahbwp /= 0) and (atkbytes /= 0) then return 1; end if;
     return 0;
   end function ahbwp_nz;
 
@@ -375,7 +380,7 @@ architecture rtl of dbgmod5 is
 
   function ahbwp_pipe return integer is
   begin
-    if (ahbwp = 2) and (kbytes /= 0) then return 1; end if;
+    if (ahbwp = 2) and (atkbytes /= 0) then return 1; end if;
     return 0;
   end function ahbwp_pipe;
 
@@ -481,7 +486,6 @@ architecture rtl of dbgmod5 is
     mst_haddr         : std_logic_vector(31 downto 0);
     mst_hwrite        : std_ulogic;
     mst_hsize         : std_logic_vector(2 downto 0);
-    mst_hburst        : std_logic_vector(2 downto 0);
     -- Processor bus AHB state
     mst_granted       : std_ulogic;
     mst_inacc         : std_ulogic;
@@ -532,7 +536,6 @@ architecture rtl of dbgmod5 is
     mst_haddr         => (others => '0'),
     mst_hwrite        => '0',
     mst_hsize         => "000",
-    mst_hburst        => "000",
     mst_granted       => '0',
     mst_inacc         => '0',
     dsu_htrans1       => '0',
@@ -699,9 +702,10 @@ begin
           end if;
         when "0000001" =>               -- 0x04 cycle timer for trace buffers and CPUs
           if wr = '1' then
-            v.dsu.timer(tbits-1 downto 0) := vwd(tbits-1 downto 0);
+            v.dsu.timer := (others => '0');
+            v.dsu.timer(regtbits-1 downto 0) := vwd(regtbits-1 downto 0);
           end if;
-          vrd(tbits-1 downto 0) := r.dsu.timer(tbits-1 downto 0);
+          vrd(regtbits-1 downto 0) := r.dsu.timer(regtbits-1 downto 0);
         when "0000010" =>  -- 0x08 Timer stop configuration CPU0-31
           if wr='1' then
             v.dsu.tstopcfg := update_vec(v.dsu.tstopcfg, vwd, 0);
@@ -1265,7 +1269,7 @@ begin
     ocpumo.haddr := r.mst_haddr;
     ocpumo.hwrite := r.mst_hwrite;
     ocpumo.hsize := r.mst_hsize;
-    ocpumo.hburst := r.mst_hburst;
+    ocpumo.hburst := HBURST_SINGLE;
     -- For now re-use the DSU5 PnP ID for the master
     ocpumo.hconfig(0) := hconfig(0);
     ocpumo.hindex := cpumidx;
@@ -1983,6 +1987,7 @@ begin
       otbi.write := "11111111";
       v.tr.aindex := add(r.tr.aindex, 1);
     end if;
+    if r.tr.enable='0' then otbi.enable := '0'; end if;
     -- Stage 1 - sample AHB access data phase
     v.tr.s2htrans := "00"; -- htrans used as "valid bit" in stage 2
     if cpusi.hready='1' then
@@ -2511,7 +2516,7 @@ begin
           v.smp(x).icfin          := RRES.smp(x).icfin;
         end loop;
         v.tr.ahbactive     := RRES.tr.ahbactive;
-        v.tr.enable        := RRES.tr.enable;
+        v.tr.enable        := dsuen;
         v.tr.tforce        := RRES.tr.tforce;
         v.tr.timeren       := RRES.tr.timeren;
         v.tr.dcnten        := RRES.tr.dcnten;
@@ -2604,7 +2609,7 @@ begin
     uartoe <= ouartoe;
     uartii <= ouartii;
     tstop <= otstop;
-    dbgtime <= r.dsu.timer;
+    dbgtime <= r.dsu.timer(31 downto 0);
     rstreqn <= r.rstreqn;
     bretout <= (curent => br.curent, bootctr => br.bootctr);
   end process;
@@ -2651,13 +2656,13 @@ begin
   end generate arstregs;
 
   tb0 : if TRACEN generate
-    atmem0 : tbufmem5 generic map (tech => memtech, tbuf => kbytes, dwidth => busw, proc => 0, testen => scantest)
+    atmem0 : tbufmem5 generic map (tech => memtech, tbuf => atkbytes, dwidth => busw, proc => 0, testen => scantest)
       port map (clk, tbi, tbo, cpusi.testin
                 );
 -- pragma translate_off
     bootmsg : report_version
     generic map ("dsu5_" & tost(0) &
-    ": LEON5 Debug support unit + AHB Trace Buffer, " & tost(kbytes) & " kbytes");
+    ": LEON5 Debug support unit + AHB Trace Buffer, " & tost(atkbytes) & " kbytes");
 -- pragma translate_on
   end generate;
 

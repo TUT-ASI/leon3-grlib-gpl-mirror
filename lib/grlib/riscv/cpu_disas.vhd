@@ -58,6 +58,7 @@ port (
   fsd           : in  std_ulogic;                       -- RV32 and fsd
   fsd_hi        : in  std_logic_vector;                 -- High half of fsd on RV32
   wregen_f      : in  std_ulogic;                       -- FPU Regfile Write Enable
+  memen         : in  std_ulogic;                       -- Memory access
   wcsren        : in  std_ulogic;                       -- CSR Write Enable
   wcsrdata      : in  std_logic_vector;                 -- CSR Write Data
   prv           : in  std_logic_vector(1 downto 0);     -- Privileged Level
@@ -115,10 +116,12 @@ begin
           wregen_f,               -- FPU Regfile Write Enable
           wcsrdata,               -- CSR Write Data
           wcsren,                 -- CSR Write Enable
+          memen,                  -- Memory access
           inst,                   -- Instruction
           cinst,                  -- Compressed Instruction
           comp,                   -- Compressed Flag
           prv,                    -- Privileged Level
+          v,                      -- Virtualization mode
           trap,                   -- Exception
           cause,                  -- Exception Cuase
           tval                    -- Exception Value

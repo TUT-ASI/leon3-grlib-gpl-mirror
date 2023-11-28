@@ -138,7 +138,7 @@ begin
     -- Index for the comparators
     for i in 0 to nsources-1 loop
       for j in 0 to nsources-1 loop
-        if (pr_ip_mask(i) >= pr_ip_mask(j)) then
+        if (unsigned(pr_ip_mask(i)) >= unsigned(pr_ip_mask(j))) then
           comps_out(i*nsources+j)   := '1';
         else
           comps_out(i*nsources+j)   := '0';

@@ -7,11 +7,15 @@
   constant CFG_SCAN 	: integer := CONFIG_SYN_SCAN;
 
 --LEON5 processor system
-  constant CFG_NCPU    : integer := CONFIG_PROC_NUM;
-  constant CFG_FPUTYPE : integer := CONFIG_FPU;
-  constant CFG_AHBW    : integer := CONFIG_AHBW;
-  constant CFG_BWMASK  : integer := 16#CONFIG_BWMASK#;
-  constant CFG_DFIXED  : integer := 16#CONFIG_CACHE_FIXED#;
+  constant CFG_NCPU     : integer := CONFIG_PROC_NUM;
+  constant CFG_FPUTYPE  : integer := CONFIG_FPU;
+  constant CFG_PERFCFG  : integer := CONFIG_LEON5_PERFCFG;
+  constant CFG_RFCONF   : integer := CONFIG_LEON5_RFCFG + CONFIG_LEON5_RF_FTCFG;
+  constant CFG_CMEMCONF : integer := CONFIG_LEON5_CMCFG_TAG + CONFIG_LEON5_CMCFG_DATA + CONFIG_LEON5_CACHE_FTCFG;
+  constant CFG_TCMCONF  : integer := CONFIG_LEON5_DTCMCFG + 256*CONFIG_LEON5_ITCMCFG;
+  constant CFG_AHBW     : integer := CONFIG_AHBW;
+  constant CFG_BWMASK   : integer := 16#CONFIG_BWMASK#;
+  constant CFG_DFIXED   : integer := 16#CONFIG_CACHE_FIXED#;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;
@@ -59,6 +63,7 @@
   constant CFG_GRETH_FT     : integer := CONFIG_GRETH_FT;
   constant CFG_GRETH_EDCLFT : integer := CONFIG_GRETH_EDCLFT;
 #endif
+  constant CFG_ETH_PHY_ADDR : integer := CONFIG_GRETH_PHY_ADDR;
 -- Gaisler Ethernet core
   constant CFG_GRETH2 	 : integer := CONFIG_GRETH2_ENABLE;
   constant CFG_GRETH21G	 : integer := CONFIG_GRETH2_GIGA;

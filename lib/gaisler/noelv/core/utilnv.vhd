@@ -40,6 +40,13 @@ package utilnv is
 
   procedure log(enabled : boolean; comment : string);
 
+  function no_x(v        : std_logic_vector;
+                all_zero : boolean := false) return std_logic_vector;
+  function no_x(v        : signed;
+                all_zero : boolean := false) return signed;
+  function no_x(v        : unsigned;
+                all_zero : boolean := false) return unsigned;
+
   function cond(c : boolean;
                 t : std_ulogic;
                 f : std_ulogic) return std_ulogic;
@@ -78,7 +85,11 @@ package utilnv is
                    d    : std_logic);
   procedure set_lo(dest : inout std_logic_vector;
                    data : std_logic_vector);
+  function set(src  : std_logic_vector; start : integer;
+               data : std_logic_vector) return std_logic_vector;
   function set(data : std_logic_vector; n : integer) return std_logic_vector;
+  function get(data : std_logic_vector;
+               bit  : integer) return std_logic;
   function get(data  : std_logic_vector;
                start : integer; bits : integer) return std_logic_vector;
   function get(data  : std_logic_vector;
@@ -144,6 +155,8 @@ package utilnv is
   function uext(v : std_logic_vector; length : integer) return std_logic_vector;
   function uext(v : unsigned; template : std_logic_vector) return std_logic_vector;
   function uext(v : unsigned; length : integer) return std_logic_vector;
+  function uext(v : unsigned; template : unsigned) return unsigned;
+  function uext(v : unsigned; length : integer) return unsigned;
   function repl2w64(v : std_logic_vector) return std_logic_vector;
   function minimum(x : integer; y: integer) return integer;
   function maximum(x : integer; y: integer) return integer;
@@ -221,6 +234,40 @@ package body utilnv is
       print(comment);
     end if;
 -- pragma translate_on
+  end;
+
+  function no_x(v        : std_logic_vector;
+                all_zero : boolean := false) return std_logic_vector is
+    -- Non-constant
+    variable r : std_logic_vector(v'range) := v;
+  begin
+-- pragma translate_off
+    if is_x(v) then
+      if all_zero then
+        r := (others => '0');
+      else
+        for i in r'range loop
+          if r(i) /= '0' and r(i) /= '1' then
+            r(i) := '0';
+          end if;
+        end loop;
+      end if;
+    end if;
+-- pragma translate_on
+
+    return r;
+  end;
+
+  function no_x(v        : signed;
+                all_zero : boolean := false) return signed is
+  begin
+    return signed(no_x(std_logic_vector(v), all_zero));
+  end;
+
+  function no_x(v        : unsigned;
+                all_zero : boolean := false) return unsigned is
+  begin
+    return unsigned(no_x(std_logic_vector(v), all_zero));
   end;
 
   function all_1(data : std_logic_vector) return boolean is
@@ -423,6 +470,7 @@ package body utilnv is
     return sext(std_logic_vector(v), template);
   end;
 
+
   -- Zero-extend
   function uext(v : std_logic_vector; length : integer) return std_logic_vector is
     variable v_normal : std_logic_vector(v'length - 1 downto 0) := v;
@@ -439,6 +487,11 @@ package body utilnv is
     return uext(std_logic_vector(v), length);
   end;
 
+  function uext(v : unsigned; length : integer) return unsigned is
+  begin
+    return unsigned(uext(std_logic_vector(v), length));
+  end;
+
   function uext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector is
     -- Non-constant
     variable ext : std_logic_vector(template'range);
@@ -453,6 +506,11 @@ package body utilnv is
     return uext(std_logic_vector(v), template);
   end;
 
+  function uext(v : unsigned; template : unsigned) return unsigned is
+  begin
+    return unsigned(uext(std_logic_vector(v), std_logic_vector(template)));
+  end;
+
   -- Return data interpreted as unsigned, as bits of std_logic_vector.
   function u2slv(data : integer; bits : integer) return std_logic_vector is
     -- Non-constant
@@ -465,10 +523,14 @@ package body utilnv is
 
   -- Return data interpreted as unsigned, as bits of unsigned.
   function u2vec(data : integer; bits : integer) return unsigned is
+    -- To avoid DC complaints about truncation when converting from
+    -- integer to a smaller type, first do a "safe" conversion.
+    variable xlen : integer                     := maximum(32, bits);
+    variable u    : unsigned(xlen - 1 downto 0) := to_unsigned(data, xlen);
     -- Non-constant
-    variable v : unsigned(bits - 1 downto 0);
+    variable v    : unsigned(bits - 1 downto 0);
   begin
-    v := to_unsigned(data, bits);
+    v := u(v'range);
 
     return v;
   end;
@@ -480,12 +542,9 @@ package body utilnv is
 
   -- Return data interpreted as unsigned, as bits of std_logic_vector.
   function u2vec(data : integer; bits : integer) return std_logic_vector is
-    -- Non-constant
-    variable v : std_logic_vector(bits - 1 downto 0);
+    variable u : unsigned(bits - 1 downto 0) := u2vec(data, bits);
   begin
-    v := std_logic_vector(to_unsigned(data, bits));
-
-    return v;
+    return std_logic_vector(u);
   end;
 
   function u2vec(data : integer; template : std_logic_vector) return std_logic_vector is
@@ -503,12 +562,15 @@ package body utilnv is
     return u2vec(data, template'length);
   end;
 
-  -- Return data interpreted as signed, as bits of unsigned.
   function s2vec(data : integer; bits : integer) return signed is
+    -- To avoid DC complaints about truncation when converting from
+    -- integer to a smaller type, first do a "safe" conversion.
+    variable xlen : integer                   := maximum(32, bits);
+    variable s    : signed(xlen - 1 downto 0) := to_signed(data, xlen);
     -- Non-constant
-    variable v : signed(bits - 1 downto 0);
+    variable v    : signed(bits - 1 downto 0);
   begin
-    v := to_signed(data, bits);
+    v := s(v'range);
 
     return v;
   end;
@@ -520,12 +582,9 @@ package body utilnv is
 
   -- Return data interpreted as signed, as bits of std_logic_vector.
   function s2vec(data : integer; bits : integer) return std_logic_vector is
-    -- Non-constant
-    variable v : std_logic_vector(bits - 1 downto 0);
+    variable s : signed(bits - 1 downto 0) := s2vec(data, bits);
   begin
-    v := std_logic_vector(to_signed(data, bits));
-
-    return v;
+    return std_logic_vector(s);
   end;
 
   function s2vec(data : integer; template : std_logic_vector) return std_logic_vector is
@@ -547,9 +606,13 @@ package body utilnv is
   end;
 
   function uadd(src : std_logic_vector; addend_in : integer) return std_logic_vector is
-    variable addend : signed(src'range) := to_signed(addend_in, src'length);
+    -- To avoid GHDL complaints about truncation when converting from
+    -- integer to a smaller type, first do a "safe" conversion.
+    variable xlen   : integer                   := maximum(32, src'length);
+    variable s      : signed(xlen - 1 downto 0) := to_signed(addend_in, xlen);
+    variable addend : signed(src'range)         := s(src'length - 1 downto 0);
     -- Non-constant
-    variable dst    : signed(src'range) := signed(src);
+    variable dst    : signed(src'range)         := signed(src);
   begin
     dst := dst + addend;
 
@@ -661,13 +724,13 @@ package body utilnv is
   begin
     return v;
   end;
-  
+
   function get_slv(d : std_ulogic; bits : integer) return std_logic_vector is
     variable v : std_logic_vector(bits - 1 downto 0) := (others => d);
   begin
     return v;
   end;
-  
+
   function get_zeros(template : std_logic_vector) return std_logic_vector is
   begin
     return get_slv('0', template);
@@ -686,6 +749,21 @@ package body utilnv is
   function get_ones(bits : integer) return std_logic_vector is
   begin
     return get_slv('1', bits);
+  end;
+
+  -- Return bit from data, or '0' if bad index.
+  -- Pointless, except that GHDL+Verilator has issues...
+  function get(data : std_logic_vector;
+               bit  : integer) return std_logic is
+  begin
+    for i in data'range loop
+      if i = bit then
+        return data(i);
+      end if;
+    end loop;
+
+    -- Not supposed to ever happen.
+    return '0';
   end;
 
   -- Return bits from start in data, away from bit 0.
@@ -783,7 +861,24 @@ package body utilnv is
                 d    : std_logic) is
     variable data : std_logic_vector(0 downto 0) := (others => d);
   begin
-    set(dest, start, data);
+--    set(dest, start, data);
+    -- Pointless, except that GHDL+Verilator has issues...
+    for i in dest'range loop
+      if i = start then
+        dest(i) := d;
+      end if;
+    end loop;
+  end;
+
+  function set(src  : std_logic_vector; start : integer;
+               data : std_logic_vector) return std_logic_vector is
+    constant bits : integer := data'length;
+    -- Non-constant
+    variable dest : std_logic_vector(src'length - 1 downto 0) := src;
+  begin
+    dest(start + bits - 1 downto start) := data;
+
+    return dest;
   end;
 
   function set(data : std_logic_vector; n : integer) return std_logic_vector is

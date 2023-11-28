@@ -60,6 +60,9 @@ package spi is
   constant QUADOUT_INDEX   : integer := 17;
   constant DUALIN_INDEX    : integer := 18;
   constant QUADIN_INDEX    : integer := 19;
+  subtype WRITECMD_RANGE    is Natural range 31 downto 24;
+  constant XIP_INDEX       : integer := 20;
+  
 
   type spi_out_type is record
     miso     : std_ulogic;
@@ -254,31 +257,35 @@ package spi is
 
   component spimctrl
     generic (
-      hindex      : integer := 0;
-      hirq        : integer := 0;
-      faddr       : integer := 16#000#;
-      fmask       : integer := 16#fff#;
-      ioaddr      : integer := 16#000#;
-      iomask      : integer := 16#fff#;
-      spliten     : integer := 0;
-      oepol       : integer := 0;
-      sdcard      : integer range 0 to 1   := 0;
-      readcmd     : integer range 0 to 255 := 16#0B#;
-      dummybyte   : integer range 0 to 1   := 1;
-      dualoutput  : integer range 0 to 1   := 0;
-      scaler      : integer range 1 to 512 := 1;
-      altscaler   : integer range 1 to 512 := 1;
-      pwrupcnt    : integer := 0;
-      maxahbaccsz : integer range 0 to 256 := AHBDW;
-      offset      : integer := 0;
-      quadoutput  : integer range 0 to 1   := 0;
-      dualinput   : integer range 0 to 1   := 0;
-      quadinput   : integer range 0 to 1   := 0;
-      dummycycles : integer range 0 to 15  := 0;
-      DSPI        : integer range 0 to 1   := 0;
-      QSPI        : integer range 0 to 1   := 0;
-      extaddr     : integer range 0 to 1   := 0;
-      reconf      : integer range 0 to 1   := 0
+      hindex       : integer := 0;
+      hirq         : integer := 0;
+      faddr        : integer := 16#000#;
+      fmask        : integer := 16#fff#;
+      ioaddr       : integer := 16#000#;
+      iomask       : integer := 16#fff#;
+      spliten      : integer := 0;
+      oepol        : integer := 0;
+      sdcard       : integer range 0 to 1   := 0;
+      readcmd      : integer range 0 to 255 := 16#0B#;
+      dummybyte    : integer range 0 to 1   := 1;
+      dualoutput   : integer range 0 to 1   := 0;
+      scaler       : integer range 1 to 512 := 1;
+      altscaler    : integer range 1 to 512 := 1;
+      pwrupcnt     : integer := 0;
+      maxahbaccsz  : integer range 0 to 256 := AHBDW;
+      offset       : integer := 0;
+      quadoutput   : integer range 0 to 1   := 0;
+      dualinput    : integer range 0 to 1   := 0;
+      quadinput    : integer range 0 to 1   := 0;
+      dummycycles  : integer range 0 to 15  := 0;
+      DSPI         : integer range 0 to 1   := 0;
+      QSPI         : integer range 0 to 1   := 0;
+      extaddr      : integer range 0 to 1   := 0;
+      reconf       : integer range 0 to 1   := 0;
+      writecmd     : integer range 0 to 255 := 16#02#;
+      allow_writes : integer range 0 to 1   := 0;
+      xip_byte     : integer range 0 to 1   := 0;
+      xip_polarity : integer range 0 to 1   := 1
       );
     port (
       rstn    : in  std_ulogic;
@@ -292,6 +299,7 @@ package spi is
 
   -- Constants for (and for using) dynamic_spi_flash
   -- List of read commands
+  constant NOPCMD     : std_logic_vector(7 downto 0) := X"00";-- NOP
   constant READSINGLE : std_logic_vector(7 downto 0) := X"03";-- (1,1,1)
   constant READFAST   : std_logic_vector(7 downto 0) := X"0B";-- (y,y,y)
   constant READDUALO  : std_logic_vector(7 downto 0) := X"3B";-- (x,y,2)

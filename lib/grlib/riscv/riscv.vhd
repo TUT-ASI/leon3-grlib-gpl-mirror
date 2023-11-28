@@ -143,35 +143,32 @@ package riscv is
   constant F12_BREV8      : funct12_type := "011010000111";  -- R_SRL
   constant F12_ZIP        : funct12_type := "000010001111";  -- R_SRL UNZIP, R_SLL ZIP
 
-  -- Zimops (these are currently unused)
---  constant F12_MOPR       : funct12_type := "1x00xx0111xx";  -- R_XOR
-
-  -- Zisslpcfi
-  constant F12_SSPOP      : funct12_type := "100000011100";  -- R_XOR
-  constant F12_SSPRR      : funct12_type := "100000011101";  -- R_XOR
-
   -- funct7 decoding (inst(31 downto 25))
 
   subtype funct7_type is std_logic_vector(6 downto 0);
 
-  constant F7_BASE        : funct7_type := "0000000";
-  constant F7_SUB         : funct7_type := "0100000";
-  constant F7_URET        : funct7_type := "0000000";
-  constant F7_SRET        : funct7_type := "0001000";
-  constant F7_WFI         : funct7_type := "0001000";
-  constant F7_MRET        : funct7_type := "0011000";
-  constant F7_MNRET       : funct7_type := "0111000";
-  constant F7_SFENCE_VMA  : funct7_type := "0001001";
-  constant F7_HFENCE_VVMA : funct7_type := "0010001";
-  constant F7_HFENCE_GVMA : funct7_type := "0110001";
-  constant F7_HLVB        : funct7_type := "0110000";
-  constant F7_HLVH        : funct7_type := "0110010";
-  constant F7_HLVW        : funct7_type := "0110100";
-  constant F7_HLVD        : funct7_type := "0110110";
-  constant F7_HSVB        : funct7_type := "0110001";
-  constant F7_HSVH        : funct7_type := "0110011";
-  constant F7_HSVW        : funct7_type := "0110101";
-  constant F7_HSVD        : funct7_type := "0110111";
+  constant F7_BASE         : funct7_type := "0000000";
+  constant F7_SUB          : funct7_type := "0100000";
+  constant F7_URET         : funct7_type := "0000000";
+  constant F7_SRET         : funct7_type := "0001000";
+  constant F7_WFI          : funct7_type := "0001000";
+  constant F7_MRET         : funct7_type := "0011000";
+  constant F7_MNRET        : funct7_type := "0111000";
+  constant F7_SFENCE_VMA   : funct7_type := "0001001";
+  constant F7_SINVAL_VMA   : funct7_type := "0001011";
+  constant F7_SFENCE_INVAL : funct7_type := "0001100";  -- rs2 0 - W_INVAL, 1 - INVAL_IR
+  constant F7_HFENCE_VVMA  : funct7_type := "0010001";
+  constant F7_HINVAL_VVMA  : funct7_type := "0010011";
+  constant F7_HFENCE_GVMA  : funct7_type := "0110001";
+  constant F7_HINVAL_GVMA  : funct7_type := "0110011";
+  constant F7_HLVB         : funct7_type := "0110000";
+  constant F7_HLVH         : funct7_type := "0110010";
+  constant F7_HLVW         : funct7_type := "0110100";
+  constant F7_HLVD         : funct7_type := "0110110";
+  constant F7_HSVB         : funct7_type := "0110001";
+  constant F7_HSVH         : funct7_type := "0110011";
+  constant F7_HSVW         : funct7_type := "0110101";
+  constant F7_HSVD         : funct7_type := "0110111";
 
   constant F7_BASE_RV64   : funct7_type := "0000001";
   constant F7_SUB_RV64    : funct7_type := "0100001";
@@ -200,33 +197,35 @@ package riscv is
   -- Zbkx
   constant F7_XPERM       : funct7_type := "0010100";  -- 100 xperm8, 010 xperm4 (see Zbs above)
 
-  -- Zimops
---  constant F7_MOPR        : funct7_type := "1x00xx0";  -- R_XOR
-  constant F7_MOPR_000    : funct7_type := "1000000";  -- R_XOR (see above)
-  constant F7_MOPR_001    : funct7_type := "1000010";  -- R_XOR (unused)
-  constant F7_MOPR_010    : funct7_type := "1000100";  -- R_XOR (unused)
-  constant F7_MOPR_011    : funct7_type := "1000110";  -- R_XOR (unused)
-  constant F7_MOPR_100    : funct7_type := "1100000";  -- R_XOR (unused)
-  constant F7_MOPR_101    : funct7_type := "1100010";  -- R_XOR (unused)
-  constant F7_MOPR_110    : funct7_type := "1100100";  -- R_XOR (unused)
-  constant F7_MOPR_111    : funct7_type := "1100110";  -- R_XOR (unused)
+  -- Zimop
+--  constant F12_MOPR        : funct12_type := "1x00xx0111xx";  -- R_XOR
+  constant F7_MOPR_0      : funct7_type := "1000000";  -- R_XOR (see above)
+  constant F7_MOPR_4      : funct7_type := "1000010";  -- R_XOR (unused)
+  constant F7_MOPR_8      : funct7_type := "1000100";  -- R_XOR (unused)
+  constant F7_MOPR_12     : funct7_type := "1000110";  -- R_XOR (unused)
+  constant F7_MOPR_16     : funct7_type := "1100000";  -- R_XOR (unused)
+  constant F7_MOPR_20     : funct7_type := "1100010";  -- R_XOR (unused)
+  constant F7_MOPR_24     : funct7_type := "1100100";  -- R_XOR (unused)
+  constant F7_MOPR_28     : funct7_type := "1100110";  -- R_XOR (unused)
 --  constant F7_MOPRR       : funct7_type := "1x00xx1";  -- R_XOR
-  constant F7_MOPRR_000   : funct7_type := "1000001";  -- R_XOR (see below)
-  constant F7_MOPRR_001   : funct7_type := "1000011";  -- R_XOR (see below)
-  constant F7_MOPRR_010   : funct7_type := "1000101";  -- R_XOR (see below)
-  constant F7_MOPRR_011   : funct7_type := "1000111";  -- R_XOR (unused)
-  constant F7_MOPRR_100   : funct7_type := "1100001";  -- R_XOR (unused)
-  constant F7_MOPRR_101   : funct7_type := "1100011";  -- R_XOR (unused)
-  constant F7_MOPRR_110   : funct7_type := "1100101";  -- R_XOR (unused)
-  constant F7_MOPRR_111   : funct7_type := "1100111";  -- R_XOR (unused)
+  constant F7_MOPRR_0     : funct7_type := "1000001";  -- R_XOR (see below)
+  constant F7_MOPRR_1     : funct7_type := "1000011";  -- R_XOR (unused)
+  constant F7_MOPRR_2     : funct7_type := "1000101";  -- R_XOR (unused)
+  constant F7_MOPRR_3     : funct7_type := "1000111";  -- R_XOR (unused)
+  constant F7_MOPRR_4     : funct7_type := "1100001";  -- R_XOR (unused)
+  constant F7_MOPRR_5     : funct7_type := "1100011";  -- R_XOR (unused)
+  constant F7_MOPRR_6     : funct7_type := "1100101";  -- R_XOR (unused)
+  constant F7_MOPRR_7     : funct7_type := "1100111";  -- R_XOR (unused)
 
-  -- Zisslpcfi
-  constant F7_LPL_SSWAP   : funct7_type := "1000001";  -- R_XOR
-  constant F7_LPMU        : funct7_type := "1000011";  -- R_XOR
-  constant F7_SSCHKRAPUSH : funct7_type := "1000101";  -- R_XOR
+  -- Zicfiss
+  constant F7_SSPUSH      : funct7_type := F7_MOPRR_7;  -- R_XOR
 
   -- Zicond
   constant F7_CZERO       : funct7_type := "0000111";  -- R_SRL
+
+  -- Zicfiss
+  constant F12_SSRDP      : funct12_type := F7_MOPR_0  & "11101";  -- R_XOR
+  constant F12_SSPOPCHK   : funct12_type := F7_MOPR_28 & "11100";  -- R_XOR
 
 
   -- funct3 decoding (inst(14 downto 12))
@@ -669,6 +668,11 @@ package riscv is
   -- Supervisor AIA (Smaia or Ssaia)
   constant CSR_SISELECT         : csratype := x"150";
   constant CSR_SIREG            : csratype := x"151";
+  constant CSR_SIREG2           : csratype := x"152";
+  constant CSR_SIREG3           : csratype := x"153";
+  constant CSR_SIREG4           : csratype := x"155";
+  constant CSR_SIREG5           : csratype := x"156";
+  constant CSR_SIREG6           : csratype := x"157";
   constant CSR_STOPEI           : csratype := x"15c";
   constant CSR_STOPI            : csratype := x"db0";
   -- High (RV32)
@@ -731,6 +735,11 @@ package riscv is
   constant CSR_HVIPRIO2         : csratype := x"647";
   constant CSR_VSISELECT        : csratype := x"250";
   constant CSR_VSIREG           : csratype := x"251";
+  constant CSR_VSIREG2          : csratype := x"252";
+  constant CSR_VSIREG3          : csratype := x"253";
+  constant CSR_VSIREG4          : csratype := x"255";
+  constant CSR_VSIREG5          : csratype := x"256";
+  constant CSR_VSIREG6          : csratype := x"257";
   constant CSR_VSTOPEI          : csratype := x"25c";
   constant CSR_VSTOPI           : csratype := x"eb0";
   -- High (RV32)
@@ -785,6 +794,11 @@ package riscv is
   -- Machine AIA (Smaia)
   constant CSR_MISELECT         : csratype := x"350";
   constant CSR_MIREG            : csratype := x"351";
+  constant CSR_MIREG2           : csratype := x"352";
+  constant CSR_MIREG3           : csratype := x"353";
+  constant CSR_MIREG4           : csratype := x"355";
+  constant CSR_MIREG5           : csratype := x"356";
+  constant CSR_MIREG6           : csratype := x"357";
   constant CSR_MTOPEI           : csratype := x"35c";
   constant CSR_MTOPI            : csratype := x"fb0";
   constant CSR_MVIEN            : csratype := x"308";
@@ -965,8 +979,10 @@ package riscv is
   constant CSR_TDATA3           : csratype := x"7a3";
   constant CSR_TINFO            : csratype := x"7a4";
   constant CSR_TCONTROL         : csratype := x"7a5";
+  constant CSR_HCONTEXT         : csratype := x"6a8";
   constant CSR_MCONTEXT         : csratype := x"7a8";
   constant CSR_SCONTEXT         : csratype := x"5a8"; -- New address in V 1.0 of the spec
+  constant CSR_MSCONTEXT        : csratype := x"7aa";
   -- Debug Mode Registers
   constant CSR_DCSR             : csratype := x"7b0";
   constant CSR_DPC              : csratype := x"7b1";

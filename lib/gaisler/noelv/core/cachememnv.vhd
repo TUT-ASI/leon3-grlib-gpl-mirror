@@ -36,9 +36,9 @@ use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 use grlib.stdlib.tost_bits;
 library gaisler;
+use gaisler.utilnv.u2i;
 use gaisler.noelvint.nv_cram_in_type;
 use gaisler.noelvint.nv_cram_out_type;
-use gaisler.noelvint.TAGMAX;
 use gaisler.utilnv.b2i;
 
 entity cachememnv is
@@ -61,12 +61,12 @@ entity cachememnv is
     testen    : integer range 0 to 1
   );
   port (
-        rstn  : in  std_ulogic;
-        clk   : in  std_ulogic;
-        sclk  : in  std_ulogic;
-        crami : in  nv_cram_in_type;
-        cramo : out nv_cram_out_type;
-        testin : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
+        rstn   : in  std_ulogic;
+        clk    : in  std_ulogic;
+        sclk   : in  std_ulogic;
+        crami  : in  nv_cram_in_type;
+        cramo  : out nv_cram_out_type;
+        testin : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
   );
 
 
@@ -74,14 +74,23 @@ end;
 
 architecture rtl of cachememnv is
 
-  signal idataaddr: std_logic_vector(iidxwidth+log2(ilinesize)-2 downto 0);
-  signal ddataaddr: std_logic_vector(didxwidth+log2(dlinesize)-2 downto 0);
+  -- Only used for ranges
+  constant iidx     : std_logic_vector(iidxwidth - 1 downto 0)                   := (others => '0');
+  constant itag_hi  : std_logic_vector(cramo.itagdout(0)'high downto itagwidth)  := (others => '0');
+  constant itag_lo  : std_logic_vector(itagwidth - 1 downto 0)                   := (others => '0');
+  constant didx     : std_logic_vector(didxwidth - 1 downto 0)                   := (others => '0');
+  constant dtag_hi  : std_logic_vector(cramo.dtagcdout(0)'high downto dtagwidth) := (others => '0');
+  constant dtag_lo  : std_logic_vector(dtagwidth - 1 downto 0)                   := (others => '0');
+  constant dtag_lo1 : std_logic_vector(dtagwidth - 1 downto 1)                   := (others => '0');
 
-  signal gndv: std_logic_vector(dtagwidth-1 downto 0);
+  signal idataaddr  : std_logic_vector(iidxwidth + log2(ilinesize) - 2 downto 0);
+  signal ddataaddr  : std_logic_vector(didxwidth + log2(dlinesize) - 2 downto 0);
+
+  signal gndv: std_logic_vector(dtag_lo'range);
 
   type denv_type is array(0 to 3) of std_logic_vector(7 downto 0);
-  signal denv: denv_type;
-  signal denvtcm: std_logic_vector(7 downto 0);
+  signal denv     : denv_type;
+  signal denvtcm  : std_logic_vector(7 downto 0);
 
 
 begin
@@ -104,23 +113,23 @@ begin
         )
       port map (
         clk     => clk,
-        address => crami.iindex(iidxwidth-1 downto 0),
-        datain  => crami.itagdin(s)(itagwidth-1 downto 0),
-        dataout => cramo.itagdout(s)(itagwidth-1 downto 0),
+        address => crami.iindex(iidx'range),
+        datain  => crami.itagdin(s)(itag_lo'range),
+        dataout => cramo.itagdout(s)(itag_lo'range),
         enable  => crami.itagen(s),
         write   => crami.itagwrite,
         testin  => testin
         );
-    cramo.itagdout(s)(TAGMAX-1 downto itagwidth) <= (others => '0');
+    cramo.itagdout(s)(itag_hi'range) <= (others => '0');
   end generate;
 
   -- Instruction cache data RAMs
-  idataaddr <= crami.iindex(iidxwidth-1 downto 0) & crami.idataoffs(log2(ilinesize)-2 downto 0);
+  idataaddr <= crami.iindex(iidx'range) & crami.idataoffs(log2(ilinesize)-2 downto 0);
   idataloop: for s in 0 to iways-1 generate
     idatamemh: syncram
       generic map (
         tech       => tech,
-        abits      => iidxwidth+log2(ilinesize)-1,
+        abits      => iidxwidth + log2(ilinesize) - 1,
         dbits      => 32,
         testen     => testen,
         custombits => memtest_vlen,
@@ -140,7 +149,7 @@ begin
     idatameml: syncram
       generic map (
         tech       => tech,
-        abits      => iidxwidth+log2(ilinesize)-1,
+        abits      => iidxwidth + log2(ilinesize) - 1,
         dbits      => 32,
         testen     => testen,
         custombits => memtest_vlen,
@@ -205,7 +214,7 @@ begin
 
   -- Data cache tag RAMs
 
-  dtagconf0: if dtagconf=0 generate
+  dtagconf0: if dtagconf = 0 generate
     -- two memories (1x two-port, 1x one-port), valid bits in two-port memory
     dtagloop: for s in 0 to dways-1 generate
       -- Tag read for regular cache operation
@@ -225,12 +234,12 @@ begin
         port map (
           rclk     => clk,
           renable  => crami.dtagcen(s),
-          raddress => crami.dtagcindex(didxwidth-1 downto 0),
-          dataout  => cramo.dtagcdout(s)(dtagwidth-1 downto 0),
+          raddress => crami.dtagcindex(didx'range),
+          dataout  => cramo.dtagcdout(s)(dtag_lo'range),
           wclk     => sclk,
           write    => crami.dtaguwrite(s),
-          waddress => crami.dtaguindex(didxwidth-1 downto 0),
-          datain   => crami.dtagudin(s)(dtagwidth-1 downto 0),
+          waddress => crami.dtaguindex(didx'range),
+          datain   => crami.dtagudin(s)(dtag_lo'range),
           testin   => testin
           );
     -- Tag read for snooping
@@ -238,7 +247,7 @@ begin
         generic map (
           tech     => tech,
           abits    => didxwidth,
-          dbits    => dtagwidth-1,
+          dbits    => dtagwidth - 1,
           testen   => testen,
           pipeline => 0,
           rdhold   => 1,
@@ -247,26 +256,26 @@ begin
           )
         port map (
           clk      => sclk,
-          address => crami.dtagsindex(didxwidth-1 downto 0),
-          datain   => crami.dtagsdin(s)(dtagwidth-1 downto 1),
-          dataout  => cramo.dtagsdout(s)(dtagwidth-1 downto 1),
+          address => crami.dtagsindex(didx'range),
+          datain   => crami.dtagsdin(s)(dtag_lo1'range),
+          dataout  => cramo.dtagsdout(s)(dtag_lo1'range),
           enable   => crami.dtagsen(s),
           write    => crami.dtagswrite,
           testin   => testin
           );
-      cramo.dtagcdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagsdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagsdout(s)(0) <= '1';
+      cramo.dtagcdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagsdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagsdout(s)(0)             <= '1';
     end generate;
   end generate;
-  dtagconf1: if dtagconf=1 generate
+  dtagconf1: if dtagconf = 1 generate
     -- 1 x dual-port memory, valid bits in flip flops
     dtagloop: for s in 0 to dways-1 generate
       dtagmem: syncram_dp
         generic map (
           tech     => tech,
           abits    => didxwidth,
-          dbits    => dtagwidth-1,
+          dbits    => dtagwidth - 1,
           testen   => testen,
           sepclk   => 2,
           wrfst    => 1,
@@ -278,28 +287,28 @@ begin
         port map (
           -- Port 1, read for cache operation
           clk1     => clk,
-          address1 => crami.dtagcindex(didxwidth-1 downto 0),
-          datain1  => gndv(dtagwidth-1 downto 1),
-          dataout1 => cramo.dtagcdout(s)(dtagwidth-1 downto 1),
+          address1 => crami.dtagcindex(didx'range),
+          datain1  => gndv(dtag_lo1'range),
+          dataout1 => cramo.dtagcdout(s)(dtag_lo1'range),
           enable1  => crami.dtagcen(s),
           write1   => gndv(0),
           -- Port 2, write for cache update, read for snooping
           clk2     => sclk,
-          address2 => crami.dtagsindex(didxwidth-1 downto 0),
-          datain2  => crami.dtagsdin(s)(dtagwidth-1 downto 1),
-          dataout2 => cramo.dtagsdout(s)(dtagwidth-1 downto 1),
+          address2 => crami.dtagsindex(didx'range),
+          datain2  => crami.dtagsdin(s)(dtag_lo1'range),
+          dataout2 => cramo.dtagsdout(s)(dtag_lo1'range),
           enable2  => crami.dtagsen(s),
           write2   => crami.dtagswrite,
           --
           testin   => testin
           );
-      cramo.dtagcdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagsdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagcdout(s)(0) <= '1';
-      cramo.dtagsdout(s)(0) <= '1';
+      cramo.dtagcdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagsdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagcdout(s)(0)             <= '1';
+      cramo.dtagsdout(s)(0)             <= '1';
     end generate;
   end generate;
-  dtagconf2: if dtagconf=2 generate
+  dtagconf2: if dtagconf = 2 generate
     -- 2 x single-port memory, valid bits in flip flops
     dtagloop: for s in 0 to dways-1 generate
       -- Tag read for regular cache operation
@@ -307,7 +316,7 @@ begin
         generic map (
           tech     => tech,
           abits    => didxwidth,
-          dbits    => dtagwidth-1,
+          dbits    => dtagwidth - 1,
           testen   => testen,
           pipeline => 0,
           rdhold   => 1,
@@ -316,9 +325,9 @@ begin
           )
         port map (
           clk      => clk,
-          address  => crami.dtagcuindex(didxwidth-1 downto 0),
-          datain   => crami.dtagudin(s)(dtagwidth-1 downto 1),
-          dataout  => cramo.dtagcdout(s)(dtagwidth-1 downto 1),
+          address  => crami.dtagcuindex(didx'range),
+          datain   => crami.dtagudin(s)(dtag_lo1'range),
+          dataout  => cramo.dtagcdout(s)(dtag_lo1'range),
           enable   => crami.dtagcuen(s),
           write    => crami.dtagcuwrite,
           testin   => testin
@@ -328,7 +337,7 @@ begin
         generic map (
           tech     => tech,
           abits    => didxwidth,
-          dbits    => dtagwidth-1,
+          dbits    => dtagwidth - 1,
           testen   => testen,
           pipeline => 0,
           rdhold   => 1,
@@ -337,204 +346,204 @@ begin
           )
         port map (
           clk      => sclk,
-          address  => crami.dtagsindex(didxwidth-1 downto 0),
-          datain   => crami.dtagsdin(s)(dtagwidth-1 downto 1),
-          dataout  => cramo.dtagsdout(s)(dtagwidth-1 downto 1),
+          address  => crami.dtagsindex(didx'range),
+          datain   => crami.dtagsdin(s)(dtag_lo1'range),
+          dataout  => cramo.dtagsdout(s)(dtag_lo1'range),
           enable   => crami.dtagsen(s),
           write    => crami.dtagswrite,
           testin   => testin
           );
-      cramo.dtagcdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagsdout(s)(TAGMAX-1 downto dtagwidth) <= (others => '0');
-      cramo.dtagcdout(s)(0) <= '1';
-      cramo.dtagsdout(s)(0) <= '1';
+      cramo.dtagcdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagsdout(s)(dtag_hi'range) <= (others => '0');
+      cramo.dtagcdout(s)(0)             <= '1';
+      cramo.dtagsdout(s)(0)             <= '1';
     end generate;
   end generate;
 
   -- Data cache data RAMs
-  ddataaddr <= crami.ddataindex(didxwidth-1 downto 0) & crami.ddataoffs(log2(dlinesize)-2 downto 0);
+  ddataaddr <= crami.ddataindex(didx'range) & crami.ddataoffs(log2(dlinesize) - 2 downto 0);
   denv <= (0 => (others => crami.ddataen(0)),
            1 => (others => crami.ddataen(1)),
            2 => (others => crami.ddataen(2)),
            3 => (others => crami.ddataen(3)));
   denvtcm <= (others => crami.dtcmen);
-  ddusebw: if dusebw=1 generate
+  ddusebw: if dusebw = 1 generate
     -- Memories with byte writes
     ddataloop: for s in 0 to dways-1 generate
       ddatamemh: syncrambw
         generic map (
-          tech => tech,
-          abits => didxwidth+log2(dlinesize)-1,
-          dbits => 32,
-          testen => testen,
+          tech     => tech,
+          abits    => didxwidth + log2(dlinesize) - 1,
+          dbits    => 32,
+          testen   => testen,
           pipeline => 0,
-          rdhold => 1,
-          gatedwr => 1,
+          rdhold   => 1,
+          gatedwr  => 1,
           custombits => memtest_vlen
           )
         port map (
-          clk => clk,
+          clk     => clk,
           address => ddataaddr,
-          datain => crami.ddatadin(s)(63 downto 32),
+          datain  => crami.ddatadin(s)(63 downto 32),
           dataout => cramo.ddatadout(s)(63 downto 32),
-          enable => denv(s)(7 downto 4),
-          write => crami.ddatawrite(7 downto 4),
-          testin => testin
+          enable  => denv(s)(7 downto 4),
+          write   => crami.ddatawrite(7 downto 4),
+          testin  => testin
           );
       ddatameml: syncrambw
         generic map (
-          tech => tech,
-          abits => didxwidth+log2(dlinesize)-1,
-          dbits => 32,
-          testen => testen,
+          tech     => tech,
+          abits    => didxwidth + log2(dlinesize) - 1,
+          dbits    => 32,
+          testen   => testen,
           pipeline => 0,
-          rdhold => 1,
-          gatedwr => 1,
+          rdhold   => 1,
+          gatedwr  => 1,
           custombits => memtest_vlen
           )
         port map (
-          clk => clk,
+          clk     => clk,
           address => ddataaddr,
-          datain => crami.ddatadin(s)(31 downto 0),
+          datain  => crami.ddatadin(s)(31 downto 0),
           dataout => cramo.ddatadout(s)(31 downto 0),
-          enable => denv(s)(3 downto 0),
-          write => crami.ddatawrite(3 downto 0),
-          testin => testin
+          enable  => denv(s)(3 downto 0),
+          write   => crami.ddatawrite(3 downto 0),
+          testin  => testin
           );
     end generate;
   end generate;
-  ddnobw: if dusebw=0 generate
+  ddnobw: if dusebw = 0 generate
     -- Memories without byte writes, data loopback in cache controller
     ddataloop: for s in 0 to dways-1 generate
       ddatamemh: syncram
         generic map (
-          tech => tech,
-          abits => didxwidth+log2(dlinesize)-1,
-          dbits => 32,
-          testen => testen,
+          tech     => tech,
+          abits    => didxwidth + log2(dlinesize) - 1,
+          dbits    => 32,
+          testen   => testen,
           pipeline => 0,
-          rdhold => 1,
-          gatedwr => 1,
+          rdhold   => 1,
+          gatedwr  => 1,
           custombits => memtest_vlen
           )
         port map (
-          clk => clk,
+          clk     => clk,
           address => ddataaddr,
-          datain => crami.ddatadin(s)(63 downto 32),
+          datain  => crami.ddatadin(s)(63 downto 32),
           dataout => cramo.ddatadout(s)(63 downto 32),
-          enable => crami.ddataen(s),
-          write => crami.ddatawrite(7),
-          testin => testin
+          enable  => crami.ddataen(s),
+          write   => crami.ddatawrite(7),
+          testin  => testin
           );
       ddatameml: syncram
         generic map (
-          tech => tech,
-          abits => didxwidth+log2(dlinesize)-1,
-          dbits => 32,
-          testen => testen,
+          tech     => tech,
+          abits    => didxwidth + log2(dlinesize) - 1,
+          dbits    => 32,
+          testen   => testen,
           pipeline => 0,
-          rdhold => 1,
-          gatedwr => 1,
+          rdhold   => 1,
+          gatedwr  => 1,
           custombits => memtest_vlen
           )
         port map (
-          clk => clk,
+          clk     => clk,
           address => ddataaddr,
-          datain => crami.ddatadin(s)(31 downto 0),
+          datain  => crami.ddatadin(s)(31 downto 0),
           dataout => cramo.ddatadout(s)(31 downto 0),
-          enable => crami.ddataen(s),
-          write => crami.ddatawrite(3),
-          testin => testin
+          enable  => crami.ddataen(s),
+          write   => crami.ddatawrite(3),
+          testin  => testin
           );
     end generate;
   end generate;
 
   -- Data cache tightly coupled memory
-  ddtcmbw : if dtcmen/=0 and dusebw/=0 generate
+  ddtcmbw : if dtcmen /= 0 and dusebw /= 0 generate
     -- Memories with byte writes
     dtcmmemh: syncrambw
       generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
+        tech     => tech,
+        abits    => dtcmabits,
+        dbits    => 32,
+        testen   => testen,
         pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
+        rdhold   => 1,
+        gatedwr  => 1,
         custombits => memtest_vlen
         )
       port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(63 downto 32),
+        clk     => clk,
+        address => crami.ddatafulladdr(2 + dtcmabits downto 3),
+        datain  => crami.dtcmdin(63 downto 32),
         dataout => cramo.dtcmdout(63 downto 32),
-        enable => denvtcm(7 downto 4),
-        write => crami.dtcmwrite(7 downto 4),
-        testin => testin
+        enable  => denvtcm(7 downto 4),
+        write   => crami.dtcmwrite(7 downto 4),
+        testin  => testin
         );
     dtcmmeml: syncrambw
       generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
+        tech     => tech,
+        abits    => dtcmabits,
+        dbits    => 32,
+        testen   => testen,
         pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
+        rdhold   => 1,
+        gatedwr  => 1,
         custombits => memtest_vlen
         )
       port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(31 downto 0),
+        clk     => clk,
+        address => crami.ddatafulladdr(2 + dtcmabits downto 3),
+        datain  => crami.dtcmdin(31 downto 0),
         dataout => cramo.dtcmdout(31 downto 0),
-        enable => denvtcm(3 downto 0),
-        write => crami.dtcmwrite(3 downto 0),
-        testin => testin
+        enable  => denvtcm(3 downto 0),
+        write   => crami.dtcmwrite(3 downto 0),
+        testin  => testin
         );
   end generate;
 
-  ddtcmnobw : if dtcmen/=0 and dusebw=0 generate
+  ddtcmnobw : if dtcmen /= 0 and dusebw = 0 generate
     -- Memories without byte writes, data loopback in cache controller
     dtcmmemh: syncram
       generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
+        tech     => tech,
+        abits    => dtcmabits,
+        dbits    => 32,
+        testen   => testen,
         pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
+        rdhold   => 1,
+        gatedwr  => 1,
         custombits => memtest_vlen
         )
       port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(63 downto 32),
+        clk     => clk,
+        address => crami.ddatafulladdr(2 + dtcmabits downto 3),
+        datain  => crami.dtcmdin(63 downto 32),
         dataout => cramo.dtcmdout(63 downto 32),
-        enable => crami.dtcmen,
-        write => crami.dtcmwrite(7),
-        testin => testin
+        enable  => crami.dtcmen,
+        write   => crami.dtcmwrite(7),
+        testin  => testin
         );
     dtcmmeml: syncram
       generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
+        tech     => tech,
+        abits    => dtcmabits,
+        dbits    => 32,
+        testen   => testen,
         pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
+        rdhold   => 1,
+        gatedwr  => 1,
         custombits => memtest_vlen
         )
       port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(31 downto 0),
+        clk     => clk,
+        address => crami.ddatafulladdr(2 + dtcmabits downto 3),
+        datain  => crami.dtcmdin(31 downto 0),
         dataout => cramo.dtcmdout(31 downto 0),
-        enable => crami.dtcmen,
-        write => crami.dtcmwrite(3),
-        testin => testin
+        enable  => crami.dtcmen,
+        write   => crami.dtcmwrite(3),
+        testin  => testin
         );
   end generate;
 
@@ -549,22 +558,22 @@ begin
     cramo.ddatadout(s) <= (others => '0');
   end generate;
 
-  noitcm: if itcmen=0 generate
+  noitcm: if itcmen = 0 generate
     cramo.itcmdout <= (others => '0');
   end generate;
 
-  nodtcm: if dtcmen=0 generate
+  nodtcm: if dtcmen = 0 generate
     cramo.dtcmdout <= (others => '0');
   end generate;
 
---pragma translate_off
+-- pragma translate_off
   tagmon: process(sclk)
-    subtype itag_type  is std_logic_vector(itagwidth - 1 downto 0);
+    subtype itag_type  is std_logic_vector(itag_lo'range);
     type itagset_type  is array(0 to iways - 1) of itag_type;
     type itags_type    is array(0 to 2 ** iidxwidth - 1) of itagset_type;
     variable itags      : itags_type;
-    subtype dctag_type is std_logic_vector(dtagwidth - 1 downto 0);
-    subtype dstag_type is std_logic_vector(dtagwidth - 1 downto 1);
+    subtype dctag_type is std_logic_vector(dtag_lo'range);
+    subtype dstag_type is std_logic_vector(dtag_lo1'range);
     type dctagset_type is array(0 to iways - 1) of dctag_type;
     type dstagset_type is array(0 to iways - 1) of dstag_type;
     type dctags_type   is array(0 to 2 ** iidxwidth - 1) of dctagset_type;
@@ -580,16 +589,16 @@ begin
       tagupd := false;
       for w in 0 to IWAYS-1 loop
         if crami.itagen(w) = '1' and crami.itagwrite = '1' then
-          idx := to_integer(unsigned(crami.iindex(iidxwidth - 1 downto 0)));
+          idx := u2i(crami.iindex(iidx'range));
           if notx(itags(idx)(w)) then tagupd := true; end if;
-          itags(idx)(w) := crami.itagdin(w)(itagwidth - 1 downto 0);
+          itags(idx)(w) := crami.itagdin(w)(itag_lo'range);
           assert notx(crami.itagdin(w)) report "Writing X into Itag!" severity failure;
         end if;
       end loop;
       if tagupd then
         for w1 in 0 to IWAYS-2 loop
           for w2 in w1+1 to IWAYS-1 loop
-            assert itags(idx)(w1)(dtagwidth - 1 downto 1) /= itags(idx)(w2)(dtagwidth - 1 downto 1)
+            assert itags(idx)(w1)(dtag_lo1'range) /= itags(idx)(w2)(dtag_lo1'range)
               report "Duplicated Itag written" severity failure;
           end loop;
         end loop;
@@ -598,29 +607,29 @@ begin
       ctagupd := (others => false);
       for w in 0 to DWAYS-1 loop
         if dtagconf = 0 and crami.dtaguwrite(w) = '1' then
-          cidx         := to_integer(unsigned(crami.dtaguindex(didxwidth - 1 downto 0)));
+          cidx         := u2i(crami.dtaguindex(didx'range));
           if notx(dctags(cidx)(w)) then
             tagupd     := true;
             ctagupd(w) := true;
           end if;
-          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth - 1 downto 0);
+          dctags(cidx)(w) := crami.dtagudin(w)(dtag_lo'range);
           assert notx(crami.dtagudin(w)) report "Writing X into Dtag!" severity failure;
         end if;
         if dtagconf /= 0 and crami.dtagcuen(w) = '1' and crami.dtagcuwrite = '1' then
-          cidx := to_integer(unsigned(crami.dtagcuindex(didxwidth - 1 downto 0)));
+          cidx := u2i(crami.dtagcuindex(didx'range));
           if notx(dctags(cidx)(w)) then
             tagupd     := true;
             ctagupd(w) := true;
           end if;
-          dctags(cidx)(w) := crami.dtagudin(w)(dtagwidth - 1 downto 0);
+          dctags(cidx)(w) := crami.dtagudin(w)(dtag_lo'range);
           assert notx(crami.dtagudin(w)) report "Writing X into Dtag!" severity failure;
         end if;
         if crami.dtagsen(w) = '1' and crami.dtagswrite = '1' then
-          idx      := to_integer(unsigned(crami.dtagsindex(didxwidth - 1 downto 0)));
+          idx      := u2i(crami.dtagsindex(didx'range));
           if notx(dstags(idx)(w)) then
             tagupd := true;
           end if;
-          dstags(idx)(w) := crami.dtagsdin(w)(dtagwidth - 1 downto 1);
+          dstags(idx)(w) := crami.dtagsdin(w)(dtag_lo1'range);
           assert notx(crami.dtagsdin(w)) report "Writing X into Dstag!" severity failure;
         end if;
       end loop;
@@ -633,21 +642,22 @@ begin
             if dctags(idx)(w2) = "UUUUUUUUUUUUUUUUUUUUU" then
               next;
             end if;
-            assert dctags(idx)(w1)(dtagwidth - 1 downto 1) /= dctags(idx)(w2)(dtagwidth - 1 downto 1)
+            assert dctags(idx)(w1)(dtag_lo1'range) /= dctags(idx)(w2)(dtag_lo1'range)
 --              report "Duplicated dtag written" severity failure;
               report "Duplicated dtag written " & tost_bits(dctags(idx)(w1)) & " " & tost_bits(dctags(idx)(w2)) severity failure;
-            assert dstags(idx)(w1)(dtagwidth - 1 downto 1) /= dstags(idx)(w2)(dtagwidth - 1 downto 1)
+            assert dstags(idx)(w1)(dtag_lo1'range) /= dstags(idx)(w2)(dtag_lo1'range)
+              or (dtagconf=0 and (dctags(idx)(w1)(0)='0' or dctags(idx)(w2)(0)='0'))
               report "Duplicated snoop-dtag written" severity failure;
           end loop;
         end loop;
         for w in 0 to DWAYS-1 loop
           if ctagupd(w) then
-            assert dctags(cidx)(w)(dtagwidth - 1 downto 1) = dstags(cidx)(w) or dctags(cidx)(w)(0) = '0'
+            assert dctags(cidx)(w)(dtag_lo1'range) = dstags(cidx)(w) or dctags(cidx)(w)(0) = '0'
               report "Snoop and regular tag mismatch" severity failure;
           end if;
         end loop;
       end if;
     end if;
   end process;
---pragma translate_on
+-- pragma translate_on
 end;

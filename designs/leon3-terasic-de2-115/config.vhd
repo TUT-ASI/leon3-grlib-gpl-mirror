@@ -185,7 +185,7 @@ package config is
   constant CFG_GPT_WDOG : integer := 16#0#;
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
-  constant CFG_GRGPIO_IMASK : integer := 16#fe#;
+  constant CFG_GRGPIO_IMASK : integer := 16#7fffffff#;
   constant CFG_GRGPIO_WIDTH : integer := (32);
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;

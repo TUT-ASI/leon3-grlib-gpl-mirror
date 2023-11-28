@@ -34,6 +34,7 @@ use grlib.config.all;
 use grlib.stdlib.all;
 library gaisler;
 use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 library techmap;
 use techmap.gencomp.all;
 

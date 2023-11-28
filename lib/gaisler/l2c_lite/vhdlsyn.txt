@@ -1,5 +1,5 @@
 l2c_lite.vhd
-l2c_lite_mem.vhd
-l2c_lite_ctrl.vhd
+l2c_lite_core.vhd
 l2c_lite_ahb.vhd
-l2c_lite_axi.vhd
+l2c_lite_axi3.vhd
+l2c_lite_axi4.vhd

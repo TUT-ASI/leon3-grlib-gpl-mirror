@@ -124,7 +124,8 @@ entity leon3mp is
     busboutp   : out std_logic;
     busboutn   : out std_logic;
     
-    sw      	: in std_logic_vector(0 to 2) := "000"
+    ledg        : inout std_logic_vector(8 downto 0);
+    sw      	: in std_logic_vector(17 downto 0) := (others => '0')
 
     );
 end;
@@ -181,6 +182,12 @@ signal gpto : gptimer_out_type;
 
 signal gpioi : gpio_in_type;
 signal gpioo : gpio_out_type;
+
+signal gpioi_sw : gpio_in_type;
+signal gpioo_sw : gpio_out_type;
+
+signal gpioi_ledg : gpio_in_type;
+signal gpioo_ledg : gpio_out_type;
 
 signal clklock, elock : std_ulogic;
 signal can_lrx, can_ltx   : std_logic_vector(0 to 7);
@@ -346,7 +353,7 @@ begin
     generic map (hindex => CFG_NCPU, pindex => 7, paddr => 7)
     port map (rstn, clkm, dui, duo, apbi, apbo(7), ahbmi, ahbmo(CFG_NCPU));
 --    dsurx_pad : inpad generic map (tech => padtech) port map (dsurx, dui.rxd); 
-      dui.rxd <= uart_rxd when sw(0) = '0' else '1';
+      dui.rxd <= uart_rxd when sw(17) = '0' else '1';
 --    dsutx_pad : outpad generic map (tech => padtech) port map (dsutx, duo.txd);
   end generate;
 --  nouah : if CFG_AHB_UART = 0 generate apbo(7) <= apb_none; end generate;
@@ -441,9 +448,9 @@ begin
     generic map (pindex => 1, paddr => 1,  pirq => 2, console => dbguart,
 	fifosize => CFG_UART1_FIFO)
     port map (rstn, clkm, apbi, apbo(1), u1i, u1o);
-    u1i.rxd <= '1' when sw(0) = '0' else uart_rxd; u1i.ctsn <= '0'; u1i.extclk <= '0'; 
+    u1i.rxd <= '1' when sw(17) = '0' else uart_rxd; u1i.ctsn <= '0'; u1i.extclk <= '0';
   end generate;
-  uart_txd <= u1o.txd when sw(0) = '1' else duo.txd;
+  uart_txd <= u1o.txd when sw(17) = '1' else duo.txd;
   noua0 : if CFG_UART1_ENABLE = 0 generate apbo(1) <= apb_none; end generate;
 
   irqctrl : if CFG_IRQ3_ENABLE /= 0 generate
@@ -468,15 +475,60 @@ begin
   end generate;
 --  notim : if CFG_GPT_ENABLE = 0 generate apbo(3) <= apb_none; end generate;
 
+  -- Pin header with label "GPIO" on board
   gpio0 : if CFG_GRGPIO_ENABLE /= 0 generate     -- GR GPIO unit
     grgpio0: grgpio
-      generic map( pindex => 9, paddr => 9, imask => CFG_GRGPIO_IMASK, 
-	nbits => CFG_GRGPIO_WIDTH)
-      port map( rstn, clkm, apbi, apbo(9), gpioi, gpioo);
+      generic map(
+        pindex    => 4, paddr => 4,
+        nbits     => CFG_GRGPIO_WIDTH,
+        imask     => CFG_GRGPIO_IMASK,
+        pirq      => 1,
+        irqgen    => 15,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(4), gpioi, gpioo);
 
       pio_pads : for i in 0 to CFG_GRGPIO_WIDTH-1 generate
         pio_pad : iopad generic map (tech => padtech)
             port map (gpio(i), gpioo.dout(i), gpioo.oen(i), gpioi.din(i));
+      end generate;
+   end generate;
+
+  -- Switches with labels SW0..SW16 on board
+  gpio1 : if true generate
+    grgpio1: grgpio
+      generic map(
+        pindex    => 5, paddr => 5,
+        pirq      => 1,
+        nbits     => 17,
+        imask     => 16#1ffff#,
+        irqgen    => 15,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(5), gpioi_sw, gpioo_sw);
+
+      pio_pads : for i in 0 to 17-1 generate
+        pio_pad : inpad generic map (tech => padtech)
+            port map (sw(i), gpioi_sw.din(i));
+      end generate;
+   end generate;
+
+  -- Green LEDs with labels ledg0..ledg8 on board
+  gpio2 : if true generate
+    grgpio2: grgpio
+      generic map(
+        pindex    => 6, paddr => 6,
+        pirq      => 1,
+        nbits     => 9,
+        imask     => 16#1ff#,
+        irqgen    => 15,
+        iflagreg  => 1
+      )
+      port map( rstn, clkm, apbi, apbo(6), gpioi_ledg, gpioo_ledg);
+
+      pio_pads : for i in 0 to 9-1 generate
+        pio_pad : iopad generic map (tech => padtech)
+            port map (ledg(i), gpioo_ledg.dout(i), gpioo_ledg.oen(i), gpioi_ledg.din(i));
       end generate;
    end generate;
 

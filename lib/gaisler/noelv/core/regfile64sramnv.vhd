@@ -74,7 +74,10 @@ end regfile64sramnv;
 architecture rtl of regfile64sramnv is
 
 
-  subtype  data_t is std_logic_vector(wdata1'range);
+  constant abits : integer := reg_t'length;
+  constant dbits : integer := wdata1'length;
+  
+  subtype  data_t is std_logic_vector(dbits - 1 downto 0);
 
   constant RPORTS : integer := 4;
   constant WPORTS : integer := 2;
@@ -131,9 +134,6 @@ architecture rtl of regfile64sramnv is
   signal re4_masked       : std_logic;
 
   signal r, rin : reg_type;
-
-  constant abits : integer := reg_t'length;
-  constant dbits : integer := data_t'length;
 
 begin  -- rtl
 

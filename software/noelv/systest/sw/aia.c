@@ -180,8 +180,6 @@
 //----------------------------------------------------------
 // Global variables and constants
 //----------------------------------------------------------
-int coreID;
-
 // Software interrupt registers
 volatile uint32_t *msip_hart;
 volatile uint32_t *ssip_hart;
@@ -192,12 +190,14 @@ volatile uint64_t *mtimer;
 
 
 // Pointers to communicate with interrupt handler 
-volatile int *result_core = (int *) (0x40100100);
-volatile int *eiid_core   = (int *) (0x40100200);
+volatile int result_core;
+volatile int eiid_core;
 // Set direct mode to 1 before asserting an APLIC interrupt when 
 // the APLIC is configured in direct delivery mode
-volatile int *direct_mode = (int *) (0x40100600);
-volatile int *direct_dom = (int *) (0x40100700);
+volatile int direct_mode;
+volatile int direct_dom;
+// Signals the machine mode trap handler to clear the ssip bit 
+volatile int clear_ssip = 0;
 
 // APLIC registers
 struct APLIC_reg_map {
@@ -313,7 +313,8 @@ void waitForInterrupt(int delay);
 // Test
 //----------------------------------------------------------
 
-int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus, int geilen, int domains, int lite) {
+int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus, 
+             int geilen, int domains, int lite, int smstateen, int smrnmi) {
 
   int i;
   uint64_t hvitcl ;
@@ -359,23 +360,22 @@ int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus,
     neiid = 5;
   }
 
-  //Set AIA realted bits of mstateen0 and hstateen0 to 1
-  set_csr(0x30c, ((uint64_t) 1 << 63) | ((uint64_t) 0b111 << 58) );
-  set_csr(0x60c, ((uint64_t) 0b111 << 58));
+  if (smstateen == 1) {
+    //Set AIA realted bits of mstateen0 and hstateen0 to 1
+    set_csr(0x30c, ((uint64_t) 1 << 63) | ((uint64_t) 0b111 << 58) );
+    set_csr(0x60c, ((uint64_t) 0b111 << 58));
+  }
 
-  //Set mnstatus nmie to 1 to enable interrupts
-  set_csr(0x744, 1 << 3);
+  if (smrnmi == 1) {
+    //Set mnstatus nmie to 1 to enable interrupts
+    set_csr(0x744, 1 << 3);
+  }
 
-  // set CSR dfeaturesen new_irq to 1 to use the new interrupt
-  // implementation
-  //set_csr(0x7c0, 1 << 12);
 
   // PMP has to be configured to allow other modes different
   // than machine mode to access memory
   PMPconfig();
 
-  // Read mhartid CSR to determine hart id
-  coreID = read_csr(mhartid);
 
   // Initialize pointers to IMSIC and APLIC registers
   init_IMSIC_reg_map(imsic_addr, geilen, sbits, vcpubits);
@@ -417,7 +417,7 @@ int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus,
   // -----------------------------------------------------------
 
   // Set APLIC direct mode to 0
-  *direct_mode = 0;
+  direct_mode = 0;
 
   report_subtest(1);
   if (M_IMSIC_interrupt_test(neiid) != 1) {
@@ -540,7 +540,7 @@ int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus,
 //----------------------------------------------------------
 
 void init_IMSIC_reg_map (addr_t imsic_addr, int geilen, int sbits, int vcpubits) {
-  const int endianness = 1;
+  const int endianness = 0;
   int j;
   IMSICregs[0].m_seteipnum = (uint32_t *) (imsic_addr + 4*endianness + (0 << 12));
   IMSICregs[0].s_seteipnum = (uint32_t *) (imsic_addr + 4*endianness + (1 << sbits) + (0 << (vcpubits+12)));
@@ -631,8 +631,13 @@ void __attribute__((weak, interrupt)) M_trap_handler() {
   } else {
     // It should jump here only when supervisor mode tries to 
     // disable mip.ssip to disable the supervisor software interrupt
-    clear_csr(mip, MIP_SSIP);
-    write_csr(mepc, read_csr(mepc)+4);
+    if (clear_ssip == 1) {
+      clear_csr(mip, MIP_SSIP);
+      write_csr(mepc, read_csr(mepc)+4);
+      clear_ssip = 0;
+    } else {
+      fail(29);
+    }
   }
 }
 
@@ -680,19 +685,19 @@ void M_external_interrupt_handler(void) {
   int coreID;
   uint32_t claimi;
 
-  if (*direct_mode == 0) {
+  if (direct_mode == 0) {
     // IMSIC interrupt
     // Read the corresponding EIP register and check
     // that the value coincides with the expected one
-    write_csr(0x350, EIP((eiid_core[coreID]/64)*2)); //Only even addresses are valid
+    write_csr(0x350, EIP((eiid_core/64)*2)); //Only even addresses are valid
     eip_init = read_csr(0x351);
-    if (eip_init != (uint64_t) 1 << (eiid_core[coreID] % 64)) {
+    if (eip_init != (uint64_t) 1 << (eiid_core % 64)) {
       fail(0);
     }
     // Read the MTOPEI register and check
     // that the value coincides with the expected one
     mtopei_init = swap_csr(0x35C, 0);
-    if (eiid_core[coreID] != mtopei_init >> 16 || eiid_core[coreID]!= (mtopei_init  & ~(0xFFFF << 16))) {
+    if (eiid_core != mtopei_init >> 16 || eiid_core!= (mtopei_init  & ~(0xFFFF << 16))) {
       fail(1);
     }
     // Read the corresponding EIP register and check
@@ -707,21 +712,21 @@ void M_external_interrupt_handler(void) {
     if (mtopei_final != 0) {
       fail(3);
     }
-    if (result_core[coreID] == 0)
-      result_core[coreID] = 1; //TEST PASSED
+    if (result_core == 0)
+      result_core = 1; //TEST PASSED
 
   } else { //APLIC direct mode
-    claimi = *IDCregs[*direct_dom][coreID].claimi;
-    if (claimi >> 16 != eiid_core[coreID] || (claimi & 0x000000FF) != eiid_core[coreID]) {
+    claimi = *IDCregs[direct_dom][0].claimi;
+    if (claimi >> 16 != eiid_core || (claimi & 0x000000FF) != eiid_core) {
       fail(4);
     }
-    claimi = *IDCregs[*direct_dom][coreID].claimi;
+    claimi = *IDCregs[direct_dom][0].claimi;
     if (claimi != 0) {
       fail(5);
     }
 
-    if (result_core[coreID] == 0)
-      result_core[coreID] = 2; //TEST PASSED
+    if (result_core == 0)
+      result_core = 2; //TEST PASSED
   }
 
 }
@@ -738,19 +743,19 @@ void S_external_interrupt_handler(void) {
   int coreID;
   uint32_t claimi;
 
-  if (*direct_mode == 0) {
+  if (direct_mode == 0) {
     // IMSIC interrupt
     // Read the corresponding EIP register and check
     // that the value coincides with the expected one
-    write_csr(0x150, EIP((eiid_core[coreID]/64)*2)); //Only even addresses are valid
+    write_csr(0x150, EIP((eiid_core/64)*2)); //Only even addresses are valid
     eip_init = read_csr(0x151);
-    if (eip_init != (uint64_t) 1 << (eiid_core[coreID] % 64)) {
+    if (eip_init != (uint64_t) 1 << (eiid_core % 64)) {
       fail(6);
     }
     // Read the MTOPEI register and check
     // that the value coincides with the expected one
     stopei_init = swap_csr(0x15C, 0);
-    if (eiid_core[coreID] != stopei_init >> 16 || eiid_core[coreID]!= (stopei_init  & ~(0xFFFF << 16))) {
+    if (eiid_core != stopei_init >> 16 || eiid_core!= (stopei_init  & ~(0xFFFF << 16))) {
       fail(7);
     }
     // Read the corresponding EIP register and check
@@ -765,22 +770,22 @@ void S_external_interrupt_handler(void) {
     if (stopei_final != 0) {
       fail(9);
     }
-    if (result_core[coreID] == 0)
-      result_core[coreID] = 1; //TEST PASSED
+    if (result_core == 0)
+      result_core = 1; //TEST PASSED
 
 
   } else { //APLIC direct mode
-    claimi = *IDCregs[*direct_dom][coreID].claimi;
-    if (claimi >> 16 != eiid_core[coreID] || (claimi & 0x000000FF) != eiid_core[coreID]) {
+    claimi = *IDCregs[direct_dom][0].claimi;
+    if (claimi >> 16 != eiid_core || (claimi & 0x000000FF) != eiid_core) {
       fail(10);
     }
-    claimi = *IDCregs[*direct_dom][coreID].claimi;
+    claimi = *IDCregs[direct_dom][0].claimi;
     if (claimi != 0) {
       fail(11);
     }
 
-    if (result_core[coreID] == 0)
-      result_core[coreID] = 2; //TEST PASSED
+    if (result_core == 0)
+      result_core = 2; //TEST PASSED
   }
 }
 
@@ -796,15 +801,15 @@ void VS_external_interrupt_handler(void) {
 
   // Read the corresponding EIP register and check
   // that the value coincides with the expected one
-  write_csr(0x250, EIP((eiid_core[coreID]/64)*2)); //Only even addresses are valid
+  write_csr(0x250, EIP((eiid_core/64)*2)); //Only even addresses are valid
   eip_init = read_csr(0x251);
-  if (eip_init != (uint64_t) 1 << (eiid_core[coreID] % 64)) {
+  if (eip_init != (uint64_t) 1 << (eiid_core % 64)) {
     fail(24);
   }
   // Read the VSTOPEI register and check
   // that the value coincides with the expected one
   vstopei_init = swap_csr(0x25C, 0);
-  if (eiid_core[coreID] != vstopei_init >> 16 || eiid_core[coreID]!= (vstopei_init  & ~(0xFFFF << 16))) {
+  if (eiid_core != vstopei_init >> 16 || eiid_core!= (vstopei_init  & ~(0xFFFF << 16))) {
     fail(25);
   }
   // Read the corresponding EIP register and check
@@ -819,24 +824,28 @@ void VS_external_interrupt_handler(void) {
   if (vstopei_final != 0) {
     fail(27);
   }
-  if (result_core[coreID] == 0)
-    result_core[coreID] = 1; //TEST PASSED
+  if (result_core == 0)
+    result_core = 1; //TEST PASSED
 }
 
 
 void M_software_interrupt_handler (void) {
   msip_hart[0] = 0;
-  result_core[coreID] = 1;
+  result_core = 1;
 }
 
 void S_software_interrupt_handler (void) {
+  //This instruction will rise a illegal 
+  //instruction exception. The MIP_SSIP bit will
+  //be cleared inside the machine trap handler
+  clear_ssip = 1;
   clear_csr(mip, MIP_SSIP);
-  result_core[coreID] = 1;
+  result_core = 1;
 }
 
 void M_timer_interrupt_handler (void) {
   timer_interrupt_disable();
-  result_core[coreID] = 1;
+  result_core = 1;
 }
 
 void interrupt_global_enable (void) {
@@ -1027,13 +1036,13 @@ int M_IMSIC_interrupt_test(int neiid) {
   int i, j;
 
   for (j=1 ; j<=neiid ; j++) {
-    result_core[0] = 0;
-    eiid_core[0] = j;
+    result_core = 0;
+    eiid_core = j;
     *IMSICregs[0].m_seteipnum = j;
     waitForInterrupt(5);
-    if (result_core[0] == 0) 
+    if (result_core == 0) 
       fail(28);
-    if (result_core[0] != 1) {
+    if (result_core != 1) {
       return -1;
     }
   }
@@ -1044,13 +1053,13 @@ int S_IMSIC_interrupt_test(int neiid) {
   int j;
 
   for (j=1 ; j<=neiid ; j++) {
-    result_core[0] = 0;
-    eiid_core[0] = j;
+    result_core = 0;
+    eiid_core = j;
     *IMSICregs[0].s_seteipnum = j;
     waitForInterrupt(5);
-    if (result_core[0] == 0) 
+    if (result_core == 0) 
       fail(28);
-    if (result_core[0] != 1) {
+    if (result_core != 1) {
       return -1;
     }
   }
@@ -1062,13 +1071,13 @@ int VS_IMSIC_interrupt_test(int neiid, int vgein) {
   int j, k;
 
   for (k=1 ; k<=neiid ; k++) {
-    result_core[0] = 0;
-    eiid_core[0] = k;
+    result_core = 0;
+    eiid_core = k;
     *IMSICregs[0].g_seteipnum[vgein] = k;
     waitForInterrupt(5);
-    if (result_core[0] == 0) 
+    if (result_core == 0) 
       fail(28);
-    if (result_core[0] != 1) {
+    if (result_core != 1) {
       return -1;
     }
   }
@@ -1090,14 +1099,14 @@ int APLIC_MSI_interrupt_test(int domains, int sources) {
       *APLICregs[j].target[k] = (k | (0 << 18)); //EIID=k; Hart_index=i
     }
     for (k=1 ; k<=sources ; k++) {
-      result_core[0] = 0;
-      eiid_core[0] = k;
+      result_core = 0;
+      eiid_core = k;
       *APLICregs[j].setipnum = k; // eip(k) = 1
       *APLICregs[j].setienum = k; // eie(k) = 1
       waitForInterrupt(5);
-      if (result_core[0] == 0) 
+      if (result_core == 0) 
         fail(28);
-      if (result_core[0] != 1) {
+      if (result_core != 1) {
         return -1;
       }
     }
@@ -1113,10 +1122,10 @@ int M_software_interrupt_test(void) {
   int i;
 
   // Rise machine software interrupt
-  result_core[0] = 0;
+  result_core = 0;
   msip_hart[0] = 1;
   waitForInterrupt(5);
-  if (result_core[0] == 0) 
+  if (result_core == 0) 
     fail(28);
 
   return 1;
@@ -1125,10 +1134,10 @@ int M_software_interrupt_test(void) {
 int S_software_interrupt_test(void) {
 
   // Rise supervisor software interrupt
-  result_core[0] = 0;
+  result_core = 0;
   ssip_hart[0] = 1;
   waitForInterrupt(5);
-  if (result_core[0] == 0) 
+  if (result_core == 0) 
     fail(28);
 
   return 1;
@@ -1142,14 +1151,14 @@ int APLIC_direct_interrupt_test(int domains, int sources){
   int hart;
 
   // This shared variable informs the trap handler that direct mode is being tested
-  *direct_mode = 1;
+  direct_mode = 1;
   for (j=0 ; j<domains ; j++) {
     // Enable interrupts in every domain and set them as MSI delivery mode
     *APLICregs[j].domaincfg = 0b100000000; //DM = 0 and EI = 1
     // Configure the IDC structure idelivery register
     *IDCregs[j][0].idelivery = 1;
     // This shared variable informs the trap handler in which domain is active the hart
-    *direct_dom = j;
+    direct_dom = j;
     for (k=1 ; k<=sources ; k++) {
       // Configure every domain source as detached
       *APLICregs[j].sourcecfg[k] = 1; //SM=1 (detached)
@@ -1157,14 +1166,14 @@ int APLIC_direct_interrupt_test(int domains, int sources){
       *APLICregs[j].target[k] = (k | (0 << 18)); //IPRIO=k; Hart_index=i
     }
     for (k=1 ; k<=sources ; k++) {
-      result_core[0] = 0;
-      eiid_core[0] = k;
+      result_core = 0;
+      eiid_core = k;
       *APLICregs[j].setipnum = k; // eip(k) = 1
       *APLICregs[j].setienum = k; // eie(k) = 1
       waitForInterrupt(5);
-      if (result_core[0] == 0) 
+      if (result_core == 0) 
         fail(28);
-      if (result_core[0] != 2) {
+      if (result_core != 2) {
         return -1;
       }
     }
@@ -1174,7 +1183,7 @@ int APLIC_direct_interrupt_test(int domains, int sources){
       *APLICregs[j].sourcecfg[k] = 1<<10; //D=1 (detached)
     }
   }
-  *direct_mode = 0;
+  direct_mode = 0;
   return 1;
 }
 
@@ -1182,13 +1191,13 @@ int timer_interrupt_test(void) {
   int i;
   volatile uint64_t current_time;
 
-  result_core[0] = 0;
+  result_core = 0;
   current_time = *mtimer;
   mtimercmp_hart[0] = current_time + 100;
   current_time = mtimercmp_hart[0];
   timer_interrupt_enable();
   waitForInterrupt(200);
-  if (result_core[0] == 0) 
+  if (result_core == 0) 
     fail(28);
 
   return 1;

@@ -33,6 +33,108 @@ comment 'LEON5 Processor system'
       int 'Data Cache Data' CONFIG_LEON5_CMCFG_DATA 0
   endmenu
   mainmenu_option next_comment
+  comment 'Tightly coupled memory      '
+      choice 'Instruction TCM ' \
+          "None             CONFIG_LEON5_ITCM_NONE \
+           1KiB             CONFIG_LEON5_ITCM_1K \
+           2KiB             CONFIG_LEON5_ITCM_2K \
+           4KiB             CONFIG_LEON5_ITCM_4K \
+           8KiB             CONFIG_LEON5_ITCM_8K \
+           16KiB            CONFIG_LEON5_ITCM_16K \
+           32KiB            CONFIG_LEON5_ITCM_32K \
+           64KiB            CONFIG_LEON5_ITCM_64K \
+           128KiB           CONFIG_LEON5_ITCM_128K \
+           256KiB           CONFIG_LEON5_ITCM_256K \
+           512KiB           CONFIG_LEON5_ITCM_512K \
+           1MiB             CONFIG_LEON5_ITCM_1M" None
+      choice 'Data TCM            ' \
+          "None             CONFIG_LEON5_DTCM_NONE \
+           1KiB             CONFIG_LEON5_DTCM_1K \
+           2KiB             CONFIG_LEON5_DTCM_2K \
+           4KiB             CONFIG_LEON5_DTCM_4K \
+           8KiB             CONFIG_LEON5_DTCM_8K \
+           16KiB            CONFIG_LEON5_DTCM_16K \
+           32KiB            CONFIG_LEON5_DTCM_32K \
+           64KiB            CONFIG_LEON5_DTCM_64K \
+           128KiB           CONFIG_LEON5_DTCM_128K \
+           256KiB           CONFIG_LEON5_DTCM_256K \
+           512KiB           CONFIG_LEON5_DTCM_512K \
+           1MiB             CONFIG_LEON5_DTCM_1M" None
+  endmenu
+  if [ "$CONFIG_LEON5_ITCM_NONE" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 0
+  fi
+  if [ "$CONFIG_LEON5_ITCM_1K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 7
+  fi
+  if [ "$CONFIG_LEON5_ITCM_2K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 8
+  fi
+  if [ "$CONFIG_LEON5_ITCM_4K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 9
+  fi
+  if [ "$CONFIG_LEON5_ITCM_8K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 10
+  fi
+  if [ "$CONFIG_LEON5_ITCM_16K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 11
+  fi
+  if [ "$CONFIG_LEON5_ITCM_32K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 12
+  fi
+  if [ "$CONFIG_LEON5_ITCM_64K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 13
+  fi
+  if [ "$CONFIG_LEON5_ITCM_128K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 14
+  fi
+  if [ "$CONFIG_LEON5_ITCM_256K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 15
+  fi
+  if [ "$CONFIG_LEON5_ITCM_512K" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 16
+  fi
+  if [ "$CONFIG_LEON5_ITCM_1M" = "y" ]; then
+    define_int  CONFIG_LEON5_ITCMCFG 17
+  fi
+  if [ "$CONFIG_LEON5_DTCM_NONE" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 0
+  fi
+  if [ "$CONFIG_LEON5_DTCM_1K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 7
+  fi
+  if [ "$CONFIG_LEON5_DTCM_2K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 8
+  fi
+  if [ "$CONFIG_LEON5_DTCM_4K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 9
+  fi
+  if [ "$CONFIG_LEON5_DTCM_8K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 10
+  fi
+  if [ "$CONFIG_LEON5_DTCM_16K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 11
+  fi
+  if [ "$CONFIG_LEON5_DTCM_32K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 12
+  fi
+  if [ "$CONFIG_LEON5_DTCM_64K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 13
+  fi
+  if [ "$CONFIG_LEON5_DTCM_128K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 14
+  fi
+  if [ "$CONFIG_LEON5_DTCM_256K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 15
+  fi
+  if [ "$CONFIG_LEON5_DTCM_512K" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 16
+  fi
+  if [ "$CONFIG_LEON5_DTCM_1M" = "y" ]; then
+    define_int  CONFIG_LEON5_DTCMCFG 17
+  fi
+
+  mainmenu_option next_comment
   comment 'Fault-tolerance  '      
       choice 'IU Register file protection     ' \
 	"None		CONFIG_IUFT_NONE \

@@ -24,6 +24,7 @@
 -- Description: NOEL-V debug module
 ------------------------------------------------------------------------------
 
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -52,6 +53,8 @@ entity dmnvx is
   generic (
     -- Debug Module
     nharts      : integer                       := 1;   -- number of harts
+    nhgroups    : integer                       := 4;   -- Number of halt groups
+    nrgroups    : integer                       := 4;   -- Number of resume groups
     datacount   : integer range 0  to 12        := 4;   -- Number of data registers
     nscratch    : integer range 0  to 2         := 2;   -- Number of scratch registers
     unavailtimeout:integer range 0  to 1024     := 64;  -- Clock cycles timeout
@@ -67,7 +70,6 @@ entity dmnvx is
     dbgo   : out nv_debug_in_vector(0 to NHARTS-1);
     dsui   : in  nv_dm_in_type;
     dsuo   : out nv_dm_out_type
-    -- NW FIXME: ...
     );
 
 end;
@@ -162,6 +164,8 @@ architecture rtl of dmnvx is
     progbuf => (others => '0')
   );
 
+  type group_type is array (natural range <>) of std_logic_vector(NHARTS-1 downto 0);
+
   type reg_type is record
     -- DSU Interface
     dsuen       : std_logic_vector(2 downto 0);
@@ -169,12 +173,14 @@ architecture rtl of dmnvx is
     break       : std_ulogic;
     -- From Debug Module to Harts
     en          : std_logic_vector(NHARTS-1 downto 0);
-    halt        : std_logic_vector(NHARTS-1 downto 0);
-    resume      : std_logic_vector(NHARTS-1 downto 0);
-    reset       : std_logic_vector(NHARTS-1 downto 0);
+    ghaltpend   : std_logic_vector(NHARTS-1 downto 0); -- Hart is pending to be halted due to halt group
+    gresumepend : std_logic_vector(NHARTS-1 downto 0); -- Hart is pending to be resumed due to resume group
     hawindow    : std_logic_vector(NHARTS-1 downto 0);
     data        : data_type;
     control     : dmcontrol_type;
+    hgroups     : group_type(0 to nhgroups-1);         -- Stores which hart belongs to each halt group
+    rgroups     : group_type(0 to nrgroups-1);         -- Stores which hart belongs to each resume group
+    grouptype   : std_ulogic;
     cmd         : abscommand_type;
     autoexec    : autoexec_type;
     busy        : std_ulogic;
@@ -197,12 +203,17 @@ architecture rtl of dmnvx is
     break       => '0',
     -- From Debug Module to Harts
     en          => (others => '0'),
-    halt        => (others => '0'),
-    resume      => (others => '0'),
-    reset       => (others => '0'),
+    --halt        => (others => '0'),
+    --resume      => (others => '0'),
+    --reset       => (others => '0'),
+    ghaltpend   => (others => '0'),
+    gresumepend => (others => '0'),
     hawindow    => (others => '0'),
     data        => (others => zero32),
     control     => dmcontrol_reset,
+    hgroups     => (others => (others => '0')),
+    rgroups     => (others => (others => '0')),
+    grouptype   => '0',
     cmd         => abscommand_reset,
     autoexec    => autoexec_reset,
     busy        => '0',
@@ -279,6 +290,10 @@ begin
     variable derr               : std_ulogic;
     variable dexec_done         : std_ulogic;
     variable pbwrite            : std_logic_vector(NHARTS-1 downto 0);
+    -- Hatl groups
+    variable clrghaltpend        : std_logic_vector(NHARTS-1 downto 0);
+    variable clrgresumepend      : std_logic_vector(NHARTS-1 downto 0);
+
 
 
     procedure dm_reg_access(
@@ -286,7 +301,8 @@ begin
       wr      : in  std_ulogic;
       wdata   : in  std_logic_vector;
       rdata   : out std_logic_vector) is
-      variable vrd, vwd: std_logic_vector(31 downto 0);
+      variable vrd     : std_logic_vector(31 downto 0);
+      variable vwd     : std_logic_vector(wdata'length - 1 downto 0);
       variable hasel2  : std_logic_vector(ADDR_H downto 6) := addr(ADDR_H downto 6);
       variable hasel3  : std_logic_vector(5 downto 2) := addr(5 downto 2);
     begin
@@ -444,6 +460,52 @@ begin
           end if;
         when "0011" =>
           case hasel3 is
+            when "0010" => -- Debug Module Control and Status 2 
+              -- Read
+              if nrgroups > 0 then
+                vrd(11)           := r.grouptype;
+              end if;
+              if r.grouptype = '0' then    -- halt groups
+                if nhgroups > 0 then
+                  for i in 0 to nhgroups-1 loop
+                    if r.hgroups(i)(to_integer(unsigned(r.control.hartsel))) = '1' then
+                      vrd(6 downto 2)   := std_logic_vector(to_unsigned(i, 5));
+                    end if;
+                  end loop;
+                end if;
+              else                       -- resume groups
+                if nrgroups > 0 then
+                  for i in 0 to nrgroups-1 loop
+                    if r.rgroups(i)(to_integer(unsigned(r.control.hartsel))) = '1' then
+                      vrd(6 downto 2)   := std_logic_vector(to_unsigned(i, 5));
+                    end if;
+                  end loop;
+                end if;
+              end if;
+              -- Write
+              if wr = '1' then
+                if nrgroups > 0 then
+                  v.grouptype   :=  vwd(11); 
+                end if;
+                if vwd(1) = '1' then   -- hgwrite = 1
+                  if vwd(11) = '0' then      -- group type = 0
+                    if nhgroups > 0 and unsigned(vwd(6 downto 2)) < nhgroups then
+                      for i in 0 to nhgroups-1 loop
+                        v.hgroups(i)(to_integer(unsigned(r.control.hartsel))) := '0';
+                      end loop;
+                      v.hgroups(to_integer(unsigned(vwd(6 downto 2))))(to_integer(unsigned(r.control.hartsel))) := '1';
+                    end if;
+                  else                       -- group type = 1
+                    if nrgroups > 0 and unsigned(vwd(6 downto 2)) < nrgroups then
+                      for i in 0 to nrgroups-1 loop
+                        v.rgroups(i)(to_integer(unsigned(r.control.hartsel))) := '0';
+                      end loop;
+                      v.rgroups(to_integer(unsigned(vwd(6 downto 2))))(to_integer(unsigned(r.control.hartsel))) := '1';
+                    end if;
+                  end if;
+                end if;
+              end if;
+
             when "0000" | "0100" | "0101" =>
               -- Authentication Data
               -- Halt Summary 2
@@ -712,6 +774,34 @@ begin
     if r.control.haltreq = '1' then
       haltreq           := hartselmask;
     end if;
+    
+    -- Generate halt signal for group harts
+    clrghaltpend := (others => '1');
+    for i in 0 to NHARTS-1 loop
+      if r.halted(i) = '0' and dbgi(i).halted = '1' then
+        if r.ghaltpend(i) = '0' then
+          -- if the hart was halted setting haltreq bit to 1 
+          for j in 1 to nhgroups-1 loop
+            if r.hgroups(j)(i) = '1' then
+              v.ghaltpend     := v.ghaltpend or r.hgroups(j);
+              -- The bit of the hart that was halted setting haltreq
+              -- bit to 1 should not be set to 1
+              clrghaltpend(i) := '0';
+            end if;
+          end loop;
+          -- If hart inside of a group is already halted do nothing
+          -- If hart is resuming, halt it when it finishes resuming
+          v.ghaltpend := v.ghaltpend and not(r.halted and r.resumeack);
+        else 
+          -- if the hart was halted because another hart in the same 
+          -- halt group has halted we clear the group halt request bit
+          v.ghaltpend(i)  := '0';
+        end if; 
+      end if;
+    end loop;
+    v.ghaltpend  := v.ghaltpend and clrghaltpend;
+
+
 
     -- Generate resume signal
     resumereq           := (others => '0');
@@ -727,6 +817,38 @@ begin
       end loop;
     end if;
     resumereq := r.resumereq;
+
+
+    -- Generate resume signal for group harts
+    clrgresumepend := (others => '1');
+    for i in 0 to NHARTS-1 loop
+      if r.running(i) = '0' and dbgi(i).running = '1' then
+        if r.gresumepend(i) = '0' then
+          -- if the hart was resumed setting resumereq bit to 1 
+          for j in 1 to nrgroups-1 loop
+            if r.rgroups(j)(i) = '1' then
+              v.gresumepend := v.gresumepend or r.rgroups(j);
+              v.resumeack   := v.resumeack and (not r.rgroups(j));
+              -- The bit of the hart that was resumed setting resumreq
+              -- bit to 1 should not be set to 1
+              clrgresumepend(i) := '0'; 
+            end if;
+          end loop;
+          -- Do not resume if hart is in the halting process (running=1 and (haltreq or ghaltpen) = 1)
+          -- If hart inside of a group is already running do nothing
+          -- both conditions can be merged into the following one
+          v.gresumepend := v.gresumepend and not(r.running);
+          v.resumeack   := v.resumeack or r.running;
+        else 
+          -- if the hart was resumed because another hart in the same 
+          -- resume group has resumed we clear the group resume request bit
+          v.gresumepend(i) := '0';
+          v.resumeack(i)   := '1';
+        end if; 
+      end if;
+    end loop;
+    v.gresumepend := v.gresumepend and clrgresumepend;
+    v.resumeack   := v.resumeack and clrgresumepend;
 
     -- Generate reset signal
     hartreset           := (others => '0');
@@ -899,9 +1021,16 @@ begin
       --v.dsubr           := (others => '0');
       v.break           := '0';
       v.en              := (others => '0');
-      v.halt            := (others => '0');
-      v.resume          := (others => '0');
-      v.reset           := (others => '0');
+      --v.halt            := (others => '0');
+      --v.resume          := (others => '0');
+      --v.reset           := (others => '0');
+      v.ghaltpend       := (others => '0');
+      v.gresumepend     := (others => '0');
+      v.hgroups         := (others => (others => '0'));
+      v.hgroups(0)      := (others => '1');
+      v.rgroups         := (others => (others => '0'));
+      v.rgroups(0)      := (others => '1');
+      v.grouptype       := '0';
       v.hawindow        := (others => '0');
       v.data            := (others => zero32);
       v.control         := dmcontrol_reset;
@@ -928,8 +1057,9 @@ begin
 
     for i in 0 to NHARTS-1 loop
       dbgo(i).dsuen     <= r.en(i);             -- DSU Enable
-      dbgo(i).halt      <= haltreq(i);          -- Halt Request
-      dbgo(i).resume    <= resumereq(i);        -- Resume Request
+      dbgo(i).halt      <= haltreq(i) or r.ghaltpend(i);     -- Halt Request
+      dbgo(i).haltgroup <= r.ghaltpend(i);                   -- Halt Group Request
+      dbgo(i).resume    <= resumereq(i) or r.gresumepend(i); -- Resume Request
       dbgo(i).reset     <= hartreset(i);        -- Reset Request
       dbgo(i).haltonrst <= r.haltonrst(i);      -- Halt-on-reset
       dbgo(i).freeze    <= '0';                 -- Hold CPU
@@ -957,6 +1087,8 @@ begin
       r <= rin;
       if rstn = '0' then
         r <= RES_T;
+        r.hgroups(0) <= (others => '1');
+        r.rgroups(0) <= (others => '1');
         for i in 0 to NHARTS-1 loop
           r.haltonrst(i) <= r.dsubr(2);
         end loop;

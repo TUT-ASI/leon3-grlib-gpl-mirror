@@ -33,6 +33,7 @@ use grlib.riscv.all;
 use grlib.stdlib.tost;
 use grlib.stdlib.notx;
 library gaisler;
+use gaisler.noelvtypes.all;
 use gaisler.utilnv.u2vec;
 use gaisler.utilnv.s2vec;
 use gaisler.utilnv.u2i;
@@ -50,12 +51,12 @@ use gaisler.utilnv.get_lo;
 use gaisler.utilnv.set_hi;
 use gaisler.utilnv.set_lo;
 use gaisler.utilnv.to_bit;
-use gaisler.nvsupport.all;
+use gaisler.nvsupport.is_enabled;
 
 
 package fputilnv is
 
-  constant fpulen : integer := 64;  -- qqq Should not be here!
+  constant fpulen : integer := 64;
 
   -- IEEE single precision:  8, 23
   -- IEEE double precision: 11, 52
@@ -378,7 +379,6 @@ package body fputilnv is
             if ext_zfa and rfa2(4 downto 2) = "001" then
               if rfa2(1) = '1' then
                 if ext_zfbfmin then
-                  -- qqq This is still an undecided encoding!
                   if rfa2(0) = '1' or (fmt /= "00" and fmt /= "10") then
                     illegal := true;
                   end if;
@@ -846,7 +846,8 @@ package body fputilnv is
 
 
   -- Convert NaN-boxed generic floating point value to internal format.
-  function unpack(opu : std_logic_vector; ebits : integer; mbits : integer) return float is
+  function unpack(opu_in : std_logic_vector; ebits : integer; mbits : integer) return float is
+    variable opu  : std_logic_vector(opu_in'length - 1 downto 0) := opu_in;
     variable bias : integer                              := 2 ** (ebits - 1) - 1;
     variable bits : integer                              := 1 + ebits + mbits;
     -- Non-constant
@@ -921,14 +922,14 @@ package body fputilnv is
     variable exp  : signed(op.exp'range)                 := op.exp;
     variable r    : std_logic_vector(bits - 1 downto 0);
   begin
---pragma translate_off
+-- pragma translate_off
     if is_normal(op) and is_x(std_logic_vector(exp)) then
       exp := (others => '0');
     end if;
     assert not is_normal(op) or (exp > -bias and exp <= bias)
       report "Bad pack op " & tost(exp) & " " & tost(is_normal(op))
       severity failure;
---pragma translate_on
+-- pragma translate_on
     if is_nan(op) then
       r := NaN(ebits, mbits, is_signan(op));
     elsif is_inf(op) then
@@ -1308,16 +1309,10 @@ package body fputilnv is
       when 1       => exp    := u2vec(1, exp);                  -- Min normal
       when 30 | 31 =>                                           -- Inf, NaN
       when others  =>
-        if e + bias < -mbits then
-          exp := (others => '0');
-        elsif e + bias < 1 then
-          exp := (others => '0');
-          mant(mant'high + (e + bias)) := '1';
-        elsif e + bias > 2 ** ebits - 1 then
-          -- Infinity
-        else
-          exp := u2vec(e + bias, exp);
-        end if;
+        -- Since formality seems to be a bit confused here,
+        -- avoid complications, for now.
+        -- This is thus only correct for F/D.
+        exp := u2vec(e + bias, exp);
     end case;
 
     return sign & exp & mant;
@@ -1333,17 +1328,20 @@ package body fputilnv is
     case fmt is
       when "00"   => set_lo(res, imm_create(v, 8, 23));
       when "01"   => set_lo(res, imm_create(v, 11, 52));
-      when "10" =>
+      when "10"   =>
         if ext_zfh then
           set_lo(res, imm_create(v, 5, 10));  -- IEEE half precision
+          -- Special handling of a couple of values
+          if    u2i(v) = 2 then  -- 2^-16
+            res(15 downto 0) := '0' & "00000" & "0100000000";
+          elsif u2i(v) = 3 then  -- 2^-15
+            res(15 downto 0) := '0' & "00000" & "1000000000";
+          elsif u2i(v) = 29 then  -- Infinity since 2^16 is not representable
+            res(15 downto 0) := '0' & "11111" & "0000000000";
+          end if;
         end if;
       when others =>
-        if ext_zfbfmin then
-          set_lo(res, imm_create(v, 8, 7));  -- BFLOAT16
-        end if;
-        -- FP8 152  FP16 169
-        -- Tesla CFloat8 143/152 controlled bias, no NaN or Inf
-        -- Stochastic rounding from BFloat16/IEEE32 to CFloat8
+        null;
     end case;
 
     return res;

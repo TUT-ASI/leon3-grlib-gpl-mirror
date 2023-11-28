@@ -1,11 +1,11 @@
 Overview
 --------
 
-This LEON3 design is tailored for the Altera CycloneV E Development
+This LEON5 design is tailored for the Altera CycloneV E Development
 kit and builds with Quartus 16.
 
 Design contains:
-  * LEON3 running at 95 MHz
+  * LEON5 running at 50 MHz
   * 512 MiB DDR3 running at 300 MHz using Quartus soft memory controller IP
   * 256 MiB LPDDR2 running at 300 MHz using Quartus soft IP
   * JTAG debug link connected to on-board USB blaster II
@@ -99,9 +99,9 @@ Memory map:
 Interrupts:
   2 - UART
   4 - I2CMST
+  5 - GRETH #1
+  6 - GRETH #2
   8 - Timer
-  12 - GRETH #1
-  13 - GRETH #2
 
 
 Simulation

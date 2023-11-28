@@ -948,6 +948,46 @@ library techmap;
 use techmap.gencomp.all;
 -- pragma translate_off
 library unisim;
+use unisim.IBUFDS;
+-- pragma translate_on
+
+
+entity versal_inpad_ds is
+  generic (level : integer := lvds; voltage : integer := x25v);
+  port (padp, padn : in std_ulogic; o : out std_ulogic);
+end;
+
+architecture rtl of versal_inpad_ds is
+
+  component IBUFDS
+  generic ( CAPACITANCE : string := "DONT_CARE";
+	    DIFF_TERM : boolean := FALSE; IBUF_DELAY_VALUE : string := "0";
+	    IFD_DELAY_VALUE : string := "AUTO"; IOSTANDARD : string := "DEFAULT");
+     port ( O : out std_ulogic; I : in std_ulogic; IB : in std_ulogic);
+  end component;
+
+  attribute syn_noprune : boolean;
+  attribute syn_noprune of IBUFDS : component is true;
+
+begin
+  xlvds : if level = lvds generate
+    lvds_25 : if voltage = x25v generate
+      ip : IBUFDS generic map (DIFF_TERM => true, IOSTANDARD =>"LVDS_25")
+	   port map (O => o, I => padp, IB => padn);
+    end generate;
+  end generate;
+  beh : if level /= lvds generate
+    o <= padp after 1 ns;
+  end generate;
+end rtl;
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+-- pragma translate_off
+library unisim;
 use unisim.IBUFGDS;
 -- pragma translate_on
 

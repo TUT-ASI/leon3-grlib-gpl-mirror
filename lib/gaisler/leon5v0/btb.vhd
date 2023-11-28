@@ -35,7 +35,7 @@ use grlib.config_types.all;
 use grlib.config.all;
 
 library gaisler;
-use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 
 entity btb is
   generic (

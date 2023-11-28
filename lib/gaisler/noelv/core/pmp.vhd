@@ -35,6 +35,7 @@ library gaisler;
 use gaisler.noelv.all;
 use gaisler.noelvint.all;
 use gaisler.mmucacheconfig.csrtype;
+use gaisler.utilnv.get_lo;
 
 entity pmp is
   generic (
@@ -243,8 +244,8 @@ architecture rtl of pmp is
           case csra_high is
             when CSR_PMPADDR0   =>
               if pmp_locked(csr, to_integer(csra_low)) = '0' then
-                csr.pmpaddr(to_integer(csra_low))  := wcsr_in(PMPADDRBITS - 1 downto 0);
-                csr.pmpaddr(to_integer(csra_low))(PMPADDRBITS - 1 downto pmp_msb - 2 + 1) :=
+                csr.pmpaddr(to_integer(csra_low)) := get_lo(wcsr_in, csr.pmpaddr(0));
+                csr.pmpaddr(to_integer(csra_low))(csr.pmpaddr(0)'high downto pmp_msb - 2 + 1) :=
                                                       (others => '0');
               end if;
             when others =>

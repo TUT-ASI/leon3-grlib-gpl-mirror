@@ -40,6 +40,7 @@ use grlib.config.all;
 use grlib.config_types.all;
 library gaisler;
 use gaisler.leon5int.all;
+use gaisler.cpucore5int.all;
 
 entity cctrl5 is
   generic (
@@ -563,6 +564,7 @@ architecture rtl of cctrl5 is
     irephitv: std_logic_vector(0 to IWAYS-1);
     irepvalidv: std_logic_vector(0 to IWAYS-1);
     irepway: std_logic_vector(1 downto 0);
+    ireptcmhit: std_ulogic;
     irepdata: cdatatype5;
     ireptlbhit: std_ulogic;
     ireptlbpaddr: std_logic_vector(31 downto 0);
@@ -707,7 +709,7 @@ architecture rtl of cctrl5 is
       ibpmiss => '0', iramaddr => (others => '0'),
       irdbufen => '0', irdbufpaddr => (others => '0'), irdbufvaddr => (others => '0'),
       irephitv => (others => '0'), irepvalidv => (others => '0'),
-      irepway => "00", irepdata => (others => (others => '0')),  ireptlbhit => '0',
+      irepway => "00", ireptcmhit => '0', irepdata => (others => (others => '0')),  ireptlbhit => '0',
       ireptlbpaddr => (others => '0'), ireptlbid => (others => '0'), tcmdata => (others => '0'),
       itlbprobeid => (others => '0'),
       d2vaddr => (others => '0'), d2paddr => (others => '0'), d2paddrv => '0',
@@ -1628,7 +1630,8 @@ begin
       iway := r.irepway;
       ihit := ihitv(to_integer(unsigned(iway)));
       ivalid := ivalidv(to_integer(unsigned(iway)));
-      ihit := ihit and ivalid;
+      itcmhit := r.ireptcmhit;
+      ihit := (ihit and ivalid) or itcmhit;
       idblhit := '0';
       oico.data := r.irepdata;
       itlbhit := r.ireptlbhit;
@@ -1767,6 +1770,10 @@ begin
         v.irepvalidv := ivalidv;
         v.irepway := iway;
         v.irepdata := cramo.idatadout;
+        v.ireptcmhit := itcmhit;
+        if itcmhit='1' then
+          v.irepdata(0) := cramo.itcmdout;
+        end if;
         v.ireptlbhit := itlbhit;
         v.ireptlbpaddr := itlbpaddr;
         v.ireptlbid := itlbid;
@@ -4397,7 +4404,18 @@ begin
         ocrami.ifulladdr := r.d2vaddr;
         ocrami.ddatafulladdr := r.d2vaddr;
         v.dtagpipe := r.dtagpipe;
-
+        -- Make sure cache data RAMs are masked by default if tcm is written
+        -- and vice versa. Otherwise we can trigger an unwanted write if the
+        -- ramreload flag is set on this cycle since they share the same
+        -- idatawrite/ddatawrite mask
+        if itcmen /= 0 then
+          ocrami.idataen := (others => '0');
+          ocrami.itcmen := '0';
+        end if;
+        if dtcmen /= 0 then
+          ocrami.ddataen := (others => '0');
+          ocrami.dtcmen := '0';
+        end if;
         case r.d2asi is
           when "00001100" =>            -- 0x0C ICache tags
             ocrami.itagen(0 to IWAYS-1) := r.i2hitv;

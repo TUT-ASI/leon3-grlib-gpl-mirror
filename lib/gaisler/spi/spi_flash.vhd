@@ -766,6 +766,8 @@ architecture sim of spi_flash is
               when GOTONRMADDR =>
                 deltaaddr4b := 0;
                 exit receiving;
+              when NOPCMD =>
+                exit receiving;
               when others =>
                 assert false report "Unsupported read command. CMD received:  " & tost(indata) severity warning;
             end case;

@@ -222,7 +222,7 @@ begin
         srcbits         => srcbits
         )
       port map (
-        priority        => pr_out_array(i),
+        prio            => pr_out_array(i),
         threshold       => threshold(i),
         irqreq          => irqreq(i)
         );
@@ -375,7 +375,7 @@ begin
           end if;
         else -- enable register
           -- only for suppoted contexts
-          if r.haddr(THR_BIT-1 downto 7) < max_ctx(THR_BIT-1 downto 7) then
+          if unsigned(r.haddr(THR_BIT-1 downto 7)) < unsigned(max_ctx(THR_BIT-1 downto 7)) then
               -- only support 32 sources (including 0)
               if r.haddr(6 downto 2) = zero32(6 downto 2) then 
                 rdata(sources-1 downto 0)     := r.enable(selen)(sources-1 downto 0);
@@ -417,7 +417,7 @@ begin
           end if;
         else -- enable register
           -- only for suppoted contexts
-          if r.haddr(THR_BIT-1 downto 7) < max_ctx(THR_BIT-1 downto 7) then
+          if unsigned(r.haddr(THR_BIT-1 downto 7)) < unsigned(max_ctx(THR_BIT-1 downto 7)) then
             -- only support 32 sources (including 0)
             if r.haddr(6 downto 2) = zero32(6 downto 2) then 
               v.enable(selen)(sources-1 downto 0)   := wdata(sources-1 downto 0);

@@ -222,7 +222,7 @@ bpred_test:
 	bne,a	2f
 	restore
 	ld 	[%o1], %o2
-2:	
+2:
 
 	save
 	mov	%psr, %o1
@@ -368,6 +368,66 @@ tcmtest_dummy_func:
         retl
         add %o0, 3, %o0
 
+        ! See cache.c for explanation
+        .global tcmtest_itcmfunc
+tcmtest_itcmfunc:
+        save    %sp, -96, %sp
+        add     %i0, 7, %g1
+        cmp     %i0, 0
+        and     %g1, -8, %g1
+        mov     %i0, %g3
+        sub     %sp, %g1, %sp
+        ble     7f       ! .LL11
+        add    %sp, 92, %g4
+        mov     %g4, %g1
+        add     %g4, %i0, %i5
+        mov     1, %g2
+1: !.LL5:
+        nop
+        stb     %g2, [%g1]
+        add     %g1, 1, %g1
+        cmp     %i5, %g1
+        bne     1b       ! .LL5
+        mov    0, %i0
+        stb     %g0, [%g4]
+        mov     0, %g1
+        stb     %g0, [%g4+1]
+2: !.LL10:
+        add     %g1, 1, %g1
+3: !.LL15:
+        cmp     %g3, %g1
+        be      6f       ! .LL3
+        nop
+        ldub    [%g4+%g1], %g2
+4: !.LL17:
+        cmp     %g2, 1
+        bne,a   3b       ! .LL15
+        add    %g1, 1, %g1
+        smul    %g1, %g1, %g2
+        cmp     %g3, %g2
+        ble     2b       ! .LL10
+        add    %i0, 1, %i0
+        stb     %g0, [%g4+%g2]
+5: !.LL16:
+        add     %g2, %g1, %g2
+        cmp     %g3, %g2
+        bg,a    5b       ! .LL16
+        stb    %g0, [%g4+%g2]
+        add     %g1, 1, %g1
+        cmp     %g3, %g1
+        bne,a   4b       ! .LL17
+        ldub   [%g4+%g1], %g2
+6: !.LL3:
+        jmp     %i7+8
+        restore
+7: !.LL11:
+        mov     0, %i0
+        jmp     %i7+8
+        restore
+
+        .global tcmtest_itcmfunc_end
+tcmtest_itcmfunc_end:
+
         .data
         .global tcmtest_iexc_ctr, tcmtest_iexc_addr, tcmtest_dexc_ctr, tcmtest_dexc_addr
 tcmtest_iexc_ctr:
@@ -378,3 +438,6 @@ tcmtest_dexc_ctr:
         .word 0
 tcmtest_dexc_addr:
         .word 0
+        .global tcmtest_itcmfunc_size
+tcmtest_itcmfunc_size:
+        .word (tcmtest_itcmfunc_end - tcmtest_itcmfunc)

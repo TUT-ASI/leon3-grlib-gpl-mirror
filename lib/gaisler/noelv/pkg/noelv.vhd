@@ -48,7 +48,7 @@ package noelv is
   constant GEILEN               : integer := 16;
 
   constant AIA_SUPPORT          : integer := 0;   -- 0 = AIA support is disabled in GRLIB
-  constant ZISSLPCFI_SUPPORT    : integer := 0;   -- 0 = ZISSLPCFI support is disabled in GRLIB
+  constant SMRNMI_SUPPORT       : integer := 0;   -- 0 = SMRNMI support is disabled in GRLIB
 
   -- Types --------------------------------------------------------------------
 
@@ -174,14 +174,25 @@ package noelv is
     dcmiss   : std_logic;
     dtlbmiss : std_logic;
     bpmiss   : std_logic;
+    hold     : std_logic;
+    --single_issue  : std_logic;
+    --dual_issue    : std_logic;
+    hold_issue    : std_logic;
+    branch        : std_logic;
+    --load_dep      : std_logic;
+    --store_b2b     : std_logic;
+    --jalr          : std_logic;
+    --jal           : std_logic;
+    --dcache_flush  : std_logic;
   end record;
-
+  
   type nv_counter_out_vector is array (natural range <>) of nv_counter_out_type;
-
+  
   -- Debug --------------------------------------------------------------------
   type nv_debug_in_type is record
     dsuen       : std_ulogic;                           -- DSU Enable
     halt        : std_ulogic;                           -- Halt Request
+    haltgroup   : std_ulogic;                           -- Halt Group Request
     resume      : std_ulogic;                           -- Resume Request
     reset       : std_ulogic;                           -- Reset Request
     haltonrst   : std_ulogic;                           -- Halt-on-reset Request
@@ -260,7 +271,7 @@ package noelv is
     tval      => (others => '0'),
     priv      => (others => '0'),
     iaddr     => (others => '0'),
-    ctext   => (others => '0'),
+    ctext     => (others => '0'),
     tetime    => (others => '0'),
     ctype     => (others => '0'),
     sijump    => (others => '0'),
@@ -310,11 +321,14 @@ package noelv is
     ext_smaia     : integer;
     ext_ssaia     : integer;
     ext_smstateen : integer;
+    ext_smrnmi    : integer;
     ext_smepmp    : integer;
     imsic         : integer;
     ext_zicbom    : integer;
     ext_zicond    : integer;
-    ext_zimops    : integer;
+    ext_zimop     : integer;
+    ext_zcmop     : integer;
+    ext_svinval   : integer;
     ext_zfa       : integer;
     ext_zfh       : integer;
     ext_zfhmin    : integer;
@@ -348,6 +362,7 @@ package noelv is
     div_small     : integer;
     late_branch   : integer;
     late_alu      : integer;
+    ras           : integer;
     bhtentries    : integer;
     bhtlength     : integer;
     predictor     : integer;
@@ -429,6 +444,9 @@ package noelv is
       vmidlen           : integer range 0 to  14        := 0;  -- Max 7 for Sv32
       -- Interrupts
       imsic             : integer range 0  to 1         := 0;  -- IMSIC implemented
+      -- RNMI
+      rnmi_iaddr          : integer                     := 16#00100#; -- RNMI interrupt trap handler address
+      rnmi_xaddr          : integer                     := 16#00101#; -- RNMI exception trap handler address
       -- Extensions
       ext_noelv         : integer range 0  to 1         := 1;  -- NOEL-V Extensions
       ext_m             : integer range 0  to 1         := 1;  -- M Base Extension Set
@@ -448,10 +466,13 @@ package noelv is
       ext_smaia         : integer range 0  to 1         := 0;  -- Smaia Extension
       ext_ssaia         : integer range 0  to 1         := 0;  -- Ssaia Extension 
       ext_smstateen     : integer range 0  to 1         := 0;  -- Sstateeen Extension 
+      ext_smrnmi        : integer range 0  to 1         := 0;  -- Smrnmi Extension 
       ext_smepmp        : integer range 0  to 1         := 0;  -- Smepmp Extension
       ext_zicbom        : integer range 0  to 1         := 0;  -- Zicbom Extension
       ext_zicond        : integer range 0  to 1         := 0;  -- Zicond Extension
-      ext_zimops        : integer range 0  to 1         := 0;  -- Zimops Extension
+      ext_zimop         : integer range 0  to 1         := 0;  -- Zimop Extension
+      ext_zcmop         : integer range 0  to 1         := 0;  -- Zcmop Extension
+      ext_svinval       : integer range 0  to 1         := 0;  -- Svinval Extension
       ext_zfa           : integer range 0  to 1         := 0;  -- Zfa Extension
       ext_zfh           : integer range 0  to 1         := 0;  -- Zfh Extension
       ext_zfhmin        : integer range 0  to 1         := 0;  -- Zfhmin Extension
@@ -463,6 +484,7 @@ package noelv is
       -- Advanced Features
       late_branch       : integer range 0  to 1         := 0;  -- Late Branch Support
       late_alu          : integer range 0  to 1         := 0;  -- Late ALUs Support
+      ras               : integer range 0  to 2         := 0;  -- Return Address Stack (1 - test, 2 - enable)
       -- Core
       physaddr          : integer range 32 to 56        := 32; -- Physical Addressing
       rstaddr           : integer                       := 16#00000#; -- reset vector (MSB)
@@ -771,3 +793,4 @@ package noelv is
     );
   end component;
 end;
+

@@ -105,12 +105,7 @@ architecture rtl of unisim_iddr_reg is
   signal D_delay : std_ulogic;
    
 begin
-    KU : if (tech = kintexu) generate
-	    U0 : IDDRE1 generic map( IS_CB_INVERTED => '1')
-		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
-    end generate;
-
-    VUP : if (tech = virtexup) generate
+    KU : if (tech = kintexu) or (tech = virtexup) generate
 	    U0 : IDDRE1 generic map( IS_CB_INVERTED => '1')
 		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
     end generate;

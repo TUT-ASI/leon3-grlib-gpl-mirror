@@ -17,3 +17,5 @@ spictrl_unisim.vhd
 obt1553_unisim.vhd
 memory_unisim_ecc.vhd
 memory_ultrascale_ecc.vhd
+memory_versal.vhd
+memory_versal_ecc.vhd

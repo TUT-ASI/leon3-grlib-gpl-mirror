@@ -306,6 +306,10 @@
 #define CONFIG_L2_ENABLE 0
 #endif
 
+#ifndef CONFIG_L2_LITE
+#define CONFIG_L2_LITE 0
+#endif
+
 #if defined CONFIG_L2_ASSO1
 #define CFG_L2_ASSO 1
 #elif defined CONFIG_L2_ASSO2

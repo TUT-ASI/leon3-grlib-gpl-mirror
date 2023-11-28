@@ -33,23 +33,43 @@ use grlib.stdlib.tost_bits;
 use grlib.stdlib.print;
 use grlib.stdlib.log2;
 use grlib.riscv.all;
---pragma translate_off
+-- pragma translate_off
 use grlib.riscv_disas.all;
---pragma translate_on
+-- pragma translate_on
 
 
 library gaisler;
 use gaisler.noelv.all;
+use gaisler.noelvtypes.all;
 use gaisler.utilnv.all;
-use gaisler.nvsupport.all;
+--use gaisler.nvsupport.all;
+use gaisler.nvsupport.csr_reg_type;
+use gaisler.nvsupport.CSRRES;
+use gaisler.nvsupport.rvc_expander;
+use gaisler.nvsupport.is_fpu_rd;
+use gaisler.nvsupport.is_fpu_modify;
+use gaisler.nvsupport.rd_gen;
+use gaisler.nvsupport.to_mstatus;
+use gaisler.nvsupport.to_mstatush;
+use gaisler.nvsupport.to_hstatus;
+use gaisler.nvsupport.to_sstatus;
+use gaisler.nvsupport.to_vsstatus;
+use gaisler.nvsupport.to_envcfg;
+use gaisler.nvsupport.to_mseccfg;
+use gaisler.nvsupport.to_hvictl;
+use gaisler.nvsupport.to_hpmevent;
+use gaisler.nvsupport.to_hpmeventh;
+use gaisler.nvsupport.CSR_SIE_MASK;
+use gaisler.nvsupport.CSR_SIP_MASK;
+use gaisler.nvsupport.selector2wordx;
 use gaisler.noelvint.fpu5_out_type;
 use gaisler.noelvint.fpu5_out_none;
-use gaisler.noelvint.fpu_id;
+use gaisler.noelvint.fpu5_out_async_type;
+use gaisler.noelvint.fpu5_out_async_none;
 use gaisler.noelvint.trace_info;
 use gaisler.noelvint.trace_info_none;
 
 package rvvi is
 end;
-
 
 

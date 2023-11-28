@@ -1,4 +1,10 @@
 leon5int.vhd
+leon5sys.vhd
+irqmp5.vhd
+l5stat.vhd
+nanofpu.vhd
+cpucore5int.vhd
+tbufmem5.vhd
 itbufmem5.vhd
 bht_pap.vhd
 btb.vhd
@@ -8,10 +14,6 @@ cctrl5.vhd
 cachemem5.vhd
 regfile5_ram.vhd
 regfile5_dff.vhd
-nanofpu.vhd
 cpucore5.vhd
-tbufmem5.vhd
 dbgmod5.vhd
-irqmp5.vhd
-l5stat.vhd
-leon5sys.vhd
+
