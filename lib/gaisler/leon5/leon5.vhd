@@ -76,6 +76,7 @@ package leon5 is
       rfconf   : integer := 0;
       fpuconf  : integer;
       tcmconf  : integer := 0;
+      redconf  : integer := 0;
       perfcfg  : integer := 0;
       mulimpl  : integer := 0;
       statcfg  : integer := 0;

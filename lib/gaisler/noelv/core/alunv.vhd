@@ -173,25 +173,26 @@ package body alunv is
 --    variable ext_zbb : integer      := 1;
 --    variable ext_zbc : integer      := 1;
 --    variable ext_zbs : integer      := 1;
-    variable is_rv64    : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32    : boolean      := not is_rv64;
-    variable ext_zba    : integer      := is_enabled(active, x_zba);
-    variable ext_zbb    : integer      := is_enabled(active, x_zbb);
-    variable ext_zbc    : integer      := is_enabled(active, x_zbc);
-    variable ext_zbs    : integer      := is_enabled(active, x_zbs);
-    variable ext_zbkb   : integer      := is_enabled(active, x_zbkb);
-    variable ext_zbkc   : integer      := is_enabled(active, x_zbkc);
-    variable ext_zbkx   : integer      := is_enabled(active, x_zbkx);
-    variable ext_zimop  : integer      := is_enabled(active, x_zimop);
-    variable ext_zicond : integer      := is_enabled(active, x_zicond);
-    variable op         : opcode_type  := inst(6 downto 0);
-    variable funct3     : funct3_type  := inst(14 downto 12);
-    variable funct7     : funct7_type  := inst(31 downto 25);
-    variable funct12    : funct12_type := inst(31 downto 20);
+    variable is_rv64      : boolean      := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean      := not is_rv64;
+    variable ext_zba      : boolean      := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean      := is_enabled(active, x_zbb);
+    variable ext_zbc      : boolean      := is_enabled(active, x_zbc);
+    variable ext_zbs      : boolean      := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean      := is_enabled(active, x_zbkb);
+    variable ext_zbkc     : boolean      := is_enabled(active, x_zbkc);
+    variable ext_zbkx     : boolean      := is_enabled(active, x_zbkx);
+    variable ext_zimop    : boolean      := is_enabled(active, x_zimop);
+    variable ext_zicond   : boolean      := is_enabled(active, x_zicond);
+    variable ext_noelvalu : boolean      := is_enabled(active, x_noelvalu);
+    variable op           : opcode_type  := inst(6 downto 0);
+    variable funct3       : funct3_type  := inst(14 downto 12);
+    variable funct7       : funct7_type  := inst(31 downto 25);
+    variable funct12      : funct12_type := inst(31 downto 20);
     -- Non-constant
-    variable ctrl       : word3        := EXE_AND;     -- Default assignment
-    variable ctrlx      : word3        := "000";       -- Default to no special handling
-    variable sel        : word2        := ALU_LOGIC;   -- Default assignment
+    variable ctrl         : word3        := EXE_AND;     -- Default assignment
+    variable ctrlx        : word3        := "000";       -- Default to no special handling
+    variable sel          : word2        := ALU_LOGIC;   -- Default assignment
   begin
     -- Assuming the ALU is needed (based on the decoded fusel)
     case op is
@@ -248,7 +249,7 @@ package body alunv is
               end if;
             end if;
         end case;
-        if ext_zba = 1 and op = OP_IMM_32 then
+        if ext_zba and op = OP_IMM_32 then
           case funct7 is
           when F7_ADDSLLIUW | F7_SLLIUW_I64 =>
             if funct3 = R_SLL then
@@ -260,11 +261,11 @@ package body alunv is
             null;
           end case;
         end if;
-        if ext_zbb = 1 or ext_zbkb = 1 then
+        if ext_zbb or ext_zbkb then
           if funct3 = R_SRL then
             case funct12 is
               when F12_ORCB =>
-                if ext_zbb = 1 and op = OP_IMM then
+                if ext_zbb and op = OP_IMM then
                   sel   := ALU_LOGIC;
                   ctrl  := EXE_ORCB;
                 end if;
@@ -281,13 +282,13 @@ package body alunv is
                   ctrlx := "001";
                 end if;
               when F12_BREV8 =>
-                if ext_zbkb = 1 and op = OP_IMM then
+                if ext_zbkb and op = OP_IMM then
                   sel   := ALU_MISC;
                   ctrl  := EXE_GREVI;
                   ctrlx := "010";
                 end if;
               when F12_ZIP =>
-                if is_rv32 and ext_zbkb = 1 and op = OP_IMM then
+                if is_rv32 and ext_zbkb and op = OP_IMM then
                   sel   := ALU_MISC;
                   ctrl  := EXE_SHFLI;
                   ctrlx := "001";
@@ -309,25 +310,25 @@ package body alunv is
           elsif funct3 = R_SLL then
             case funct12 is
               when F12_CLZ | F12_CTZ | F12_CPOP =>
-                if ext_zbb = 1 then
+                if ext_zbb then
                   sel   := ALU_MISC;
                   ctrl  := EXE_COUNT;
                   ctrlx := inst(21 downto 20) & to_bit(op = OP_IMM_32);
                 end if;
               when F12_SEXTB =>
-                if ext_zbb = 1 and op = OP_IMM then
+                if ext_zbb and op = OP_IMM then
                   sel   := ALU_LOGIC;
                   ctrl  := EXE_AND;
                   ctrlx := "101";
                 end if;
               when F12_SEXTH =>
-                if ext_zbb = 1 and op = OP_IMM then
+                if ext_zbb and op = OP_IMM then
                   sel   := ALU_LOGIC;
                   ctrl  := EXE_AND;
                   ctrlx := "110";
                 end if;
               when F12_ZIP =>
-                if is_rv32 and ext_zbkb = 1 and op = OP_IMM then
+                if is_rv32 and ext_zbkb and op = OP_IMM then
                   sel   := ALU_MISC;
                   ctrl  := EXE_SHFLI;
                   ctrlx := "010";
@@ -337,7 +338,7 @@ package body alunv is
             end case;
           end if;
         end if;
-        if ext_zbs = 1 then
+        if ext_zbs then
           if op = OP_IMM then
             if funct3 = R_SLL then
               case funct7 is
@@ -401,19 +402,19 @@ package body alunv is
           when R_XOR =>         -- Not used in case of OP_32
             sel      := ALU_LOGIC;
             ctrl     := EXE_XOR;
-            if (ext_zbb = 1 or ext_zbkb = 1) and inst(30) = '1' then
+            if (ext_zbb or ext_zbkb) and inst(30) = '1' then
               ctrlx  := "100";  -- Invert
             end if;
           when R_OR =>          -- Not used in case of OP_32
             sel      := ALU_LOGIC;
             ctrl     := EXE_OR;
-            if (ext_zbb = 1 or ext_zbkb = 1) and inst(30) = '1' then
+            if (ext_zbb or ext_zbkb) and inst(30) = '1' then
               ctrlx  := "100";  -- Invert
             end if;
           when R_AND =>         -- Not used in case of OP_32
             sel      := ALU_LOGIC;
             ctrl     := EXE_AND;
-            if (ext_zbb = 1 or ext_zbkb = 1) and inst(30) = '1' then
+            if (ext_zbb or ext_zbkb) and inst(30) = '1' then
               ctrlx  := "100";  -- Invert
             end if;
           when others =>  -- R_SRL
@@ -432,7 +433,7 @@ package body alunv is
               end if;
             end if;
         end case;
-        if ext_zba = 1 then
+        if ext_zba then
           case funct7 is
           when F7_SHADD =>
             sel   := ALU_MATH;
@@ -448,8 +449,8 @@ package body alunv is
             null;
           end case;
         end if;
-        if ext_zbb = 1 then
-          if ext_zbkb = 0 and funct12 = F12_ZEXTH and funct3 = R_XOR then
+        if ext_zbb then
+          if not ext_zbkb and funct12 = F12_ZEXTH and funct3 = R_XOR then
             sel   := ALU_LOGIC;
             ctrl  := EXE_AND;
             ctrlx := "010";
@@ -471,7 +472,7 @@ package body alunv is
             ctrlx := "010";
           end if;
         end if;
-        if ext_zbkb = 1 then
+        if ext_zbkb then
           -- This will actually "override" F12_ZEXTH, since that is
           -- only a special case of F7_PACK/R_XOR.
           if funct7 = F7_PACK then
@@ -490,7 +491,7 @@ package body alunv is
             end if;
           end if;
         end if;
-        if ext_zbc = 1 or ext_zbkc = 1 then
+        if ext_zbc or ext_zbkc then
           if funct7 = F7_MINMAXCLMUL and op = OP_REG then
             case funct3 is
              -- R_CLMULR is not actually valid for ext_zbkc, but that does not matter here.
@@ -503,7 +504,7 @@ package body alunv is
             end case;
           end if;
         end if;
-        if ext_zbs = 1 then
+        if ext_zbs then
           if op = OP_REG then
             if funct3 = R_SLL then
               case funct7 is
@@ -534,7 +535,7 @@ package body alunv is
             end if;
           end if;
         end if;
-        if ext_zbkx = 1 then
+        if ext_zbkx then
           if op = OP_REG and funct7 = F7_XPERM then
             if funct3 = R_XOR then     -- xperm8
               sel   := ALU_MISC;
@@ -547,7 +548,7 @@ package body alunv is
             end if;
           end if;
         end if;
-        if ext_zicond = 1 then
+        if ext_zicond then
           if op = OP_REG and funct7 = F7_CZERO then
             if funct3 = R_SRL then
               sel   := ALU_LOGIC;
@@ -561,11 +562,54 @@ package body alunv is
           end if;
         end if;
       when OP_SYSTEM =>
-        if ext_zimop = 1 then
+        if ext_zimop then
           -- Zimop
           sel   := ALU_LOGIC;
           ctrl  := EXE_AND;
           ctrlx := "001";
+        end if;
+      when OP_CUSTOM0 =>
+        if ext_noelvalu and funct7 = F7_BASE_RV64 then
+          case funct3 is
+            when "000" =>  -- Upper 32 bits (xpacku.w)
+              if is_rv64 then
+                sel   := ALU_MISC;
+                ctrl  := EXE_PACK;
+                ctrlx := "000";
+              end if;
+            when "001" =>  -- Upper 8 bits (xpacku.b)
+              sel     := ALU_MISC;
+              ctrl    := EXE_PACK;
+              if is_rv64 then
+                ctrlx := "100";
+              else
+                ctrlx := "101";
+              end if;
+            when "010" =>  -- Upper 16 bits (xpacku.h)
+              sel     := ALU_MISC;
+              ctrl    := EXE_PACK;
+              if is_rv64 then
+                ctrlx := "101";
+              else
+                ctrlx := "000";
+              end if;
+            when "011" =>  -- Lower 8 bits (xpack.b)
+              sel     := ALU_MISC;
+              ctrl    := EXE_PACK;
+              if is_rv64 then
+                ctrlx := "110";
+              else
+                ctrlx := "111";
+              end if;
+            when "100" =>  -- Lower 16 bits (xpack.h)
+              if is_rv64 then
+                sel   := ALU_MISC;
+                ctrl  := EXE_PACK;
+                ctrlx := "111";
+              end if;
+            when others =>
+              null;
+          end case;
         end if;
       when others =>
     end case;
@@ -584,24 +628,25 @@ package body alunv is
 --    variable ext_zbc : integer      := 1;
 --    variable ext_zbs : integer      := 1;
 --    variable ext_m   : integer      := 1;
-    variable is_rv64    : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32    : boolean      := not is_rv64;
-    variable ext_zba    : integer      := is_enabled(active, x_zba);
-    variable ext_zbb    : integer      := is_enabled(active, x_zbb);
-    variable ext_zbc    : integer      := is_enabled(active, x_zbc);
-    variable ext_zbs    : integer      := is_enabled(active, x_zbs);
-    variable ext_zbkb   : integer      := is_enabled(active, x_zbkb);
-    variable ext_zbkc   : integer      := is_enabled(active, x_zbkc);
-    variable ext_zbkx   : integer      := is_enabled(active, x_zbkx);
-    variable ext_zimop  : integer      := is_enabled(active, x_zimop);
-    variable ext_zicond : integer      := is_enabled(active, x_zicond);
-    variable ext_m      : integer      := is_enabled(active, x_m);
-    variable opcode     : opcode_type  := inst_in( 6 downto  0);
-    variable funct3     : funct3_type  := inst_in(14 downto 12);
-    variable funct7     : funct7_type  := inst_in(31 downto 25);
-    variable funct12    : funct12_type := inst_in(31 downto 20);
+    variable is_rv64      : boolean      := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean      := not is_rv64;
+    variable ext_zba      : boolean      := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean      := is_enabled(active, x_zbb);
+    variable ext_zbc      : boolean      := is_enabled(active, x_zbc);
+    variable ext_zbs      : boolean      := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean      := is_enabled(active, x_zbkb);
+    variable ext_zbkc     : boolean      := is_enabled(active, x_zbkc);
+    variable ext_zbkx     : boolean      := is_enabled(active, x_zbkx);
+    variable ext_zimop    : integer      := is_enabled(active, x_zimop);
+    variable ext_zicond   : boolean      := is_enabled(active, x_zicond);
+    variable ext_m        : boolean      := is_enabled(active, x_m);
+    variable ext_noelvalu : boolean      := is_enabled(active, x_noelvalu);
+    variable opcode       : opcode_type  := inst_in( 6 downto  0);
+    variable funct3       : funct3_type  := inst_in(14 downto 12);
+    variable funct7       : funct7_type  := inst_in(31 downto 25);
+    variable funct12      : funct12_type := inst_in(31 downto 20);
     -- Non-constant
-    variable illegal    : std_ulogic   := '0';
+    variable illegal      : std_ulogic   := '0';
   begin
     case opcode is
       when OP_IMM =>
@@ -615,21 +660,21 @@ package body alunv is
             illegal   := '1';
             case funct12 is
               when F12_CLZ | F12_CTZ | F12_CPOP | F12_SEXTB | F12_SEXTH =>
-                if ext_zbb = 1 then
+                if ext_zbb then
                   illegal := '0';
                 end if;
               when F12_ZIP =>
-                if is_rv32 and ext_zbkb = 1 then
+                if is_rv32 and ext_zbkb then
                   illegal := '0';
                 end if;
               when others =>
                 case funct7 is
                   when F7_BCLREXT | F7_BINV | F7_BSET =>  -- BCLRI/BINVI/BSETI
-                    if ext_zbs= 1 then
+                    if ext_zbs then
                       illegal := '0';
                     end if;
                   when F7_BCLREXT_I64 | F7_BINV_I64 | F7_BSET_I64 =>
-                    if ext_zbs = 1 and is_rv64 then
+                    if ext_zbs and is_rv64 then
                       illegal := '0';
                     end if;
                   when others =>
@@ -645,41 +690,41 @@ package body alunv is
             illegal   := '1';
             case funct12 is
               when F12_ORCB =>
-                if ext_zbb = 1 then
+                if ext_zbb then
                   illegal := '0';
                 end if;
               when F12_REV8_RV32 =>
-                if (ext_zbb = 1 or ext_zbkb = 1) and is_rv32 then
+                if (ext_zbb or ext_zbkb) and is_rv32 then
                   illegal := '0';
                 end if;
               when F12_REV8_RV64 =>
-                if (ext_zbb = 1 or ext_zbkb = 1) and is_rv64 then
+                if (ext_zbb or ext_zbkb) and is_rv64 then
                   illegal := '0';
                 end if;
               when F12_BREV8 =>
-                if ext_zbkb = 1 then
+                if ext_zbkb then
                   illegal := '0';
                 end if;
               when F12_ZIP =>
-                if is_rv32 and ext_zbkb = 1 then
+                if is_rv32 and ext_zbkb then
                   illegal := '0';
                 end if;
               when others =>
                 case funct7 is
                   when F7_BCLREXT =>  -- BEXTI
-                    if ext_zbs = 1 then
+                    if ext_zbs then
                       illegal := '0';
                     end if;
                   when F7_BCLREXT_I64 =>
-                    if ext_zbs = 1 and is_rv64 then
+                    if ext_zbs and is_rv64 then
                       illegal := '0';
                     end if;
                   when F7_ROT =>
-                    if (ext_zbb = 1 or ext_zbkb = 1) then
+                    if ext_zbb or ext_zbkb then
                       illegal := '0';
                     end if;
                   when F7_ROR_I64 =>
-                    if (ext_zbb = 1 or ext_zbkb = 1) and is_rv64 then
+                    if (ext_zbb or ext_zbkb) and is_rv64 then
                       illegal := '0';
                     end if;
                   when others =>
@@ -692,6 +737,7 @@ package body alunv is
                 end case;
             end case;
         end case;
+
       when OP_REG =>
         case funct7 is
           when F7_BASE =>
@@ -703,13 +749,13 @@ package body alunv is
               when R_SUB | R_SRA => null;
                 -- SUB/SRA with rd = x0 are standard HINTs.
               when R_AND | R_OR | R_XOR =>  -- ANDN/ORN/XORN
-                if (ext_zbb = 0 and ext_zbkb = 0) then
+                if not ext_zbb and not ext_zbkb then
                   illegal := '1';
                 end if;
               when others => illegal := '1';
             end case;
 --          when F7_MUL =>
---            if ext_m = 1 then
+--            if ext_m then
 --              case funct3 is
 --                when R_MUL | R_MULH | R_MULHSU | R_MULHU |
 --                     R_DIV | R_DIVU | R_REM    | R_REMU => null;
@@ -719,7 +765,7 @@ package body alunv is
 --              illegal := '1';
 --            end if;
           when F7_BCLREXT =>  -- BCLR/BEXT
-            if ext_zbs = 1 then
+            if ext_zbs then
               case funct3 is
                 when R_SLL | R_SRL => null;
                 when others => illegal := '1';
@@ -728,21 +774,21 @@ package body alunv is
               illegal := '1';
             end if;
           when F7_BINV =>
-            if ext_zbs = 1 and funct3 = R_SLL then
+            if ext_zbs and funct3 = R_SLL then
               null;
             else
               illegal := '1';
             end if;
           when F7_BSET =>  -- BSET/XPERM
-            if ext_zbs = 1 and funct3 = R_SLL then
+            if ext_zbs and funct3 = R_SLL then
               null;
-            elsif ext_zbkx = 1 and (funct3 = R_XOR or funct3 = R_SLT) then
+            elsif ext_zbkx and (funct3 = R_XOR or funct3 = R_SLT) then
               null;
             else
               illegal := '1';
             end if;
           when F7_ROT =>
-            if (ext_zbb = 1 or ext_zbkb = 1) then
+            if ext_zbb or ext_zbkb then
               case funct3 is
                 when R_SLL | R_SRL => null;  -- ROL/ROR
                 when others => illegal := '1';
@@ -751,7 +797,7 @@ package body alunv is
               illegal := '1';
             end if;
           when F7_SHADD =>
-            if ext_zba = 1 then
+            if ext_zba then
               case funct3 is
                 when "010" | "100" | "110" => null;  -- SH1/2/3ADD
                 when others => illegal := '1';
@@ -762,22 +808,22 @@ package body alunv is
           when F7_MINMAXCLMUL =>
             case funct3 is
               when "001" | "011" =>  -- CLMUL/CLMULH
-                if ext_zbc = 0 and ext_zbkc = 0 then
+                if not ext_zbc and not ext_zbkc then
                   illegal := '1';
                 end if;
               when "010" =>  -- CLMULR
-                if ext_zbc = 0 then
+                if not ext_zbc then
                   illegal := '1';
                 end if;
               when "100" | "101" | "110" | "111" =>  -- MIN/MINU/MAX/MAXU
-                if ext_zbb = 0 then
+                if not ext_zbb then
                   illegal := '1';
                 end if;
               when others =>
                 illegal := '1';
             end case;
           when F7_CZERO =>
-            if ext_zicond = 1 then
+            if ext_zicond then
               case funct3 is
                 when R_SRL | R_AND => null;  -- CZERO.EQZ/NEZ
                 when others => illegal := '1';
@@ -786,14 +832,15 @@ package body alunv is
               illegal := '1';
             end if;
           when others =>
-            if ext_zbb = 1 and is_rv32 and funct12 = F12_ZEXTH and funct3 = "100" then
+            if ext_zbb and is_rv32 and funct12 = F12_ZEXTH and funct3 = "100" then
               null;
-            elsif ext_zbkb = 1 and funct7 = F7_PACK and (funct3 = R_XOR or funct3 = R_AND) then
+            elsif ext_zbkb and funct7 = F7_PACK and (funct3 = R_XOR or funct3 = R_AND) then
               null;
             else
               illegal := '1';
             end if;
         end case;
+
       when OP_IMM_32 =>
         case funct3 is
           when I_ADDIW =>
@@ -803,13 +850,13 @@ package body alunv is
             illegal   := '1';
             case funct12 is
               when F12_CLZ | F12_CTZ | F12_CPOP =>  -- CLZW/CTZW/CPOPW
-                if ext_zbb = 1 then
+                if ext_zbb then
                   illegal := '0';
                 end if;
               when others =>
                 case funct7 is
                   when F7_ADDSLLIUW | F7_SLLIUW_I64 =>
-                    if ext_zba = 1 and funct3 = R_SLL then
+                    if ext_zba and funct3 = R_SLL then
                       illegal := '0';
                     end if;
                   when others =>
@@ -823,7 +870,7 @@ package body alunv is
             illegal   := '1';
             case funct7 is
               when F7_ROT =>  -- RORIW
-                if (ext_zbb = 1 or ext_zbkb = 1) then
+                if ext_zbb or ext_zbkb then
                   illegal := '0';
                 end if;
               when others =>
@@ -838,8 +885,9 @@ package body alunv is
         if is_rv32 then
           illegal := '1';
         end if;
+
       when OP_32 =>
-        if ext_zbb = 1 and funct12 = F12_ZEXTH and funct3 = "100" then
+        if ext_zbb and funct12 = F12_ZEXTH and funct3 = "100" then
           null;
         else
           case funct7 is
@@ -856,7 +904,7 @@ package body alunv is
                 when others => illegal := '1';
               end case;
 --            when F7_MUL =>
---              if ext_m = 1 then
+--              if ext_m then
 --                case funct3 is
 --                  when R_MULW | R_DIVW | R_DIVUW | R_REMW | R_REMUW => null;
 --                  when others => illegal := '1';
@@ -866,15 +914,15 @@ package body alunv is
 --              end if;
             -- This is the same as F7_PACK
             when F7_ADDSLLIUW =>  -- Note that this uses same funct7 as F12_ZEXT above!
-              if ext_zba = 1 and funct3 = R_ADD then
+              if ext_zba and funct3 = R_ADD then
                 null;
-              elsif ext_zbkb = 1 and funct3 = R_XOR then
+              elsif ext_zbkb and funct3 = R_XOR then
                 null;
               else
                 illegal := '1';
               end if;
             when F7_ROT =>
-              if (ext_zbb = 1 or ext_zbkb = 1) then
+              if ext_zbb or ext_zbkb then
                 case funct3 is
                   when R_SLL | R_SRL => null;  -- ROLW/RORW
                   when others => illegal := '1';
@@ -883,7 +931,7 @@ package body alunv is
                 illegal := '1';
               end if;
             when F7_SHADD =>
-              if ext_zba = 1 then
+              if ext_zba then
                 case funct3 is
                   when "010" | "100" | "110" => null;  -- SH1/2/3ADD.UW
                   when others => illegal := '1';
@@ -898,6 +946,18 @@ package body alunv is
         if is_rv32 then
           illegal := '1';
         end if;
+
+      when OP_CUSTOM0 =>
+        if ext_noelvalu and funct7 = F7_BASE_RV64 then
+          case funct3 is
+            when "000" | "100"         => illegal := to_bit(is_rv32 or not ext_zbkb);
+            when "001" | "010" | "011" => illegal := to_bit(not ext_zbkb);
+            when others                => illegal := '1';
+          end case;
+        else
+          illegal := '1';
+        end if;
+
       when others =>
         illegal := '1';
     end case;
@@ -1437,26 +1497,27 @@ package body alunv is
 --    variable ext_zbb : integer  := 1;
 --    variable ext_zbc : integer  := 1;
 --    variable ext_zbs : integer  := 1;
-    variable is_rv64  : boolean  := is_enabled(active, x_rv64);
-    variable is_rv32  : boolean  := not is_rv64;
-    variable ext_zba  : integer  := is_enabled(active, x_zba);
-    variable ext_zbb  : integer  := is_enabled(active, x_zbb);
-    variable ext_zbc  : integer  := is_enabled(active, x_zbc);
-    variable ext_zbs  : integer  := is_enabled(active, x_zbs);
-    variable ext_zbkb : integer  := is_enabled(active, x_zbkb);
-    variable ext_zbkc : integer  := is_enabled(active, x_zbkc);
-    variable ext_zbkx : integer  := is_enabled(active, x_zbkx);
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean := not is_rv64;
+    variable ext_zba      : boolean := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
+    variable ext_zbc      : boolean := is_enabled(active, x_zbc);
+    variable ext_zbs      : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkc     : boolean := is_enabled(active, x_zbkc);
+    variable ext_zbkx     : boolean := is_enabled(active, x_zbkx);
+    variable ext_noelvalu : boolean := is_enabled(active, x_noelvalu);
     -- Non-constant
     subtype  x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
     subtype  hwordx  is std_logic_vector(wordx'length / 2 - 1 downto 0);
---    variable x2res    : x2wordx  := clmul_div(op1_in, op2_in, wordx'length, 0);
-    variable hop1     : hwordx;
-    variable op1r     : wordx    := op1_in;
-    variable op2r     : wordx    := op2_in;
-    variable res      : wordx    := (others => '-');  -- Defaut to whatever
+--    variable x2res        : x2wordx := clmul_div(op1_in, op2_in, wordx'length, 0);
+    variable hop1         : hwordx;
+    variable op1r         : wordx   := op1_in;
+    variable op2r         : wordx   := op2_in;
+    variable res          : wordx   := (others => '-');  -- Default to whatever
   begin
-    if (ext_zbb = 1 and ctrl = EXE_COUNT and ctrlx(2 downto 1) = "01") or  -- CTZ?
-       ((ext_zbc = 1 or ext_zbkc = 1) and
+    if (ext_zbb and ctrl = EXE_COUNT and ctrlx(2 downto 1) = "01") or  -- CTZ?
+       ((ext_zbc or ext_zbkc) and
         ctrl = EXE_CLMUL and ctrlx /= R_CLMUL) then                        -- Reverse clmul?
       op1r := reverse(op1_in);
       op2r := reverse(op2_in);  -- Irrelevant for CTZ
@@ -1466,25 +1527,58 @@ package body alunv is
       when EXE_BYPASS2 =>
         res := op2_in;
       when EXE_GREVI =>
-        if (ext_zbb = 1 or ext_zbkb = 1) and ctrlx = "001" then
+        if (ext_zbb or ext_zbkb) and ctrlx = "001" then
           for i in 0 to op1_in'length / 8 - 1 loop
             set(res, (op1_in'length / 8 - 1 - i) * 8, get(op1_in, i * 8, 8));
           end loop;
-        elsif ext_zbkb = 1 and ctrlx = "010" then
+        elsif ext_zbkb and ctrlx = "010" then
           for i in 0 to op1_in'length / 8 - 1 loop
             set(res, i * 8, reverse(get(op1_in, i * 8, 8)));
           end loop;
         end if;
       when EXE_PACK =>
-        if ext_zbkb = 1 then
+        if ext_zbkb then
           case ctrlx is
-          when "001"  => res := lo_h(op2_in) & lo_h(op1_in);
-          when "011"  => res := sext(get(op2_in, 0, 16) & get(op1_in, 0, 16), res);
-          when others => res := uext(get(op2_in, 0,  8) & get(op1_in, 0,  8), res);
+          when "001" =>      -- ba 21 ->
+              res := lo_h(op2_in) & lo_h(op1_in);
+          when "011" =>
+            if is_rv64 then
+              res := sext(get(op2_in, 0, 16) & get(op1_in, 0, 16), res);
+            end if;
+          when "010" =>
+            res := uext(get(op2_in, 0,  8) & get(op1_in, 0,  8), res);
+          when others =>
+            if ext_noelvalu then
+              case ctrlx is
+              when "000" =>  -- ba 21 ->
+                res := hi_h(op2_in) & hi_h(op1_in);
+              when "100" =>  -- hgfedcba 87654321 ->
+                if is_rv64 then
+                  res := hi_h(hi_h(hi_h(op2_in))) & hi_h(hi_h(hi_h(op1_in))) &
+                         hi_h(lo_h(hi_h(op2_in))) & hi_h(lo_h(hi_h(op1_in))) &
+                         hi_h(hi_h(lo_h(op2_in))) & hi_h(hi_h(lo_h(op1_in))) &
+                         hi_h(lo_h(lo_h(op2_in))) & hi_h(lo_h(lo_h(op1_in)));
+                end if;
+              when "101" =>  -- dcba 4321 ->
+                res := hi_h(hi_h(op2_in)) & hi_h(hi_h(op1_in)) &
+                       hi_h(lo_h(op2_in)) & hi_h(lo_h(op1_in));
+              when "110" =>  -- hgfedcba 87654321 ->
+                if is_rv64 then
+                  res := lo_h(hi_h(hi_h(op2_in))) & lo_h(hi_h(hi_h(op1_in))) &
+                         lo_h(lo_h(hi_h(op2_in))) & lo_h(lo_h(hi_h(op1_in))) &
+                         lo_h(hi_h(lo_h(op2_in))) & lo_h(hi_h(lo_h(op1_in))) &
+                         lo_h(lo_h(lo_h(op2_in))) & lo_h(lo_h(lo_h(op1_in)));
+                end if;
+              when "111" =>  -- dcba 4321 ->
+                res := lo_h(hi_h(op2_in)) & lo_h(hi_h(op1_in)) &
+                       lo_h(lo_h(op2_in)) & lo_h(lo_h(op1_in));
+              when others =>
+              end case;
+            end if;
           end case;
         end if;
       when EXE_SHFLI =>
-        if is_rv32 and ext_zbkb = 1 then
+        if is_rv32 and ext_zbkb then
           if ctrlx = "001" then
             for i in 0 to op1_in'high loop
               if i mod 2 = 0 then
@@ -1504,7 +1598,7 @@ package body alunv is
           end if;
         end if;
       when EXE_XPERM =>
-        if ext_zbkx = 1 then
+        if ext_zbkx then
           op1r := (others => '0');
           -- xperm8?
           if ctrlx(0) = '0' then
@@ -1520,6 +1614,7 @@ package body alunv is
           end if;
           if is_rv32 then
             for i in 0 to op2_in'length / 4 - 1 loop
+              -- Zero output if index too high.
               if op2r(i * 4 + 3) = '1' then
                 op1r(i) := '1';
               end if;
@@ -1528,7 +1623,7 @@ package body alunv is
           res := xperm4(op1_in, op2r, op1r);
         end if;
       when EXE_COUNT =>
-        if ext_zbb = 1 then
+        if ext_zbb then
           -- xxxW?
           if is_rv64 and ctrlx(0) = '1' then
             -- Flip words if not CTZ.
@@ -1548,14 +1643,14 @@ package body alunv is
           end case;
         end if;
       when EXE_CLMUL =>
-        if ext_zbc = 1 or ext_zbkc = 1 then
+        if ext_zbc or ext_zbkc then
           res := clmul_hdiv(op1r, op2r, op1r'length, 0);
 --          res := clmul_hdiv64(op1r, op2r, 0);
           case ctrlx is
             when R_CLMUL  => null;
             when R_CLMULH => res := '0' & reverse(res)(res'high downto 1);
             when others   =>
-              if ext_zbc = 1 then
+              if ext_zbc then
                 res := reverse(res);
               end if;
           end case;
@@ -1577,13 +1672,13 @@ package body alunv is
                    ctrl   : word3;
                    ctrlx  : word3) return wordx is
     variable is_rv64  : boolean := is_enabled(active, x_rv64);
-    variable ext_zba  : integer := is_enabled(active, x_zba);
-    variable ext_zbb  : integer := is_enabled(active, x_zbb);
-    variable ext_zbc  : integer := is_enabled(active, x_zbc);
-    variable ext_zbs  : integer := is_enabled(active, x_zbs);
-    variable ext_zbkb : integer := is_enabled(active, x_zbkb);
-    variable ext_zbkc : integer := is_enabled(active, x_zbkc);
-    variable ext_zbkx : integer := is_enabled(active, x_zbkx);
+    variable ext_zba  : boolean := is_enabled(active, x_zba);
+    variable ext_zbb  : boolean := is_enabled(active, x_zbb);
+    variable ext_zbc  : boolean := is_enabled(active, x_zbc);
+    variable ext_zbs  : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkc : boolean := is_enabled(active, x_zbkc);
+    variable ext_zbkx : boolean := is_enabled(active, x_zbkx);
     -- Non-constant
     variable op1      : wordx1;  -- Manipulated from _in for efficiency.
     variable op2      : wordx1;
@@ -1597,7 +1692,7 @@ package body alunv is
     op1 := op1_in & '1';
     op2 := op2_in & '0';
 
-    if ext_zba = 1 and ctrl = EXE_ADD then
+    if ext_zba and ctrl = EXE_ADD then
       if ctrlx(0) = '1' then
         op1 := uext(op1_in(word'range), op1_in) & '1';
       end if;
@@ -1634,7 +1729,7 @@ package body alunv is
     end case;
 
     -- MIN/MAX?
-    if ext_zbb = 1 and (ctrl = EXE_SLT or ctrl = EXE_SLTU) and ctrlx(1) = '1' then
+    if ext_zbb and (ctrl = EXE_SLT or ctrl = EXE_SLTU) and ctrlx(1) = '1' then
       if (ctrlx(0) xor less) = '1' then
         res := op1_in;
       else
@@ -1732,13 +1827,13 @@ package body alunv is
 --    variable ext_zbc : integer := 1;
 --    variable ext_zbs : integer := 1;
     variable is_rv64   : boolean := is_enabled(active, x_rv64);
-    variable ext_zba   : integer := is_enabled(active, x_zba);
-    variable ext_zbb   : integer := is_enabled(active, x_zbb);
-    variable ext_zbc   : integer := is_enabled(active, x_zbc);
-    variable ext_zbs   : integer := is_enabled(active, x_zbs);
-    variable ext_zbkb  : integer := is_enabled(active, x_zbkb);
-    variable ext_zbkc  : integer := is_enabled(active, x_zbkc);
-    variable ext_zbkx  : integer := is_enabled(active, x_zbkx);
+    variable ext_zba   : boolean := is_enabled(active, x_zba);
+    variable ext_zbb   : boolean := is_enabled(active, x_zbb);
+    variable ext_zbc   : boolean := is_enabled(active, x_zbc);
+    variable ext_zbs   : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb  : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkc  : boolean := is_enabled(active, x_zbkc);
+    variable ext_zbkx  : boolean := is_enabled(active, x_zbkx);
     -- Non-constant
     variable shiftin64 : std_logic_vector(127 downto 0) := (others => '0');
     variable shiftin32 : word64                         := (others => '0');
@@ -1747,12 +1842,12 @@ package body alunv is
     variable res64     : word64;
   begin
     -- SLLI.UW?
-    if is_rv64 and ext_zba = 1 and ctrlx = "001" then
+    if is_rv64 and ext_zba and ctrlx = "001" then
       set(shiftin64, 64 - 1, op1(word'range));
       -- Always left
       cnt := not op2(5 downto 0);  -- Preshifted above for negation!
     -- Rotate?
-    elsif (ext_zbb = 1 or ext_zbkb = 1) and ctrlx = "010" then
+    elsif (ext_zbb or ext_zbkb) and ctrlx = "010" then
       shiftin32     := op1(word'range) & op1(word'range);
       if is_rv64 then
         shiftin64   := to64(op1) & to64(op1);

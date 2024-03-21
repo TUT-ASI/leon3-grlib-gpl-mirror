@@ -224,8 +224,7 @@ package riscv is
   constant F7_CZERO       : funct7_type := "0000111";  -- R_SRL
 
   -- Zicfiss
-  constant F12_SSRDP      : funct12_type := F7_MOPR_0  & "11101";  -- R_XOR
-  constant F12_SSPOPCHK   : funct12_type := F7_MOPR_28 & "11100";  -- R_XOR
+  constant F12_SSRDPOPCHK : funct12_type := F7_MOPR_28 & "11100";  -- R_XOR
 
 
   -- funct3 decoding (inst(14 downto 12))
@@ -413,6 +412,9 @@ package riscv is
   constant R_AMOMAX     : funct5_type := "10100";
   constant R_AMOMINU    : funct5_type := "11000";
   constant R_AMOMAXU    : funct5_type := "11100";
+
+  -- Zicfiss
+  constant R_SSAMOSWAP  : funct5_type := "01001";
 
   -----------------------------------------------------------------------------
   -- RV64A Standard Extension Set
@@ -1006,6 +1008,8 @@ package riscv is
   -- Custom Read-only Registers
   constant CSR_CAPABILITY       : csratype := x"fc0";
   constant CSR_CAPABILITYH      : csratype := x"fd0";
+  -- Custom Read/Write Unprivileged Registers
+
 
   constant DCAUSE_EBREAK        : std_logic_vector(2 downto 0) := "001";
   constant DCAUSE_TRIG          : std_logic_vector(2 downto 0) := "010";

@@ -449,6 +449,7 @@ package noelv is
       rnmi_xaddr          : integer                     := 16#00101#; -- RNMI exception trap handler address
       -- Extensions
       ext_noelv         : integer range 0  to 1         := 1;  -- NOEL-V Extensions
+      ext_noelvalu      : integer range 0  to 1         := 1;  -- NOEL-V ALU Extensions
       ext_m             : integer range 0  to 1         := 1;  -- M Base Extension Set
       ext_a             : integer range 0  to 1         := 0;  -- A Base Extension Set
       ext_c             : integer range 0  to 1         := 0;  -- C Base Extension Set
@@ -519,7 +520,8 @@ package noelv is
       dbgi        : in  nv_debug_in_type; -- debug in
       dbgo        : out nv_debug_out_type;-- debug out
       eto         : out nv_etrace_out_type;
-      cnt         : out nv_counter_out_type
+      cnt         : out nv_counter_out_type;
+      pwrd        : out std_ulogic           -- Activate power down mode 
       );
   end component;
 
@@ -544,6 +546,7 @@ package noelv is
       );
     port (
       clk    : in  std_ulogic;
+      gclk   : in  std_ulogic;
       rstn   : in  std_ulogic;
       ahbi   : in  ahb_mst_in_type;
       ahbo   : out ahb_mst_out_type;
@@ -557,7 +560,8 @@ package noelv is
       dbgi   : in  nv_debug_in_type;
       dbgo   : out nv_debug_out_type;
       eto    : out nv_etrace_out_type;
-      cnt    : out nv_counter_out_type
+      cnt    : out nv_counter_out_type;
+      pwrd   : out std_ulogic        
       );
   end component;
 
@@ -591,7 +595,10 @@ package noelv is
       );
     port (
       clk      : in  std_ulogic;
+      gclk     : in  std_logic_vector(ncpu-1 downto 0);
       rstn     : in  std_ulogic;
+      -- Power down mode
+      pwrd     : out std_logic_vector(ncpu-1 downto 0);
       -- AHB bus interface for other masters (DMA units)
       ahbmi    : out ahb_mst_in_type;
       ahbmo    : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
@@ -622,6 +629,10 @@ package noelv is
       scanen  : in  std_ulogic := '0';
       testoen : in  std_ulogic := '1';
       testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+-- GRLIB_INTERNAL_BEGIN
+   ; 
+    nirq : in std_logic_vector(0 to ncpu - 1) := (others => '0')
+-- GRLIB_INTERNAL_END
       );
   end component;
 

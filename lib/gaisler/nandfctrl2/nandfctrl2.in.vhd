@@ -1,0 +1,23 @@
+-- NANDFCTRL2
+  constant CFG_NFC2_EN            : integer := CONFIG_NANDFCTRL2_ENABLE;
+  constant CFG_NFC2_NROFCE        : integer := CONFIG_NFC2_NROFCE;
+  constant CFG_NFC2_NROFCH        : integer := CONFIG_NFC2_NROFCH;
+  constant CFG_NFC2_NROFRB        : integer := CONFIG_NFC2_NROFRB;
+  constant CFG_NFC2_NROFSEFI      : integer := CONFIG_NFC2_NROFSEFI;
+  constant CFG_NFC2_RND           : integer := CONFIG_NFC2_RND;
+  constant CFG_NFC2_MEM0_DATA     : integer := CONFIG_NFC2_MEM0_DATA;
+  constant CFG_NFC2_MEM0_SPARE    : integer := CONFIG_NFC2_MEM0_SPARE;
+  constant CFG_NFC2_MEM0_ECC_SEL  : integer := CONFIG_NFC2_MEM0_ECC_SEL;
+  constant CFG_NFC2_MEM1_DATA     : integer := CONFIG_NFC2_MEM1_DATA;
+  constant CFG_NFC2_MEM1_SPARE    : integer := CONFIG_NFC2_MEM1_SPARE;
+  constant CFG_NFC2_MEM1_ECC_SEL  : integer := CONFIG_NFC2_MEM1_ECC_SEL;
+  constant CFG_NFC2_MEM2_DATA     : integer := CONFIG_NFC2_MEM2_DATA;
+  constant CFG_NFC2_MEM2_SPARE    : integer := CONFIG_NFC2_MEM2_SPARE;
+  constant CFG_NFC2_MEM2_ECC_SEL  : integer := CONFIG_NFC2_MEM2_ECC_SEL;
+  constant CFG_NFC2_ECC0_GFSIZE   : integer := CONFIG_NFC2_ECC0_GFSIZE;
+  constant CFG_NFC2_ECC0_CHUNK    : integer := CONFIG_NFC2_ECC0_CHUNK;
+  constant CFG_NFC2_ECC0_CAP      : integer := CONFIG_NFC2_ECC0_CAP;
+  constant CFG_NFC2_ECC1_GFSIZE   : integer := CONFIG_NFC2_ECC1_GFSIZE;
+  constant CFG_NFC2_ECC1_CHUNK    : integer := CONFIG_NFC2_ECC1_CHUNK;
+  constant CFG_NFC2_ECC1_CAP      : integer := CONFIG_NFC2_ECC1_CAP;
+  constant CFG_NFC2_FT            : integer := CONFIG_NFC2_FT;

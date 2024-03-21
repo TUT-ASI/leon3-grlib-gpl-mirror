@@ -72,7 +72,8 @@ package cpucore5int is
     ready_ld     : std_logic_vector(0 to 35);
     ready_st     : std_logic_vector(0 to 35);
     trapon_flop  : std_ulogic;
-    trapon_ldst  : std_ulogic;
+    trapon_ld    : std_ulogic;
+    trapon_st    : std_ulogic;
     trapon_stdfq : std_ulogic;
     issue_id     : std_logic_vector(4 downto 0);
     stdata       : std_logic_vector(63 downto 0);
@@ -88,7 +89,8 @@ package cpucore5int is
     ready_ld => (others=>'0'),
     ready_st => (others=>'0'),
     trapon_flop => '0',
-    trapon_ldst => '0',
+    trapon_ld => '0',
+    trapon_st => '0',
     trapon_stdfq => '0',
     issue_id => (others=>'0'),
     stdata => (others=>'0'),
@@ -119,7 +121,13 @@ package cpucore5int is
     rdata2 : std_logic_vector(63 downto 0);
     rdata3 : std_logic_vector(63 downto 0);
   end record;
-  
+
+  constant fpu_regfile_out_none : fpu_regfile_out_type := (
+    rdata1 => (others => '0'),
+    rdata2 => (others => '0'),
+    rdata3 => (others => '0')
+    );
+
   ----------------------------------------------------------------------------
   -- Internal parts inside single core block
   ----------------------------------------------------------------------------
@@ -130,6 +138,7 @@ package cpucore5int is
 
   type cdatatype5 is array (0 to 3) of std_logic_vector(63 downto 0);
   type cdatatype5s is array (0 to 3) of std_logic_vector(31 downto 0);
+  type cmasktype5 is array (0 to 3) of std_logic_vector(7 downto 0);
 
   type iu_control_reg_type is record
     fpspec       : std_ulogic;
@@ -372,6 +381,9 @@ package cpucore5int is
     idatawrite : std_logic_vector(1 downto 0);
     idatadin   : std_logic_vector(63 downto 0);
     ifulladdr  : std_logic_vector(31 downto 0);
+    -- version of ifulladdr only valid on i-data writes
+    -- with less logic going into it.
+    ifulladdrw : std_logic_vector(31 downto 0);
     itcmen     : std_ulogic;
     itcmwrite  : std_logic_vector(1 downto 0);
     itcmdin    : std_logic_vector(63 downto 0);
@@ -396,8 +408,10 @@ package cpucore5int is
     ddataoffs  : std_logic_vector(1 downto 0);
     ddataen    : std_logic_vector(0 to 3);
     ddatawrite : std_logic_vector(7 downto 0);
+    ddataloop  : std_logic_vector(7 downto 0);
     ddatadin   : cdatatype5;
     ddatafulladdr : std_logic_vector(31 downto 0);
+    ddatafulladdrw: std_logic_vector(31 downto 0);
     dtcmen     : std_ulogic;
     dtcmdin    : std_logic_vector(63 downto 0);
     dtcmwrite : std_logic_vector(7 downto 0);
@@ -554,8 +568,10 @@ package cpucore5int is
       dusebw    : integer range 0 to 1;
       itcmen    : integer range 0 to 1;
       itcmabits : integer range 1 to 20;
+      itcmfrac  : integer range 0 to 7;
       dtcmen    : integer range 0 to 1;
       dtcmabits : integer range 1 to 20;
+      dtcmfrac  : integer range 0 to 7;
       itlbnum   : integer range 2 to 64;
       dtlbnum   : integer range 2 to 64;
       cached    : integer;
@@ -589,6 +605,36 @@ package cpucore5int is
       );
   end component;
 
+  component tcmwrap5 is
+    generic (
+      tech : integer;
+      abits : integer;
+      afrac : integer range 0 to 7;
+      dbits : integer;
+      bw : integer;
+      dloopen: integer := 0;
+      testen : integer;
+      mtwidth : integer;
+      rdenall : integer := 0
+      );
+    port (
+      clk      : in std_ulogic;
+      address  : in std_logic_vector((abits -1) downto 0);
+      addressw : in std_logic_vector((abits -1) downto 0);
+      datainh  : in std_logic_vector((dbits -1) downto 0);
+      datainl  : in std_logic_vector((dbits -1) downto 0);
+      dataouth : out std_logic_vector((dbits -1) downto 0);
+      dataoutl : out std_logic_vector((dbits -1) downto 0);
+      enable   : in std_ulogic;
+      writeh   : in std_ulogic;
+      writel   : in std_ulogic;
+      writebw  : in std_logic_vector(7 downto 0) := "00000000";
+      dataloop : in std_logic_vector(7 downto 0) := (others => '0');
+      oor      : out std_ulogic;
+      testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+      );
+  end component;
+
   component cachemem5 is
     generic (
       tech      : integer range 0 to NTECH;
@@ -598,6 +644,7 @@ package cpucore5int is
       itagwidth : integer range 1 to 32;
       itcmen    : integer range 0 to 1;
       itcmabits : integer range 1 to 20;
+      itcmfrac  : integer range 0 to 7;
       dways     : integer range 1 to 4;
       dlinesize : integer range 4 to 8;
       didxwidth : integer range 1 to 10;
@@ -606,6 +653,7 @@ package cpucore5int is
       dusebw    : integer range 0 to 1;
       dtcmen    : integer range 0 to 1;
       dtcmabits : integer range 1 to 20;
+      dtcmfrac  : integer range 0 to 7;
       testen    : integer range 0 to 1
       );
     port (

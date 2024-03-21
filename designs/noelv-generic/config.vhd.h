@@ -30,6 +30,7 @@
 
 -- L2 Cache
   constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
+  constant CFG_L2_LITE  : integer := CONFIG_L2_LITE;
   constant CFG_L2_SIZE	: integer := CFG_L2_SZ;
   constant CFG_L2_WAYS	: integer := CFG_L2_ASSO;
   constant CFG_L2_HPROT	: integer := CONFIG_L2_HPROT;
@@ -41,7 +42,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
-  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
+  constant CFG_L2_AXI	: integer := CONFIG_L2_AXI;
 
 -- AMBA settings
   constant CFG_DEFMST  	  : integer := CONFIG_AHB_DEFMST;
@@ -73,6 +74,29 @@
   constant CFG_AHBSTAT 	: integer := CONFIG_AHBSTAT_ENABLE;
   constant CFG_AHBSTATN	: integer := CONFIG_AHBSTAT_NFTSLV;
 
+-- NANDFCTRL2
+  constant CFG_NFC2_EN            : integer := CONFIG_NANDFCTRL2_ENABLE;
+  constant CFG_NFC2_NROFCE        : integer := CONFIG_NFC2_NROFCE;
+  constant CFG_NFC2_NROFCH        : integer := CONFIG_NFC2_NROFCH;
+  constant CFG_NFC2_NROFRB        : integer := CONFIG_NFC2_NROFRB;
+  constant CFG_NFC2_NROFSEFI      : integer := CONFIG_NFC2_NROFSEFI;
+  constant CFG_NFC2_RND           : integer := CONFIG_NFC2_RND;
+  constant CFG_NFC2_MEM0_DATA     : integer := CONFIG_NFC2_MEM0_DATA;
+  constant CFG_NFC2_MEM0_SPARE    : integer := CONFIG_NFC2_MEM0_SPARE;
+  constant CFG_NFC2_MEM0_ECC_SEL  : integer := CONFIG_NFC2_MEM0_ECC_SEL;
+  constant CFG_NFC2_MEM1_DATA     : integer := CONFIG_NFC2_MEM1_DATA;
+  constant CFG_NFC2_MEM1_SPARE    : integer := CONFIG_NFC2_MEM1_SPARE;
+  constant CFG_NFC2_MEM1_ECC_SEL  : integer := CONFIG_NFC2_MEM1_ECC_SEL;
+  constant CFG_NFC2_MEM2_DATA     : integer := CONFIG_NFC2_MEM2_DATA;
+  constant CFG_NFC2_MEM2_SPARE    : integer := CONFIG_NFC2_MEM2_SPARE;
+  constant CFG_NFC2_MEM2_ECC_SEL  : integer := CONFIG_NFC2_MEM2_ECC_SEL;
+  constant CFG_NFC2_ECC0_GFSIZE   : integer := CONFIG_NFC2_ECC0_GFSIZE;
+  constant CFG_NFC2_ECC0_CHUNK    : integer := CONFIG_NFC2_ECC0_CHUNK;
+  constant CFG_NFC2_ECC0_CAP      : integer := CONFIG_NFC2_ECC0_CAP;
+  constant CFG_NFC2_ECC1_GFSIZE   : integer := CONFIG_NFC2_ECC1_GFSIZE;
+  constant CFG_NFC2_ECC1_CHUNK    : integer := CONFIG_NFC2_ECC1_CHUNK;
+  constant CFG_NFC2_ECC1_CAP      : integer := CONFIG_NFC2_ECC1_CAP;
+  constant CFG_NFC2_FT            : integer := CONFIG_NFC2_FT;
 -- Gaisler Ethernet core
   constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
   constant CFG_GRETH1G	    : integer := CONFIG_GRETH_GIGA;

@@ -77,6 +77,10 @@ architecture rtl of dmnv_ic is
                              ) 
                              ;
 
+  -- RVDM is instantiated both as a Slave and as a Master. For GRMON to work
+  -- properly version of Master and Slave have to coincide. If RVDM_VERSION
+  -- is modified inside this file, RVDM_VERSION of the Master must be modified
+  -- accordingly.
   constant RVDM_VERSION : integer := 2;
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_RVDM, 0, RVDM_VERSION, 0),

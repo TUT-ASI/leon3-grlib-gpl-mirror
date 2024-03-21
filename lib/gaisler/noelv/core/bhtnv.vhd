@@ -45,7 +45,7 @@ entity bhtnv is
     tech       : integer;
     nentries   : integer range 32 to 1024;  -- Number of Entries
     hlength    : integer range 2 to 10;     -- History Length
-    predictor  : integer range 0 to 2;      -- Predictor
+    predictor  : integer range 0 to 2;      -- Predictor 
     ext_c      : integer range 0 to 1;      -- C Base Extension Set
     dissue     : integer range 0 to 1;      -- Dual issue
     testen     : integer
@@ -66,35 +66,35 @@ architecture rtl of bhtnv is
   -- Functions
   ----------------------------------------------------------------------------
 
-  function phtgen (entries   : integer;
-                   hlength   : integer;
-                   predictor : integer) return integer is
-    -- Non-constant
-    variable ret : integer;
-  begin
+  --function phtgen (entries   : integer;
+  --                 hlength   : integer;
+  --                 predictor : integer) return integer is
+  --  -- Non-constant
+  --  variable ret : integer;
+  --begin
 
-    ret         := entries;
-    if predictor = 1 then
-      ret       := 2 ** hlength;
-    end if;
+  --  ret         := entries;
+  --  if predictor = 1 then
+  --    ret       := 2 ** hlength;
+  --  end if;
 
-    return ret;
-  end;
+  --  return ret;
+  --end;
 
-  function phtbit (hlength   : integer;
-                   predictor : integer;
-                   cbits     : integer) return integer is
-    -- Non-constant
-    variable ret : integer;
-  begin
+  --function phtbit (hlength   : integer;
+  --                 predictor : integer;
+  --                 cbits     : integer) return integer is
+  --  -- Non-constant
+  --  variable ret : integer;
+  --begin
 
-    ret         := cbits;
-    if predictor = 2 then
-      ret       := 2 ** hlength * cbits;
-    end if;
+  --  ret         := cbits;
+  --  if predictor = 2 then
+  --    ret       := 2 ** hlength * cbits;
+  --  end if;
 
-    return ret;
-  end;
+  --  return ret;
+  --end;
 
   ----------------------------------------------------------------------------
   -- Constants
@@ -103,8 +103,8 @@ architecture rtl of bhtnv is
   constant OFFSET       : integer := 2 - ext_c * 1;
   constant BHTBITS      : integer := log2ext(nentries) + OFFSET;
   constant COUNTERBITS  : integer := 2;
-  constant PHTENTRIES   : integer := phtgen(nentries, hlength, predictor);
-  constant PHTBITS      : integer := phtbit(hlength, predictor, counterbits);
+  --constant PHTENTRIES   : integer := phtgen(nentries, hlength, predictor);
+  --constant PHTBITS      : integer := phtbit(hlength, predictor, counterbits);
 
   --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
   constant RESET_ALL    : boolean := true;
@@ -115,9 +115,9 @@ architecture rtl of bhtnv is
 
   subtype bhthistory is std_logic_vector(HLENGTH - 1 downto 0);
   type    bht        is array (0 to NENTRIES - 1) of bhthistory;
-  subtype phtcounter is std_logic_vector(PHTBITS - 1 downto 0);
-  type    pht        is array (0 to PHTENTRIES - 1) of phtcounter;
-  type    phto       is array (0 to 2 ** HLENGTH - 1) of std_logic_vector(COUNTERBITS - 1 downto 0);
+  --subtype phtcounter is std_logic_vector(PHTBITS - 1 downto 0);
+  --type    pht        is array (0 to PHTENTRIES - 1) of phtcounter;
+  --type    phto       is array (0 to 2 ** HLENGTH - 1) of std_logic_vector(COUNTERBITS - 1 downto 0);
 
   type reg_type is record
     taken            : std_logic_vector(nentries - 1 downto 0);
@@ -298,8 +298,9 @@ begin  -- rtl
     end if;                
           
     taken(0)   := r.taken(u2i(r.rindex_bhist_reg));
-    taken(1)   := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
-    taken(2)   := '0';
+    --taken(1)   := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
+    taken(1)   := '0';
+    taken(2)   := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
     taken(3)   := '0';
     if ext_c /= 0 and dissue /= 0 then
       taken(1) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "01"));

@@ -439,7 +439,8 @@ package hssl is
       nodeaddr           : integer range 0 to 255       := 254;
       destkey            : integer range 0 to 255       := 0;
       numextvc           : integer range 0 to 32        := 0;
-      numextbc           : integer range 0 to 1         := 0);
+      numextbc           : integer range 0 to 1         := 0;
+      numextwc           : integer range 0 to 1         := 0);
     port (
       clk        : in  std_ulogic;
       rstn       : in  std_ulogic;
@@ -457,11 +458,13 @@ package hssl is
       hsslo      : out grhssl_out_type;
       -- Default IP configuration
       cfg        : in  grhssl_defcfg_type  := grhssl_defcfg_none;
-      -- External VC/BC interface
+      -- External VC/BC/WC interface
       extvci     : in  extvc_in_arr_type   := (others => extvc_none);
       extvco     : out extvc_out_arr_type;
       extbci     : in  extbc_in_type       := extbc_none;
-      extbco     : out extbc_out_type
+      extbco     : out extbc_out_type;
+      extwci     : in  extvc_in_type       := extvc_none;
+      extwco     : out extvc_out_type
       );
   end component grhssl;
 
@@ -517,7 +520,8 @@ package hssl is
       nodeaddr           : integer range 0 to 255       := 254;
       destkey            : integer range 0 to 255       := 0;
       numextvc           : integer range 0 to 32        := 0;
-      numextbc           : integer range 0 to 1         := 0);
+      numextbc           : integer range 0 to 1         := 0;
+      numextwc           : integer range 0 to 1         := 0);
     port (
       clk        : in  std_ulogic;
       rstn       : in  std_ulogic;
@@ -534,11 +538,13 @@ package hssl is
       hsslo      : out grhssl_out_type;
       -- Default IP configuration
       cfg        : in  grhssl_defcfg_type  := grhssl_defcfg_none;
-      -- External VC/BC interface
+      -- External VC/BC/WC interface
       extvci     : in  extvc_in_arr_type   := (others => extvc_none);
       extvco     : out extvc_out_arr_type;
       extbci     : in  extbc_in_type       := extbc_none;
-      extbco     : out extbc_out_type
+      extbco     : out extbc_out_type;
+      extwci     : in  extvc_in_type       := extvc_none;
+      extwco     : out extvc_out_type
       );
   end component grhssl_ahb;
 
@@ -592,7 +598,8 @@ package hssl is
       nodeaddr           : integer range 0 to 255       := 254;
       destkey            : integer range 0 to 255       := 0;
       numextvc           : integer range 0 to 32        := 0;
-      numextbc           : integer range 0 to 1         := 0);
+      numextbc           : integer range 0 to 1         := 0;
+      numextwc           : integer range 0 to 1         := 0);
     port (
       clk        : in  std_ulogic;
       rstn       : in  std_ulogic;
@@ -610,11 +617,13 @@ package hssl is
       hsslo      : out grhssl_out_type;
       -- Default IP configuration
       cfg        : in  grhssl_defcfg_type  := grhssl_defcfg_none;
-      -- External VC/BC interface
+      -- External VC/BC/WC interface
       extvci     : in  extvc_in_arr_type   := (others => extvc_none);
       extvco     : out extvc_out_arr_type;
       extbci     : in  extbc_in_type       := extbc_none;
-      extbco     : out extbc_out_type
+      extbco     : out extbc_out_type;
+      extwci     : in  extvc_in_type       := extvc_none;
+      extwco     : out extvc_out_type
       );
   end component grhssl_axi;
 
@@ -780,7 +789,8 @@ package hssl is
       ft_core_if         : integer range 0 to 5         := 0;
       ft_dma             : integer range 0 to 5         := 0;
       scantest           : integer range 0 to 1         := 0;
-      ahbbits            : integer                      := AHBDW);
+      ahbbits            : integer                      := AHBDW;
+      numextwc           : integer range 0 to 1         := 0);
     port (
       clk        : in  std_ulogic;
       rstn       : in  std_ulogic;
@@ -794,7 +804,10 @@ package hssl is
       ahbso      : out ahb_slv_out_type;
       -- Serdes interface
       wizli      : in  grhssl_in_type;
-      wizlo      : out grhssl_out_type
+      wizlo      : out grhssl_out_type;
+      -- External WC interface
+      extwci     : in  extvc_in_type       := extvc_none;
+      extwco     : out extvc_out_type
       );
   end component grwizl_ahb;
 
@@ -818,7 +831,8 @@ package hssl is
       ft_core_if         : integer range 0 to 5         := 0;
       ft_dma             : integer range 0 to 5         := 0;
       scantest           : integer range 0 to 1         := 0;
-      lendian            : integer range 0 to 1         := 1);
+      lendian            : integer range 0 to 1         := 1;
+      numextwc           : integer range 0 to 1         := 0);
     port (
       clk        : in  std_ulogic;
       rstn       : in  std_ulogic;
@@ -833,7 +847,10 @@ package hssl is
       ahbso      : out ahb_slv_out_type;
       -- Serdes interface
       wizli      : in  grhssl_in_type;
-      wizlo      : out grhssl_out_type
+      wizlo      : out grhssl_out_type;
+      -- External WC interface
+      extwci     : in  extvc_in_type       := extvc_none;
+      extwco     : out extvc_out_type
       );
   end component grwizl_axi;
 

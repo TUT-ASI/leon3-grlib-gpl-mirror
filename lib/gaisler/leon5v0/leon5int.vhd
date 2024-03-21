@@ -171,22 +171,20 @@ package leon5int is
 
   type grfpu5_in_type is record
     start   : std_logic;
+    startcond : std_logic_vector(6 downto 0);
     inmode  : std_logic_vector(1 downto 0);
     outmode : std_logic_vector(1 downto 0);
     flop    : std_logic_vector(8 downto 0);
     op1     : std_logic_vector(63 downto 0);
     op2     : std_logic_vector(63 downto 0);
     opid    : std_logic_vector(7 downto 0);
-    flush   : std_logic;
-    flushid : std_logic_vector(5 downto 0);
     rndmode : std_logic_vector(1 downto 0);
-    req     : std_logic_vector(2 downto 0);
+    resfw   : std_logic_vector(7 downto 0);
   end record;
 
   constant grfpu5_in_none : grfpu5_in_type :=
-    ('0', "00", "00", (others => '0'), (others => '0'), (others => '0'),
-     (others => '0'), '0', (others => '0'), (others => '0'),
-     (others => '0'));
+    ('0', "0000000", "00", "00", (others => '0'), (others => '0'), (others => '0'),
+     (others => '0'), (others => '0'), "00000000");
 
   type grfpu5_in_vector is array (natural range <>) of grfpu5_in_type;
 
@@ -195,7 +193,6 @@ package leon5int is
     exc     : std_logic_vector(6 downto 0);
     allow   : std_logic_vector(2 downto 0);
     rdy     : std_logic;
-    cc      : std_logic_vector(1 downto 0);
     idout   : std_logic_vector(7 downto 0);
     cmprdy  : std_ulogic;
     cmpidout: std_logic_vector(7 downto 0);
@@ -204,7 +201,7 @@ package leon5int is
   end record;
 
   constant grfpu5_out_none: grfpu5_out_type := (
-    (others => '0'), "0000000", "000", '0', "00", "00000000", '0', "00000000", "00", '0'
+    (others => '0'), "0000000", "000", '0', "00000000", '0', "00000000", "00", '0'
     );
 
   type grfpu5_out_vector is array (natural range <>) of grfpu5_out_type;
@@ -257,6 +254,7 @@ package leon5int is
       );
   end component;
 
+
   ----------------------------------------------------------------------------
   -- L5STAT
   ----------------------------------------------------------------------------
@@ -289,7 +287,8 @@ package leon5int is
       ready_ld      : out std_logic_vector(0 to 35);
       ready_st      : out std_logic_vector(0 to 35);
       trapon_flop   : out std_ulogic;
-      trapon_ldst   : out std_ulogic;
+      trapon_ld     : out std_ulogic;
+      trapon_st     : out std_ulogic;
       trapon_stdfq  : out std_ulogic;
       issue_cmd     : in std_logic_vector(2 downto 0);
       issue_ldstreg : in std_logic_vector(5 downto 0);
@@ -320,6 +319,7 @@ package leon5int is
       fpcidle       : out std_ulogic;
       -- FPU interface
       fpu_start     : out std_logic;
+      fpu_startcond : out std_logic_vector(6 downto 0);
       fpu_inmode    : out std_logic_vector(1 downto 0);
       fpu_outmode   : out std_logic_vector(1 downto 0);
       fpu_flop      : out std_logic_vector(8 downto 0);
@@ -327,6 +327,7 @@ package leon5int is
       fpu_op2       : out std_logic_vector(63 downto 0);
       fpu_opid      : out std_logic_vector(7 downto 0);
       fpu_rndmode   : out std_logic_vector(1 downto 0);
+      fpu_resfw     : out std_logic_vector(7 downto 0);
       fpu_res       : in std_logic_vector(63 downto 0);
       fpu_exc       : in std_logic_vector(6 downto 0);
       fpu_allow     : in std_logic_vector(2 downto 0);
@@ -374,7 +375,8 @@ package leon5int is
       ready_ld      : out std_logic_vector(0 to 35);
       ready_st      : out std_logic_vector(0 to 35);
       trapon_flop   : out std_ulogic;
-      trapon_ldst   : out std_ulogic;
+      trapon_ld     : out std_ulogic;
+      trapon_st     : out std_ulogic;
       trapon_stdfq  : out std_ulogic;
       issue_cmd     : in std_logic_vector(2 downto 0);
       issue_ldstreg : in std_logic_vector(5 downto 0);
@@ -421,6 +423,7 @@ package leon5int is
     clk     : in std_logic;
     reset   : in std_logic;
     start   : in std_logic;
+    startcond: in std_logic_vector(6 downto 0);
     inmode  : in std_logic_vector;
     outmode : in std_logic_vector;
     flop    : in std_logic_vector(8 downto 0);
@@ -430,6 +433,7 @@ package leon5int is
     flush   : in std_logic;
     flushid : in std_logic_vector(5 downto 0);
     rndmode : in std_logic_vector(1 downto 0);
+    resfw   : in std_logic_vector(7 downto 0);
     res     : out std_logic_vector(63 downto 0);
     exc     : out std_logic_vector(6 downto 0);
     allow   : out std_logic_vector(2 downto 0);

@@ -62,6 +62,7 @@ use gaisler.nvsupport.to_hpmeventh;
 use gaisler.nvsupport.CSR_SIE_MASK;
 use gaisler.nvsupport.CSR_SIP_MASK;
 use gaisler.nvsupport.selector2wordx;
+use gaisler.nvsupport.pmpcfg;
 use gaisler.noelvint.fpu5_out_type;
 use gaisler.noelvint.fpu5_out_none;
 use gaisler.noelvint.fpu5_out_async_type;

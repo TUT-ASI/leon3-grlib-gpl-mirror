@@ -88,8 +88,6 @@ package utilnv is
   function set(src  : std_logic_vector; start : integer;
                data : std_logic_vector) return std_logic_vector;
   function set(data : std_logic_vector; n : integer) return std_logic_vector;
-  function get(data : std_logic_vector;
-               bit  : integer) return std_logic;
   function get(data  : std_logic_vector;
                start : integer; bits : integer) return std_logic_vector;
   function get(data  : std_logic_vector;
@@ -751,20 +749,6 @@ package body utilnv is
     return get_slv('1', bits);
   end;
 
-  -- Return bit from data, or '0' if bad index.
-  -- Pointless, except that GHDL+Verilator has issues...
-  function get(data : std_logic_vector;
-               bit  : integer) return std_logic is
-  begin
-    for i in data'range loop
-      if i = bit then
-        return data(i);
-      end if;
-    end loop;
-
-    -- Not supposed to ever happen.
-    return '0';
-  end;
 
   -- Return bits from start in data, away from bit 0.
   function get(data  : std_logic_vector;

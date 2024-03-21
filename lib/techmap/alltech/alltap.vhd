@@ -336,6 +336,25 @@ component polarfire_tap is
     tapo_inst   : out std_logic_vector(7 downto 0));
 end component;
 
+component nexus_tap is
+  port (
+    tck         : in std_ulogic;
+    tms         : in std_ulogic;
+    tdi         : in std_ulogic;
+    tdo         : out std_ulogic;
+    tapo_tck    : out std_ulogic;
+    tapo_tdi    : out std_ulogic;
+    tapo_rst    : out std_ulogic;
+    tapo_capt   : out std_ulogic;
+    tapo_shft   : out std_ulogic;
+    tapo_upd    : out std_ulogic;
+    tapo_xsel1  : out std_ulogic;
+    tapo_xsel2  : out std_ulogic;
+    tapi_tdo1   : in std_ulogic;
+    tapi_tdo2   : in std_ulogic;
+    tdoen       : out std_ulogic);
+end component;
+
 -------------------------------------------------------------------------------
 
 component scanregi_inf

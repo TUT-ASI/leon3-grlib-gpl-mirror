@@ -75,3 +75,6 @@ toutpad_tm.vhd
 gr1553b_net.vhd
 memrwcol.vhd
 cdcbus.vhd
+syncramlb.vhd
+syncramftlb.vhd
+

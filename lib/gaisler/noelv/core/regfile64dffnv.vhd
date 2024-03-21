@@ -192,6 +192,12 @@ begin  -- rtl
       end if;
     end if;
 
+    -- Formality is happier if there is a known value
+    -- for register 0 even when not used.
+    if reg0write = 0 then
+      v.entry(0) := (others => '0');
+    end if;
+
     -- Output Signals
     rdata1 <= rdata1v;
     rdata2 <= rdata2v;

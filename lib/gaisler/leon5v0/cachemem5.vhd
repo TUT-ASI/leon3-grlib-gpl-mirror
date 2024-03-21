@@ -47,6 +47,7 @@ entity cachemem5 is
     itagwidth : integer range 1 to 32;
     itcmen    : integer range 0 to 1;
     itcmabits : integer range 1 to 20;
+    itcmfrac  : integer range 0 to 7;
     dways     : integer range 1 to 4;
     dlinesize : integer range 4 to 8;
     didxwidth : integer range 1 to 10;
@@ -55,6 +56,7 @@ entity cachemem5 is
     dusebw    : integer range 0 to 1;
     dtcmen    : integer range 0 to 1;
     dtcmabits : integer range 1 to 20;
+    dtcmfrac  : integer range 0 to 7;
     testen    : integer range 0 to 1
   );
   port (
@@ -80,10 +82,48 @@ architecture rtl of cachemem5 is
   signal denv: denv_type;
   signal denvtcm: std_logic_vector(7 downto 0);
 
+  signal dloopb: std_logic_vector(63 downto 0);
+
+  signal itcmoor: std_ulogic;
+  signal dtcmoor: std_ulogic;
+
+
+  function expand8(v: std_logic_vector) return std_logic_vector is
+    variable vx: std_logic_vector(v'length-1 downto 0);
+    variable b: std_logic_vector(7 downto 0);
+    variable r: std_logic_vector(v'length*8-1 downto 0);
+  begin
+    vx := v;
+    r := (others => '0');
+    b := (others => '0');
+    for x in vx'range loop
+      b := (others => vx(x));
+      r(x*8+7 downto x*8) := b;
+    end loop;
+    return r;
+  end expand8;
+
+  function vmux(v0,v1,m: std_logic_vector) return std_logic_vector is
+    variable v0x: std_logic_vector(v0'length-1 downto 0);
+    variable v1x: std_logic_vector(v1'length-1 downto 0);
+    variable mx: std_logic_vector(m'length-1 downto 0);
+    variable r: std_logic_vector(m'length-1 downto 0);
+  begin
+   v0x := v0;
+   v1x := v1;
+   mx := m;
+   r := (others => '0');
+   for x in r'range loop
+     if mx(x)/='0' then r(x) := v1x(x); else r(x) := v0x(x); end if;
+   end loop;
+   return r;
+  end vmux;
 
 begin
 
   gndv <= (others => '0');
+
+  dloopb <= expand8(crami.ddataloop);
 
   -- Instruction cache tag RAMs
 
@@ -158,45 +198,30 @@ begin
 
   -- Instruction cache tightly coupled memory
   itcm0: if itcmen /= 0 generate
-    itcmmemh: syncram
+    itcmmem: tcmwrap5
       generic map (
         tech       => tech,
         abits      => itcmabits,
+        afrac      => itcmfrac,
         dbits      => 32,
+        bw         => 0,
         testen     => testen,
-        custombits => memtest_vlen,
-        pipeline   => 0,
-        rdhold     => 1,
-        gatedwr    => 1
+        mtwidth    => 8,
+        dloopen    => 1 -- for separate waddress support
         )
       port map (
-        clk     => clk,
-        address => crami.ifulladdr(2+itcmabits downto 3),
-        datain  => crami.itcmdin(63 downto 32),
-        dataout => cramo.itcmdout(63 downto 32),
-        enable  => crami.itcmen,
-        write   => crami.itcmwrite(1),
-        testin  => testin
-        );
-    itcmmeml: syncram
-      generic map (
-        tech       => tech,
-        abits      => itcmabits,
-        dbits      => 32,
-        testen     => testen,
-        custombits => memtest_vlen,
-        pipeline   => 0,
-        rdhold     => 1,
-        gatedwr    => 1
-        )
-      port map (
-        clk     => clk,
-        address => crami.ifulladdr(2+itcmabits downto 3),
-        datain  => crami.itcmdin(31 downto 0),
-        dataout => cramo.itcmdout(31 downto 0),
-        enable  => crami.itcmen,
-        write   => crami.itcmwrite(0),
-        testin  => testin
+        clk      => clk,
+        address  => crami.ifulladdr(2+itcmabits downto 3),
+        addressw => crami.ifulladdrw(2+itcmabits downto 3),
+        datainh  => crami.itcmdin(63 downto 32),
+        datainl  => crami.itcmdin(31 downto 0),
+        dataouth => cramo.itcmdout(63 downto 32),
+        dataoutl => cramo.itcmdout(31 downto 0),
+        enable   => crami.itcmen,
+        writeh   => crami.itcmwrite(1),
+        writel   => crami.itcmwrite(0),
+        oor      => itcmoor,
+        testin   => testin
         );
   end generate;
 
@@ -401,15 +426,14 @@ begin
     end generate;
   end generate;
   ddnobw: if dusebw=0 generate
-    -- Memories without byte writes, data loopback in cache controller
+    -- Memories without byte writes, data loopback in syncram wrapper
     ddataloop: for s in 0 to dways-1 generate
-      ddatamemh: syncram
+      ddatamemh: syncramlb
         generic map (
           tech => tech,
           abits => didxwidth+log2(dlinesize)-1,
           dbits => 32,
           testen => testen,
-          pipeline => 0,
           rdhold => 1,
           gatedwr => 1,
           custombits => memtest_vlen
@@ -417,19 +441,20 @@ begin
         port map (
           clk => clk,
           address => ddataaddr,
+          addressw => ddataaddr,
           datain => crami.ddatadin(s)(63 downto 32),
           dataout => cramo.ddatadout(s)(63 downto 32),
+          dataloop => dloopb(63 downto 32),
           enable => crami.ddataen(s),
           write => crami.ddatawrite(7),
           testin => testin
           );
-      ddatameml: syncram
+      ddatameml: syncramlb
         generic map (
           tech => tech,
           abits => didxwidth+log2(dlinesize)-1,
           dbits => 32,
           testen => testen,
-          pipeline => 0,
           rdhold => 1,
           gatedwr => 1,
           custombits => memtest_vlen
@@ -437,8 +462,10 @@ begin
         port map (
           clk => clk,
           address => ddataaddr,
+          addressw => ddataaddr,
           datain => crami.ddatadin(s)(31 downto 0),
           dataout => cramo.ddatadout(s)(31 downto 0),
+          dataloop => dloopb(31 downto 0),
           enable => crami.ddataen(s),
           write => crami.ddatawrite(3),
           testin => testin
@@ -447,91 +474,33 @@ begin
   end generate;
 
   -- Data cache tightly coupled memory
-  ddtcmbw : if dtcmen/=0 and dusebw/=0 generate
-    -- Memories with byte writes
-    dtcmmemh: syncrambw
+  dtcm0 : if dtcmen /= 0 generate
+    dtcmmem: tcmwrap5
       generic map (
         tech => tech,
         abits => dtcmabits,
+        afrac => dtcmfrac,
         dbits => 32,
+        bw    => dusebw,
+        dloopen => (1-dusebw),
         testen => testen,
-        pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
-        custombits => memtest_vlen
+        mtwidth => 32
         )
       port map (
         clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(63 downto 32),
-        dataout => cramo.dtcmdout(63 downto 32),
-        enable => denvtcm(7 downto 4),
-        write => crami.dtcmwrite(7 downto 4),
-        testin => testin
-        );
-    dtcmmeml: syncrambw
-      generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
-        pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
-        custombits => memtest_vlen
-        )
-      port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(31 downto 0),
-        dataout => cramo.dtcmdout(31 downto 0),
-        enable => denvtcm(3 downto 0),
-        write => crami.dtcmwrite(3 downto 0),
-        testin => testin
-        );
-  end generate;
-
-  ddtcmnobw : if dtcmen/=0 and dusebw=0 generate
-    -- Memories without byte writes, data loopback in cache controller
-    dtcmmemh: syncram
-      generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
-        pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
-        custombits => memtest_vlen
-        )
-      port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(63 downto 32),
-        dataout => cramo.dtcmdout(63 downto 32),
-        enable => crami.dtcmen,
-        write => crami.dtcmwrite(7),
-        testin => testin
-        );
-    dtcmmeml: syncram
-      generic map (
-        tech => tech,
-        abits => dtcmabits,
-        dbits => 32,
-        testen => testen,
-        pipeline => 0,
-        rdhold => 1,
-        gatedwr => 1,
-        custombits => memtest_vlen
-        )
-      port map (
-        clk => clk,
-        address => crami.ddatafulladdr(2+dtcmabits downto 3),
-        datain => crami.dtcmdin(31 downto 0),
-        dataout => cramo.dtcmdout(31 downto 0),
-        enable => crami.dtcmen,
-        write => crami.dtcmwrite(3),
-        testin => testin
+        address  => crami.ddatafulladdr(2+dtcmabits downto 3),
+        addressw => crami.ddatafulladdrw(2+dtcmabits downto 3),
+        datainh  => crami.dtcmdin(63 downto 32),
+        datainl  => crami.dtcmdin(31 downto 0),
+        dataouth => cramo.dtcmdout(63 downto 32),
+        dataoutl => cramo.dtcmdout(31 downto 0),
+        enable   => crami.dtcmen,
+        writeh   => crami.dtcmwrite(7),
+        writel   => crami.dtcmwrite(3),
+        writebw  => crami.dtcmwrite,
+        dataloop => crami.ddataloop,
+        oor      => dtcmoor,
+        testin   => testin
         );
   end generate;
 
@@ -548,10 +517,12 @@ begin
 
   noitcm: if itcmen=0 generate
     cramo.itcmdout <= (others => '0');
+    itcmoor <= '0';
   end generate;
 
   nodtcm: if dtcmen=0 generate
     cramo.dtcmdout <= (others => '0');
+    dtcmoor <= '0';
   end generate;
 
 --pragma translate_off

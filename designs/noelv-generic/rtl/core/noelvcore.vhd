@@ -41,6 +41,7 @@ use gaisler.axi.all;
 use gaisler.plic.all;
 use gaisler.l2cache.all;
 use gaisler.noelv.all;
+use gaisler.nandfctrl2_pkg.all;
 
 --pragma translate_off
 use gaisler.sim.all;
@@ -58,6 +59,7 @@ entity noelvcore is
     padtech                 : integer := CFG_PADTECH;
     clktech                 : integer := CFG_CLKTECH;
     cpu_freq                : integer := 10000;
+    oepol                   : integer := padoen_polarity(CFG_PADTECH);
     devid                   : integer := NOELV_SOC;
     disas                   : integer := CFG_LOCAL_DISAS     -- Enable disassembly to console
     );
@@ -96,6 +98,9 @@ entity noelvcore is
     etho        : out eth_out_type;
     eth_apbi    : out apb_slv_in_type;
     eth_apbo    : in  apb_slv_out_type;
+    -- NANDFCTRL
+    nf2_phyi    : in  nf2_to_phy_out_type := NF2_TO_PHY_OUT_NONE;
+    nf2_phyo    : out nf2_to_phy_in_type;
     -- Debug UART
     duart_rx    : in  std_ulogic;
     duart_tx    : out std_ulogic;
@@ -119,7 +124,7 @@ architecture rtl of noelvcore is
   
   constant ncpu     : integer := CFG_LOCAL_NCPU;
 
-  constant nextmst  : integer := 1;
+  constant nextmst  : integer := 2;
 
   constant nextslv  : integer := 3
 -- pragma translate_off
@@ -150,6 +155,7 @@ architecture rtl of noelvcore is
   signal rstn       : std_ulogic;
   signal rstnraw    : std_logic;
   signal stati      : ahbstat_in_type;
+  signal gclk       : std_logic_vector(ncpu-1 downto 0);
 
   -- APB
   signal apbi       : apb_slv_in_type;
@@ -207,6 +213,10 @@ begin
 
     rstno <= rstn;
 
+  gen_gclk: for i in 0 to ncpu-1 generate
+    gclk(i) <= clkm;
+  end generate;
+
   ----------------------------------------------------------------------
   ---  NOEL-V SUBSYSTEM ------------------------------------------------
   ----------------------------------------------------------------------
@@ -218,7 +228,7 @@ begin
       ncpu      => ncpu,
       nextmst   => nextmst,
       nextslv   => nextslv,
-      nextapb   => 7,
+      nextapb   => 10,
       ndbgmst   => ndbgmst,
       nintdom   => CFG_APLIC_NDOM,
       neiid     => CFG_NEIID,
@@ -238,7 +248,10 @@ begin
       )
     port map(
       clk       => clkm, -- : in  std_ulogic;
+      gclk      => gclk, -- : in  std_logic_vector(CFG_NCPU-1 downto 0)
       rstn      => rstn, -- : in  std_ulogic;
+      -- Power down mode
+      pwrd      => open, -- : out std_logic_vector(ncpu-1 downto 0);
       -- AHB bus interface for other masters (DMA units)
       ahbmi     => ahbmi, -- : out ahb_mst_in_type;
       ahbmo     => ahbmo(ncpu+nextmst-1 downto ncpu), -- : in  ahb_mst_out_vector_type(ncpu+nextmst-1 downto ncpu);
@@ -573,7 +586,7 @@ begin
       paddr       => GRVER_PADDR,
       pmask       => GRVER_PMASK,
       versionnr   => CFG_LOCAL_CFG,
-      revisionnr  => REVISION)
+      revisionnr  => work.rev.REVISION)
     port map(
       rstn  => rstn,
       clk   => clkm,
@@ -618,6 +631,80 @@ begin
     -- TODO:
   end generate;
 
+  -----------------------------------------------------------------------
+  --  NANDFCTRL2
+  -----------------------------------------------------------------------
+
+  nfc0 : if CFG_NFC2_EN = 1 generate
+    nandfctrl_1 : nandfctrl2
+      generic map (
+        hindex       => NFC2_HMINDEX,
+        pindex       => NFC2_PINDEX,
+        pirq         => NFC2_PIRQ,
+        paddr        => NFC2_PADDR,
+        pmask        => NFC2_PMASK,
+        ahbbits      => AHBDW,
+
+        memtech_uldl => memtech,
+        memtech_ecc0 => memtech,
+        memtech_ecc1 => memtech,
+        tech         => memtech,
+
+        nrofce       => CFG_NFC2_NROFCE,
+        nrofch       => CFG_NFC2_NROFCH,
+        nrofrb       => CFG_NFC2_NROFRB,
+        rnd          => CFG_NFC2_RND,
+
+        mem0_data    => CFG_NFC2_MEM0_DATA,
+        mem0_spare   => CFG_NFC2_MEM0_SPARE,
+        mem0_ecc_sel => CFG_NFC2_MEM0_ECC_SEL,
+
+        mem1_data    => CFG_NFC2_MEM1_DATA,
+        mem1_spare   => CFG_NFC2_MEM1_SPARE,
+        mem1_ecc_sel => CFG_NFC2_MEM1_ECC_SEL,
+
+        mem2_data    => CFG_NFC2_MEM2_DATA,
+        mem2_spare   => CFG_NFC2_MEM2_SPARE,
+        mem2_ecc_sel => CFG_NFC2_MEM2_ECC_SEL,
+
+        ecc0_gfsize  => CFG_NFC2_ECC0_GFSIZE,
+        ecc0_chunk   => CFG_NFC2_ECC0_CHUNK,
+        ecc0_cap     => CFG_NFC2_ECC0_CAP,
+
+        ecc1_gfsize  => CFG_NFC2_ECC1_GFSIZE,
+        ecc1_chunk   => CFG_NFC2_ECC1_CHUNK,
+        ecc1_cap     => CFG_NFC2_ECC1_CAP,
+
+        rst_cycles   => 10,
+
+        ft           =>  CFG_NFC2_FT,
+        scantest     =>  0,
+
+        oepol        => oepol
+        )
+      port map (
+        rstn      => rstn, -- apb/ahb reset and clock.
+        clk_sys   => clkm,
+
+        core_rstn => rstn, -- nandfctrl2 reset and clock.
+        clk_core  => clkm,
+
+        apbi      => apbi,
+        apbo      => apbo(NFC2_PINDEX),
+
+        ahbmi     => ahbmi,
+        ahbmo     => ahbmo(NFC2_HMINDEX),
+
+        phyi      => nf2_phyi,
+        phyo      => nf2_phyo
+        );
+    end generate;
+
+    nonfc0 : if CFG_NFC2_EN = 0 generate
+      apbo(NFC2_PINDEX)   <= apb_none;
+      ahbmo(NFC2_HMINDEX) <= ahbm_none;
+      nf2_phyo            <= NF2_TO_PHY_IN_NONE;
+    end generate;
 
   -----------------------------------------------------------------------
   ---  Fake MIG PNP -----------------------------------------------------

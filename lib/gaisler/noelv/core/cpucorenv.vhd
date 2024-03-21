@@ -105,6 +105,7 @@ entity cpucorenv is
     rnmi_xaddr          : integer                       := 16#00101#; -- RNMI exception trap handler address
     -- Extensions
     ext_noelv           : integer range 0  to 1         := 1;  -- NOEL-V Extensions
+    ext_noelvalu        : integer range 0  to 1         := 1;  -- NOEL-V ALU Extensions
     ext_m               : integer range 0  to 1         := 1;  -- M Base Extension Set
     ext_a               : integer range 0  to 1         := 0;  -- A Base Extension Set
     ext_c               : integer range 0  to 1         := 0;  -- C Base Extension Set
@@ -175,7 +176,8 @@ entity cpucorenv is
     dbgi        : in  nv_debug_in_type;   -- debug in
     dbgo        : out nv_debug_out_type;  -- debug out
     eto         : out nv_etrace_out_type;
-    cnt         : out nv_counter_out_type -- Perf event Out Port
+    cnt         : out nv_counter_out_type; -- Perf event Out Port
+    pwrd        : out std_ulogic           -- Activate power down mode 
     );
 end;
 
@@ -443,6 +445,7 @@ begin
       rnmi_xaddr    => rnmi_xaddr,
       -- Extensions
       ext_noelv     => ext_noelv,
+      ext_noelvalu  => ext_noelvalu,
       ext_m         => ext_m,
       ext_a         => ext_a,
       ext_c         => ext_c,
@@ -528,6 +531,7 @@ begin
       tbo           => tbo,
       eto           => etrace,
       sclk          => clk,
+      pwrd          => pwrd,
       testen        => ahbsi.testen,
       testrst       => ahbsi.testrst
       );
@@ -653,15 +657,18 @@ begin
       );
 
   -- Unused
-  fpc_miso     <= nv_intreg_miso_none;
-  c2c_miso     <= nv_intreg_miso_none;
+  fpc_miso       <= nv_intreg_miso_none;
+  c2c_miso       <= nv_intreg_miso_none;
 
-  cnt.icnt     <= iu_cnt.icnt;
-  cnt.icmiss   <= c_perf(0);
-  cnt.itlbmiss <= c_perf(1);
-  cnt.dcmiss   <= c_perf(2);
-  cnt.dtlbmiss <= c_perf(3);
-  cnt.bpmiss   <= iu_cnt.bpmiss;
+  cnt.icnt       <= iu_cnt.icnt;
+  cnt.icmiss     <= c_perf(0);
+  cnt.itlbmiss   <= c_perf(1);
+  cnt.dcmiss     <= c_perf(2);
+  cnt.dtlbmiss   <= c_perf(3);
+  cnt.bpmiss     <= iu_cnt.bpmiss;
+  cnt.hold       <= iu_cnt.hold;
+  cnt.hold_issue <= iu_cnt.hold_issue;
+  cnt.branch     <= iu_cnt.branch;
    
   -- Branch History Table ---------------------------------------------------
   bht0 : bhtnv

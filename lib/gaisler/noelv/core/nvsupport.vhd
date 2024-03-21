@@ -59,6 +59,7 @@ use gaisler.noelvint.nv_csr_in_type;
 use gaisler.noelvint.PMPPRECALCRES;
 use gaisler.noelvint.trace_type;
 use gaisler.noelvint.trace_rst;
+use gaisler.noelvint.pmpcfg_vec_type;
 use gaisler.noelvint.pmpaddr_vec_type;
 use gaisler.noelvint.pmp_precalc_type;
 use gaisler.noelvint.pmp_precalc_vec;
@@ -308,18 +309,18 @@ package nvsupport is
 
 
   constant HWPERFMONITORS       : integer := 29;
-  
+
   -- Set of counters with advanced event filtering (AND of multiple events)
-  constant MHPCOUNT_FIL         : std_logic_vector (HWPERFMONITORS + 3 - 1 downto 0) := (others => '1'); 
-  -- Set number of events Classes  
-  constant MHPEVENT_C         : integer:= 16; 
-  -- Set maximum number of Events in each Class 
-  constant MHPEVENT_EC       : integer:= 32; 
+  constant MHPCOUNT_FIL         : std_logic_vector (HWPERFMONITORS + 3 - 1 downto 0) := (others => '1');
+  -- Set number of events Classes
+  constant MHPEVENT_C         : integer:= 16;
+  -- Set maximum number of Events in each Class
+  constant MHPEVENT_EC       : integer:= 32;
   -- Set the pourpouse of each event class
   constant PIPELINE_EV_0     : integer:= 0;
   constant CACHETLB_EV_0     : integer:= 1;
-  constant FPU_EV_0          : integer:= 2; 
-  constant DBG_EV            : integer:= MHPEVENT_C-1; 
+  constant FPU_EV_0          : integer:= 2;
+  constant DBG_EV            : integer:= MHPEVENT_C-1;
   -- 0-2 of hpmcounter_type and hpmevent_vec are not used!
   subtype hpmcounter_type is word64_arr(0 to HWPERFMONITORS + 3 - 1);
   type hpmevent_type is record
@@ -329,17 +330,17 @@ package nvsupport is
     uinh     : std_ulogic;
     vsinh    : std_ulogic;
     vuinh    : std_ulogic;
-    class    : std_logic_vector(log2(MHPEVENT_C)-1 downto 0); -- Class  Event selector 
-    events   : std_logic_vector(MHPEVENT_EC-1 downto 0); -- Class  Event selector 
+    class    : std_logic_vector(log2(MHPEVENT_C)-1 downto 0); -- Class  Event selector
+    events   : std_logic_vector(MHPEVENT_EC-1 downto 0); -- Class  Event selector
   end record ;
 
   constant hpmevent_none : hpmevent_type := ('0', '0', '0', '0', '0', '0', (others => '0'), (others => '0'));
 
   type hpmevent_vec is array (0 to HWPERFMONITORS + 3 - 1) of hpmevent_type;
   -- Define event array type
-  type evt_type is array (MHPEVENT_C-1 downto 0) of std_logic_vector (MHPEVENT_EC-1 downto 0); 
+  type evt_type is array (MHPEVENT_C-1 downto 0) of std_logic_vector (MHPEVENT_EC-1 downto 0);
   constant evt_none_type : evt_type := ((others => (others => '0')));
-  function filter_hpmevent (hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_ulogic;
+  function filter_hpmevent (hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic;
 
   -- CSR Type -----------------------------------------------------------------
   type csr_status_type is record
@@ -408,14 +409,14 @@ package nvsupport is
   );
 
   type csr_mstateen0_type is record
-    -- high 32 bits
-    stateen  : std_ulogic;
-    envcfg   : std_ulogic;
-    iselect  : std_ulogic;
-    aia      : std_ulogic;
-    imsic    : std_ulogic;
-    context  : std_ulogic;
-    -- low 32 bits
+    -- High 32 bits
+    stateen  : std_ulogic;  -- 63
+    envcfg   : std_ulogic;  -- 62
+    iselect  : std_ulogic;  -- 60
+    aia      : std_ulogic;  -- 59
+    imsic    : std_ulogic;  -- 58
+    ctx      : std_ulogic;  -- 57
+    -- Low 32 bits
     -- no bits allocated so far
   end record;
   constant csr_mstateen0_rst : csr_mstateen0_type := (
@@ -424,7 +425,7 @@ package nvsupport is
     iselect  => '0',
     aia      => '0',
     imsic    => '0',
-    context  => '0'
+    ctx      => '0'
   );
 
   -- Type for mstateen/hstateen CSRs whose only writable bit is 63
@@ -499,12 +500,14 @@ package nvsupport is
  type csr_reg_type is record
     -- Machine ISA (needs to be configured before use!)
     misa        : wordx;
-    -- Privileged Level (not addressable as a CSR register)
+    -- Privilege Level (not addressable as a CSR register)
     prv         : priv_lvl_type;
     -- Virtualization mode
     v           : std_ulogic;
-    -- Expecting landing pad
-    elp         : std_ulogic;
+    -- FPU enabled (pre-calculated)
+    fpu_enabled : boolean;
+    -- Envcfg (pre-calculated)
+    envcfg      : csr_envcfg_type;
     -- User Floating-Point CSRs
     fctrl       : std_logic_vector(16 downto 8);
     frm         : std_logic_vector(7 downto 5);
@@ -618,8 +621,7 @@ package nvsupport is
     menvcfg     : csr_envcfg_type;
     mseccfg     : csr_seccfg_type;
     -- Machine Protection and Translation
-    pmpcfg0     : word64;
-    pmpcfg2     : word64;
+    pmpcfg      : pmpcfg_vec_type;
     pmpaddr     : pmpaddr_vec_type;
     pmp_precalc : pmp_precalc_vec(PMPPRECALCRES'range);
     -- Machine Counter/Timers
@@ -649,7 +651,8 @@ package nvsupport is
     misa        => zerox,
     prv         => PRIV_LVL_M,
     v           => '0',
-    elp         => '0',
+    fpu_enabled => false,
+    envcfg      => csr_envcfg_rst,
     fctrl       => (others => '0'),
     frm         => (others => '0'),
     fflags      => (others => '0'),
@@ -738,8 +741,7 @@ package nvsupport is
     mtinst      => zerox,
     menvcfg     => csr_envcfg_rst,
     mseccfg     => csr_seccfg_rst,
-    pmpcfg0     => zerow64,
-    pmpcfg2     => zerow64,
+    pmpcfg      => (others => (others => '0')),
     pmpaddr     => (others => pmpaddrzero),
     pmp_precalc => PMPPRECALCRES,
     mcycle      => zerow64,
@@ -781,20 +783,20 @@ package nvsupport is
   constant SZDBL        : word2 := "11";
 
   -- Functional Units Encoding: one-hot encoding for easier decode.
-  constant NONE         : fuseltype := "000000000000";
-  constant ALU          : fuseltype := "000000000001";  -- ALU
-  constant BRANCH       : fuseltype := "000000000010";  -- Branch Unit
-  constant JAL          : fuseltype := "000000000100";  -- JAL
-  constant JALR         : fuseltype := "000000001000";  -- JALR
-  constant FLOW         : fuseltype := "000000001100";  -- Jump (JAL/JALR)
-  constant MUL          : fuseltype := "000000010000";  -- Mul/Div
-  constant LD           : fuseltype := "000000100000";  -- Load
-  constant ST           : fuseltype := "000001000000";  -- Store
-  constant AMO          : fuseltype := "000010000000";  -- Atomics
-  constant FPU          : fuseltype := "000100000000";  -- From FPU
-  constant ALU_SPECIAL  : fuseltype := "001000000000";  -- Only for early ALU in lane 0!
-  constant DIAG         : fuseltype := "010000000000";  -- Diagnostic cache load/store
-  constant NOT_LATE     : fuseltype := "111111111100";  -- All except ALU and Branch Unit
+  constant NONE         : fuseltype;
+  constant ALU          : fuseltype;  -- ALU
+  constant BRANCH       : fuseltype;  -- Branch Unit
+  constant JAL          : fuseltype;  -- JAL
+  constant JALR         : fuseltype;  -- JALR
+  constant FLOW         : fuseltype;  -- Jump (JAL/JALR)
+  constant MUL          : fuseltype;  -- Mul/Div
+  constant LD           : fuseltype;  -- Load
+  constant ST           : fuseltype;  -- Store
+  constant AMO          : fuseltype;  -- Atomics
+  constant FPU          : fuseltype;  -- From FPU
+  constant ALU_SPECIAL  : fuseltype;  -- Only for early ALU in lane 0!
+  constant DIAG         : fuseltype;  -- Diagnostic cache load/store
+  constant NOT_LATE     : fuseltype;  -- All except ALU and Branch Unit
 
 
   -- CSR Operation
@@ -891,6 +893,7 @@ package nvsupport is
                             tval_ill0 : in  boolean;
                             inst_in   : in  word;
                             cinst_in  : in  word16;
+                            comp      : in  std_ulogic;
                             pc_in     : in  std_logic_vector;
                             comp_ill  : in  std_ulogic;
                             misa_in   : in  wordx;
@@ -960,7 +963,7 @@ package nvsupport is
   function is_hsv(inst : word) return boolean;
   function is_hlsv(inst : word) return boolean;
   function is_fence_i(inst : word) return boolean;
-  function is_diag(inst : word) return boolean;
+  function is_diag(active : extension_type; inst : word) return boolean;
   function is_diag_store(inst : word) return boolean;
   function is_csr_access(inst : word) return boolean;
   function is_csr(active : extension_type;
@@ -970,6 +973,7 @@ package nvsupport is
   function is_xret(inst : word) return boolean;
   function is_system0(inst : word) return boolean;
   function is_system1(inst : word) return boolean;
+  function is_wfi(inst :word) return boolean;
   function is_cbo(inst : word) return boolean;
 -- pragma translate_off
   -- Some simulation code requires this.
@@ -989,8 +993,10 @@ package nvsupport is
   function inst_addr_misaligned(active : extension_type;
                                 pc     : std_logic_vector) return boolean;
 
-  function pmpcfg(pmp_entries : integer range 0 to 16;
-                  csr : csr_reg_type; n : natural) return word8;
+  function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
+                  cfg : pmpcfg_vec_type; n : natural) return word8;
+  function pmpcfg(cfg : pmpcfg_vec_type; first : integer; last : integer) return wordx;
+
   function pc_valid(
                     inst : word) return std_ulogic;
 
@@ -1054,12 +1060,12 @@ package nvsupport is
   constant XC_INST_INST_PAGE_FAULT      : cause_type;
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type;
   constant XC_INST_STORE_PAGE_FAULT     : cause_type;
+  constant XC_INST_SOFTWARE_CHECK       : cause_type;
   constant XC_INST_INST_G_PAGE_FAULT    : cause_type;
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type;
   constant XC_INST_VIRTUAL_INST         : cause_type;
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type;
   constant XC_INST_RFFT                 : cause_type;
-  constant XC_INST_INTEGRITY_FAULT      : cause_type;
 
   -- Interrupt Codes
 --  constant IRQ_U_SOFTWARE               : cause_type;
@@ -1076,6 +1082,7 @@ package nvsupport is
   constant IRQ_M_EXTERNAL               : cause_type;
   constant IRQ_SG_EXTERNAL              : cause_type;
   constant IRQ_LCOF                     : cause_type;
+  constant IRQ_NMI                      : cause_type;
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type;
@@ -1092,6 +1099,7 @@ package nvsupport is
   -- Indirect CSR Access
   function selector2wordx(v : select_t) return wordx;
   function wordx2selector(v : wordx) return select_t;
+  function is_custom(v : select_t) return boolean;
 
   -- AIA interrupt files exception calculation
   function intFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic;
@@ -1122,7 +1130,7 @@ package nvsupport is
   function tinst_vs_pt_read return word;
   function tinst_vs_pt_write return word;
 
-  -- Hardware Performance Monitors 
+  -- Hardware Performance Monitors
   -- PIPELINE_EV_0
   constant CSR_HPM_HOLD                 :  integer := 0;
   constant CSR_HPM_HOLD_ISSUE           :  integer := CSR_HPM_HOLD              + 1;
@@ -1148,8 +1156,7 @@ package nvsupport is
   constant CSR_HPM_TLB_FENCE_10         :  integer := CSR_HPM_TLB_FENCE_01      + 1;
   constant CSR_HPM_TLB_FENCE_11         :  integer := CSR_HPM_TLB_FENCE_10      + 1;
   constant CSR_HPM_IU_INTERNALS         :  integer := CSR_HPM_TLB_FENCE_11      + 1;
-    --GRLIB_INTERNAL_END
-  constant CSR_HPM_AFTER_IU             :  integer := 
+  constant CSR_HPM_AFTER_IU             :  integer :=
                                                       0;
   -- CACHETLB_EV_0
   constant CSR_HPM_ICACHE_MISS          :  integer := 0;
@@ -1173,9 +1180,8 @@ package nvsupport is
   constant CSR_HPM_ICACHE_ACCESS        :  integer := CSR_HPM_DCACHE_STORE_MISS + 1;
     --constant CSR_HPM_AFTER_CCTRL          :  integer := CSR_HPM_HTLB_ENTRY_FLUSH  + 1;
   -- FPU_EV_0
-    -- FPU events
-    constant CSR_HPM_FPU_LOW              :  integer := 0;
-    -- constant CSR_HPM_AFTER_FPU            :  integer := CSR_HPM_FPU_LOW + fpevt_t'length;
+  -- FPU events
+  constant CSR_HPM_FPU_LOW              :  integer := 0;
 
   -- PMP Configuration Codes
   constant PMP_OFF                      : word2 := "00";
@@ -1433,8 +1439,7 @@ package nvsupport is
   function to_hpmeventh(hpmevent : hpmevent_type) return wordx;
 
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
-                        pmpcfg0     : in  word64;
-                        pmpcfg2     : in  word64;
+                        pmpcfg_in   : in  pmpcfg_vec_type;
                         precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
@@ -1444,8 +1449,7 @@ package nvsupport is
 
   procedure pmp_unit(prv_in     : in  priv_lvl_type;
                      precalc    : in  pmp_precalc_vec;
-                     pmpcfg0_in : in  word64;
-                     pmpcfg2_in : in  word64;
+                     pmpcfg_in  : in  pmpcfg_vec_type;
                      mmwp       : in  std_ulogic;
                      mml        : in  std_ulogic;
                      mprv_in    : in  std_ulogic;
@@ -1463,8 +1467,7 @@ package nvsupport is
                      );
 
   procedure pmp_mmuu(precalc            : in  pmp_precalc_vec;
-                     pmpcfg0_in         : in  word64;
-                     pmpcfg2_in         : in  word64;
+                     pmpcfg_in          : in  pmpcfg_vec_type;
                      mml                : in  std_ulogic;
                      addr_low           : in  std_logic_vector;
                      addr_mask          : in  std_logic_vector;
@@ -1562,6 +1565,7 @@ package nvsupport is
                        wdata_in       : in  std_logic_vector;
                        rasi_in        : in  nv_ras_in_type;
                        hold_in        : in  std_ulogic;
+                       rstate         : in  core_state;
                        ras_out        : out nv_ras_in_type);
   procedure ras_resolve(active    : in  extension_type;
                         inst_in   : in  word;
@@ -1631,6 +1635,30 @@ package body nvsupport is
     extension(x_dtcm)         or
     extension(x_itcm)         or
     extension(x_rv64);
+
+  function fusel(n : integer range 0 to FUSELBITS - 1) return fuseltype is
+    -- Non-constant
+    variable r : fuseltype := (others => '0');
+  begin
+    r(n) := '1';
+
+    return r;
+  end;
+
+  constant NONE         : fuseltype := (others => '0');
+  constant ALU          : fuseltype := fusel(0);     -- ALU
+  constant BRANCH       : fuseltype := fusel(1);     -- Branch Unit
+  constant JAL          : fuseltype := fusel(2);     -- JAL
+  constant JALR         : fuseltype := fusel(3);     -- JALR
+  constant FLOW         : fuseltype := JAL or JALR;  -- Jump (JAL/JALR)
+  constant MUL          : fuseltype := fusel(4);     -- Mul/Div
+  constant LD           : fuseltype := fusel(5);     -- Load
+  constant ST           : fuseltype := fusel(6);     -- Store
+  constant AMO          : fuseltype := fusel(7);     -- Atomics
+  constant FPU          : fuseltype := fusel(8);     -- From FPU
+  constant ALU_SPECIAL  : fuseltype := fusel(9);     -- Only for early ALU in lane 0!
+  constant DIAG         : fuseltype := fusel(10);    -- Diagnostic cache load/store
+  constant NOT_LATE     : fuseltype := not (ALU or BRANCH);  -- All except ALU and Branch Unit
 
   -- Shortens addresses to the size that is actually needed (see addr_type).
   -- If an address is "sign extended" above the useable part, the two bits
@@ -1748,18 +1776,14 @@ package body nvsupport is
   constant XC_INST_INST_PAGE_FAULT      : cause_type := to_cause(12);
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type := to_cause(13);
   constant XC_INST_STORE_PAGE_FAULT     : cause_type := to_cause(15);
+  constant XC_INST_SOFTWARE_CHECK       : cause_type := to_cause(18);
   constant XC_INST_INST_G_PAGE_FAULT    : cause_type := to_cause(20);
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type := to_cause(21);
   constant XC_INST_VIRTUAL_INST         : cause_type := to_cause(22);
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type := to_cause(23);
   constant XC_INST_RFFT                 : cause_type := to_cause(31);
-  constant XC_INST_INTEGRITY_FAULT      : cause_type := to_cause(24);
 
-  -- Mask with all the legal interrupts for ETRIGGER (when h_en = 0)
-  constant CSR_ETRIGGER_MASK   : wordx := extend_wordx(x"08000bbff");
-  -- Mask with all the hypervisor legal interrupts for ETRIGGER
-  constant CSR_H_ETRIGGER_MASK : wordx := extend_wordx(x"000F00400");
- 
+
 
   -- Interrupt Codes
   constant IRQ_S_SOFTWARE               : cause_type := to_cause(1, true);
@@ -1773,6 +1797,7 @@ package body nvsupport is
   constant IRQ_M_EXTERNAL               : cause_type := to_cause(11, true);
   constant IRQ_SG_EXTERNAL              : cause_type := to_cause(12, true);
   constant IRQ_LCOF                     : cause_type := to_cause(13, true);
+  constant IRQ_NMI                      : cause_type := to_cause(16, true);
   constant IRQ_UNUSED                   : cause_type := to_cause(31, true);
 
   -- Reset Codes
@@ -1792,6 +1817,7 @@ package body nvsupport is
   constant I_ME   : wordx := cause2mask(IRQ_M_EXTERNAL);   -- external interrupt only
   constant I_SGE  : wordx := cause2mask(IRQ_SG_EXTERNAL);  -- H
   constant I_LCOF : wordx := cause2mask(IRQ_LCOF);         -- Sscofpmf
+  constant I_NMI  : wordx := cause2mask(IRQ_NMI);          -- NMI
   constant I_RSV0 : wordx := int2mask(0);                  -- Reserved - formerly N extension
   constant I_RSV4 : wordx := int2mask(4);                  -- Reserved - formerly N extension
   constant I_RSV8 : wordx := int2mask(8);                  -- Reserved - formerly N extension
@@ -1888,6 +1914,16 @@ package body nvsupport is
   begin
     return uext(v, XLEN);
   end;
+
+  -- Mask with all the legal interrupts for ETRIGGER (when h_en = 0)
+  constant etrigger_mask_value : word32 := x"8000bbff";
+  constant CSR_ETRIGGER_MASK   : wordx := to0x(etrigger_mask_value);
+  --constant CSR_ETRIGGER_MASK   : wordx := extend_wordx(x"08000bbff");
+  -- Mask with all the hypervisor legal interrupts for ETRIGGER
+  --constant CSR_H_ETRIGGER_MASK : wordx := to0x(x"00F00400");
+  constant etrigger_h_mask_value : word32 := x"00F00400";
+  constant CSR_H_ETRIGGER_MASK   : wordx  := to0x(etrigger_h_mask_value);
+
 
   -- Branch and jump generation
   procedure bjump_gen(active        : in  extension_type;
@@ -2541,17 +2577,9 @@ package body nvsupport is
     variable xc     : std_ulogic                    := '0';
   begin
 
-    -- Default to the first below, for no particular reason.
-    inst := "00" &                   -- imm[11:10]
-            inst_in(10 downto 7) &   -- imm[9:6]
-            inst_in(12 downto 11) &  -- imm[5:4]
-            inst_in(5) &             -- imm[3]
-            inst_in(6) &             -- imm[2]
-            "00" &                   -- imm[1:0]
-            GPR_SP &                 -- rs1
-            I_ADDI &                 -- funct3
-            rdc &                    -- rd
-            OP_IMM;                  -- addi
+    -- Default to a simple illegal instruction.
+    -- All illegals below set the same.
+    inst := zerow;
 
     -- Expand instruction
     case op is
@@ -2575,6 +2603,7 @@ package body nvsupport is
             -- imm = 0 are reserved by the standard.
             if inst_in(12 downto 5) = "00000000" then
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.fld -> fld rd', imm(rs1')
@@ -2589,6 +2618,7 @@ package body nvsupport is
                       OP_LOAD_FP;              -- fld
             if not ext_d or not fpu_en then
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.lw -> lw rd', imm(rs1')
@@ -2619,6 +2649,7 @@ package body nvsupport is
                       OP_LOAD_FP;              -- flw
               if not fpu_en then
                 xc := '1';
+                inst := zerow;
               end if;
             -- c.ld -> ld rd', imm(rs1')
             elsif is_rv64 then
@@ -2632,6 +2663,7 @@ package body nvsupport is
                       OP_LOAD;                 -- ld
             else
               xc := '1';
+              inst := zerow;
             end if;
 
           when "100" =>
@@ -2689,12 +2721,15 @@ package body nvsupport is
                             OP_STORE;                -- sh
                   else
                     xc := '1';
+                    inst := zerow;
                   end if;
                 when others =>
                   xc := '1';
+                  inst := zerow;
               end case;
             else
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.fsd -> fsd rs2', imm(rs1')
@@ -2711,6 +2746,7 @@ package body nvsupport is
                       OP_STORE_FP;             -- fsd
             else
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.sw -> sw rs2', imm(rs1')
@@ -2742,6 +2778,7 @@ package body nvsupport is
                       OP_STORE_FP;             -- fsw
               if not fpu_en then
                 xc := '1';
+                inst := zerow;
               end if;
             -- c.sd -> sd rs2', imm(rs1')
             elsif is_rv64 then
@@ -2756,6 +2793,7 @@ package body nvsupport is
                       OP_STORE;                -- sd
             else
               xc := '1';
+              inst := zerow;
             end if;
         end case;  -- funct3
 
@@ -2805,6 +2843,7 @@ package body nvsupport is
               -- rd = x0 are reserved by the standard.
               if rd = "00000" then
                 xc := '1';
+                inst := zerow;
               end if;
             end if;
 
@@ -2849,6 +2888,7 @@ package body nvsupport is
             -- c.addi16sp and c.lui are reserved with imm = 0.
             if inst_in(12) = '0' and rfa2 = "00000" then
               xc     := '1';
+              inst := zerow;
               -- But c.mop comes in here (x1/3/5/7/9/11/13/15).
               if ext_zcmop and rfa1(0) = '1' and rfa1(4) = '0' then
                 xc   := '0';
@@ -2879,6 +2919,7 @@ package body nvsupport is
                 -- are designated for custom extensions.
                 if is_rv32 and inst_in(12) = '1' then
                   xc := '1';
+                  inst := zerow;
                 end if;
                 -- shamt = 0 are custom HINTs.
 
@@ -2909,6 +2950,7 @@ package body nvsupport is
                         inst(6 downto 0) := OP_32;
                       else
                         xc := '1';
+                        inst := zerow;
                       end if;
                     end if;
 
@@ -2927,6 +2969,7 @@ package body nvsupport is
                         inst(6 downto 0)   := OP_32;
                       else
                         xc := '1';
+                        inst := zerow;
                       end if;
                     end if;
 
@@ -2949,6 +2992,7 @@ package body nvsupport is
                                 OP_REG;              -- mul
                       else
                         xc := '1';
+                        inst := zerow;
                       end if;
                     end if;
 
@@ -2980,6 +3024,7 @@ package body nvsupport is
                                       OP_IMM;              -- sext.b
                             else
                               xc := '1';
+                              inst := zerow;
                             end if;
                           -- c.zext.h -> zext.h rd'/rs1', rd'/rs1'
                           when "010" =>
@@ -2999,6 +3044,7 @@ package body nvsupport is
                               end if;
                             else
                               xc := '1';
+                              inst := zerow;
                             end if;
                           -- c.sext.h -> sext.h rd'/rs1', rd'/rs1'
                           when "011" =>
@@ -3010,6 +3056,7 @@ package body nvsupport is
                                       OP_IMM;              -- sext.h
                             else
                               xc := '1';
+                              inst := zerow;
                             end if;
                           -- c.zext.w -> add.uw rd'/rs1', rd'/rs1', zero
                           when "100" =>
@@ -3022,6 +3069,7 @@ package body nvsupport is
                                       OP_32;               -- add.uw
                             else
                               xc := '1';
+                              inst := zerow;
                             end if;
                           -- c.not -> xori rd'/rs1', rd1'/r1', -1
                           when "101" =>
@@ -3032,9 +3080,11 @@ package body nvsupport is
                                     OP_IMM;                -- xori
                           when others =>
                             xc := '1';
+                            inst := zerow;
                         end case;
                       else
                         xc := '1';
+                        inst := zerow;
                       end if;
                     end if;
 
@@ -3091,6 +3141,7 @@ package body nvsupport is
             -- are designated for custom extensions.
             if is_rv32 and inst_in(12) = '1' then
               xc := '1';
+              inst := zerow;
             end if;
             -- rd = x0 are custom HINTs (except as above).
 
@@ -3107,6 +3158,7 @@ package body nvsupport is
                     OP_LOAD_FP;            -- fld
             if not ext_d or not fpu_en then
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.lwsp -> lw rd, imm(x2)
@@ -3123,6 +3175,7 @@ package body nvsupport is
             -- rd = x0 are reserved by the standard.
             if rd = "00000" then
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.flwsp
@@ -3141,6 +3194,7 @@ package body nvsupport is
                       OP_LOAD_FP;            -- flw
               if not ext_f or not fpu_en then
                 xc := '1';
+                inst := zerow;
               end if;
             -- c.ldsp -> ld rd, imm(x2)
             else
@@ -3156,6 +3210,7 @@ package body nvsupport is
               -- rd = x0 are reserved by the standard.
               if rd = "00000" then
                 xc := '1';
+                inst := zerow;
               end if;
             end if;
 
@@ -3173,6 +3228,7 @@ package body nvsupport is
                 -- rs1 = x0 are reserved by the standard.
                 if rfa1 = "00000" then
                   xc := '1';
+                  inst := zerow;
                 end if;
               -- c.mv -> add rd, x0, rs2
               else
@@ -3228,6 +3284,7 @@ package body nvsupport is
                     OP_STORE_FP;             -- fld
             if not ext_d or not fpu_en then
               xc := '1';
+              inst := zerow;
             end if;
 
           -- c.swsp -> sw rs2, imm(x2)
@@ -3258,6 +3315,7 @@ package body nvsupport is
                       OP_STORE_FP;             -- fsw
               if not fpu_en then
                 xc := '1';
+                inst := zerow;
               end if;
             -- c.sdsp -> sd rs2, imm(x2)
             elsif is_rv64 then
@@ -3272,6 +3330,7 @@ package body nvsupport is
                       OP_STORE;                -- sd
             else
               xc := '1';
+              inst := zerow;
             end if;
 
         end case;  -- funct3
@@ -3283,6 +3342,38 @@ package body nvsupport is
 
     inst_out := inst;
     xc_out   := xc;
+  end;
+
+  function rvc_expander_fpuxc(active  : extension_type;
+                              inst_in : word16;
+                              fpu_en  : boolean) return boolean is
+    variable is_rv64     : boolean := is_enabled(active, x_rv64);
+    variable is_rv32     : boolean := not is_rv64;
+    variable ext_f       : boolean := is_enabled(active, x_f);
+    variable ext_d       : boolean := is_enabled(active, x_d);
+    -- Evaluate compressed instruction
+    variable op     : word2       := inst_in( 1 downto  0);
+    variable funct3 : funct3_type := inst_in(15 downto 13);
+  begin
+    if op /= "00" and op /= "10" then
+      return false;
+    end if;
+
+    -- c.fld[sp] / c.fsd[sp]
+    if funct3 = "001" or funct3 = "101" then
+      return not ext_d or not fpu_en;
+    end if;
+
+    if not is_rv32 or fpu_en then
+      return false;
+    end if;
+
+    -- c.flw[sp] / c.fsw[sp]
+    if funct3 = "011" or funct3 = "111" then
+      return ext_f;
+    end if;
+
+    return false;
   end;
 
   -- Align compressed instruction
@@ -3352,6 +3443,10 @@ package body nvsupport is
       inst_c2xc := '0';
       inst_c3xc := '0';
     end if;
+    inst_c2xc := '0';
+    inst_c3xc := '0';
+    inst_c2xc := '0';
+    inst_c3xc := '0';
 
     inst(0).lpc   := "00";
     inst(0).d     := inst_in(0).d;
@@ -3879,6 +3974,16 @@ package body nvsupport is
     return opcode = OP_SYSTEM and funct3 = "100";
   end;
 
+  function is_wfi(inst :word) return boolean is
+    variable opcode : opcode_type := opcode(inst);
+    variable funct3 : funct3_type := funct3(inst);
+    variable funct7 : funct7_type := funct7(inst);
+    variable rs2    : reg_t       := rs2(inst);
+  begin
+    return opcode = OP_SYSTEM and funct3 = "000" and funct7 = F7_WFI and
+           rs2 = "00101";
+  end;
+
   function is_xret(inst : word) return boolean is
     variable rd     : reg_t       := rd(inst);
     variable rs1    : reg_t       := rs1(inst);
@@ -4052,11 +4157,12 @@ package body nvsupport is
     return opcode = OP_FENCE and funct3 = I_FENCE_I;
   end;
 
-  function is_diag(inst : word) return boolean is
-    variable opcode : opcode_type := opcode(inst);
-    variable funct7 : funct7_type := funct7(inst);
+  function is_diag(active : extension_type; inst : word) return boolean is
+    variable ext_noelv : boolean     := is_enabled(active, x_noelv);
+    variable opcode    : opcode_type := opcode(inst);
+    variable funct7    : funct7_type := funct7(inst);
   begin
-    return opcode = OP_CUSTOM0 and funct7 = zerow(funct7'range);
+    return ext_noelv and opcode = OP_CUSTOM0 and funct7 = F7_BASE;
   end;
 
   -- Assumes it is already know that inst is a diagnostic instruction.
@@ -4064,6 +4170,14 @@ package body nvsupport is
     variable funct3 : funct3_type := funct3(inst);
   begin
     return get_hi(funct3) = '1';
+  end;
+
+  function is_custom_alu(active : extension_type; inst : word) return boolean is
+    variable ext_noelvalu : boolean     := is_enabled(active, x_noelvalu);
+    variable opcode       : opcode_type := opcode(inst);
+    variable funct7       : funct7_type := funct7(inst);
+  begin
+    return ext_noelvalu and opcode = OP_CUSTOM0 and funct7 = F7_BASE_RV64;
   end;
 
   function is_cbo(inst : word) return boolean is
@@ -4114,19 +4228,14 @@ package body nvsupport is
 
   function is_used_mop_rd(active : extension_type;
                           inst   : word) return boolean is
-    variable ext_zimop    : boolean      := is_enabled(active, x_zimop);
-    variable rd          : reg_t        := rd(inst);
-    variable rfa1        : reg_t        := rs1(inst);
-    variable funct7      : funct7_type  := funct7(inst);
-    variable funct12     : funct12_type := funct12(inst);
+    variable ext_zimop : boolean := is_enabled(active, x_zimop);
   begin
-    if not ext_zimop or not is_system1(inst)
-       then
+    if not ext_zimop then
       return false;
     end if;
 
-      -- Other MOP_R[R]?
-      return is_mop_r(active, inst) or is_mop_rr(active, inst);
+    -- Any MOP_R[R]?
+    return is_mop_r(active, inst) or is_mop_rr(active, inst);
   end;
 
   function is_used_mop_rs1(active : extension_type;
@@ -4282,33 +4391,54 @@ package body nvsupport is
     -- Non-constant
     variable wreg   : std_ulogic  := '1';
   begin
+    -- Check for the cases where there is no rd
     case op is
-      when OP_BRANCH   |
-           OP_STORE    |
-           OP_STORE_FP | OP_LOAD_FP |
+      when OP_BRANCH | OP_STORE =>
+        -- The only two "normal" integer instructions to not have a destination.
+        wreg := '0';
+
+      when OP_STORE_FP | OP_LOAD_FP |
            OP_FMADD    | OP_FMSUB   |
-           OP_FNMSUB   | OP_FNMADD   => wreg := '0';
+           OP_FNMSUB   | OP_FNMADD =>
+        -- Most FPU operations have no rd
+        wreg := '0';
+
       when OP_FP =>
+        -- Most FPU operations have no rd
         case funct5 is
-          when R_FCVT_W_S | R_FMV_X_W |  -- Latter includes R_FCLASS
-               R_FCMP                =>
-            null;  -- These have integer results.
-          when others                => wreg := '0';
+          when R_FCVT_W_S | R_FMV_X_W | R_FCMP =>
+            -- Conversion/move to integer, compare and class check
+          when others =>
+            wreg := '0';
         end case;
+
       when OP_SYSTEM =>
-        -- Only CSR, hlv, Zimop (of which some Zicfiss) among SYSTEM instructions have rd.
+        -- Among SYSTEM instructions, rd use is limited to
+        -- CSR, hlv, Zimop (of which some Zicfiss).
         if is_used_mop_rd(active,
                           inst) then
           null;
         elsif not (is_csr_access(inst) or is_hlv(inst)) then
-          wreg                               := '0';
+          wreg := '0';
         end if;
-      when OP_FENCE                  => wreg := '0';
+
+      when OP_FENCE =>
+        -- No destination for fences
+        wreg := '0';
+
       when OP_CUSTOM0 =>
-        if not is_diag(inst) or is_diag_store(inst) then
-          wreg                               := '0';
+        if is_diag(active, inst) then
+          -- Diagnostic stores have no destination
+          if is_diag_store(inst) then
+            wreg := '0';
+          end if;
+        else
+          -- Non-diagnostic custom0 assumed to have destination
+          -- (or are "don't care" due to being illegal).
         end if;
+
       when others =>
+        -- Everything else has an rd (or are "don't care" due to being illegal).
     end case;
 
     if rd = "00000" then
@@ -4331,20 +4461,24 @@ package body nvsupport is
     variable rs1         : reg_t       := rs1(inst);
     variable vreg        : std_ulogic  := '1';
   begin
+    -- Check for the cases where there is no rs1
     case op is
-      when LUI       | OP_JAL |
-           OP_FMADD  | OP_FMSUB |
-           OP_FNMSUB | OP_FNMADD =>
+      when LUI | OP_JAL =>
+        -- Immediate value
         vreg := '0';
+
       when AUIPC =>
+        -- Immediate value
         vreg := '0';
+
       when OP_SYSTEM =>
-        -- I_CSRRWI, I_CSRRSI, I_CSRRCI
-        if is_csr_access(inst) and funct3(2) = '1' then
+        -- Among SYSTEM instructions, rs1 use is limited to
+        -- (non-immediate value) CSR instructions,
+        -- sfence.vma, hfence.v/gvma, hlv/hsv,
+        -- and some Zicfiss.
+        if is_csr_access(inst) and funct3(2) = '1' then  -- I_CSRRWI, I_CSRRSI, I_CSRRCI?
           vreg  := '0';
         end if;
-        -- Only CSR, sfence.vma, hfence.v/gvma, hvl/hsv and some Zicfiss among SYSTEM
-        -- instructions have rs1.
         if is_used_mop_rs1(active,
                            inst) then
           null;
@@ -4354,18 +4488,27 @@ package body nvsupport is
                    is_hlsv(inst)) then
           vreg  := '0';
         end if;
+
+      when OP_FMADD | OP_FMSUB | OP_FNMSUB | OP_FNMADD =>
+        -- Most FPU operations have no rs1
+        vreg := '0';
+
       when OP_FP =>
+        -- Most FPU operations have no rs1
         case funct5 is
           when R_FCVT_S_W =>
+            -- Conversions from integer
           when R_FMV_W_X =>
-            -- FLI.S/D/H
+            -- Mostly moves from integer (except FLI.S/D/H)
             if ext_zfa and rs2 = "00001" then
               vreg := '0';
             end if;
           when others =>
             vreg   := '0';
         end case;
+
       when others =>
+        -- Everything else has an rs1 (or are "don't care" due to being illegal).
     end case;
 
     -- This is used to make sure we do not accidentally
@@ -4393,34 +4536,51 @@ package body nvsupport is
     variable rs2     : reg_t       := rs2(inst);
     variable vreg    : std_ulogic  := '1';
   begin
+    -- Check for rs2 use
     case op is
       when OP_REG | OP_BRANCH | OP_STORE | OP_32 =>
+        -- All of these do have an rs2.
+
       when OP_SYSTEM =>
-        -- Only sfence.vma, sfence.vma, hfence.v/gvma, hsv and some Zicfiss among SYSTEM
-        -- instructions have rs2.
+        -- Among SYSTEM instructions, rs2 use is limited to
+        -- sfence.vma, sfence.vma, hfence.v/gvma, hsv,
+        -- and some Zicfiss.
         if is_used_mop_rs2(active,
                            inst) then
           null;
         elsif not (is_sfence_vma(active, inst)  or
                    is_hfence_vvma(active, inst) or is_hfence_gvma(active, inst) or
                    is_hsv(inst)) then
-          vreg                := '0';
+          vreg := '0';
         end if;
+
       when OP_AMO =>
+        -- Most AMO instructions do have an rs2.
         case funct5 is
           when R_LR   => vreg := '0';
           when others =>
         end case;
+
       when OP_FP =>
-        -- FMVP.D.X
+        -- Only a single FPU instruction (FMVP.D.X) has an rs2.
         if not (ext_zfa and is_rv32 and funct7 = R_FMVP_D_X and funct3 = "000") then
-          vreg                := '0';
-        end if;
-      when OP_CUSTOM0 =>
-        if not is_diag(inst) then
           vreg := '0';
         end if;
-      when others     => vreg := '0';
+
+      when OP_CUSTOM0 =>
+        if is_diag(active, inst) then
+          -- Diagnostic loads have no rs2
+          if not is_diag_store(inst) then
+            vreg := '0';
+          end if;
+        else
+          -- Non-diagnostic custom0 assumed to have an rs2
+          -- (or are "don't care" due to being illegal).
+        end if;
+
+      when others =>
+        -- Everything else lacks an rs2.
+        vreg := '0';
     end case;
 
     -- This is used to make sure we do not accidentally
@@ -4467,7 +4627,7 @@ package body nvsupport is
     end if;
 
     -- Custom diagnostic cache instruction
-    if is_diag(inst) then
+    if is_diag(active, inst) then
       return true;
     end if;
 
@@ -4475,8 +4635,8 @@ package body nvsupport is
      -- To simplify PC logic, such CSR writes always issue alone, but
      -- this also ensures that all CSR accesses are in the proper lane
 
-    if maybe_csr(active,
-                 inst) then
+    if is_csr(active,
+              inst) then
       return true;
     end if;
 
@@ -4627,7 +4787,7 @@ package body nvsupport is
 
       when CSR_MIREG   | CSR_MISELECT   | CSR_MTOPEI  |
            CSR_SIREG   | CSR_SISELECT   | CSR_STOPEI  |
-           CSR_VSIREG  | CSR_VSISELECT  | CSR_VSTOPEI | 
+           CSR_VSIREG  | CSR_VSISELECT  | CSR_VSTOPEI |
            CSR_HGEIP   | CSR_HSTATUS =>
         category(3 downto 0) := x"8";
 
@@ -4649,7 +4809,7 @@ package body nvsupport is
       -- VSSTATUS, VSIE, VSIP, VSTVEC
       --   Should perhaps not be included here since writes to them are only
       --   done in modes that are not affected by them!
-      when CSR_MSTATUS  | CSR_MIE  | CSR_MIP  | CSR_MIDELEG  | CSR_MTVEC  | 
+      when CSR_MSTATUS  | CSR_MIE  | CSR_MIP  | CSR_MIDELEG  | CSR_MTVEC  |
            CSR_HSTATUS  | CSR_HIE  | CSR_HIP  | CSR_HIDELEG  |
            CSR_SSTATUS  | CSR_SIE  | CSR_SIP  |                CSR_STVEC  |
            CSR_VSSTATUS | CSR_VSIE | CSR_VSIP |                CSR_VSTVEC |
@@ -4871,11 +5031,13 @@ package body nvsupport is
           conflict := '1';
         end if;
 
-      -- Custom0 instruction is diagnostic load/store
       when OP_CUSTOM0 =>
-        if for_lane0(active,
-                     lane, inst_in(one)) then
-          conflict := '1';
+        -- Diagnostic load/store?
+        if is_diag(active, inst_in(0)) then
+          if for_lane0(active,
+                       lane, inst_in(one)) then
+            conflict := '1';
+          end if;
         end if;
 
       when OP_JAL | OP_JALR =>
@@ -5071,14 +5233,31 @@ package body nvsupport is
       conflict := '1';
     end if;
 
-    -- ICOUNT trigger match is calculated in the execution stage. It matches when the instruction count in TDATA1 minus the 
-    -- valid instructions in the memory and exception stages is 1 or 0. Therefore, if the instruction that writes 
-    -- TDATA1 is in the lane 0, and instruction that goes after the CSR write is in the lane one, the last instruction is not 
+
+    -- If we are issuing a CSR read that reads a performance counter this cannot be
+    -- issued together with a instruction that comes first in program order. 
+    if (is_csr_access(inst_in(one)) and 
+       unsigned(csr_category(csr_access_addr(inst_in(one)))(3 downto 0)) = 5)  then
+      conflict := '1';
+    end if;
+
+
+    -- ICOUNT trigger match is calculated in the execution stage. It matches when the instruction count in TDATA1 minus the
+    -- valid instructions in the memory and exception stages is 1 or 0. Therefore, if the instruction that writes
+    -- TDATA1 is in the lane 0, and instruction that goes after the CSR write is in the lane one, the last instruction is not
     -- taken into account to evaluate if the icount trigger matches in case it is set to 1.
-    if (is_csr_access(inst_in(0)) and not csr_access_read_only(inst_in(0)) and csr_access_addr(inst_in(0)) = CSR_TDATA1) or 
+    if (is_csr_access(inst_in(0)) and not csr_access_read_only(inst_in(0)) and csr_access_addr(inst_in(0)) = CSR_TDATA1) or
        (is_csr_access(inst_in(one)) and not csr_access_read_only(inst_in(one)) and csr_access_addr(inst_in(one)) = CSR_TDATA1) then
       conflict := '1';
     end if;
+
+    -- We want to annull next instructions and it is
+    -- easier if wfi is issued alone.
+    -- for lane 0 the conflict is already set to 1
+    if is_wfi(inst_in(1)) then
+      conflict := '1';
+    end if;
+
 
 
     -- Instruction register dependency:
@@ -5105,7 +5284,7 @@ package body nvsupport is
       if rd(0) = rfa1(one) or rd(0) = rfa2(one) then
         case opcode_1 is
           when OP_LOAD   | OP_LOAD_FP |  -- Load (address)
-               OP_SYSTEM |               -- System or CSR (also covers SSCHKRA)
+               OP_SYSTEM |               -- System or CSR
                OP_FENCE  |               -- Fence
                OP_FP     |               -- Floating point operation with integer input
                OP_JALR =>                -- Jump and link register (this is resolved early)
@@ -5125,7 +5304,21 @@ package body nvsupport is
             end if;
 
           when OP_CUSTOM0 =>
-            conflict   := '1';
+            if is_diag(active, inst_in(one)) then
+              -- Needs swap to lane 0
+              conflict   := '1';
+            elsif is_custom_alu(active, inst_in(one)) then
+              -- Custom ALU operation in second lane (if late ALU feature is disabled)
+              -- (This is the same as for normal ALU operations below.)
+              if lalu_dis = '1' or not late_alu then
+                conflict := '1';
+              end if;
+               -- Instruction in RA has been issued to late ALUs
+              if ((rd0_in = rfa1(0) or rd0_in = rfa2(0)) and lalu_in(0) = '1' and rdv0_in = '1') or
+                 ((rd1_in = rfa1(0) or rd1_in = rfa2(0)) and lalu_in(one) = '1' and rdv1_in = '1') then
+                conflict := '1';
+              end if;
+            end if;
 
           -- Branch in second lane (if late branch feature is disabled)
           when OP_BRANCH =>
@@ -5562,8 +5755,6 @@ package body nvsupport is
     variable funct12     : funct12_type := funct12(inst);
     -- Non-constant
     variable fusel       : fuseltype    := NONE;
-    variable ind_calljmp : boolean;
-    variable sw_grd_jmp  : boolean;
   begin
     case op is
       when LUI | OP_IMM | OP_IMM_32 =>
@@ -5636,12 +5827,14 @@ package body nvsupport is
           fusel   := ALU;
         end if;
       when OP_CUSTOM0 =>
-        if ext_noelv then
-          if funct3(2) = '0' then
-            fusel := (DIAG or LD);
-          else
+        if is_diag(active, inst) then
+          if is_diag_store(inst) then
             fusel := (DIAG or ST);
+          else
+            fusel := (DIAG or LD);
           end if;
+        elsif is_custom_alu(active, inst) then
+          fusel   := ALU;
         end if;
       when others => null;
     end case;
@@ -5698,12 +5891,12 @@ package body nvsupport is
                      xc_out    : out std_ulogic;
                      cause_out : out cause_type;
                      tval_out  : out wordx) is
-    variable ext_a      : boolean     := is_enabled(active, x_a);
-    variable ext_h      : boolean     := is_enabled(active, x_h);
-    variable ext_zicbom : boolean     := is_enabled(active, x_zicbom);
-    variable funct3     : funct3_type := funct3(inst_in);
-    variable rfa1       : reg_t       := rs1(inst_in);
-    variable size       : word2       := funct3(1 downto 0);
+    variable ext_a       : boolean     := is_enabled(active, x_a);
+    variable ext_h       : boolean     := is_enabled(active, x_h);
+    variable ext_zicbom  : boolean     := is_enabled(active, x_zicbom);
+    variable funct3      : funct3_type := funct3(inst_in);
+    variable rfa1        : reg_t       := rs1(inst_in);
+    variable size        : word2       := funct3(1 downto 0);
     -- Non-constant
     variable xc     : std_ulogic  := '0';
     variable cause  : cause_type  := (others => '0');
@@ -5845,6 +6038,7 @@ package body nvsupport is
                             tval_ill0 : in  boolean;
                             inst_in   : in  word;
                             cinst_in  : in  word16;
+                            comp      : in  std_ulogic;
                             pc_in     : in  std_logic_vector;  -- pctype
                             comp_ill  : in  std_ulogic;
                             misa_in   : in  wordx;
@@ -6002,10 +6196,10 @@ package body nvsupport is
               case funct7 is
                 when F7_URET => -- ECALL, EBREAK, URET (not supported)
                   if rfa1 = "00000" then
-                    case rs2(inst_in) is
-                      when "00000" => ecall  := '1'; -- ECALL
-                      when "00001" => ebreak := '1'; -- EBREAK
-                      when others => illegal := '1';
+                    case rfa2 is
+                      when "00000" => ecall   := '1'; -- ECALL
+                      when "00001" => ebreak  := '1'; -- EBREAK
+                      when others  => illegal := '1';
                     end case;
                   else
                     illegal := '1';
@@ -6042,17 +6236,24 @@ package body nvsupport is
                         -- may always be 0, in which case WFI always causes an illegal instruction
                         -- trap in S-mode when TW=1. TW is hard-wired to 0 when
                         -- S-mode is not supported.
-                        -- WFI is available in all privileged modes, and optionally available to U-mode.
+                        -- When S-mode is implemented, then executing WFI in U-mode causes an
+                        -- illegal instruction exception
+
+                        -- In VS-mode, attempts to execute WFI when hstatus.VTW=1 and mstatus.TW=0, or
+                        -- in VU-mode, attempts to execute WFI when mstatus.TW=0, will raise a virtual
+                        -- instruction trap.
+
                         if ((not h_en) or v_in = '0') and
                            (prv_in = PRIV_LVL_U or (prv_in = PRIV_LVL_S and tw_in = '1')) then
-                          illegal := '1'; -- timeout = 0
-                        end if;
-                        -- In VS-mode, attempts to execute WFI when hstatus.VTW=1 and mstatus.TW=0, or
-                        -- in VU-mode, attempts to execute WFI, will raise a virtual instruction trap.
-                        if (h_en and v_in = '1') and ((prv_in = PRIV_LVL_S and vtw_in = '1' and tw_in = '0') or
-                                                      prv_in = PRIV_LVL_U) then
-                          illegal := '1';
-                          xc_v := '1';
+                          illegal := '1';    -- timeout = 0
+                        elsif (h_en and v_in = '1') then
+                          if tw_in = '1' then
+                            illegal := '1';  -- timeout = 0
+                          elsif (prv_in = PRIV_LVL_S and vtw_in = '1') or
+                                (prv_in = PRIV_LVL_U) then
+                            illegal := '1';  -- timeout = 0
+                            xc_v := '1';
+                          end if;
                         end if;
 
                       when others =>
@@ -6235,7 +6436,8 @@ package body nvsupport is
               when R_LR     | R_SC     | R_AMOSWAP | R_AMOADD |
                    R_AMOXOR | R_AMOAND | R_AMOOR   |
                    R_AMOMIN | R_AMOMAX | R_AMOMINU | R_AMOMAXU => null;
-              when others => illegal := '1';
+              when others =>
+                illegal := '1';
             end case;
           else
             illegal := '1';
@@ -6264,6 +6466,8 @@ package body nvsupport is
             if not ext_noelv or not x_en then
               illegal := '1';
             end if;
+          when F7_BASE_RV64 => -- Custom ALU instructions
+            illegal := not to_bit(alu_ok and x_en);
           when others =>
             illegal := '1';
         end case;
@@ -6282,7 +6486,7 @@ package body nvsupport is
 
     tval      := to0x(inst_in);
 
-    if comp_ill = '1' then
+    if comp_ill = '1' or (illegal = '1' and comp = '1') then
       -- Illegal compressed instruction
       tval    := to0x(cinst_in);
       illegal := '1';
@@ -6321,22 +6525,25 @@ package body nvsupport is
   end;
 
   -- Fetch pmpcfg data
-  function pmpcfg(pmp_entries : integer range 0 to 16;
-                  csr : csr_reg_type; n : natural) return word8 is
-    -- Non-constant
-    variable cfgv   : word8_arr(0 to 15);
-    variable cfg    : word8 := (others => '0');
+  function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
+                  cfg : pmpcfg_vec_type; n : natural) return word8 is
   begin
-    for i in 0 to 7 loop
-      cfgv(i)     := csr.pmpcfg0(i * 8 + 7 downto i * 8);
-      cfgv(i + 8) := csr.pmpcfg2(i * 8 + 7 downto i * 8);
+    if n < pmp_entries then
+      return cfg(n);
+    else
+      return x"00";
+    end if;
+  end;
+
+  function pmpcfg(cfg : pmpcfg_vec_type; first : integer; last : integer) return wordx is
+    -- Non-constant
+    variable res : wordx := zerox;
+  begin
+    for i in first to last loop
+      res((i - first) * 8 + 7 downto (i - first) * 8) := cfg(i);
     end loop;
 
-    if n < pmp_entries then
-      cfg := cfgv(n);
-    end if;
-
-    return cfg;
+    return res;
   end;
 
   function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic is
@@ -6392,6 +6599,10 @@ package body nvsupport is
 
   -- Interrupt code priority
   constant cause_prio : cause_arr(0 to 15) := (
+-- GRLIB_INTERNAL_BEGIN
+    -- TODO: If smrnmi isn't implemented then IRQ_NMI should have the highest priority.
+    -- IRQ_NMI,
+-- GRLIB_INTERNAL_END
     IRQ_M_EXTERNAL,  IRQ_M_SOFTWARE,  IRQ_M_TIMER,
     IRQ_S_EXTERNAL,  IRQ_S_SOFTWARE,  IRQ_S_TIMER,
     IRQ_SG_EXTERNAL,
@@ -6426,7 +6637,7 @@ package body nvsupport is
     variable ret : wordx := zerox;
   begin
     ret(ret'high)    := v.custom;
-    ret(v.sel'range) := v.sel;
+    ret(v.sel'range) := std_logic_vector(v.sel);
 
     return ret;
   end;
@@ -6442,19 +6653,24 @@ package body nvsupport is
     return ret;
   end;
 
+  function is_custom(v : select_t) return boolean is
+  begin
+    return v.custom = '1';
+  end;
+
   -- Determines when the accessed address of the guest interrupt file is illegal and an exception must be rised
+  -- Assumes sel.custom is '0'.
   function GintFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic is
-    variable addr : wordx := selector2wordx(sel);
   begin
     -- Raise virtual instruction exception when:
     -- * Trying to access inaccessible registers (0x00-0x6F, bigger than 0xFF)
     -- * XLEN=64 and trying to access IMSIC odd registers
     -- * IMSIC is not implemented and trying to access IMSIC registers
-    if unsigned(addr) > 16#FF# or                  -- Access inaccessible registers
-       unsigned(addr(7 downto 4)) < 16#7# or       -- Access inaccessible registers
-       (is_rv64 and addr(0) = '1') or              -- XLEN = 64 and access odd register
-       (imsic = 0 and                              -- IMSIC not implemented and access IMSIC regisers
-        unsigned(addr(7 downto 4)) > 16#6#) then
+    if u2i(sel.sel) > 16#FF#          or  -- Access inaccessible registers
+       u2i(sel.sel(7 downto 4)) < 7   or  -- Access inaccessible registers
+       (is_rv64 and sel.sel(0) = '1') or  -- XLEN = 64 and access odd register
+       (imsic = 0 and                     -- IMSIC not implemented and access IMSIC regisers
+        u2i(sel.sel(7 downto 4)) > 6) then
       return '1';
     else
       return '0';
@@ -6462,21 +6678,21 @@ package body nvsupport is
   end;
 
   -- Determines when the accessed address of the interrupt file is illegal and an exception must be rised
+  -- Assumes sel.custom is '0'.
   function intFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic is
-    variable addr : wordx := selector2wordx(sel);
   begin
     -- Raise illegal instruction exception when:
     -- * Trying to access reserved registers (0x00-0x2F, 0x40-0x6F)
     -- * XLEN=64 and trying to access IMSIC odd registers
     -- * XLEN=64 and trying to access major interrupt priorities odd registers
     -- * IMSIC is not implemented and trying to access IMSIC registers
-    if unsigned(addr) > 16#FF# or                  -- Access reserved registers
-       unsigned(addr(7 downto 4)) < 16#3# or       -- Access reserved registers
-       (unsigned(addr(7 downto 4)) > 16#3# and     -- Access reserved registers
-       unsigned(addr(7 downto 4)) < 16#7#) or
-       (is_rv64 and addr(0) = '1') or              -- XLEN = 64 and access odd register
-       (imsic = 0 and                              -- IMSIC not implemented and access IMSIC regisers
-       unsigned(addr(7 downto 4)) > 16#6#) then
+    if u2i(sel.sel) > 16#FF#           or    -- Access reserved registers
+       u2i(sel.sel(7 downto 4)) < 3    or    -- Access reserved registers
+       (u2i(sel.sel(7 downto 4)) > 3 and     -- Access reserved registers
+        u2i(sel.sel(7 downto 4)) < 7)  or
+       (is_rv64 and sel.sel(0) = '1')  or    -- XLEN = 64 and access odd register
+       (imsic = 0 and                        -- IMSIC not implemented and access IMSIC regisers
+        u2i(sel.sel(7 downto 4)) > 6) then
       return '1';
     else
       return '0';
@@ -6642,18 +6858,6 @@ package body nvsupport is
     return mask;
   end;
 
-  function vgein_mask(geilen : integer) return std_logic_vector is
-    variable vgein_mask : std_logic_vector(5 downto 0);
-  begin
-    if (geilen = 0) then
-      vgein_mask := (others => '0');
-    else
-    -- GEILEN must be a power of two and even for the mask to be correct
-      assert(single_1(u2slv(geilen, 6)) and geilen > 1);
-      vgein_mask := u2slv(geilen-1, 6);
-    end if;
-    return vgein_mask;
-  end;
 
   -- Return hstatus as a XLEN bit data from the record type
   function to_hstatus(status : csr_hstatus_type) return wordx is
@@ -6662,7 +6866,7 @@ package body nvsupport is
   begin
     hstatus(33 downto 32)     := status.vsxl;
     hstatus(22 downto 20)     := status.vtsr & status.vtw & status.vtvm;
-    hstatus(17 downto 12)     := status.vgein and vgein_mask(GEILEN);
+    hstatus(17 downto 12)     := status.vgein;
     hstatus( 9 downto  6)     := status.hu & status.spvp & status.spv & status.gva;
     hstatus(           5)     := status.vsbe;
 
@@ -6678,7 +6882,7 @@ package body nvsupport is
     hstatus.vtsr  := wdata(22);
     hstatus.vtw   := wdata(21);
     hstatus.vtvm  := wdata(20);
-    hstatus.vgein := wdata(17 downto 12) and vgein_mask(GEILEN);
+    hstatus.vgein := wdata(17 downto 12);
     --hstatus.vgein := (others => '0');
     hstatus.hu    := wdata(9);
     hstatus.spvp  := wdata(8);
@@ -6940,7 +7144,7 @@ package body nvsupport is
     xmstateen0.iselect  := mstateen0.iselect  and mask.iselect;
     xmstateen0.aia      := mstateen0.aia      and mask.aia;
     xmstateen0.imsic    := mstateen0.imsic    and mask.imsic;
-    xmstateen0.context  := mstateen0.context  and mask.context;
+    xmstateen0.ctx      := mstateen0.ctx      and mask.ctx;
 
     return xmstateen0;
   end;
@@ -6964,7 +7168,7 @@ package body nvsupport is
     xmstateen0.iselect  := to_bit(ssaia) or to_bit(smaia);
     xmstateen0.aia      := to_bit(ssaia) or to_bit(smaia);
     xmstateen0.imsic    := to_bit(imsic);
-    xmstateen0.context  := '1';
+    xmstateen0.ctx      := '1';
 
     return xmstateen0;
   end;
@@ -6979,7 +7183,7 @@ package body nvsupport is
     xmstateen0(60) := mstateen0.iselect;
     xmstateen0(59) := mstateen0.aia;
     xmstateen0(58) := mstateen0.imsic;
-    xmstateen0(57) := mstateen0.context;
+    xmstateen0(57) := mstateen0.ctx;
 
     return xmstateen0(wordx'range);
   end;
@@ -6996,7 +7200,7 @@ package body nvsupport is
       xmstateen0.iselect := wdata(60 * (XLEN / 64));
       xmstateen0.aia     := wdata(59 * (XLEN / 64));
       xmstateen0.imsic   := wdata(58 * (XLEN / 64));
-      xmstateen0.context := wdata(57 * (XLEN / 64));
+      xmstateen0.ctx     := wdata(57 * (XLEN / 64));
     end if;
     -- No bits in the low part are employed yet by the extension
 
@@ -7013,7 +7217,7 @@ package body nvsupport is
     xmstateen0h(28) := mstateen0.iselect;
     xmstateen0h(27) := mstateen0.aia;
     xmstateen0h(26) := mstateen0.imsic;
-    xmstateen0h(25) := mstateen0.context;
+    xmstateen0h(25) := mstateen0.ctx;
 
     return xmstateen0h(wordx'range);
   end;
@@ -7029,7 +7233,7 @@ package body nvsupport is
     xmstateen0.iselect := wdata(28);
     xmstateen0.aia     := wdata(27);
     xmstateen0.imsic   := wdata(26);
-    xmstateen0.context := wdata(25);
+    xmstateen0.ctx     := wdata(25);
 
     return xmstateen0;
   end;
@@ -7315,15 +7519,16 @@ package body nvsupport is
     variable output : std_logic;
   begin
     output := input(input'low);
-    for i in input'low+1 to input'high loop
+    for i in input'low + 1 to input'high loop
       output := output or input(i);
     end loop;
+
     return output;
-  end or_reduce;
-  
+  end;
+
   -- Returns and event signal for an hpmcounter.
-  -- IF THE COUNTER SUPPORT MASKING, the N upper bits of hpmevent are 
-  -- used to define the event class, the remaining bits are used as a 
+  -- IF THE COUNTER SUPPORT MASKING, the N upper bits of hpmevent are
+  -- used to define the event class, the remaining bits are used as a
   -- mask that selects (1) or ignores (0) the events within a given class
   -- the output event is or reduction of any of the selected events
   -- IF THE COUNTER DOESN'T SUPPORT MASKING it returns NO_EVENT if the mask has
@@ -7332,15 +7537,15 @@ package body nvsupport is
   -- hpmevent: hpmevent register for our target counter
   -- evt: Vector of input events
   -- cnt: Index of the target counter (EG: 3 -> mphcounter3)
-  function filter_hpmevent (hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic is
+  function filter_hpmevent(hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic is
     -- Non-constant
     variable rdata  : std_logic := '1';
-    variable filter : std_logic := '0'; -- Check if filtering is enabled
-    variable class  : integer; 
+    variable filter : std_logic := '0';  -- Check if filtering is enabled
+    variable class  : integer;
     variable mask   : std_logic_vector (MHPEVENT_EC-1 downto 0);
   begin
-    class := u2i(hpmevent.class);
-    mask  := hpmevent.events;
+    class  := u2i(hpmevent.class);
+    mask   := hpmevent.events;
     -- Check if target counter has filter events enabled
     filter := MHPCOUNT_FIL(cnt);
 
@@ -7348,13 +7553,14 @@ package body nvsupport is
       --rdata := or (evt(class) and mask);
       rdata := or_reduce((evt(class) and mask));
     else
-      -- check if mask is a power of 2 and not 0
-       if (single_1(mask)) then 
-         rdata :=evt(class)(u2i(mask));
+      -- Check if mask is a power of 2 and not 0
+       if (single_1(mask)) then
+         rdata := evt(class)(u2i(mask));
        else
          rdata := '0';
-       end if; 
-    end if; 
+       end if;
+    end if;
+
     return rdata;
   end;
 
@@ -7426,33 +7632,19 @@ package body nvsupport is
   end;
 
   procedure pmp_precalc(pmpaddr     : in  pmpaddr_vec_type;
-                        pmpcfg0     : in  word64;
-                        pmpcfg2     : in  word64;
+                        pmpcfg_in   : in  pmpcfg_vec_type;
                         precalc     : out pmp_precalc_vec;
                         pmp_entries : integer;
                         pmp_no_tor  : integer;
                         pmp_g       : integer;
                         msb         : integer := 31
                        ) is
-    function pmpcfg(cfg0 : word64; cfg2 : word64; n : integer range 0 to 15) return word8 is
-      -- Non-constant
-      variable cfg : word8;
-    begin
-      if n < 8 then
-        cfg := cfg0(n * 8 + 7 downto n * 8);
-      else
-        cfg := cfg2((n - 8) * 8 + 7 downto (n - 8) * 8);
-      end if;
-
-      return cfg;
-    end;
-
     -- Non-constant
     variable a          : pmpcfg_access_type;
     variable pmpaddr_m1 : pmpaddr_type;
   begin
     for i in 0 to pmp_entries - 1 loop
-      a := pmpcfg(pmpcfg0, pmpcfg2, i)(4 downto 3);
+      a := pmpcfg(pmp_entries, pmpcfg_in, i)(4 downto 3);
 
       -- Bottom address for PMP_TOR.
       pmpaddr_m1   := pmpaddrzero;
@@ -7468,8 +7660,7 @@ package body nvsupport is
   -- Note that this does not support pmp_g = 0!
   procedure pmp_unit(prv_in     : in  priv_lvl_type;
                      precalc    : in  pmp_precalc_vec;
-                     pmpcfg0_in : in  word64;
-                     pmpcfg2_in : in  word64;
+                     pmpcfg_in  : in  pmpcfg_vec_type;
                      mmwp       : in  std_ulogic;
                      mml        : in  std_ulogic;
                      mprv_in    : in  std_ulogic;
@@ -7529,11 +7720,7 @@ package body nvsupport is
     for i in 0 to entries - 1 loop
 
       -- Generate larwx signals.
-      if i < 8 then
-        cfg  := pmpcfg0_in(i * 8 + 7 downto i * 8);
-      else
-        cfg  := pmpcfg2_in((i - 8) * 8 + 7 downto (i - 8) * 8);
-      end if;
+      cfg    := pmpcfg_in(i);
       l(i)   := cfg(7);
       a(i)   := cfg(4 downto 3);
       x(i)   := cfg(2);
@@ -7720,8 +7907,7 @@ package body nvsupport is
   -- Specialized for MMU use.
   -- Alignment fixed to 4 kByte.
   procedure pmp_mmuu(precalc    : in  pmp_precalc_vec;
-                     pmpcfg0_in : in  word64;
-                     pmpcfg2_in : in  word64;
+                     pmpcfg_in  : in  pmpcfg_vec_type;
                      mml        : in  std_ulogic;
                      addr_low   : in  std_logic_vector;
                      addr_mask  : in  std_logic_vector;
@@ -7772,11 +7958,7 @@ package body nvsupport is
     for i in precalc'range loop
 
       -- Generate larwx signals.
-      if i < 8 then
-        cfg := pmpcfg0_in(i * 8 + 7 downto i * 8);
-      else
-        cfg := pmpcfg2_in((i - 8) * 8 + 7 downto (i - 8) * 8);
-      end if;
+      cfg  := pmpcfg_in(i);
       l(i) := cfg(7);
       a(i) := cfg(4 downto 3);
       x(i) := cfg(2);
@@ -8151,6 +8333,7 @@ package body nvsupport is
                        wdata_in       : in  std_logic_vector;  -- pctype
                        rasi_in        : in  nv_ras_in_type;
                        hold_in        : in  std_ulogic;
+                       rstate         : in  core_state;
                        ras_out        : out nv_ras_in_type) is
     variable rd       : reg_t          := rd(inst_in);
     variable rs1      : reg_t          := rs1(inst_in);
@@ -8229,6 +8412,11 @@ package body nvsupport is
     -- drived from the wb_fence_i instruction.
     if speculative_in = 0 then
       ras.flush     := hold_in;
+    end if;
+
+    if rstate /= run then
+      ras.pop  := '0';
+      ras.push := '0';
     end if;
 
     ras_out         := ras;

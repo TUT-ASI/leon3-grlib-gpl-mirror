@@ -1,1 +1,7 @@
     bool 'Enable High-Speed Serial Link         ' CONFIG_GRHSSL_ENABLE
+    
+    if [ "$CONFIG_GRHSSL_ENABLE" = "y" ]; then
+      int  'Number of High-Speed Serial Links     ' CONFIG_GRHSSL_NUM 1
+      bool 'Enable internal SpaceFibre codec      ' CONFIG_GRHSSL_SPFI
+      bool 'Enable internal WizardLink codec      ' CONFIG_GRHSSL_WIZL
+    fi

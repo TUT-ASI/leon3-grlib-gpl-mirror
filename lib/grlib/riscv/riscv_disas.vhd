@@ -616,18 +616,19 @@ package body riscv_disas is
       size := ".d";
     end if;
     case v is
-      when "00010" => return "lr" & size;
-      when "00011" => return "sc" & size;
-      when "00001" => return "amoswap" & size;
-      when "00000" => return "amoadd" & size;
-      when "00100" => return "amoxor" & size;
-      when "01100" => return "amoand" & size;
-      when "01000" => return "amoor" & size;
-      when "10000" => return "amomin" & size;
-      when "10100" => return "amomax" & size;
-      when "11000" => return "amominu" & size;
-      when "11100" => return "amomaxu" & size;
-      when others  => return "xxx";
+      when R_LR        => return "lr" & size;
+      when R_SC        => return "sc" & size;
+      when R_AMOSWAP   => return "amoswap" & size;
+      when R_AMOADD    => return "amoadd" & size;
+      when R_AMOXOR    => return "amoxor" & size;
+      when R_AMOAND    => return "amoand" & size;
+      when R_AMOOR     => return "amoor" & size;
+      when R_AMOMIN    => return "amomin" & size;
+      when R_AMOMAX    => return "amomax" & size;
+      when R_AMOMINU   => return "amominu" & size;
+      when R_AMOMAXU   => return "amomaxu" & size;
+      when R_SSAMOSWAP => return "ssamoswap" & size;
+      when others      => return "xxx";
     end case;
   end;
 
@@ -708,6 +709,18 @@ package body riscv_disas is
       when x"c" => return "diag." & t & ".pmp";
       when x"d" => return "diag." & t & ".xtnd";
       when others => return "diag." & t & ".xxx";
+    end case;
+  end;
+
+  function custom0_pack2str(v : funct3_type) return string is
+  begin
+    case v is
+      when "000"  => return "xpacku.w";
+      when "001"  => return "xpacku.b";
+      when "010"  => return "xpacku.h";
+      when "011"  => return "xpack.b";
+      when "100"  => return "xpack.h";
+      when others => return "xpack.xxx";
     end case;
   end;
 
@@ -1193,6 +1206,7 @@ package body riscv_disas is
       -- Custom Read-only Registers
       when CSR_CAPABILITY       => return "capability";
       when CSR_CAPABILITYH      => return "capabilityh";
+      -- Custom Read/Write Unprivileged Registers
       when others               => return "unknown";
     end case;
   end;
@@ -1689,9 +1703,9 @@ package body riscv_disas is
             case funct7 is
               when F7_MOPR_0  | F7_MOPR_4  | F7_MOPR_8  | F7_MOPR_12 |
                    F7_MOPR_16 | F7_MOPR_20 | F7_MOPR_24 | F7_MOPR_28 =>
-                if    funct12 = F12_SSPOPCHK and rd = "00000" and (rs1 = "00001" or rs1 = "00101") then
+                if    funct12 = F12_SSRDPOPCHK and rd = "00000" and (rs1 = "00001" or rs1 = "00101") then
                   disas := strpad("sspopchk " & reg2st(rs1), disas'length);
-                elsif funct12 = F12_SSRDP and rd /= "00000" and rs1 = "00000" then
+                elsif funct12 = F12_SSRDPOPCHK and rd /= "00000" and rs1 = "00000" then
                   disas := strpad("ssrdp " & reg2st(rd), disas'length);
                 else
                   disas := strpad("mop.r." &
@@ -1853,14 +1867,22 @@ package body riscv_disas is
                         fpreg2st(rs2) & ", " & fpreg2st(funct5) & rnd2str(insn), disas'length);
 
       when OP_CUSTOM0 =>
-        if funct3(2) = '0' then  -- Load
-          disas := strpad(custom0_diag2str(insn(23 downto 20), funct3, false) & " " &
-                          reg2st(rd) & ", " & "(" & reg2st(rs1) & ")", disas'length);
-        else                    -- Store
-          disas := strpad(custom0_diag2str(insn(10 downto  7), funct3, true) & " " &
-                          reg2st(rs2) & ", " & "(" & reg2st(rs1) & ")", disas'length);
-        end if;
-
+        case funct7 is
+        when F7_BASE =>
+          if funct3(2) = '0' then  -- Load
+            disas := strpad(custom0_diag2str(insn(23 downto 20), funct3, false) & " " &
+                            reg2st(rd) & ", " & "(" & reg2st(rs1) & ")", disas'length);
+          else                    -- Store
+            disas := strpad(custom0_diag2str(insn(10 downto  7), funct3, true) & " " &
+                            reg2st(rs2) & ", " & "(" & reg2st(rs1) & ")", disas'length);
+          end if;
+        when F7_BASE_RV64 =>
+          disas := strpad(custom0_pack2str(funct3) & " " &
+                          reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+        when others =>
+          disas := strpad("custom0." & tost(funct7) & " " &
+                          reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
+        end case;
       when others =>
         null;
     end case;

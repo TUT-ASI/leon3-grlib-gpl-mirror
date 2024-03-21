@@ -1,3 +1,15 @@
 #ifndef CONFIG_GRHSSL_ENABLE
 #define CONFIG_GRHSSL_ENABLE 0
 #endif
+
+#ifndef CONFIG_GRHSSL_NUM
+#define CONFIG_GRHSSL_NUM 1
+#endif
+
+#ifndef CONFIG_GRHSSL_SPFI
+#define CONFIG_GRHSSL_SPFI 1
+#endif
+
+#ifndef CONFIG_GRHSSL_WIZL
+#define CONFIG_GRHSSL_WIZL 0
+#endif

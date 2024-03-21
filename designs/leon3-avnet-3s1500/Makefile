@@ -22,7 +22,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan leon3ft ddr meiko mfpc \
 	grusbhc spi spacewire usb leon4v0 l2cache \
 	slink ascs pwm gr1553b iommu \
-	leon5v0 grfpu5 noelv noelv/subsys riscv
+	leon5v0 leon5v0/blockred grfpu5 noelv noelv/subsys riscv
 FILESKIP = grcan.vhd pfmddr_wrapper.vhd \
 	sf2apbslv_wrapper.vhd sf2ficmst_wrapper.vhd sf2ficslv_wrapper.vhd \
 	sf2mddr_wrapper.vhd pfmddr_wrapper.vhd

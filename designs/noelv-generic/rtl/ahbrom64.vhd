@@ -37,7 +37,7 @@ end;
 
 architecture rtl of ahbrom64 is
 constant abits : integer := 8;
-constant bytes : integer := 172;
+constant bytes : integer := 176;
 constant dbits : integer := 64;
 
 constant hconfig : ahb_config_type := (
@@ -112,12 +112,13 @@ begin
         when 16#0000D# => romdata <= X"930d0000130e0000";
         when 16#0000E# => romdata <= X"930e0000130f0000";
         when 16#0000F# => romdata <= X"930f000037010100";
-        when 16#00010# => romdata <= X"9702000093824202";
-        when 16#00011# => romdata <= X"739052300f100000";
-        when 16#00012# => romdata <= X"732540f193051000";
-        when 16#00013# => romdata <= X"6370b50013040000";
-        when 16#00014# => romdata <= X"6700040073001000";
-        when 16#00015# => romdata <= X"6ff0dfff00000000";
+        when 16#00010# => romdata <= X"9702000093828202";
+        when 16#00011# => romdata <= X"739052309302f01c";
+        when 16#00012# => romdata <= X"7390127c732540f1";
+        when 16#00013# => romdata <= X"930510006370b500";
+        when 16#00014# => romdata <= X"1304000067000400";
+        when 16#00015# => romdata <= X"730010006ff0dfff";
+        when 16#00016# => romdata <= X"0000000000000000";
         when others => romdata <= (others => '-');
       end case;
     else --little endian
@@ -138,12 +139,13 @@ begin
         when 16#0000D# => romdata <= X"00000e1300000d93";
         when 16#0000E# => romdata <= X"00000f1300000e93";
         when 16#0000F# => romdata <= X"0001013700000f93";
-        when 16#00010# => romdata <= X"0242829300000297";
-        when 16#00011# => romdata <= X"0000100f30529073";
-        when 16#00012# => romdata <= X"00100593f1402573";
-        when 16#00013# => romdata <= X"0000041300b57063";
-        when 16#00014# => romdata <= X"0010007300040067";
-        when 16#00015# => romdata <= X"00000000ffdff06f";
+        when 16#00010# => romdata <= X"0282829300000297";
+        when 16#00011# => romdata <= X"1cf0029330529073";
+        when 16#00012# => romdata <= X"f14025737c129073";
+        when 16#00013# => romdata <= X"00b5706300100593";
+        when 16#00014# => romdata <= X"0004006700000413";
+        when 16#00015# => romdata <= X"ffdff06f00100073";
+        when 16#00016# => romdata <= X"0000000000000000";
            when others => romdata <= (others => '-');
         end case;
     end if; 

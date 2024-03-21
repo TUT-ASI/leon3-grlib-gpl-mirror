@@ -34,6 +34,7 @@ package config is
   constant CFG_NEIID : integer := (63);
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
+  constant CFG_L2_LITE : integer := 0;
   constant CFG_L2_SIZE : integer := 64;
   constant CFG_L2_WAYS : integer := 4;
   constant CFG_L2_HPROT : integer := 0;
@@ -71,6 +72,29 @@ package config is
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
+-- NANDFCTRL2
+  constant CFG_NFC2_EN : integer := 0;
+  constant CFG_NFC2_NROFCE : integer := 0;
+  constant CFG_NFC2_NROFCH : integer := 0;
+  constant CFG_NFC2_NROFRB : integer := 0;
+  constant CFG_NFC2_NROFSEFI : integer := 0;
+  constant CFG_NFC2_RND : integer := 0;
+  constant CFG_NFC2_MEM0_DATA : integer := 0;
+  constant CFG_NFC2_MEM0_SPARE : integer := 0;
+  constant CFG_NFC2_MEM0_ECC_SEL : integer := 0;
+  constant CFG_NFC2_MEM1_DATA : integer := 0;
+  constant CFG_NFC2_MEM1_SPARE : integer := 0;
+  constant CFG_NFC2_MEM1_ECC_SEL : integer := 0;
+  constant CFG_NFC2_MEM2_DATA : integer := 0;
+  constant CFG_NFC2_MEM2_SPARE : integer := 0;
+  constant CFG_NFC2_MEM2_ECC_SEL : integer := 0;
+  constant CFG_NFC2_ECC0_GFSIZE : integer := 0;
+  constant CFG_NFC2_ECC0_CHUNK : integer := 0;
+  constant CFG_NFC2_ECC0_CAP : integer := 0;
+  constant CFG_NFC2_ECC1_GFSIZE : integer := 0;
+  constant CFG_NFC2_ECC1_CHUNK : integer := 0;
+  constant CFG_NFC2_ECC1_CAP : integer := 0;
+  constant CFG_NFC2_FT : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;

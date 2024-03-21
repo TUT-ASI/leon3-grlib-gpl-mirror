@@ -1154,10 +1154,38 @@ static void tcmtest5_copy_itcmfunc(int itcmsz, unsigned long addr)
       }
 }
 
+/* Calculate which offsets we should test in the TCM to test all power-of-two addresses
+ * in the syncrams, considering fractional modes. */
+static void tcmtest5_get_offs(int tcmsz, int tcmfrac, int *offs, int *noffs)
+{
+        int i, pos, subsz;
+        *noffs = 0;
+        pos = 0;
+        if (tcmsz == 0) return;
+        if (tcmfrac == 0) subsz=tcmsz; else subsz=tcmsz-1;
+        while (subsz > 0) {
+                offs[(*noffs)++] = pos;
+                for (i=2; i<subsz; i++) offs[(*noffs)++] = pos+(1<<i);
+                pos += (1<<subsz);
+                if ((tcmfrac & 4) != 0) {
+                        subsz = tcmsz-2;
+                        tcmfrac &= ~4;
+                } else if ((tcmfrac & 2) != 0) {
+                        subsz = tcmsz-3;
+                        tcmfrac &= ~2;
+                } else if ((tcmfrac & 1) != 0) {
+                        subsz = tcmsz-4;
+                        tcmfrac &= ~1;
+                } else {
+                        subsz = 0;
+                }
+        }
+}
+
 void tcmtest5(void)
 {
         unsigned long leon5cfg, tcmcfg, ftcfg;
-        int dtcmsz, itcmsz, i, j;
+        int dtcmsz, itcmsz, dtcmfrac, itcmfrac, i, j;
         int sumode;
         typedef int (*funcptr)(int);
         funcptr f = (funcptr)0x50000000;
@@ -1172,6 +1200,7 @@ void tcmtest5(void)
         volatile unsigned long *testvarp;
         int do_fttest, cft, eitype, cemode, correxp;
         unsigned long errctr;
+        int offs[64], noffs;
         leon5cfg = rsysreg(0x10);
         if ( ((leon5cfg >> 27) & 3) == 0 ) return; /* TCM not implemented */
         report_subtest( (get_pid()<<4) | 2 );
@@ -1180,27 +1209,16 @@ void tcmtest5(void)
         } while ((tcmcfg & (1<<31))!=0 || (tcmcfg & (1<<15))!=0 );
         dtcmsz = tcmcfg & 31;
         itcmsz = (tcmcfg >> 16) & 31;
+        dtcmfrac = (tcmcfg >> 5) & 7;
+        itcmfrac = (tcmcfg >> 21) & 7;
         /* Test ASI read and write to ITCM and DTCM memories */
-        if (itcmsz > 0) {
-                sta0x26(0,1);
-                for (i=2; i<itcmsz; i++) {
-                        sta0x26(1<<i, i);
-                }
-                if (lda0x26(0) != 1) fail(1);
-                for (i=2; i<itcmsz; i++) {
-                        if (lda0x26(1<<i) != i) fail(1);
-                }
-        }
-        if (dtcmsz > 0) {
-                sta0x27(0,1);
-                for (i=2; i<dtcmsz; i++) {
-                        sta0x27(1<<i, i);
-                }
-                if (lda0x27(0) != 1) fail(2);
-                for (i=2; i<dtcmsz; i++) {
-                        if (lda0x27(1<<i) != i) fail(2);
-                }
-        }
+        tcmtest5_get_offs(itcmsz,itcmfrac,offs,&noffs);
+        for (i=0; i<noffs; i++) sta0x26(offs[i],i+1);
+        for (i=0; i<noffs; i++) if (lda0x26(offs[i]) != (i+1)) fail(1);
+        tcmtest5_get_offs(dtcmsz,dtcmfrac,offs,&noffs);
+        for (i=0; i<noffs; i++) sta0x27(offs[i],i+1);
+        for (i=0; i<noffs; i++) if (lda0x27(offs[i]) != (i+1)) fail(2);
+
         /* Setup trap handler for supervisor-only check */
         bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, tcmtest_iexc_handler);
         bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, tcmtest_dexc_handler);

@@ -1,0 +1,71 @@
+#
+# LEON5 configuration written in linux configuration language
+#
+#
+# Comments and bug reports to support@gaisler.com
+#
+#
+
+mainmenu_name "LEON5 Design Configuration"
+
+mainmenu_option next_comment
+  comment 'Synthesis      '
+  source lib/techmap/gencomp/tech.in
+endmenu
+
+mainmenu_option next_comment
+  comment 'Clock generation'
+  source lib/techmap/clocks/clkgen.in
+endmenu
+
+source lib/gaisler/leon5/leon5.in
+source lib/gaisler/l2cache/l2c.in
+
+mainmenu_option next_comment
+  comment 'Debug Link           '
+  source lib/gaisler/uart/dcom.in
+  source lib/gaisler/jtag/jtag.in
+  source lib/gaisler/net/edcl.in
+endmenu
+
+mainmenu_option next_comment
+comment 'Peripherals             '
+
+  mainmenu_option next_comment
+  comment 'Memory controller             '
+    source lib/gaisler/ddr/mig_7series.in
+    source lib/gaisler/misc/ahbstat.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'On-chip RAM/ROM                 '
+    source lib/gaisler/misc/ahbrom.in
+    source lib/gaisler/misc/ahbram.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'Ethernet             '
+    source lib/gaisler/greth/greth.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'Spacewire '
+    source lib/gaisler/spacewire/spacewire.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'High Speed Serial Link   '
+    source lib/gaisler/hssl/hssl.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'GPIO'
+    source lib/gaisler/misc/grgpio.in
+  endmenu
+
+endmenu
+
+mainmenu_option next_comment
+comment 'VHDL Debugging        '
+  source lib/gaisler/leon5/debug5.in
+endmenu

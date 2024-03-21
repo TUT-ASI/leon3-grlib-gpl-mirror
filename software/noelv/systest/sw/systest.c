@@ -14,6 +14,7 @@
 #include "l2capi.h"
 #include "aclint.h"
 #include "imsic.h"
+#include "apuart16550.h"
 
 #ifndef CONSOLE_DEBUG
 #define CONSOLE_DEBUG 1 // Set to 0 to disable the following printf statements
@@ -21,6 +22,9 @@
 // Default base addresses
 #ifndef APBUART_ADDR_SYSTEST
 #define APBUART_ADDR_SYSTEST 0xfc001000ULL // De-RISC
+#endif
+#ifndef APBUART16550_ADDR_SYSTEST
+#define APBUART16550_ADDR_SYSTEST 0xfc001000ULL // De-RISC
 #endif
 #ifndef SPIMCTRL_ADDR_SYSTEST
 #define SPIMCTRL_ADDR_SYSTEST 0xfff90000ULL // Generic
@@ -81,6 +85,7 @@
 #define GRETH_SYSTEST (1 << 9)
 #define L2C_SYSTEST (1 << 10)
 #define AIA_SYSTEST (1 << 11)
+#define APBUART16550_SYSTEST (1 << 12)
 
 #ifndef SYSTEST_TYPE
 #define SYSTEST_TYPE L2C_SYSTEST
@@ -207,6 +212,12 @@ int main() {
     test_failed |= aia_test(aclint_addr, imsic_addr, aplic_addr, 
                             cpus, geilen, domains, lite, smstateen, smrnmi);
     print_test_result(test_failed, "AIA");
+  }
+  if ((SYSTEST_TYPE) & APBUART16550_SYSTEST) {
+    //printf("Starting APBUART16550 test\n");
+    addr_t apbuart16550_addr = APBUART16550_ADDR_SYSTEST;
+    test_failed |= apbuart16550_test(apbuart16550_addr);
+    //print_test_result(test_failed, "Generic 16550 UART");
   }
   //print_test_result(test_failed, "All");
   //report_end();

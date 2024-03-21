@@ -255,7 +255,7 @@ begin
 
   pf : if (xtech = polarfire) generate
     x0 : polarfire_syncram generic map (abits, dbits, pipeline, 0)
-         port map (clk, address, datain, dataoutx, xenable, xwrite);
+         port map (clk, address, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
   umc18  : if xtech = umc generate

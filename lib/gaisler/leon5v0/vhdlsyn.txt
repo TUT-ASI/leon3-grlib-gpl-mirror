@@ -11,6 +11,7 @@ btb.vhd
 inst_text.vhd
 iu5.vhd
 cctrl5.vhd
+tcmwrap5.vhd
 cachemem5.vhd
 regfile5_ram.vhd
 regfile5_dff.vhd

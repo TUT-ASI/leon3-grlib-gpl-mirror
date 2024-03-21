@@ -79,7 +79,10 @@ entity noelvsys is
     );
   port (
     clk      : in  std_ulogic;
+    gclk     : in  std_logic_vector(ncpu-1 downto 0);
     rstn     : in  std_ulogic;
+    -- Power down mode
+    pwrd     : out std_logic_vector(ncpu-1 downto 0);
     -- AHB bus interface for other masters (DMA units)
     ahbmi    : out ahb_mst_in_type;
     ahbmo    : in  ahb_mst_out_vector_type(ncpu + nextmst - 1 downto ncpu);
@@ -110,14 +113,20 @@ entity noelvsys is
     scanen   : in  std_ulogic := '0';
     testoen  : in  std_ulogic := '1';
     testsig  : in  std_logic_vector(1 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+
+-- GRLIB_INTERNAL_BEGIN
+   ; 
+    -- One bit per cpu for now, cause can be 1 until more causes are added
+    nirq       : in std_logic_vector(0 to ncpu - 1) := (others => '0')
+-- GRLIB_INTERNAL_END
     );
 end;
 
 architecture hier of noelvsys is
 
-  type trace_d_vector is array (0 to ncpu) of std_logic_vector(1023 downto 0);
+  type trace_d_vector is array (0 to ncpu - 1) of std_logic_vector(1023 downto 0);
   signal vtrace_d : trace_d_vector;
-  signal vtrace_v : std_logic_vector(0 to ncpu);
+  signal vtrace_v : std_logic_vector(0 to ncpu - 1);
   -- AIA configuration functions -------------------------------------
 
   function config_interrupts(cfg : integer) return integer is
@@ -193,8 +202,8 @@ architecture hier of noelvsys is
   end function;
 
 
-  constant doms_per_branch : integer := 3;
-  constant branches        : integer := 2;
+  constant doms_per_branch : integer := 2;
+  constant branches        : integer := ncpu;
   constant ndoms           : integer := doms_per_branch * branches + 1; 
 
   type aplic_harts_config_type is array (0 to ndoms - 1) of std_logic_vector(0 to ncpu - 1);
@@ -206,35 +215,11 @@ architecture hier of noelvsys is
     variable out_config  : aplic_harts_config_type;
     variable cpu_per_dom : integer := ncpu / ndom;
   begin
-    -- Add here possible configuration for different numbers of cores and domains
-    if ncpu = 1 and ndom = 7 then
-      out_config := (
-        0  => "1",
-        1  => "1",
-        2  => "1",
-        3  => "1",
-        4  => "0",
-        5  => "0",
-        6  => "0"
-      );
-    elsif ncpu = 2 and ndom = 7 then
-      out_config := (
-        0  => "01",
-        1  => "01",
-        2  => "01",
-        3  => "01",
-        4  => "10",
-        5  => "10",
-        6  => "10"
-      );
-    else -- Default configuration
-      for i in 0 to ndom-1 loop
+    -- Default configuration
+      for i in 1 to ndom-1 loop
         out_config(i) := (others => '0');
-        for j in 0 to cpu_per_dom-1 loop
-          out_config(i)(i * cpu_per_dom + j) := '1';
-        end loop;
       end loop;
-    end if;
+      out_config(0) := (others => '1');
     return out_config;
   end function;
 
@@ -322,16 +307,15 @@ architecture hier of noelvsys is
   signal ahbso_apbctrl : ahb_slv_out_type;
 
   -- AHB master index
-  constant AHBB_HMINDEX   : integer := ncpu + nextmst;
-  constant APLIC_HMINDEX  : integer := ncpu + nextmst + 1;
+  constant APLIC_HMINDEX  : integer := ncpu + nextmst;
+  constant AHBB_HMINDEX   : integer := ncpu + nextmst + 1;
   -- AHB slave index
   constant APBC_HINDEX    : integer := nextslv;
   constant ACLINT_HINDEX  : integer := nextslv + 1;
   constant IMSIC_HINDEX   : integer := nextslv + 2;
   constant PLIC_HINDEX    : integer := nextslv + 3;
   constant APLIC_HSINDEX  : integer := nextslv + 3;
-  constant DUMMY_HINDEX   : integer := nextslv + 4;
-  constant DM_HINDEX      : integer := nextslv + 5; -- Used for PnP replacement
+  constant DM_HINDEX      : integer := nextslv + 4; -- Used for PnP replacement
   -- AHB slave address
   constant AHBC_IOADDR    : integer := 16#FFF#; --16#FFE# + nodbus;
   constant ACLINT_HADDR   : integer := 16#E00#;
@@ -346,7 +330,6 @@ architecture hier of noelvsys is
   constant AHBT_IOMASK    : integer := 16#E00#;
   constant APBC_HADDR     : integer := 16#FC0#;
   constant APBC_HMASK     : integer := 16#FFF#;
-  constant DUMMY_HADDR    : integer := 16#FFE#;
   -- APB slave index
   constant APBUART_PINDEX : integer := nextapb + 0;
   constant GPTIME_PINDEX  : integer := nextapb + 1;
@@ -365,6 +348,9 @@ architecture hier of noelvsys is
   constant ETRACE_PIRQ    : integer := 4;
   constant WATCHDOG_HIRQ1 : integer := 1;
   constant WATCHDOG_HIRQ2 : integer := 2;
+
+  -- UART 16550
+  constant UART16550 : integer := 0;  -- Implement UART 16550 instead of Gaisler's UART
 
   -- IMSIC
   constant AIA_en  : integer := config_interrupts(cfg) * AIA_SUPPORT;
@@ -408,7 +394,7 @@ begin
       rrobin   => 1,
       split    => 1,
       nahbm    => ncpu + nextmst + 2,
-      nahbs    => nextslv + 5,
+      nahbs    => nextslv + 4,
       fpnpen   => 1,
       shadow   => 1,
       ahbtrace => ahbtrace,
@@ -442,7 +428,7 @@ begin
   end generate;
   -- Clear above 5 internal AHB slaves:
   -- aclint, imsic, (a)plic, dummy
-  cpuso(cpuso'high downto nextslv + 5) <= (others => ahbs_none);
+  cpuso(cpuso'high downto nextslv + 4) <= (others => ahbs_none);
 
   ap0: apbctrl
     generic map (
@@ -506,6 +492,7 @@ begin
       )
       port map (
         clk    => clk,
+        gclk   => gclk(c),
         rstn   => rstn,
         ahbi   => cpumi,
         ahbo   => cpumo(c),
@@ -519,7 +506,8 @@ begin
         dbgi   => dbgi(c),
         dbgo   => dbgo(c),
         eto    => eto(c),
-        cnt    => cnt(c)
+        cnt    => cnt(c),
+        pwrd   => pwrd(C)
       );
   end generate;
 
@@ -595,41 +583,57 @@ begin
   end generate;
 
   ----------------------------------------------------------------------------
-  -- Dummy PnP
-  ----------------------------------------------------------------------------
-  dummypnp : dummy_pnp
-    generic map (
-      hindex  => DUMMY_HINDEX,
-      ioarea  => DUMMY_HADDR,
-      devid   => devid)
-    port map (
-    ahbsi    => cpusix,
-    ahbso    => cpuso(DUMMY_HINDEX));
-  ----------------------------------------------------------------------------
   -- Standard UART
   ----------------------------------------------------------------------------
-  uart0: apbuart
-    generic map (
-      pindex   => APBUART_PINDEX,
-      paddr    => APBUART_PADDR,
-      pmask    => APBUART_PMASK,
-      console  => 1,
-      pirq     => 1,
-      parity   => 1,
-      flow     => 1,
-      fifosize => 8,
-      abits    => 8,
-      sbits    => 12
-      )
-    port map (
-      rst   => rstn,
-      clk   => clk,
-      apbi  => cpuapbix,
-      apbo  => apbo_uart,
-      uarti => uarti,
-      uarto => xuarto
-      );
-  uarto <= xuarto;
+  uart_gen : if UART16550 = 0 generate
+    uart0: apbuart
+      generic map (
+        pindex   => APBUART_PINDEX,
+        paddr    => APBUART_PADDR,
+        pmask    => APBUART_PMASK,
+        console  => 1,
+        pirq     => 1,
+        parity   => 1,
+        flow     => 1,
+        fifosize => 8,
+        abits    => 8,
+        sbits    => 12
+        )
+      port map (
+        rst   => rstn,
+        clk   => clk,
+        apbi  => cpuapbix,
+        apbo  => apbo_uart,
+        uarti => uarti,
+        uarto => xuarto
+        );
+    uarto <= xuarto;
+  end generate;
+
+  uart16550_gen : if UART16550 = 1 generate
+    uart0: apbuart_16550
+      generic map (
+        pindex   => APBUART_PINDEX,
+        paddr    => APBUART_PADDR,
+        pmask    => APBUART_PMASK,
+        console  => 1,
+        pirq     => 1,
+        flow     => 1,
+        fifomode => 1,
+        abits    => 8,
+        sbits    => 12
+        )
+      port map (
+        rst   => rstn,
+        clk   => clk,
+        apbi  => cpuapbix,
+        apbo  => apbo_uart,
+        uarti => uarti,
+        uarto => xuarto
+        );
+    uarto <= xuarto;
+  end generate;
+
 
 -- pragma translate_off
 -- pragma translate_on
@@ -814,9 +818,15 @@ begin
         end generate eip_gen;
   end generate old_interrupt_gen;
 
-    nirq_zero : for i in 0 to ncpu-1 generate
-      nirqi(i) <= (others => '0');
-    end generate nirq_zero;
+    -- nirq_zero : for i in 0 to ncpu-1 generate
+    --   nirqi(i) <= (others => '0');
+    -- end generate nirq_zero;
+    -- GRLIB_INTERNAL_BEGIN
+    nirq_con : for i in 0 to ncpu-1 generate
+      nirqi(i) <= nirq(i) & nirq(i) & "0000"; -- IRQ NUM 16
+    end generate;
+    -- GRLIB_INTERNAL_END
+    
   
 
   -----------------------------------------------------------------------------
@@ -864,6 +874,9 @@ begin
       grlib.stdlib.print("noelvsys:     " & tostw(x,3,true) & " ext#" & tostw(x,2,false) & " " & 
                          grlib.devices.iptable(vendori).device_table(devicei));
     end loop;
+    -- Last master in the debug subsystem is always the RISC-V Debug Module
+    grlib.stdlib.print("noelvsys:     " & tostw(ndbgmst,3,true) & " ext#" & tostw(ndbgmst,2,false) & " " & 
+                       grlib.devices.iptable(VENDOR_GAISLER).device_table(GAISLER_RVDM));
     grlib.stdlib.print("noelvsys:   CPU bus masters:");
     for x in 0 to ncpu+1 loop
       if is_x(cpumo(x).hconfig(0)) then

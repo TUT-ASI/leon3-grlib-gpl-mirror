@@ -17,6 +17,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -40,6 +41,8 @@ entity l2c_lite_core is
     haddr    : integer;
     hmask    : integer;
     ioaddr   : integer;
+    bioaddr  : integer; 
+    biomask  : integer;  
     waysize  : integer;
     linesize : integer;
     cached   : integer;
@@ -76,6 +79,7 @@ end entity l2c_lite_core;
 
 architecture rtl of l2c_lite_core is
 
+  constant offset_len : integer := log2ext(linesize) - 1;
   constant addr_depth : integer := log2ext(waysize * (2 ** 10) / linesize);
   constant tag_len    : integer := 32 - addr_depth - log2ext(linesize);
   constant tag_dbits  : integer := tag_len + 2;
@@ -87,7 +91,6 @@ architecture rtl of l2c_lite_core is
   subtype TAG_INDEX_R is natural range 31 downto log2ext(linesize);
   subtype OFFSET_R is natural range log2ext(linesize) - 1 downto 0;
 
-  constant offset_len : integer := log2ext(linesize) - 1;
 
   type plru_data_t is array (0 to 2 ** addr_depth - 1) of std_logic_vector(0 to ways - 2);
   type tag_data_t is array (0 to ways - 1) of std_logic_vector(tag_dbits - 1 downto 0);
@@ -180,11 +183,15 @@ architecture rtl of l2c_lite_core is
     ctrl       : cache_ctrl_type;
   end record;
 
+  constant bioarea      : integer := bioaddr;
+  constant IO_ADDR_MASK : integer := 16#FFC#;
+
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_L2CL, 0, 1, 0),
+    2 => (conv_std_logic_vector(bioarea, 12) & zero32(19 downto 0)),
     4 => gen_pnp_bar(haddr, hmask, 2, 1, 1),
     5 => gen_pnp_bar(ioaddr, IO_ADDR_MASK, 1, 0, 0),
-
+    6 => gen_pnp_bar(bioaddr, biomask, 1 , 0 , 0),
     others => zero32
   );
 
@@ -430,7 +437,7 @@ begin
     variable writeback                    : std_ulogic;
     variable cachemiss                    : std_ulogic;
     variable way                          : integer range 0 to ways - 1;
-
+    variable temp_wb                      : std_logic_vector(7 downto 0);
   procedure update_reg(addr : std_logic_vector(7 downto 2);
                       wr    : std_ulogic;
                       wdata : std_logic_vector;
@@ -742,10 +749,14 @@ begin
         end if;
 
         c_offset := to_integer(unsigned(r.haddr(OFFSET_R)));
+
         for i in 0 to linesize - 1 loop
           if (i > (c_offset - 1)) and (i < (c_offset + size_vector_to_int(r.hsize))) then
-            v.write_buffer(linesize * 8 - 8 * i - 1 downto linesize * 8 - 8 * (i + 1))
-            := hwdata(AHBDW - 8 * counter - 1 downto AHBDW - 8 * (counter + 1));
+            for j in 0 to AHBDW/8 -1 loop
+              if j=counter then
+                v.write_buffer(linesize * 8 - 8 * j - 1 downto linesize * 8 - 8 * (j + 1)) := hwdata(AHBDW - 8 * j - 1 downto AHBDW - 8 * (j + 1));
+              end if;
+            end loop;
             counter      := counter + 1;
             v.wb_mask(i) := '1';
           end if;

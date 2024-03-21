@@ -942,12 +942,33 @@ begin
   --                                            |                                        |   
   -- .... untill the last phsycal hart                                                   |
   --
+  
+  -- At the end of the last implemented domain there are several registers employed to configure to which
+  -- hart each domain can forward interrupts to. Currently this configuration admits a maximum of 32 harts.
+  -- If more harts are required a small modification is required.
+  -- These registers offset start at address Hart_Mask_Offset=(0x8000*number_of_implemented_domains)
+
+  --  offset     size        register name                                                 |
+  --                                                                                       |    
+  -- HMO+0x00    4 bytes     Hart Mask Domain[0]  |                                        |
+  -- HMO+0x04    4 bytes     Hart Mask Domain[1]  |                                        |
+  --  ...                    ...                  |                                        |
+  -- HMO+0x04*Domain[n]      Hart Mask Domain[n]  |                                        |
+
+  -- Each bit of each register configures one core. If bit 0 (LSB) of Hart Mask Domain[0] register is set to
+  -- 1, Domain 0 can configure interrupts to be forwarded to core 0.
+  -- It is important to configure each domain to be able to send interrupts to at least on core. If not,
+  -- this domain will be able to send interrupts to core 0 even if it is not intended to.
+  -- If the external interrupt controller of one hart is an APLIC domain configured as Direct Delivery Mode,
+  -- only this domain should be able to send interrupts to the hart. It is responsibility of the software
+  -- to set these registers properly.
+
 
   -- In the following diagram each square represents an APLIC domain and the number inside the square
   -- represents the domain number. APLIC domains are arranged contigously in the memory map. That is to
-  -- say, the domain 0 is in the offset 0x00000000, the domain 1 is in the offset 0x00010000, the domain
-  -- 3 is in the offset 0x00018000 and so on. As mentioned before, APLIC can be configured to have an
-  -- arbitrary number of branches and an arbitrary number of domains per branch.
+  -- say, the domain 0 is in the offset 0x00000000, the domain 1 is in the offset 0x00008000, the domain
+  -- 2 is in the offset 0x00010000, the domain 3 is in the offset 0x00018000 and so on. As mentioned before, 
+  -- APLIC can be configured to have an arbitrary number of branches and an arbitrary number of domains per branch.
   -- 
   --                                        |-----|
   --                                        |  0  |

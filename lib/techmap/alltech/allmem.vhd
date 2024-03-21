@@ -428,7 +428,7 @@ package allmem is
       addr:    in    std_logic_vector(6 downto 0);
       data:    out   std_logic_vector(7 downto 0));
   end component;
-  
+
 -- IGLOO2
   component igloo2_syncram
   generic ( abits : integer := 10; dbits : integer := 8 );
@@ -482,7 +482,7 @@ package allmem is
     enable   : in std_logic_vector (dbits/8-1 downto 0);
     write    : in std_logic_vector (dbits/8-1 downto 0));
   end component;
-  
+
 -- RTG4
   component rtg4_syncram
   generic ( abits : integer := 10; dbits : integer := 8; ecc : integer range 0 to 1 := 0;
@@ -554,10 +554,13 @@ package allmem is
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
+    addressw : in std_logic_vector((abits -1) downto 0);
     datain   : in std_logic_vector((dbits -1) downto 0);
     dataout  : out std_logic_vector((dbits -1) downto 0);
     enable   : in std_ulogic;
-    write    : in std_ulogic);
+    write    : in std_ulogic;
+    dataloop : in std_logic_vector((dbits-1) downto 0) := (others => '0')
+    );
   end component;
 
   component polarfire_syncram_dp is
@@ -574,7 +577,9 @@ package allmem is
     datain2  : in std_logic_vector((dbits -1) downto 0);
     dataout2 : out std_logic_vector((dbits -1) downto 0);
     enable2  : in std_ulogic;
-    write2   : in std_ulogic);
+    write2   : in std_ulogic;
+    loopr1w2 : in std_logic_vector((dbits-1) downto 0) := (others => '0')
+    );
   end component;
 
   component polarfire_syncram_2p
@@ -588,7 +593,9 @@ package allmem is
     wclk     : in std_ulogic;
     write    : in std_ulogic;
     waddress : in std_logic_vector((abits-1) downto 0);
-    datain   : in std_logic_vector((dbits-1) downto 0));
+    datain   : in std_logic_vector((dbits-1) downto 0);
+    dataloop : in std_logic_vector((dbits-1) downto 0) := (others => '0')
+    );
   end component;
 
   component polarfire_syncram_be
@@ -625,16 +632,19 @@ package allmem is
       doutpipe : integer;
       nodff : integer;
       nouram : integer;
-      forcedis : integer
+      forcedis : integer;
+      rdenall : integer
       );
     port (
       clk     : in std_ulogic;
       enable  : in std_ulogic;
       write   : in std_ulogic;
       address : in std_logic_vector((abits-1) downto 0);
+      addressw: in std_logic_vector((abits-1) downto 0);
       datain  : in std_logic_vector((dbits-1) downto 0);
       dataout : out std_logic_vector((dbits-1) downto 0);
-      error   : out std_logic_vector(1 downto 0)
+      error   : out std_logic_vector(1 downto 0);
+      dataloop : in std_logic_vector((dbits-1) downto 0) := (others => '0')
       );
   end component;
 
@@ -646,7 +656,8 @@ package allmem is
       doutpipe : integer;
       nodff : integer;
       nouram : integer;
-      forcedis : integer
+      forcedis : integer;
+      rdenall : integer
       );
     port (
       rclk     : in std_ulogic;
@@ -657,7 +668,9 @@ package allmem is
       wclk     : in std_ulogic;
       write    : in std_ulogic;
       waddress : in std_logic_vector((abits-1) downto 0);
-      datain   : in std_logic_vector((dbits-1) downto 0));
+      datain   : in std_logic_vector((dbits-1) downto 0);
+      dataloop : in std_logic_vector((dbits-1) downto 0) := (others => '0')
+      );
   end component;
 
 -- Fusion family
@@ -1266,7 +1279,7 @@ end component;
     errinj  : in  std_logic_vector(1 downto 0)
   );
   end component;
-  
+
   component unisim_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
@@ -1284,7 +1297,7 @@ end component;
     write2   : in std_ulogic
    );
   end component;
- 
+
   component kintex7_syncram_dp
   generic ( abits : integer := 10; dbits : integer := 8 );
   port (
@@ -1380,7 +1393,7 @@ end component;
     errinj  : in  std_logic_vector (1 downto 0)
     );
   end component;
-  
+
   component ultrascale_syncram_2p is
     generic (
       abits : integer := 4; dbits : integer := 32; sepclk : integer := 0 );
@@ -1778,7 +1791,7 @@ end component;
       errinj  : in  std_logic_vector (1 downto 0)
       );
   end component;
-  
+
   component virtex5_syncram_2p_ecc is
     generic (
       abits : integer := 4; dbits : integer := 32);
@@ -2180,8 +2193,8 @@ end component;
     address : in  std_logic_vector (abits -1 downto 0);
     datain  : in  std_logic_vector (dbits -1 downto 0);
     dataout : out std_logic_vector (dbits -1 downto 0);
-    enable  : in  std_ulogic;  
-    write   : in  std_ulogic   
+    enable  : in  std_ulogic;
+    write   : in  std_ulogic
     );
   end component;
 
@@ -2395,8 +2408,8 @@ end component;
       write   : in std_ulogic
       );
   end component;
-  
-  
+
+
   component nexus_syncram_2p is
     generic (abits : integer := 6;
              dbits : integer := 8
@@ -2430,5 +2443,33 @@ end component;
       dataout2 : out std_logic_vector((dbits -1) downto 0);
       enable2  : in std_ulogic;
       write2   : in std_ulogic);
+  end component;
+
+  component nexus_syncram_2p_ecc is
+    generic (abits : integer := 6;
+             dbits : integer := 8);
+    port (
+      rclk     : in std_ulogic;
+      renable  : in std_ulogic;
+      raddress : in std_logic_vector((abits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      error    : out std_logic_vector(1 downto 0);
+      wclk     : in std_ulogic;
+      write    : in std_ulogic;
+      waddress : in std_logic_vector((abits -1) downto 0);
+      datain   : in std_logic_vector((dbits -1) downto 0)
+      );
+  end component;
+
+  component nexus_syncram_ecc is
+    generic (abits : integer := 9; dbits : integer := 32);
+    port (
+      clk     : in std_ulogic;
+      address : in std_logic_vector((abits -1) downto 0);
+      datain  : in std_logic_vector((dbits -1) downto 0);
+      dataout : out std_logic_vector((dbits -1) downto 0);
+      enable  : in std_ulogic;
+      write   : in std_ulogic;
+      error   : out std_logic_vector(1 downto 0));
   end component;
 end;

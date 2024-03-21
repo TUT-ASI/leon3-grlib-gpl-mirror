@@ -46,6 +46,9 @@ end component;
 component clkbuf_igloo2 is generic( buftype :  integer range 0 to 5 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
+component clkbuf_polarfire is generic (buftype : integer range 0 to 5 := 0);
+  port (i : in std_ulogic; o : out std_ulogic);
+end component;
 component clkbuf_apa3e is generic( buftype :  integer range 0 to 3 := 0);
   port( i :  in  std_ulogic; o :  out std_ulogic);
 end component;
@@ -101,9 +104,9 @@ begin
   igl2 : if (tech = igloo2) or (tech = rtg4) generate
     igl20 : clkbuf_igloo2 generic map (buftype => buftype) port map(i => i, o => o);
   end generate;
---  pf : if (tech = polarfire) generate
---    pf0 : clkbuf_polarfire generic map (buftype => buftype) port map(i => i, o => o);
---  end generate;
+  pf : if (tech = polarfire) generate
+    pf0 : clkbuf_polarfire generic map (buftype => buftype) port map(i => i, o => o);
+  end generate;
   pa3l : if (tech = apa3l) generate
     pa3l0 : clkbuf_apa3l generic map (buftype => buftype) port map(i => i, o => o);
   end generate;

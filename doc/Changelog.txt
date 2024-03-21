@@ -1,3 +1,41 @@
+----------------------- Release 2024.1-b4291 ---------------------------
+
+2024-03-21	NOEL-V updates
+		- Added system bus access support for debug-module
+		- Now interrupt is allowed on CSR writes
+		- Fixed issue with ICOUNT trigger and CSR VSATP, INSTRET
+		- Improve branch prediction when C-extension is disabled
+		- CSR read with debug-module can now return error
+		- Only supported values can now be written to DCSR
+		- BTB is not flushed when entering debug mode
+		- NOEL-V subsystem: added 16550UART and removed dummy
+		  AHB bridge
+
+2024-03-19	LEON5: Fix for MMU probe ASI, could perform unnecessary
+		read access during table walk when set to stop at PTD.
+
+2024-02-22	leon5-xilinx-vcu128: Leon5 template design for Xilinx
+		VCU128 added.
+
+2024-01-30	LEON5/TECHMAP: Added new mapping for syncram with
+		built in data loop back to allow for large TCM timing
+		optimizations.
+
+2024-01-25	Documentation updates.
+		IRQMP:
+		- Added interrupt remapping and extended interrupts to block
+		  diagram.
+		- Added software usage note on level interrupts.
+		GPTIMER:
+		- Clarified additional consequences of the shared decrementer.
+
+2024-01-18	LEON5: Add support for TCM with non power-of-two size,
+		where only a fraction of the TCM space is backed by
+		memory. This is to allow finer control of TCM size.
+
+2024-01-18	LEON5: Bugfix for data_store_error trap delivery
+		introduced in release 2023.2.
+
 ----------------------- Release 2023.4-b4288 ---------------------------
 
 2023-11-28	NOEL-V: updates
@@ -21,8 +59,9 @@
 		- Reenable RAS
 		- Added Svinval extension
 		- Instruction trace updated
-		- Fixed half-persision fsqrt inexact issue
-		- Fixed minor issue related to H extension (HIE, GVA, MVP, HGEIP, HGSATP)
+		- Fixed half-precision fsqrt inexact issue
+		- Fixed minor issue related to H extension (HIE, GVA, MVP,
+		  HGEIP, HGSATP)
 		- Fault type could be wrong related to page-tables
 		- Fixed access issue for Sstc CSRs
 

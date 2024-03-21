@@ -17,6 +17,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -90,6 +91,8 @@ package l2c_lite is
       haddr    :    integer := 16#000#;
       hmask    :    integer := 16#000#;
       ioaddr   :    integer := 16#000#;
+      bioaddr  :    integer := 16#000#;
+      biomask  :    integer := 16#000#;
       cached   :    integer := 16#FFFF#;
       be_dw    :    integer := 32);
     port (
@@ -120,6 +123,8 @@ package l2c_lite is
       haddr    :    integer := 16#000#;
       hmask    :    integer := 16#000#;
       ioaddr   :    integer := 16#000#;
+      bioaddr  :    integer := 16#000#;
+      biomask  :    integer := 16#000#;
       cached   :    integer := 16#FFFF#;
       be_dw    :    integer := 32);
     port (
@@ -149,6 +154,8 @@ package l2c_lite is
       haddr    :    integer := 16#000#;
       hmask    :    integer := 16#000#;
       ioaddr   :    integer := 16#000#;
+      bioaddr  :    integer := 16#000#;
+      biomask  :    integer := 16#000#;
       cached   :    integer := 16#FFFF#;
       be_dw    :    integer := 32);
     port (
@@ -173,6 +180,8 @@ package l2c_lite is
       haddr            :     integer;
       hmask            :     integer;
       ioaddr           :     integer;
+      bioaddr          :     integer;
+      biomask          :     integer;
       waysize          :     integer;
       linesize         :     integer;
       cached           :     integer;

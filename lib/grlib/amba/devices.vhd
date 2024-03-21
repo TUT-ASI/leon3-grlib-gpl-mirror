@@ -293,6 +293,7 @@ package devices is
   constant GAISLER_AHB2AHB_STR   : amba_device_type := 16#0D2#;
   constant GAISLER_GRIOMMURV     : amba_device_type := 16#0D3#;
   constant GAISLER_SGMII_VCU118  : amba_device_type := 16#0D4#;
+  constant GAISLER_APBUART_16550 : amba_device_type := 16#0D5#;
 
 -- Sun Microsystems
 
@@ -374,10 +375,11 @@ package devices is
   constant DTU_FTMCTRL   : amba_device_type := 16#054#;
 
 -- BSC device ids
-
+ 
   constant BSC_CORE1 : amba_device_type := 16#001#;
   constant BSC_CORE2 : amba_device_type := 16#002#;
-  constant BSC_PMU : amba_device_type := 16#003#;
+  constant BSC_PMU    : amba_device_type := 16#003#;
+  constant BSC_SAFESU : amba_device_type := 16#004#;
 
 -- Orbita device ids
 
@@ -732,6 +734,7 @@ package devices is
     GAISLER_GRAPLIC       => "RISC-V APLIC                    ",
     GAISLER_IMSIC         => "RISC-V IMSIC                    ",
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
+    GAISLER_APBUART_16550 => "Generic UART 16550              ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -999,10 +1002,11 @@ package devices is
     );
 
   constant bsc_device_table : device_table_type := (
-    BSC_CORE1 => "Core 1                          ",
-    BSC_CORE2 => "Core 2                          ",
-    BSC_PMU   => "AHB Performance Monitoring Unit ",
-    others    => "Unknown Device                  ");
+    BSC_CORE1   => "Core 1                          ",
+    BSC_CORE2   => "Core 2                          ",
+    BSC_PMU     => "AHB Performance Monitoring Unit ",
+    BSC_SAFESU  => "SafeSU - AHB Statistics Unit    ",
+    others      => "Unknown Device                  ");
 
   constant BSC_DESC : vendor_description := "BSC                     ";
 
@@ -1308,6 +1312,7 @@ package devices is
     VENDOR_OPENCHIP     => openchip_lib,
     VENDOR_OPENCORES    => opencores_lib,
     VENDOR_CONTRIB      => contrib_lib,
+    VENDOR_BSC          => bsc_lib,
     VENDOR_DLR          => dlr_lib,
     VENDOR_EONIC        => eonic_lib,
     VENDOR_TELECOMPT    => telecompt_lib,

@@ -1,3 +1,16 @@
 High Speed Serial Link enable
 CONFIG_GRHSSL_ENABLE
   Say Y here to enable the GRHSSL IP
+
+Number of High-Speed Serial Links
+CONFIG_GRHSSL_NUM
+  Select the number of links to implement. Each link
+  will have separate AHB master and slave interfaces.
+
+SpaceFibre enable
+CONFIG_GRHSSL_SPFI
+  If set, GRHSSL will instantiate an internal SpaceFibre codec.
+
+WizardLink enable
+CONFIG_GRHSSL_WIZL
+  If set, GRHSSL will instantiate an internal WizardLink codec.

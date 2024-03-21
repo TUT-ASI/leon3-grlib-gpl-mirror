@@ -243,7 +243,7 @@ constant has_dpram : tech_ability_type :=
 	 cyclone3 => 1, memvirage90 => 1, atc18rha => 1, smic013 => 1,
 	 tm65gplus => 1, axdsp => 0, spartan6 => 1, virtex6 => 1,
 	 actfus => 1, stratix4 => 1, easic45 => 1, apa3e => 1,
-	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1, 
+	 apa3l => 1, ut90 => 1, virtex7 => 1, kintex7 => 1, artix7 => 1, zynq7000 => 1,
          dare => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1, ultrascale => 1, ultrascalep => 1,
          nx=>1, nexus => 1, versal => 1, others => 0);
 
@@ -309,7 +309,7 @@ constant ram_raw_latency : tech_ability_type := (easic45 => 1, others => 0);
 -- has_sram_ecc(tech) = 1 -> target tech has SECDED capabilities for SRAM
 constant has_sram_ecc :  tech_ability_type :=
   (rtg4 => 1, virtex5 => 1, virtex6 => 1, artix7 => 1, kintex7 => 1, virtex7 => 1,
-   ultrascale => 1, ultrascalep => 1, polarfire => 1, versal => 1, others => 0);
+   ultrascale => 1, ultrascalep => 1, polarfire => 1, nexus => 1, versal => 1, others => 0);
 
 -- Support for built in pipeline register in SRAM macro
 constant has_sram_pipe : tech_ability_type :=
@@ -381,7 +381,8 @@ constant has_techbuf : tech_ability_type :=
 	  apa3 => 1, easic90 => 1, axdsp => 1, actfus => 1,
 	  apa3e => 1, apa3l => 1, ut130 => 1, easic45 => 1,
           ut90 => 1, spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, nexus => 1, versal => 1, others => 0);
+          artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1,
+          ultrascale => 1, ultrascalep => 1, dare => 1, dare65t => 1, nexus => 1, versal => 1, others => 0);
 
 constant has_techbuf_triplicated : tech_ability_type :=
         ( rtg4 => 1, others => 0);
@@ -390,12 +391,19 @@ constant has_tapsel : tech_ability_type :=
         ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1,
           spartan3 => 1, spartan3e => 1,
 	 spartan6 => 1, virtex6 => 1, virtex7 => 1, kintex7 => 1,
-	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
+	 artix7 => 1, zynq7000 => 1, ultrascale => 1, ultrascalep => 1, versal => 1,
+	 nexus => 1, others => 0);
 
 constant tap_tck_gated : tech_ability_type :=
   ( virtex => 1, virtex2 => 1, virtex4 => 1, virtex5 => 1, spartan3 => 1, spartan3e => 1,
     apa3 => 1, apa3e => 1, apa3l => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, axcel => 1,
-    spartan6 => 0, others => 0);
+    spartan6 => 0, nexus => 0, others => 0);
+
+-- Indicates whether TAP registers signals. All outputs (to core) of a
+-- "registered TAP" are synchronous to rising edges of TCK. And tapi_tdo
+-- is sampled by the TAP on falling edges of TCK instead of passing
+-- asynchronously to an external TDO pin.
+constant tap_registered : tech_ability_type := (nexus => 1, others => 0);
 
 constant need_extra_sync_reset : tech_ability_type :=
 	(axcel => 1, atc18s => 1, ut25 => 1, rhumc => 1, saed32 => 1, dare => 1, rhs65 => 1, tsmc90 => 1,
@@ -421,7 +429,7 @@ constant has_tap : tech_ability_type :=
 	 spartan6 => 1, virtex6 => 1, actfus => 1,
 	 stratix4 => 1, easic45 => 0, apa3e => 1, apa3l => 1, virtex7 => 1, kintex7 => 1,
 	 artix7 => 1, zynq7000 => 1, igloo2 => 1, rtg4 => 1, polarfire => 1, stratix5 => 1,
-	 ultrascale => 1, ultrascalep => 1, versal => 1, others => 0);
+	 ultrascale => 1, ultrascalep => 1, versal => 1, nexus => 1, others => 0);
 
 constant has_clkgen : tech_ability_type :=
 	(inferred => 0, virtex => 1, virtex2 => 1, axcel => 1,
@@ -920,6 +928,45 @@ constant TT_M010     : integer := 13;
       error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
       errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
       );
+  end component;
+
+-- synchronous single-port ram with output-to-input loopback and separate address
+-- for writes
+  component syncramlb
+  generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
+       testen : integer := 0; custombits : integer := 1;
+        rdhold : integer := 0;
+        gatedwr : integer := 1);
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    addressw : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    dataloop : in std_logic_vector((dbits-1) downto 0);
+    enable   : in std_ulogic;
+    write    : in std_ulogic;
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
+    );
+  end component;
+
+  component syncramftlb
+  generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
+       ft : integer range 0 to 5 := 0; testen : integer := 0; custombits : integer := 1;
+        rdhold : integer := 0; gatedwr : integer := 0; rdenall : integer := 0 );
+  port (
+    clk      : in std_ulogic;
+    address  : in std_logic_vector((abits -1) downto 0);
+    addressw : in std_logic_vector((abits -1) downto 0);
+    datain   : in std_logic_vector((dbits -1) downto 0);
+    dataout  : out std_logic_vector((dbits -1) downto 0);
+    dataloop : in std_logic_vector((dbits-1) downto 0);
+    write    : in std_ulogic;
+    enable   : in std_ulogic;
+    error    : out std_logic_vector((((dbits+7)/8)-1)*(1-ft/4)+ft/4 downto 0);
+    testin   : in std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none;
+    errinj   : in std_logic_vector((((dbits + 7)/8)*2-1)*(1-ft/4)+(6*(ft/4)) downto 0) := (others => '0')
+    );
   end component;
 
 ---------------------------------------------------------------------------
@@ -2388,4 +2435,3 @@ component serdes is
 end component;
 
 end;
-

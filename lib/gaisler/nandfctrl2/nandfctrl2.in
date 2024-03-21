@@ -1,0 +1,38 @@
+mainmenu_option next_comment
+  comment 'NANDFCTRL'
+  bool 'NANDFCTRL2 - NAND Flash Memory Controller' CONFIG_NANDFCTRL2_ENABLE
+  if [ "$CONFIG_NANDFCTRL2_ENABLE" = "y" ]; then
+    int 'nrofce        ' CONFIG_NFC2_NROFCE 8
+    int 'nrofch        ' CONFIG_NFC2_NROFCH 8
+    int 'nrofrb        ' CONFIG_NFC2_NROFRB 8
+    int 'nrofsefi      ' CONFIG_NFC2_NROFSEFI 0
+    int 'rnd           ' CONFIG_NFC2_RND 1
+
+    int 'mem0_data     ' CONFIG_NFC2_MEM0_DATA 16384
+    int 'mem0_spare    ' CONFIG_NFC2_MEM0_SPARE 2208
+    int 'mem0_ecc_sel  ' CONFIG_NFC2_MEM0_ECC_SEL 0
+
+    int 'mem1_data     ' CONFIG_NFC2_MEM1_DATA 8192
+    int 'mem1_spare    ' CONFIG_NFC2_MEM1_SPARE 448
+    int 'mem1_ecc_sel  ' CONFIG_NFC2_MEM1_ECC_SEL 1
+
+    int 'mem2_data     ' CONFIG_NFC2_MEM2_DATA 4096
+    int 'mem2_spare    ' CONFIG_NFC2_MEM2_SPARE 224
+    int 'mem2_ecc_sel  ' CONFIG_NFC2_MEM2_ECC_SEL 1
+
+    int 'ecc0_gfsize   ' CONFIG_NFC2_ECC0_GFSIZE 14
+    int 'ecc0_chunk    ' CONFIG_NFC2_ECC0_CHUNK 1024
+    int 'ecc0_cap      ' CONFIG_NFC2_ECC0_CAP 60
+
+    int 'ecc1_gfsize   ' CONFIG_NFC2_ECC1_GFSIZE 13
+    int 'ecc1_chunk    ' CONFIG_NFC2_ECC1_CHUNK 512
+    int 'ecc1_cap      ' CONFIG_NFC2_ECC1_CAP 16
+    
+    choice 'GRSPW2 FIFO protection           ' \
+      "None		CONFIG_NFC2_FT_NONE \
+	     Parity-DMR	CONFIG_NFC2_FT_DMR \
+	     TMR		CONFIG_NFC2_FT_TMR \
+	     BCH  		CONFIG_NFC2_FT_BCH \
+	     TechSpec	CONFIG_NFC2_FT_TECHSPEC" None
+  fi
+endmenu

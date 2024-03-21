@@ -153,6 +153,32 @@ _fsrxx:
         st  %g0, [%g1+0xC]
         set 3, %g2
         st %g2,  [%g1+0x8]
+#ifdef XPREV
+        set 32, %g2
+9:      subcc %g2, 1, %g2
+        bne 9b
+         st %g0, [%g1+0x10]
+#endif
+#endif
+
+#if defined(GPTADDR) && (defined(TIMERFREQ) || defined(XPREV))
+#ifndef TIMERFREQ
+#define TIMERFREQ 1
+#endif
+        set GPTADDR, %g1
+        set (TIMERFREQ-1), %g2
+        st %g2, [%g1+4]
+#ifdef XPREV
+        st %g0, [%g1+0x10]
+        st %g0, [%g1+0x14]
+#endif
+#endif
+
+#if defined(IRQCTRL) && defined(XPREV)
+        set IRQCTRL, %g1
+#ifdef XPREV
+        st %g0, [%g1]
+#endif
 #endif
 
 #ifdef DDR2CTRLIO

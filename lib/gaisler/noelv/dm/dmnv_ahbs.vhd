@@ -37,7 +37,8 @@ use gaisler.dmnvint.all;
 
 entity dmnv_ahbs is
   generic (
-    hindex    : integer range 0  to 15  := 0;   -- bus index
+    hsindex   : integer range 0  to 15  := 0;   -- slave bus index
+    hmindex   : integer range 0  to 15  := 0;   -- master bus index
     haddr     : integer                 := 16#900#;
     hmask     : integer                 := 16#f00#;
     scantest  : integer                 := 0
@@ -47,6 +48,8 @@ entity dmnv_ahbs is
     rstn    : in  std_ulogic;
     ahbsi   : in  ahb_slv_in_type;
     ahbso   : out ahb_slv_out_type;
+    ahbmi   : in  ahb_mst_in_type;
+    ahbmo   : out ahb_mst_out_type;
     -- DM interface
     dmi     : out dev_reg_in_type;
     dmo     : in  dev_reg_out_type;
@@ -63,7 +66,11 @@ architecture rtl of dmnv_ahbs is
   constant AREA_H       : integer := 21;
   constant AREA_L       : integer := 19;
   -- AMBA PnP
-  constant RVDM_VERSION : integer := 1;
+  -- RVDM is instantiated both as a Slave and as a Master. For GRMON to work
+  -- properly version of Master and Slave have to coincide. If RVDM_VERSION
+  -- is modified inside this file, RVDM_VERSION of the Slave must be modified
+  -- accordingly.
+  constant RVDM_VERSION : integer := 2;
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_RVDM, 0, RVDM_VERSION, 0),
     4 => ahb_membar(haddr, '0', '0', hmask),
@@ -93,26 +100,49 @@ architecture rtl of dmnv_ahbs is
     hresp               => (others => '0'),
     hwdata              => (others => '0'),
     hrdata              => (others => '0'),
-    hhold               => (others => '0'));
+    hhold               => (others => '0')
+    );
 
   type reg_type is record
     -- AHB Interface
-    ahb     : ahb_reg_type;
+    ahb       : ahb_reg_type;
+    -- System bus access
+    dodma     : std_ulogic;
+    sbwr      : std_ulogic;
+    sbaccess  : std_logic_vector(2 downto 0);
   end record;
   constant RES_T : reg_type := (
-    ahb     => ahb_reg_none);
+    ahb        => ahb_reg_none,
+    -- System bus access
+    dodma     => '0',
+    sbwr      => '0',
+    sbaccess  => (others => '0')
+    );
 
   -- Signals ----------------------------------------------------------------
   signal r, rin : reg_type;
   signal arst   : std_ulogic;        
+  -- AHB Master control signals
+  signal ami : ahb_dma_in_type;
+  signal amo : ahb_dma_out_type;
+
 
 begin
   arst        <= ahbsi.testrst when (ASYNC_RESET and scantest/=0 and ahbsi.testen/='0') else
                  rstn when ASYNC_RESET else '1';
 
-  comp : process(r, ahbsi, dmo, tro)
+
+  -- Generic AHB master interface
+  ahbmst0 : ahbmst
+  generic map (hindex => hmindex, hirq => 0, venid => VENDOR_GAISLER,
+               devid => GAISLER_RVDM, version => RVDM_VERSION,
+               chprot => 3, incaddr => 0)
+  port map (rstn, clk, ami, amo, ahbmi, ahbmo);
+
+
+  comp : process(r, ahbsi, ahbmi, amo, dmo, tro)
     variable v    : reg_type;
-    -- AHB Interface
+    -- AHB Slave Interface
     variable hready         : std_ulogic;
     variable hrdata         : std_logic_vector(REGW-1 downto 0);
     variable rdata          : std_logic_vector(REGW-1 downto 0);
@@ -121,6 +151,8 @@ begin
     variable hasel1         : std_logic_vector(AREA_H downto AREA_L);
     variable hasel2         : std_logic_vector(8 downto 2);
     variable hasel3         : std_logic_vector(4 downto 2);
+    -- AHB Master Interface
+    variable ahbreq  : std_ulogic;
     --
     variable odmi : dev_reg_in_type;
     variable otri : dev_reg_in_type;
@@ -133,8 +165,49 @@ begin
     odmi := dev_reg_in_none;
     otri := dev_reg_in_none;
 
+    ahbreq := '0';
     ---------------------------------------------------------------------------------
-    -- AHB Interface
+    -- AHB Master Interface
+    ---------------------------------------------------------------------------------
+    if dmo.sbstart = '1' and r.dodma = '0' then
+      v.dodma    := '1';
+      v.sbwr     := dmo.sbwr;
+      v.sbaccess := dmo.sbaccess;
+    end if;
+
+    if r.dodma = '1' then
+      if amo.active = '1' then
+        if amo.ready = '1' then
+          if amo.mexc = '1' then
+            odmi.sberror := '1';
+          elsif r.sbwr = '0' then
+            odmi.sbdvalid := '1';
+            odmi.sbrdata  := amo.rdata(31 downto 0);
+          end if;
+          odmi.sbfinish := '1';
+          v.dodma := '0';
+        end if;
+      else
+        ahbreq := '1';
+      end if;
+    end if;
+ 
+   
+    -- An MSI’s 32-bit data is always written in little-endian byte order, 
+    -- regardless of the BE field of the domain’s domaincfg register 
+
+    -- Signal assignation to AHB master interface
+    ami.address   <= dmo.sbaddr;
+    ami.wdata     <= ahbdrivedata(dmo.sbwdata);
+    ami.start     <= ahbreq;
+    ami.burst     <= '0';
+    ami.write     <= r.sbwr;
+    ami.busy      <= '0';
+    ami.irq       <= '0';
+    ami.size      <= r.sbaccess; 
+
+    ---------------------------------------------------------------------------------
+    -- AHB Slave Interface
     ---------------------------------------------------------------------------------
 
     v.ahb.hhold(0):= '0';
@@ -154,7 +227,7 @@ begin
     hasel3 := r.ahb.haddr(4 downto 2);
 
     -- Slave selected
-    if (ahbsi.hready and ahbsi.hsel(hindex) and ahbsi.htrans(1)) = '1' then
+    if (ahbsi.hready and ahbsi.hsel(hsindex) and ahbsi.htrans(1)) = '1' then
       v.ahb.hsel(0)  := '1';
       v.ahb.haddr    := ahbsi.haddr;
       v.ahb.hsize    := ahbsi.hsize;
@@ -270,7 +343,7 @@ begin
     ahbso.hsplit  <= (others => '0');
     ahbso.hirq    <= (others => '0');
     ahbso.hconfig <= hconfig;
-    ahbso.hindex  <= hindex;
+    ahbso.hindex  <= hsindex;
   end process;
 
   regs : process(clk)

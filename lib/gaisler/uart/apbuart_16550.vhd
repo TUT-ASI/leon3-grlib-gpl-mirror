@@ -68,7 +68,7 @@ constant REVISION : integer := 1;
 constant fifosize : integer := 1+15*fifomode;
 
 constant pconfig : apb_config_type := (
-  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_APBUART, 0, REVISION, pirq),
+  0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_APBUART_16550, 0, REVISION, pirq),
   1 => apb_iobar(paddr, pmask));
 
 type rxfsmtype is (idle, startbit, data, cparity, stopbit);
@@ -344,12 +344,14 @@ begin
     when 7 => -- Scratch register      
       rdata(7 downto 0) := r.scratch;
     when 8 => -- Custom control register
-      rdata(3 downto 0) := r.debug & r.extclken & r.txen & r.rxen;
+      rdata(2 downto 0) := r.extclken & r.txen & r.rxen;
     when 9 => -- Custom receiver FIFO count
-      rdata (log2x(fifosize) downto 0) := r.rcnt;
+      rdata(log2x(fifosize) downto 0) := r.rcnt;
     when 10 => -- Custom transmitter FIFO count
-      rdata (log2x(fifosize) downto 0) := r.tcnt;
-    when 11 => -- Debug register
+      rdata(log2x(fifosize) downto 0) := r.tcnt;
+    when 11 => -- Debug mode register
+      rdata(0) := r.debug;
+    when 12 => -- Debug register
       -- Read TX FIFO.
       if r.debug = '1' and r.tcnt /= rcntzero then
           rdata(7 downto 0) := r.thold(conv_integer(r.traddr));
@@ -404,13 +406,14 @@ begin
     when 7 => -- Scratch register (SCR)
       v.scratch := apbi.pwdata(7 downto 0);
     when 8 => -- Custom control register
-      v.debug    := apbi.pwdata(3);
       v.extclken := apbi.pwdata(2);
       v.txen     := apbi.pwdata(1);
       v.rxen     := apbi.pwdata(0);
     -- Custom receiver FIFO count and Custom transmitter FIFO count
     -- are read-only registers
-    when 11 => -- Debug register 
+    when 11 => -- Debug mode register 
+      v.debug    := apbi.pwdata(0);
+    when 12 => -- Debug register 
       -- Write RX fifo and generate irq
       if flow /= 0 then
         v.rhold(conv_integer(r.rwaddr)) := apbi.pwdata(7 downto 0);

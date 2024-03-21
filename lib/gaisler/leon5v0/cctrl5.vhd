@@ -55,8 +55,10 @@ entity cctrl5 is
     dusebw    : integer range 0 to 1;
     itcmen    : integer range 0 to 1;
     itcmabits : integer range 1 to 20;
+    itcmfrac  : integer range 0 to 7;
     dtcmen    : integer range 0 to 1;
     dtcmabits : integer range 1 to 20;
+    dtcmfrac  : integer range 0 to 7;
     itlbnum   : integer range 2 to 64;
     dtlbnum   : integer range 2 to 64;
     cached    : integer;
@@ -874,7 +876,8 @@ architecture rtl of cctrl5 is
 
 begin
 
-  comb: process(r,rs,rst,ici,dci,ahbi,ahbsi,ahbso,cramo,fpc_miso,c2c_miso,freeze,bootword,smpflush)
+  comb: process(r,rs,rst,ici,dci,ahbi,ahbsi,ahbso,cramo,fpc_miso,c2c_miso,
+                freeze,bootword,smpflush)
 
     function getvalidmask(haddr: std_logic_vector; hsize: std_logic_vector; le: boolean) return std_logic_vector is
       variable vmask64: std_logic_vector(1 downto 0);
@@ -1355,6 +1358,7 @@ begin
       ocrami.idataoffs(log2(ilinesize)-2 downto 0) := ici.rpc(ILINE_HIGH downto ILINE_LOW);
       ocrami.ifulladdr := ici.rpc;
     end if;
+    ocrami.ifulladdrw := r.d2vaddr;
     ocrami.itagen := (others => '0');
     ocrami.itagwrite := '0';
     ocrami.itagdin := (others => (others => '0'));
@@ -1403,6 +1407,7 @@ begin
       ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := dci.eaddress(DLINE_HIGH downto DLINE_LOW_REAL);
       ocrami.ddatafulladdr := dci.eaddress;
     end if;
+    ocrami.ddatafulladdrw := r.d1vaddr;
     ocrami.ddataen := (others => '0');
     ocrami.ddatawrite := (others => '0');
     ocrami.ddatadin := (others => (others => '0'));
@@ -3329,6 +3334,7 @@ begin
             if r.mmusel(2)='1' then
               v.d2vaddr(9 downto 8) := std_logic_vector(unsigned(r.d2vaddr(9 downto 8)) + 1);
               if r.d2vaddr(9 downto 8)="11" then
+                v.ahb_htrans := "00";
                 v.s := as_rdasi2;
               end if;
             end if;
@@ -4402,7 +4408,9 @@ begin
             r.flushctr(r.flushctr'high downto r.flushctr'high-DOFFSET_BITS+1);
         end if;
         ocrami.ifulladdr := r.d2vaddr;
+        ocrami.ifulladdrw := r.d2vaddr;
         ocrami.ddatafulladdr := r.d2vaddr;
+        ocrami.ddatafulladdrw := r.d2vaddr;
         v.dtagpipe := r.dtagpipe;
         -- Make sure cache data RAMs are masked by default if tcm is written
         -- and vice versa. Otherwise we can trigger an unwanted write if the
@@ -4570,10 +4578,12 @@ begin
                 else
                   if itcmen /= 0 then
                     v.dregval(31) := r.itcmwipe;
+                    v.dregval(23 downto 21) := std_logic_vector(to_unsigned(itcmfrac,3));
                     v.dregval(20 downto 16) := std_logic_vector(to_unsigned(itcmabits+3,5));
                   end if;
                   if dtcmen /= 0 then
                     v.dregval(15) := r.dtcmwipe;
+                    v.dregval(7 downto 5) := std_logic_vector(to_unsigned(dtcmfrac,3));
                     v.dregval(4 downto 0) := std_logic_vector(to_unsigned(dtcmabits+3,5));
                   end if;
                 end if;
@@ -4877,6 +4887,7 @@ begin
         ocrami.ddataindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
         ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
         ocrami.ddatafulladdr := r.d2vaddr;
+        ocrami.ddatafulladdrw := r.d2vaddr;
         ocrami.dtagcen := (others => '1');
         ocrami.ddataen := (others => '1');
         ocrami.dtcmen := '1';
@@ -5237,19 +5248,9 @@ begin
     end if;
 
     -- Data loopback if no bw support
+    ocrami.ddataloop := (others => '0');
     if dusebw=0 then
-      for w in 0 to DWAYS-1 loop
-        for x in 7 downto 0 loop
-          if ocrami.ddatawrite(x)='0' then
-            ocrami.ddatadin(w)(8*x+7 downto 8*x) := cramo.ddatadout(w)(8*x+7 downto 8*x);
-          end if;
-        end loop;
-      end loop;
-      for x in 7 downto 0 loop
-        if ocrami.ddatawrite(x)='0' then
-          ocrami.dtcmdin(8*x+7 downto 8*x) := cramo.dtcmdout(8*x+7 downto 8*x);
-        end if;
-      end loop;
+      ocrami.ddataloop := not ocrami.ddatawrite;
       if ocrami.ddatawrite(7 downto 4) /= "0000" then
         ocrami.ddatawrite(7 downto 4) := "1111";
       end if;
@@ -5279,6 +5280,7 @@ begin
       ocrami.dtcmwrite := "11111111";
       ocrami.dtcmdin := (others => '0');
       ocrami.ddatafulladdr := r.tcmdata;
+      ocrami.ddatafulladdrw := r.tcmdata;
     end if;
     ocrami.itcmwrite := ocrami.idatawrite;
     ocrami.itcmdin := ocrami.idatadin;
@@ -5287,6 +5289,7 @@ begin
       ocrami.itcmwrite := "11";
       ocrami.itcmdin := (others => '1');
       ocrami.ifulladdr := r.tcmdata;
+      ocrami.ifulladdrw := r.tcmdata;
     end if;
     if r.dtcmwipe='1' or r.itcmwipe='1' then
       v.tcmdata(31 downto 3) := std_logic_vector(unsigned(r.tcmdata(31 downto 3))+1);
@@ -5301,6 +5304,34 @@ begin
         v.itcmwipe := '0';
       end if;
     end if;
+
+    -- Mask write error after taking trap
+    if vmaskwtrap(0)='1' then
+      for x in r.d2stbuf'range loop
+        v.d2stbuf(x).maskwtrap := '1';
+      end loop;
+      if v.s=as_store or v.s=as_wrcomb2 then
+        v.ahb_maskwtrap := '1';
+        v.ahb2_maskwtrap := '1';
+      end if;
+    end if;
+
+    v.dtraptt := TT_DSEX;
+    v.dtrapet1 := '0';
+    v.dtrapet0 := '0';
+    if v.ctrappend /= "0000" then
+      v.dtrapet1 := '1';
+      v.dtrapet0 := '1';
+      v.dtraptt := "110000";
+    elsif v.wtrappend /= "00" then
+      v.dtrapet1 := '1';
+      v.dtrapet0 := '0';
+      if (v.wtrappend(0)='1' and r.ahbwtrapmode(0)='1') or (v.wtrappend(1)='1' and r.mmuwtrapmode(0)='1') then
+        v.dtrapet0 := '1';
+      end if;
+    end if;
+
+    v.ctrapacc := v.ctrapacc or v.ctrappend;
 
     --------------------------------------------------------------------------
     -- Reset

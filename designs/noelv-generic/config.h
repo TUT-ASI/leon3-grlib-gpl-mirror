@@ -127,6 +127,7 @@
  * L2 Cache
  */
 #undef  CONFIG_L2_ENABLE
+#undef  CONFIG_L2_LITE
 #undef  CONFIG_L2_ASSO1
 #undef  CONFIG_L2_ASSO2
 #undef  CONFIG_L2_ASSO3
@@ -189,6 +190,10 @@
  */
 #define CONFIG_AHBSTAT_ENABLE 1
 #define CONFIG_AHBSTAT_NFTSLV (1)
+/*
+ * NANDFCTRL
+ */
+#undef  CONFIG_NANDFCTRL2_ENABLE
 /*
  * Ethernet             
  */

@@ -44,7 +44,8 @@ entity jtagcom is
     nsync  : integer range 1 to 2 := 2;
     ainst  : integer range 0 to 255 := 2;
     dinst  : integer range 0 to 255 := 3;
-    reread : integer range 0 to 1 := 0);
+    reread : integer range 0 to 1 := 0;
+    tapreg : integer range 0 to 1 := 0);
   port (
     rst  : in std_ulogic;
     clk  : in std_ulogic;
@@ -63,6 +64,7 @@ architecture rtl of jtagcom is
 
   constant ADDBITS : integer := 10;
   constant NOCMP : boolean := (isel /= 0);
+  constant TREG : boolean := (tapreg /= 0);
   
   type state_type is (shft, ahb, nxt_shft);  
   
@@ -77,6 +79,7 @@ architecture rtl of jtagcom is
     tdi   : std_logic_vector(nsync-1 downto 0);
     shift : std_logic_vector(nsync-1 downto 0);
     shift2: std_ulogic;
+    shift3: std_ulogic;
     upd   : std_logic_vector(nsync-1 downto 0);
     upd2  : std_ulogic;
     asel  : std_logic_vector(nsync-1 downto 0);
@@ -95,7 +98,7 @@ architecture rtl of jtagcom is
 
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
   constant RES: reg_type := ((others => '0'),(others => '0'),shft,(others => '0'),
-                             '0','0',(others => '0'),(others => '0'),(others => '0'),'0',
+                             '0','0',(others => '0'),(others => '0'),(others => '0'),'0','0',
                              (others => '0'),'0',(others => '0'),(others => '0'),'0','0');
 
   signal r, rin : reg_type;
@@ -124,13 +127,13 @@ begin
     vtapi.en := asel or dsel;
     vnexttdo := '0';
     if asel='1' then
-      if tapo.shift='1' then
+      if tapo.shift='1' and not TREG then
         vnexttdo := r.addr(1);
       else
         vnexttdo := r.addr(0);
       end if;
     else
-      if tapo.shift='1' then
+      if tapo.shift='1' and not TREG then
         vnexttdo := r.data(1);
       else
         vnexttdo := r.data(0);
@@ -157,6 +160,14 @@ begin
     vdmai.start := '0'; vdmai.burst := '0'; vdmai.write := write;
     vdmai.busy := '0'; vdmai.irq := '0'; vdmai.size := '0' & r.addr(33 downto 32);
 
+    if TREG then
+      -- make sure the shift-path is one register shorter than the TCK path
+      v.shift3 := v.shift(0);
+      -- delay shift processing by one TCK cycle
+      if redge0 = '1' then
+        v.shift2 := r.shift3;
+      end if;
+    end if;
 
     case r.state is
       when shft =>
@@ -236,25 +247,45 @@ begin
       r.tcktog2 <= RES.tcktog2;
       r.tdishft <= RES.tdishft;
       r.shift2  <= RES.shift2;
+      if TREG then
+        r.shift3 <= RES.shift3;
+      end if;
       r.upd2    <= RES.upd2;
       r.seq     <= RES.seq;
       r.holdn   <= RES.holdn;
       -- Sync registers not reset
     end if;
   end process;
-  
-  tckreg: process (tck,trst)
-  begin
-    if rising_edge(tck) then
-      tr.tcktog <= not tr.tcktog;
-      tr.tdi <= tapo.tdi;
-      tr.tdor <= nexttdo;
-    end if;
-    if trst='0' then
-      tr.tcktog <= '0';
-      tr.tdi <= '0';
-      tr.tdor <= '0';
-    end if;
-  end process;
+
+  tckreg_normal : if not TREG generate
+    tckreg: process (tck,trst)
+    begin
+      if rising_edge(tck) then
+        tr.tcktog <= not tr.tcktog;
+        tr.tdi <= tapo.tdi;
+        tr.tdor <= nexttdo;
+      end if;
+      if trst='0' then
+        tr.tcktog <= '0';
+        tr.tdi <= '0';
+        tr.tdor <= '0';
+      end if;
+    end process;
+  end generate;
+
+  tckreg_bypass : if TREG generate
+    tr.tdi <= tapo.tdi;
+    tr.tdor <= nexttdo;
+
+    tckreg : process(tck,trst)
+    begin
+      if rising_edge(tck) then
+        tr.tcktog <= not tr.tcktog;
+      end if;
+      if trst='0' then
+        tr.tcktog <= '0';
+      end if;
+    end process;
+  end generate;
 end;  
 

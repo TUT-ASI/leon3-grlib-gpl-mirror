@@ -212,13 +212,18 @@ CONFIG_EIID_NUM
   It is the number of interrupt identities supported by 
   an IMSIC interrupt file. It must be one less than a multiple 
   of 64, and must be a minimum of 63 and a maximum of 2047.
+L2 Cache Lite
+CONFIG_L2_LITE
+  When set to yes, it implements the L2 cache lite instead of
+  the regular L2 cache.
+
 L2 Associativity
 CONFIG_L2_ASSO1
   Select how many cache ways the L2 cache should have.
 
 L2 Way size
 CONFIG_L2_SZ1
-  Select the szie of each way in kbytes. The total L2 cache
+  Select the size of each way in kbytes. The total L2 cache
   size will be way size * number of ways.
 
 L2 cache line size
@@ -392,7 +397,9 @@ CONFIG_AHBSTAT_NFTSLV
   The AHB status register can also latch the AHB address on an external
   input. Select here how many of such inputs are required.
 
-Gaisler Ethernet MAC enable
+NANDFCTRL2 enable
+CONFIG_NANDFCTRL2_ENABLE
+  Say Y here to enable the NAND Flash Memory Controller.Gaisler Ethernet MAC enable
 CONFIG_GRETH_ENABLE
   Say Y here to enable the Gaisler Research Ethernet MAC . The MAC has 
   one AHB master interface to read and write packets to memory, and one

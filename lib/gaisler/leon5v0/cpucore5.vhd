@@ -85,8 +85,10 @@ architecture hier of cpucore5 is
 
   constant dtcmen    : integer := boolean'pos( (tcmconf mod 32) /= 0);
   constant dtcmabits : integer := (1-dtcmen) + (tcmconf mod 32);
+  constant dtcmfrac  : integer := ((tcmconf/32) mod 8);
   constant itcmen    : integer := boolean'pos( ((tcmconf/256) mod 32) /= 0 );
   constant itcmabits : integer := (1-itcmen) + ((tcmconf/256) mod 32);
+  constant itcmfrac  : integer := ((tcmconf/(256*32)) mod 8);
 
   constant MEMTECH_MOD : integer := memtech mod 65536;
   constant MEMTECH_VEC : std_logic_vector(31 downto 0) := conv_std_logic_vector(memtech, 32);
@@ -245,8 +247,10 @@ begin
       dusebw     => dusebw,
       itcmen     => itcmen,
       itcmabits  => itcmabits,
+      itcmfrac   => itcmfrac,
       dtcmen     => dtcmen,
       dtcmabits  => dtcmabits,
+      dtcmfrac   => dtcmfrac,
       itlbnum    => itlbnum,
       dtlbnum    => dtlbnum,
       cached     => cached,
@@ -372,6 +376,7 @@ begin
       itagwidth => itagwidth,
       itcmen    => itcmen,
       itcmabits => itcmabits,
+      itcmfrac  => itcmfrac,
       dways     => dways,
       dlinesize => dlinesize,
       didxwidth => didxwidth,
@@ -380,6 +385,7 @@ begin
       dusebw    => dusebw,
       dtcmen    => dtcmen,
       dtcmabits => dtcmabits,
+      dtcmfrac  => dtcmfrac,
       testen    => scantest
       )
     port map (
@@ -405,7 +411,8 @@ begin
         ready_ld      => fpco.ready_ld,
         ready_st      => fpco.ready_st,
         trapon_flop   => fpco.trapon_flop,
-        trapon_ldst   => fpco.trapon_ldst,
+        trapon_ld     => fpco.trapon_ld,
+        trapon_st     => fpco.trapon_st,
         trapon_stdfq  => fpco.trapon_stdfq,
         issue_cmd     => fpci.issue_cmd,
         issue_ldstreg => fpci.issue_ldstreg,
@@ -449,7 +456,8 @@ begin
         ready_ld      => fpco.ready_ld,
         ready_st      => fpco.ready_st,
         trapon_flop   => fpco.trapon_flop,
-        trapon_ldst   => fpco.trapon_ldst,
+        trapon_ld     => fpco.trapon_ld,
+        trapon_st     => fpco.trapon_st,
         trapon_stdfq  => fpco.trapon_stdfq,
         issue_cmd     => fpci.issue_cmd,
         issue_ldstreg => fpci.issue_ldstreg,
@@ -473,6 +481,7 @@ begin
         fcc           => fpco.fcc,
         fpcidle       => fpco.fpcidle,
         fpu_start     => xfpui.start,
+        fpu_startcond => xfpui.startcond,
         fpu_inmode    => xfpui.inmode,
         fpu_outmode   => xfpui.outmode,
         fpu_flop      => xfpui.flop,
@@ -480,6 +489,7 @@ begin
         fpu_op2       => xfpui.op2,
         fpu_opid      => xfpui.opid,
         fpu_rndmode   => xfpui.rndmode,
+        fpu_resfw     => xfpui.resfw,
         fpu_res       => xfpuo.res,
         fpu_exc       => xfpuo.exc,
         fpu_allow     => xfpuo.allow,
@@ -540,6 +550,7 @@ begin
         clk      => gclk,
         reset    => rstn,
         start    => xfpui.start,
+        startcond => xfpui.startcond,
         inmode   => xfpui.inmode,
         outmode  => xfpui.outmode,
         flop     => xfpui.flop,
@@ -549,6 +560,7 @@ begin
         flush    => '0',
         flushid  => "000000",
         rndmode  => xfpui.rndmode,
+        resfw    => xfpui.resfw,
         res      => xfpuo.res,
         exc      => xfpuo.exc,
         allow    => xfpuo.allow,
@@ -573,7 +585,8 @@ begin
         ready_ld      => fpco.ready_ld,
         ready_st      => fpco.ready_st,
         trapon_flop   => fpco.trapon_flop,
-        trapon_ldst   => fpco.trapon_ldst,
+        trapon_ld     => fpco.trapon_ld,
+        trapon_st     => fpco.trapon_st,
         trapon_stdfq  => fpco.trapon_stdfq,
         issue_cmd     => fpci.issue_cmd,
         issue_ldstreg => fpci.issue_ldstreg,
@@ -597,6 +610,7 @@ begin
         fcc           => fpco.fcc,
         fpcidle       => fpco.fpcidle,
         fpu_start     => xfpui.start,
+        fpu_startcond => xfpui.startcond,
         fpu_inmode    => xfpui.inmode,
         fpu_outmode   => xfpui.outmode,
         fpu_flop      => xfpui.flop,
@@ -604,6 +618,7 @@ begin
         fpu_op2       => xfpui.op2,
         fpu_opid      => xfpui.opid,
         fpu_rndmode   => xfpui.rndmode,
+        fpu_resfw     => xfpui.resfw,
         fpu_res       => xfpuo.res,
         fpu_exc       => xfpuo.exc,
         fpu_allow     => xfpuo.allow,

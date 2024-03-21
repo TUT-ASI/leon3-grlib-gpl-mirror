@@ -31,6 +31,7 @@ library grlib;
 use grlib.amba.all;
 use grlib.config.all;
 use grlib.config_types.all;
+use grlib.stdlib.all;
 library techmap;
 use techmap.gencomp.all;
 library gaisler;
@@ -57,6 +58,7 @@ entity leon5sys is
     cmemconf : integer;
     fpuconf  : integer;
     tcmconf  : integer;
+    redconf  : integer;
     perfcfg  : integer;
     mulimpl  : integer;
     statcfg  : integer;
@@ -98,6 +100,8 @@ entity leon5sys is
     sysstat  : in  std_logic_vector(15 downto 0);
     dbgtstop : out std_ulogic;
     dbgtime  : out std_logic_vector(31 downto 0);
+    -- Block redundancy / lock-step error signal
+    brerr    : out std_ulogic;
     -- UART connection
     uarti    : in  uart_in_type;
     uarto    : out uart_out_type;
@@ -116,6 +120,7 @@ end;
 architecture hier of leon5sys is
 
   signal cpurstn : std_logic_vector(0 to ncpu-1);
+  signal brerrv  : std_logic_vector(0 to ncpu-1);
   signal cpumi   : ahb_mst_in_type;
   signal cpumo   : ahb_mst_out_vector;
   signal cpusi   : ahb_slv_in_type;
@@ -340,7 +345,7 @@ begin
   -- Processor(s)
   ----------------------------------------------------------------------------
   cpuloop: for c in 0 to ncpu-1 generate
-    nocgcpu: if cgen=0 generate
+    nocgcpu: if cgen=0 and redconf=0 generate
       core: cpucore5
         generic map (
           hindex   => c,
@@ -385,8 +390,9 @@ begin
           perf  => perf(c)
           );
       gclken <= (others => '1');
+      brerrv(c) <= '0';
     end generate;
-    cgcpu: if cgen/=0 generate
+    cgcpu: if cgen/=0 and redconf=0 generate
       core: cpucore5
         generic map (
           hindex   => c,
@@ -430,10 +436,12 @@ begin
           fpui  => fpui(c),
           perf  => perf(c)
           );
-    end generate; 
+      brerrv(c) <= '0';
+    end generate;
   end generate;
   cpu0errn <= '0' when dbgo(0).cpustate=CPUSTATE_ERRMODE and maskerrn(0)='0' else '1';
   fpuo <= (others => grfpu5_out_none);
+  brerr <= orv(brerrv);
 
   ----------------------------------------------------------------------------
   -- Debug and tracing module

@@ -152,8 +152,8 @@
 /*
  * L2 Cache
  */
-#define CONFIG_L2_ENABLE 1
-#define CONFIG_L2_LITE 1
+#undef  CONFIG_L2_ENABLE
+#undef  CONFIG_L2_LITE
 #undef  CONFIG_L2_ASSO1
 #undef  CONFIG_L2_ASSO2
 #undef  CONFIG_L2_ASSO3

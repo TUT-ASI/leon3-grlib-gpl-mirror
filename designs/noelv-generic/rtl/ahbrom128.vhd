@@ -37,7 +37,7 @@ end;
 
 architecture rtl of ahbrom128 is
 constant abits : integer := 8;
-constant bytes : integer := 172;
+constant bytes : integer := 176;
 constant dbits : integer := 128;
 
 constant hconfig : ahb_config_type := (
@@ -104,9 +104,10 @@ begin
         when 16#00005# => romdata <= X"930a0000130b0000930b0000130c0000";
         when 16#00006# => romdata <= X"930c0000130d0000930d0000130e0000";
         when 16#00007# => romdata <= X"930e0000130f0000930f000037010100";
-        when 16#00008# => romdata <= X"9702000093824202739052300f100000";
-        when 16#00009# => romdata <= X"732540f1930510006370b50013040000";
-        when 16#0000A# => romdata <= X"67000400730010006ff0dfff00000000";
+        when 16#00008# => romdata <= X"9702000093828202739052309302f01c";
+        when 16#00009# => romdata <= X"7390127c732540f1930510006370b500";
+        when 16#0000A# => romdata <= X"1304000067000400730010006ff0dfff";
+        when 16#0000B# => romdata <= X"00000000000000000000000000000000";
         when others => romdata <= (others => '-');
       end case;
     else --little endian
@@ -119,9 +120,10 @@ begin
         when 16#00005# => romdata <= X"00000c1300000b9300000b1300000a93";
         when 16#00006# => romdata <= X"00000e1300000d9300000d1300000c93";
         when 16#00007# => romdata <= X"0001013700000f9300000f1300000e93";
-        when 16#00008# => romdata <= X"0000100f305290730242829300000297";
-        when 16#00009# => romdata <= X"0000041300b5706300100593f1402573";
-        when 16#0000A# => romdata <= X"00000000ffdff06f0010007300040067";
+        when 16#00008# => romdata <= X"1cf00293305290730282829300000297";
+        when 16#00009# => romdata <= X"00b5706300100593f14025737c129073";
+        when 16#0000A# => romdata <= X"ffdff06f001000730004006700000413";
+        when 16#0000B# => romdata <= X"00000000000000000000000000000000";
            when others => romdata <= (others => '-');
         end case;
     end if; 

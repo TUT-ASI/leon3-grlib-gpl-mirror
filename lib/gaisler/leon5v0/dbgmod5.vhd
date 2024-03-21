@@ -278,7 +278,8 @@ architecture rtl of dbgmod5 is
   end record;
 
   constant boot_request_reg_none: boot_request_reg_type := (
-    (others => '0'), (others => '0'), '0', '0', '0', '0', '0', '0', '0');
+    (others => '0'), (others => '0'), '0', '0', '0', '0', '0', '0', '0'
+    );
 
   type boot_request_array is array(natural range <>) of boot_request_reg_type;
 
@@ -1700,6 +1701,7 @@ begin
       if r.dsu.effctl_allstab='1' then
         v.smpgroup(i) := v.smpgroup(i) and r.dsu.effctl(i);
       end if;
+
     end loop;
 
     -- Bootup via IRQ controller (legacy)

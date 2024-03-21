@@ -644,7 +644,7 @@ set active_menus [list]
 set processed_top_level 0
 set ARCH sparc
 set menus_per_column 4
-set total_menus 14
+set total_menus 15
 
 proc toplevel_menu {num} {
 	if {$num == 4} then {return 3}
@@ -653,6 +653,7 @@ proc toplevel_menu {num} {
 	if {$num == 11} then {return 10}
 	if {$num == 12} then {return 10}
 	if {$num == 13} then {return 10}
+	if {$num == 14} then {return 10}
 	return $num
 }
 
@@ -1794,49 +1795,50 @@ proc menu7 {w title} {
 
 
 	bool $w.config.f 7 0 "Enable L2 Cache                      " CONFIG_L2_ENABLE
+	bool $w.config.f 7 1 "Implement L2 Cache Lite              " CONFIG_L2_LITE
 	global tmpvar_9
-	minimenu $w.config.f 7 1 "Associativity (ways)            " tmpvar_9 CONFIG_L2_ASSO1
-	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Associativity (ways)            \""
-	$w.config.f.x1.x.menu add radiobutton -label "1" -variable tmpvar_9 -value "1" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "2" -variable tmpvar_9 -value "2" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "3" -variable tmpvar_9 -value "3" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "4" -variable tmpvar_9 -value "4" -command "update_active"
-	menusplit $w $w.config.f.x1.x.menu 4
+	minimenu $w.config.f 7 2 "Associativity (ways)            " tmpvar_9 CONFIG_L2_ASSO1
+	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Associativity (ways)            \""
+	$w.config.f.x2.x.menu add radiobutton -label "1" -variable tmpvar_9 -value "1" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "2" -variable tmpvar_9 -value "2" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "3" -variable tmpvar_9 -value "3" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_9 -value "4" -command "update_active"
+	menusplit $w $w.config.f.x2.x.menu 4
 	global tmpvar_10
-	minimenu $w.config.f 7 2 "Way size (kbytes/way)" tmpvar_10 CONFIG_L2_SZ1
-	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Way size (kbytes/way)\""
-	$w.config.f.x2.x.menu add radiobutton -label "1" -variable tmpvar_10 -value "1" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "2" -variable tmpvar_10 -value "2" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_10 -value "4" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_10 -value "8" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_10 -value "16" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_10 -value "32" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_10 -value "64" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "128" -variable tmpvar_10 -value "128" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "256" -variable tmpvar_10 -value "256" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "512" -variable tmpvar_10 -value "512" -command "update_active"
-	menusplit $w $w.config.f.x2.x.menu 10
+	minimenu $w.config.f 7 3 "Way size (kbytes/way)" tmpvar_10 CONFIG_L2_SZ1
+	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"Way size (kbytes/way)\""
+	$w.config.f.x3.x.menu add radiobutton -label "1" -variable tmpvar_10 -value "1" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "2" -variable tmpvar_10 -value "2" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "4" -variable tmpvar_10 -value "4" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "8" -variable tmpvar_10 -value "8" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "16" -variable tmpvar_10 -value "16" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_10 -value "32" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "64" -variable tmpvar_10 -value "64" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "128" -variable tmpvar_10 -value "128" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "256" -variable tmpvar_10 -value "256" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "512" -variable tmpvar_10 -value "512" -command "update_active"
+	menusplit $w $w.config.f.x3.x.menu 10
 	global tmpvar_11
-	minimenu $w.config.f 7 3 "Line size (bytes)            " tmpvar_11 CONFIG_L2_LINE32
-	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"Line size (bytes)            \""
-	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_11 -value "32" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "64" -variable tmpvar_11 -value "64" -command "update_active"
-	menusplit $w $w.config.f.x3.x.menu 2
-	bool $w.config.f 7 4 "Use HPROT information                " CONFIG_L2_HPROT
-	bool $w.config.f 7 5 "Enable L2 cache at power-on          " CONFIG_L2_PEN
-	bool $w.config.f 7 6 "Enable write-through at power-on     " CONFIG_L2_WT
-	bool $w.config.f 7 7 "Random replacement (LRU default)     " CONFIG_L2_RAN
-	bool $w.config.f 7 8 "Shared RAM for multi-way caches      " CONFIG_L2_SHARE
-	hex $w.config.f 7 9 "Cacheability map                     " CONFIG_L2_MAP
-	int $w.config.f 7 10 "Number of MTRR registers             " CONFIG_L2_MTRR
+	minimenu $w.config.f 7 4 "Line size (bytes)            " tmpvar_11 CONFIG_L2_LINE32
+	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Line size (bytes)            \""
+	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_11 -value "32" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "64" -variable tmpvar_11 -value "64" -command "update_active"
+	menusplit $w $w.config.f.x4.x.menu 2
+	bool $w.config.f 7 5 "Use HPROT information                " CONFIG_L2_HPROT
+	bool $w.config.f 7 6 "Enable L2 cache at power-on          " CONFIG_L2_PEN
+	bool $w.config.f 7 7 "Enable write-through at power-on     " CONFIG_L2_WT
+	bool $w.config.f 7 8 "Random replacement (LRU default)     " CONFIG_L2_RAN
+	bool $w.config.f 7 9 "Shared RAM for multi-way caches      " CONFIG_L2_SHARE
+	hex $w.config.f 7 10 "Cacheability map                     " CONFIG_L2_MAP
+	int $w.config.f 7 11 "Number of MTRR registers             " CONFIG_L2_MTRR
 	global tmpvar_12
-	minimenu $w.config.f 7 11 "Enable EDAC            " tmpvar_12 CONFIG_L2_EDAC_NONE
-	menu $w.config.f.x11.x.menu -tearoffcommand "menutitle \"Enable EDAC            \""
-	$w.config.f.x11.x.menu add radiobutton -label "None" -variable tmpvar_12 -value "None" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "Yes" -variable tmpvar_12 -value "Yes" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "TechSpec" -variable tmpvar_12 -value "TechSpec" -command "update_active"
-	menusplit $w $w.config.f.x11.x.menu 3
-	bool $w.config.f 7 12 "AXI backend interface                " CONFIG_L2_AXI
+	minimenu $w.config.f 7 12 "Enable EDAC            " tmpvar_12 CONFIG_L2_EDAC_NONE
+	menu $w.config.f.x12.x.menu -tearoffcommand "menutitle \"Enable EDAC            \""
+	$w.config.f.x12.x.menu add radiobutton -label "None" -variable tmpvar_12 -value "None" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "Yes" -variable tmpvar_12 -value "Yes" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "TechSpec" -variable tmpvar_12 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x12.x.menu 3
+	bool $w.config.f 7 13 "AXI backend interface                " CONFIG_L2_AXI
 
 
 
@@ -1876,7 +1878,7 @@ proc update_menu7 {} {
 	global CONFIG_L2_ASSO1
 	global CONFIG_L2_SHARE
 	if {($CONFIG_L2_ASSO1 != "1")} then {
-	configure_entry .menu7.config.f.x8 normal {n l y}} else {configure_entry .menu7.config.f.x8 disabled {y n l}}
+	configure_entry .menu7.config.f.x9 normal {n l y}} else {configure_entry .menu7.config.f.x9 disabled {y n l}}
 }
 
 
@@ -2265,8 +2267,9 @@ proc menu10 {w title} {
 
 
 	submenu $w.config.f 10 0 "Memory controller             " 11
-	submenu $w.config.f 10 1 "Ethernet             " 12
-	submenu $w.config.f 10 2 "UARTs, timers and irq control         " 13
+	submenu $w.config.f 10 1 "NANDFCTRL" 12
+	submenu $w.config.f 10 2 "Ethernet             " 13
+	submenu $w.config.f 10 3 "UARTs, timers and irq control         " 14
 
 
 
@@ -2426,9 +2429,9 @@ proc menu12 {w title} {
 	global active_menus
 	set active_menus [lsort -integer [linsert $active_menus end 12]]
 	message $w.m -width 400 -aspect 300 -text \
-		"Ethernet             "  -relief raised
+		"NANDFCTRL"  -relief raised
 	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "Ethernet             " 
+	wm title $w "NANDFCTRL" 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 12; break"
 	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 12; menu13 .menu13 \"$title\""
@@ -2468,19 +2471,36 @@ proc menu12 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 12 0 "Gaisler Research 10/100/1000 Mbit Ethernet MAC " CONFIG_GRETH_ENABLE
-	bool $w.config.f 12 1 "Enable 1000 Mbit support    " CONFIG_GRETH_GIGA
+	bool $w.config.f 12 0 "NANDFCTRL2 - NAND Flash Memory Controller" CONFIG_NANDFCTRL2_ENABLE
+	int $w.config.f 12 1 "nrofce        " CONFIG_NFC2_NROFCE
+	int $w.config.f 12 2 "nrofch        " CONFIG_NFC2_NROFCH
+	int $w.config.f 12 3 "nrofrb        " CONFIG_NFC2_NROFRB
+	int $w.config.f 12 4 "nrofsefi      " CONFIG_NFC2_NROFSEFI
+	int $w.config.f 12 5 "rnd           " CONFIG_NFC2_RND
+	int $w.config.f 12 6 "mem0_data     " CONFIG_NFC2_MEM0_DATA
+	int $w.config.f 12 7 "mem0_spare    " CONFIG_NFC2_MEM0_SPARE
+	int $w.config.f 12 8 "mem0_ecc_sel  " CONFIG_NFC2_MEM0_ECC_SEL
+	int $w.config.f 12 9 "mem1_data     " CONFIG_NFC2_MEM1_DATA
+	int $w.config.f 12 10 "mem1_spare    " CONFIG_NFC2_MEM1_SPARE
+	int $w.config.f 12 11 "mem1_ecc_sel  " CONFIG_NFC2_MEM1_ECC_SEL
+	int $w.config.f 12 12 "mem2_data     " CONFIG_NFC2_MEM2_DATA
+	int $w.config.f 12 13 "mem2_spare    " CONFIG_NFC2_MEM2_SPARE
+	int $w.config.f 12 14 "mem2_ecc_sel  " CONFIG_NFC2_MEM2_ECC_SEL
+	int $w.config.f 12 15 "ecc0_gfsize   " CONFIG_NFC2_ECC0_GFSIZE
+	int $w.config.f 12 16 "ecc0_chunk    " CONFIG_NFC2_ECC0_CHUNK
+	int $w.config.f 12 17 "ecc0_cap      " CONFIG_NFC2_ECC0_CAP
+	int $w.config.f 12 18 "ecc1_gfsize   " CONFIG_NFC2_ECC1_GFSIZE
+	int $w.config.f 12 19 "ecc1_chunk    " CONFIG_NFC2_ECC1_CHUNK
+	int $w.config.f 12 20 "ecc1_cap      " CONFIG_NFC2_ECC1_CAP
 	global tmpvar_14
-	minimenu $w.config.f 12 2 "AHB FIFO size (words)            " tmpvar_14 CONFIG_GRETH_FIFO4
-	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"AHB FIFO size (words)            \""
-	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_14 -value "4" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_14 -value "8" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_14 -value "16" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_14 -value "32" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_14 -value "64" -command "update_active"
-	menusplit $w $w.config.f.x2.x.menu 5
-	bool $w.config.f 12 3 "Enable FMC" CONFIG_GRETH_FMC_MODE
-	int $w.config.f 12 4 "PHY address  " CONFIG_GRETH_PHY_ADDR
+	minimenu $w.config.f 12 21 "GRSPW2 FIFO protection           " tmpvar_14 CONFIG_NFC2_FT_NONE
+	menu $w.config.f.x21.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
+	$w.config.f.x21.x.menu add radiobutton -label "None" -variable tmpvar_14 -value "None" -command "update_active"
+	$w.config.f.x21.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_14 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x21.x.menu add radiobutton -label "TMR" -variable tmpvar_14 -value "TMR" -command "update_active"
+	$w.config.f.x21.x.menu add radiobutton -label "BCH" -variable tmpvar_14 -value "BCH" -command "update_active"
+	$w.config.f.x21.x.menu add radiobutton -label "TechSpec" -variable tmpvar_14 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x21.x.menu 5
 
 
 
@@ -2518,42 +2538,106 @@ proc menu12 {w title} {
 }
 
 proc update_menu12 {} {
-	global CONFIG_GRETH_ENABLE
-	global CONFIG_GRETH_GIGA
-	if {($CONFIG_GRETH_ENABLE == 1)} then {
-	configure_entry .menu12.config.f.x1 normal {n l y}} else {configure_entry .menu12.config.f.x1 disabled {y n l}}
-	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {configure_entry .menu12.config.f.x2 normal {x l}} else {configure_entry .menu12.config.f.x2 disabled {x l}}
-	global CONFIG_GRETH_FMC_MODE
-	if {($CONFIG_GRETH_ENABLE == 1)} then {
-	configure_entry .menu12.config.f.x3 normal {n l y}} else {configure_entry .menu12.config.f.x3 disabled {y n l}}
-	global CONFIG_GRETH_PHY_ADDR
-	if {($CONFIG_GRETH_ENABLE == 1)} then {.menu12.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x4.l configure -state normal; } else {.menu12.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x4.l configure -state disabled}
+	global CONFIG_NANDFCTRL2_ENABLE
+	global CONFIG_NFC2_NROFCE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x1.l configure -state normal; } else {.menu12.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x1.l configure -state disabled}
+	global CONFIG_NFC2_NROFCH
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x2.l configure -state normal; } else {.menu12.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x2.l configure -state disabled}
+	global CONFIG_NFC2_NROFRB
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x3.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x3.l configure -state normal; } else {.menu12.config.f.x3.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x3.l configure -state disabled}
+	global CONFIG_NFC2_NROFSEFI
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x4.l configure -state normal; } else {.menu12.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x4.l configure -state disabled}
+	global CONFIG_NFC2_RND
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x5.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x5.l configure -state normal; } else {.menu12.config.f.x5.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x5.l configure -state disabled}
+	global CONFIG_NFC2_MEM0_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x6.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x6.l configure -state normal; } else {.menu12.config.f.x6.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x6.l configure -state disabled}
+	global CONFIG_NFC2_MEM0_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x7.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x7.l configure -state normal; } else {.menu12.config.f.x7.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x7.l configure -state disabled}
+	global CONFIG_NFC2_MEM0_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x8.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x8.l configure -state normal; } else {.menu12.config.f.x8.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x8.l configure -state disabled}
+	global CONFIG_NFC2_MEM1_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x9.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x9.l configure -state normal; } else {.menu12.config.f.x9.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x9.l configure -state disabled}
+	global CONFIG_NFC2_MEM1_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x10.l configure -state normal; } else {.menu12.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x10.l configure -state disabled}
+	global CONFIG_NFC2_MEM1_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x11.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x11.l configure -state normal; } else {.menu12.config.f.x11.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x11.l configure -state disabled}
+	global CONFIG_NFC2_MEM2_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x12.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x12.l configure -state normal; } else {.menu12.config.f.x12.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x12.l configure -state disabled}
+	global CONFIG_NFC2_MEM2_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x13.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x13.l configure -state normal; } else {.menu12.config.f.x13.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x13.l configure -state disabled}
+	global CONFIG_NFC2_MEM2_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x14.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x14.l configure -state normal; } else {.menu12.config.f.x14.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x14.l configure -state disabled}
+	global CONFIG_NFC2_ECC0_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x15.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x15.l configure -state normal; } else {.menu12.config.f.x15.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x15.l configure -state disabled}
+	global CONFIG_NFC2_ECC0_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x16.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x16.l configure -state normal; } else {.menu12.config.f.x16.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x16.l configure -state disabled}
+	global CONFIG_NFC2_ECC0_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x17.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x17.l configure -state normal; } else {.menu12.config.f.x17.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x17.l configure -state disabled}
+	global CONFIG_NFC2_ECC1_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x18.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x18.l configure -state normal; } else {.menu12.config.f.x18.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x18.l configure -state disabled}
+	global CONFIG_NFC2_ECC1_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x19.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x19.l configure -state normal; } else {.menu12.config.f.x19.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x19.l configure -state disabled}
+	global CONFIG_NFC2_ECC1_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x20.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x20.l configure -state normal; } else {.menu12.config.f.x20.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x20.l configure -state disabled}
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {configure_entry .menu12.config.f.x21 normal {x l}} else {configure_entry .menu12.config.f.x21 disabled {x l}}
 }
 
 
 proc update_define_menu12 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_GRETH_ENABLE
-	global CONFIG_GRETH_GIGA
-	if {($CONFIG_GRETH_ENABLE == 1)} then {
-	set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA&15]} else {set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA|16]}
+	global CONFIG_NANDFCTRL2_ENABLE
+	global CONFIG_NFC2_NROFCE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_NROFCE "$CONFIG_NFC2_NROFCE" 8}
+	global CONFIG_NFC2_NROFCH
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_NROFCH "$CONFIG_NFC2_NROFCH" 8}
+	global CONFIG_NFC2_NROFRB
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_NROFRB "$CONFIG_NFC2_NROFRB" 8}
+	global CONFIG_NFC2_NROFSEFI
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_NROFSEFI "$CONFIG_NFC2_NROFSEFI" 0}
+	global CONFIG_NFC2_RND
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_RND "$CONFIG_NFC2_RND" 1}
+	global CONFIG_NFC2_MEM0_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM0_DATA "$CONFIG_NFC2_MEM0_DATA" 16384}
+	global CONFIG_NFC2_MEM0_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM0_SPARE "$CONFIG_NFC2_MEM0_SPARE" 2208}
+	global CONFIG_NFC2_MEM0_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM0_ECC_SEL "$CONFIG_NFC2_MEM0_ECC_SEL" 0}
+	global CONFIG_NFC2_MEM1_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM1_DATA "$CONFIG_NFC2_MEM1_DATA" 8192}
+	global CONFIG_NFC2_MEM1_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM1_SPARE "$CONFIG_NFC2_MEM1_SPARE" 448}
+	global CONFIG_NFC2_MEM1_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM1_ECC_SEL "$CONFIG_NFC2_MEM1_ECC_SEL" 1}
+	global CONFIG_NFC2_MEM2_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM2_DATA "$CONFIG_NFC2_MEM2_DATA" 4096}
+	global CONFIG_NFC2_MEM2_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM2_SPARE "$CONFIG_NFC2_MEM2_SPARE" 224}
+	global CONFIG_NFC2_MEM2_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_MEM2_ECC_SEL "$CONFIG_NFC2_MEM2_ECC_SEL" 1}
+	global CONFIG_NFC2_ECC0_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC0_GFSIZE "$CONFIG_NFC2_ECC0_GFSIZE" 14}
+	global CONFIG_NFC2_ECC0_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC0_CHUNK "$CONFIG_NFC2_ECC0_CHUNK" 1024}
+	global CONFIG_NFC2_ECC0_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC0_CAP "$CONFIG_NFC2_ECC0_CAP" 60}
+	global CONFIG_NFC2_ECC1_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_GFSIZE "$CONFIG_NFC2_ECC1_GFSIZE" 13}
+	global CONFIG_NFC2_ECC1_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CHUNK "$CONFIG_NFC2_ECC1_CHUNK" 512}
+	global CONFIG_NFC2_ECC1_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CAP "$CONFIG_NFC2_ECC1_CAP" 16}
 	global tmpvar_14
-	global CONFIG_GRETH_FIFO4
-	if {$tmpvar_14 == "4"} then {set CONFIG_GRETH_FIFO4 1} else {set CONFIG_GRETH_FIFO4 0}
-	global CONFIG_GRETH_FIFO8
-	if {$tmpvar_14 == "8"} then {set CONFIG_GRETH_FIFO8 1} else {set CONFIG_GRETH_FIFO8 0}
-	global CONFIG_GRETH_FIFO16
-	if {$tmpvar_14 == "16"} then {set CONFIG_GRETH_FIFO16 1} else {set CONFIG_GRETH_FIFO16 0}
-	global CONFIG_GRETH_FIFO32
-	if {$tmpvar_14 == "32"} then {set CONFIG_GRETH_FIFO32 1} else {set CONFIG_GRETH_FIFO32 0}
-	global CONFIG_GRETH_FIFO64
-	if {$tmpvar_14 == "64"} then {set CONFIG_GRETH_FIFO64 1} else {set CONFIG_GRETH_FIFO64 0}
-	global CONFIG_GRETH_FMC_MODE
-	if {($CONFIG_GRETH_ENABLE == 1)} then {
-	set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE&15]} else {set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE|16]}
-	global CONFIG_GRETH_PHY_ADDR
-	if {($CONFIG_GRETH_ENABLE == 1)} then {validate_int CONFIG_GRETH_PHY_ADDR "$CONFIG_GRETH_PHY_ADDR" 1}
+	global CONFIG_NFC2_FT_NONE
+	if {$tmpvar_14 == "None"} then {set CONFIG_NFC2_FT_NONE 1} else {set CONFIG_NFC2_FT_NONE 0}
+	global CONFIG_NFC2_FT_DMR
+	if {$tmpvar_14 == "Parity-DMR"} then {set CONFIG_NFC2_FT_DMR 1} else {set CONFIG_NFC2_FT_DMR 0}
+	global CONFIG_NFC2_FT_TMR
+	if {$tmpvar_14 == "TMR"} then {set CONFIG_NFC2_FT_TMR 1} else {set CONFIG_NFC2_FT_TMR 0}
+	global CONFIG_NFC2_FT_BCH
+	if {$tmpvar_14 == "BCH"} then {set CONFIG_NFC2_FT_BCH 1} else {set CONFIG_NFC2_FT_BCH 0}
+	global CONFIG_NFC2_FT_TECHSPEC
+	if {$tmpvar_14 == "TechSpec"} then {set CONFIG_NFC2_FT_TECHSPEC 1} else {set CONFIG_NFC2_FT_TECHSPEC 0}
 }
 
 
@@ -2566,12 +2650,12 @@ proc menu13 {w title} {
 	global active_menus
 	set active_menus [lsort -integer [linsert $active_menus end 13]]
 	message $w.m -width 400 -aspect 300 -text \
-		"UARTs, timers and irq control         "  -relief raised
+		"Ethernet             "  -relief raised
 	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "UARTs, timers and irq control         " 
+	wm title $w "Ethernet             " 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 13; break"
-	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 13; catch {destroy .menu10}; unregister_active 10; menu14 .menu14 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 13; menu14 .menu14 \"$title\""
 	frame $w.f
 	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 13"
@@ -2608,9 +2692,19 @@ proc menu13 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 13 0 "Enable generic GPIO port              " CONFIG_GRGPIO_ENABLE
-	int $w.config.f 13 1 "GPIO width            " CONFIG_GRGPIO_WIDTH
-	hex $w.config.f 13 2 "GPIO interrupt mask   " CONFIG_GRGPIO_IMASK
+	bool $w.config.f 13 0 "Gaisler Research 10/100/1000 Mbit Ethernet MAC " CONFIG_GRETH_ENABLE
+	bool $w.config.f 13 1 "Enable 1000 Mbit support    " CONFIG_GRETH_GIGA
+	global tmpvar_15
+	minimenu $w.config.f 13 2 "AHB FIFO size (words)            " tmpvar_15 CONFIG_GRETH_FIFO4
+	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"AHB FIFO size (words)            \""
+	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_15 -value "4" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_15 -value "8" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_15 -value "16" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_15 -value "32" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_15 -value "64" -command "update_active"
+	menusplit $w $w.config.f.x2.x.menu 5
+	bool $w.config.f 13 3 "Enable FMC" CONFIG_GRETH_FMC_MODE
+	int $w.config.f 13 4 "PHY address  " CONFIG_GRETH_PHY_ADDR
 
 
 
@@ -2648,47 +2742,66 @@ proc menu13 {w title} {
 }
 
 proc update_menu13 {} {
-	global CONFIG_GRGPIO_ENABLE
-	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu13.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x1.l configure -state normal; } else {.menu13.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x1.l configure -state disabled}
-	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu13.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x2.l configure -state normal; } else {.menu13.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x2.l configure -state disabled}
+	global CONFIG_GRETH_ENABLE
+	global CONFIG_GRETH_GIGA
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	configure_entry .menu13.config.f.x1 normal {n l y}} else {configure_entry .menu13.config.f.x1 disabled {y n l}}
+	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {configure_entry .menu13.config.f.x2 normal {x l}} else {configure_entry .menu13.config.f.x2 disabled {x l}}
+	global CONFIG_GRETH_FMC_MODE
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	configure_entry .menu13.config.f.x3 normal {n l y}} else {configure_entry .menu13.config.f.x3 disabled {y n l}}
+	global CONFIG_GRETH_PHY_ADDR
+	if {($CONFIG_GRETH_ENABLE == 1)} then {.menu13.config.f.x4.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x4.l configure -state normal; } else {.menu13.config.f.x4.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x4.l configure -state disabled}
 }
 
 
 proc update_define_menu13 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
-	global CONFIG_GRGPIO_ENABLE
-	global CONFIG_GRGPIO_WIDTH
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
-	global CONFIG_GRGPIO_IMASK
-	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
+	global CONFIG_GRETH_ENABLE
+	global CONFIG_GRETH_GIGA
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA&15]} else {set CONFIG_GRETH_GIGA [expr $CONFIG_GRETH_GIGA|16]}
+	global tmpvar_15
+	global CONFIG_GRETH_FIFO4
+	if {$tmpvar_15 == "4"} then {set CONFIG_GRETH_FIFO4 1} else {set CONFIG_GRETH_FIFO4 0}
+	global CONFIG_GRETH_FIFO8
+	if {$tmpvar_15 == "8"} then {set CONFIG_GRETH_FIFO8 1} else {set CONFIG_GRETH_FIFO8 0}
+	global CONFIG_GRETH_FIFO16
+	if {$tmpvar_15 == "16"} then {set CONFIG_GRETH_FIFO16 1} else {set CONFIG_GRETH_FIFO16 0}
+	global CONFIG_GRETH_FIFO32
+	if {$tmpvar_15 == "32"} then {set CONFIG_GRETH_FIFO32 1} else {set CONFIG_GRETH_FIFO32 0}
+	global CONFIG_GRETH_FIFO64
+	if {$tmpvar_15 == "64"} then {set CONFIG_GRETH_FIFO64 1} else {set CONFIG_GRETH_FIFO64 0}
+	global CONFIG_GRETH_FMC_MODE
+	if {($CONFIG_GRETH_ENABLE == 1)} then {
+	set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE&15]} else {set CONFIG_GRETH_FMC_MODE [expr $CONFIG_GRETH_FMC_MODE|16]}
+	global CONFIG_GRETH_PHY_ADDR
+	if {($CONFIG_GRETH_ENABLE == 1)} then {validate_int CONFIG_GRETH_PHY_ADDR "$CONFIG_GRETH_PHY_ADDR" 1}
 }
 
 
-menu_option menu14 14 "VHDL Debugging        "
 proc menu14 {w title} {
 	set oldFocus [focus]
+	catch {focus .menu10}
 	catch {destroy $w; unregister_active 14}
 	toplevel $w -class Dialog
 	wm withdraw $w
 	global active_menus
 	set active_menus [lsort -integer [linsert $active_menus end 14]]
 	message $w.m -width 400 -aspect 300 -text \
-		"VHDL Debugging        "  -relief raised
+		"UARTs, timers and irq control         "  -relief raised
 	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "VHDL Debugging        " 
+	wm title $w "UARTs, timers and irq control         " 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 14; break"
-	set nextscript "catch {focus $oldFocus}; menu15 .menu15 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 14; catch {destroy .menu10}; unregister_active 10; menu15 .menu15 \"$title\""
 	frame $w.f
-	button $w.f.back -text "Main Menu" \
+	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 14"
 	button $w.f.next -text "Next" -underline 0\
 		-width 15 -command $nextscript
-	$w.f.next configure -state disabled
-	bind all <Alt-n> "puts \"no more menus\" "
+	bind all <Alt-n> $nextscript
 	button $w.f.prev -text "Prev" -underline 0\
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 14; menu13 .menu13 \"$title\""
 	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 14; menu13 .menu13 \"$title\";break"
@@ -2719,7 +2832,118 @@ proc menu14 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 14 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
+	bool $w.config.f 14 0 "Enable generic GPIO port              " CONFIG_GRGPIO_ENABLE
+	int $w.config.f 14 1 "GPIO width            " CONFIG_GRGPIO_WIDTH
+	hex $w.config.f 14 2 "GPIO interrupt mask   " CONFIG_GRGPIO_IMASK
+
+
+
+	focus $w
+	update_active
+	global winx; global winy
+	if {[winfo exists .menu10] == 0} then {menu10 .menu10 "Peripherals             "}
+	set winx [expr [winfo x .menu10]+30]; set winy [expr [winfo y .menu10]+30]
+	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
+	update idletasks
+	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
+
+	$w.config.canvas configure \
+		-width [expr [winfo reqwidth $w.config.f] + 1]\
+		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
+			 [expr [winfo reqheight $w.config.f] + 1]"
+
+	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
+	set scry [expr [winfo screenh $w] / 2]
+	set maxy [expr [winfo screenh $w] * 3 / 4]
+	set canvtotal [expr [winfo reqh $w.config.f] + 2]
+	if [expr $winy + $canvtotal < $maxy] {
+		$w.config.canvas configure -height $canvtotal
+	} else {
+		$w.config.canvas configure -height [expr $scry - $winy]
+		}
+	}
+	update idletasks
+	if {[winfo exists $w]} then {
+	wm maxsize $w [winfo width $w] [winfo screenheight $w]
+	wm minsize $w [winfo width $w] 100
+
+	wm deiconify $w
+}
+}
+
+proc update_menu14 {} {
+	global CONFIG_GRGPIO_ENABLE
+	global CONFIG_GRGPIO_WIDTH
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu14.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu14.config.f.x1.l configure -state normal; } else {.menu14.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu14.config.f.x1.l configure -state disabled}
+	global CONFIG_GRGPIO_IMASK
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {.menu14.config.f.x2.x configure -state normal -foreground [ cget .ref -foreground ]; .menu14.config.f.x2.l configure -state normal; } else {.menu14.config.f.x2.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu14.config.f.x2.l configure -state disabled}
+}
+
+
+proc update_define_menu14 {} {
+	update_define_mainmenu
+	global CONFIG_MODULES
+	global CONFIG_GRGPIO_ENABLE
+	global CONFIG_GRGPIO_WIDTH
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_int CONFIG_GRGPIO_WIDTH "$CONFIG_GRGPIO_WIDTH" 8}
+	global CONFIG_GRGPIO_IMASK
+	if {($CONFIG_GRGPIO_ENABLE == 1)} then {validate_hex CONFIG_GRGPIO_IMASK "$CONFIG_GRGPIO_IMASK" 0000}
+}
+
+
+menu_option menu15 15 "VHDL Debugging        "
+proc menu15 {w title} {
+	set oldFocus [focus]
+	catch {destroy $w; unregister_active 15}
+	toplevel $w -class Dialog
+	wm withdraw $w
+	global active_menus
+	set active_menus [lsort -integer [linsert $active_menus end 15]]
+	message $w.m -width 400 -aspect 300 -text \
+		"VHDL Debugging        "  -relief raised
+	pack $w.m -pady 10 -side top -padx 10
+	wm title $w "VHDL Debugging        " 
+
+	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 15; break"
+	set nextscript "catch {focus $oldFocus}; menu16 .menu16 \"$title\""
+	frame $w.f
+	button $w.f.back -text "Main Menu" \
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 15"
+	button $w.f.next -text "Next" -underline 0\
+		-width 15 -command $nextscript
+	$w.f.next configure -state disabled
+	bind all <Alt-n> "puts \"no more menus\" "
+	button $w.f.prev -text "Prev" -underline 0\
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 15; menu14 .menu14 \"$title\""
+	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 15; menu14 .menu14 \"$title\";break"
+	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
+	pack $w.f -pady 10 -side bottom -anchor w -fill x
+	frame $w.topline -relief ridge -borderwidth 2 -height 2
+	pack $w.topline -side top -fill x
+
+	frame $w.botline -relief ridge -borderwidth 2 -height 2
+	pack $w.botline -side bottom -fill x
+
+	frame $w.config
+	pack $w.config -fill y -expand on
+
+	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
+	pack $w.config.vscroll -side right -fill y
+
+	canvas $w.config.canvas -height 1\
+		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
+		-width [expr [winfo screenwidth .] * 1 / 2] 
+	frame $w.config.f
+	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
+	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
+	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
+	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
+	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
+	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
+	pack $w.config.canvas -side right -fill y
+
+
+	bool $w.config.f 15 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
 
 
 
@@ -2755,11 +2979,11 @@ proc menu14 {w title} {
 }
 }
 
-proc update_menu14 {} {
+proc update_menu15 {} {
 }
 
 
-proc update_define_menu14 {} {
+proc update_define_menu15 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
 }
@@ -2893,6 +3117,7 @@ set CONFIG_EIID_NUM 63
 set CONFIG_IU_DISAS 0
 set CONFIG_PROC_NODBUS 0
 set CONFIG_L2_ENABLE 0
+set CONFIG_L2_LITE 0
 set tmpvar_9 "(not set)"
 set CONFIG_L2_ASSO1 0
 set CONFIG_L2_ASSO2 0
@@ -2951,9 +3176,36 @@ set CONFIG_DSU_ETH_PROG 0
 set CONFIG_DSU_ETH_DIS 0
 set CONFIG_AHBSTAT_ENABLE 0
 set CONFIG_AHBSTAT_NFTSLV 1
+set CONFIG_NANDFCTRL2_ENABLE 0
+set CONFIG_NFC2_NROFCE 8
+set CONFIG_NFC2_NROFCH 8
+set CONFIG_NFC2_NROFRB 8
+set CONFIG_NFC2_NROFSEFI 0
+set CONFIG_NFC2_RND 1
+set CONFIG_NFC2_MEM0_DATA 16384
+set CONFIG_NFC2_MEM0_SPARE 2208
+set CONFIG_NFC2_MEM0_ECC_SEL 0
+set CONFIG_NFC2_MEM1_DATA 8192
+set CONFIG_NFC2_MEM1_SPARE 448
+set CONFIG_NFC2_MEM1_ECC_SEL 1
+set CONFIG_NFC2_MEM2_DATA 4096
+set CONFIG_NFC2_MEM2_SPARE 224
+set CONFIG_NFC2_MEM2_ECC_SEL 1
+set CONFIG_NFC2_ECC0_GFSIZE 14
+set CONFIG_NFC2_ECC0_CHUNK 1024
+set CONFIG_NFC2_ECC0_CAP 60
+set CONFIG_NFC2_ECC1_GFSIZE 13
+set CONFIG_NFC2_ECC1_CHUNK 512
+set CONFIG_NFC2_ECC1_CAP 16
+set tmpvar_14 "(not set)"
+set CONFIG_NFC2_FT_NONE 0
+set CONFIG_NFC2_FT_DMR 0
+set CONFIG_NFC2_FT_TMR 0
+set CONFIG_NFC2_FT_BCH 0
+set CONFIG_NFC2_FT_TECHSPEC 0
 set CONFIG_GRETH_ENABLE 0
 set CONFIG_GRETH_GIGA 0
-set tmpvar_14 "(not set)"
+set tmpvar_15 "(not set)"
 set CONFIG_GRETH_FIFO4 0
 set CONFIG_GRETH_FIFO8 0
 set CONFIG_GRETH_FIFO16 0
@@ -3210,6 +3462,8 @@ proc writeconfig {file1 file2} {
 	write_comment $cfg $autocfg "L2 Cache"
 	global CONFIG_L2_ENABLE
 	write_tristate $cfg $autocfg CONFIG_L2_ENABLE $CONFIG_L2_ENABLE [list $notmod] 2
+	global CONFIG_L2_LITE
+	write_tristate $cfg $autocfg CONFIG_L2_LITE $CONFIG_L2_LITE [list $notmod] 2
 	global tmpvar_9
 	
 	if { $tmpvar_9 == "1" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 0 [list $notmod] 2 }
@@ -3308,17 +3562,67 @@ proc writeconfig {file1 file2} {
 	write_tristate $cfg $autocfg CONFIG_AHBSTAT_ENABLE $CONFIG_AHBSTAT_ENABLE [list $notmod] 2
 	global CONFIG_AHBSTAT_NFTSLV
 	if {($CONFIG_AHBSTAT_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_AHBSTAT_NFTSLV $CONFIG_AHBSTAT_NFTSLV $notmod }
+	write_comment $cfg $autocfg "NANDFCTRL"
+	global CONFIG_NANDFCTRL2_ENABLE
+	write_tristate $cfg $autocfg CONFIG_NANDFCTRL2_ENABLE $CONFIG_NANDFCTRL2_ENABLE [list $notmod] 2
+	global CONFIG_NFC2_NROFCE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_NROFCE $CONFIG_NFC2_NROFCE $notmod }
+	global CONFIG_NFC2_NROFCH
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_NROFCH $CONFIG_NFC2_NROFCH $notmod }
+	global CONFIG_NFC2_NROFRB
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_NROFRB $CONFIG_NFC2_NROFRB $notmod }
+	global CONFIG_NFC2_NROFSEFI
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_NROFSEFI $CONFIG_NFC2_NROFSEFI $notmod }
+	global CONFIG_NFC2_RND
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_RND $CONFIG_NFC2_RND $notmod }
+	global CONFIG_NFC2_MEM0_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM0_DATA $CONFIG_NFC2_MEM0_DATA $notmod }
+	global CONFIG_NFC2_MEM0_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM0_SPARE $CONFIG_NFC2_MEM0_SPARE $notmod }
+	global CONFIG_NFC2_MEM0_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM0_ECC_SEL $CONFIG_NFC2_MEM0_ECC_SEL $notmod }
+	global CONFIG_NFC2_MEM1_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM1_DATA $CONFIG_NFC2_MEM1_DATA $notmod }
+	global CONFIG_NFC2_MEM1_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM1_SPARE $CONFIG_NFC2_MEM1_SPARE $notmod }
+	global CONFIG_NFC2_MEM1_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM1_ECC_SEL $CONFIG_NFC2_MEM1_ECC_SEL $notmod }
+	global CONFIG_NFC2_MEM2_DATA
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM2_DATA $CONFIG_NFC2_MEM2_DATA $notmod }
+	global CONFIG_NFC2_MEM2_SPARE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM2_SPARE $CONFIG_NFC2_MEM2_SPARE $notmod }
+	global CONFIG_NFC2_MEM2_ECC_SEL
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_MEM2_ECC_SEL $CONFIG_NFC2_MEM2_ECC_SEL $notmod }
+	global CONFIG_NFC2_ECC0_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC0_GFSIZE $CONFIG_NFC2_ECC0_GFSIZE $notmod }
+	global CONFIG_NFC2_ECC0_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC0_CHUNK $CONFIG_NFC2_ECC0_CHUNK $notmod }
+	global CONFIG_NFC2_ECC0_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC0_CAP $CONFIG_NFC2_ECC0_CAP $notmod }
+	global CONFIG_NFC2_ECC1_GFSIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_GFSIZE $CONFIG_NFC2_ECC1_GFSIZE $notmod }
+	global CONFIG_NFC2_ECC1_CHUNK
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CHUNK $CONFIG_NFC2_ECC1_CHUNK $notmod }
+	global CONFIG_NFC2_ECC1_CAP
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CAP $CONFIG_NFC2_ECC1_CAP $notmod }
+	global tmpvar_14
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {
+	if { $tmpvar_14 == "None" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 0 [list $notmod] 2 }
+	if { $tmpvar_14 == "Parity-DMR" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_DMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_DMR 0 [list $notmod] 2 }
+	if { $tmpvar_14 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_TMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_TMR 0 [list $notmod] 2 }
+	if { $tmpvar_14 == "BCH" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_BCH 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_BCH 0 [list $notmod] 2 }
+	if { $tmpvar_14 == "TechSpec" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_TECHSPEC 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_TECHSPEC 0 [list $notmod] 2 }}
 	write_comment $cfg $autocfg "Ethernet             "
 	write_tristate $cfg $autocfg CONFIG_GRETH_ENABLE $CONFIG_GRETH_ENABLE [list $notmod] 2
 	global CONFIG_GRETH_GIGA
 	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_GIGA $CONFIG_GRETH_GIGA [list $notmod] 2 }
-	global tmpvar_14
+	global tmpvar_15
 	if {($CONFIG_GRETH_ENABLE == 1) && ($CONFIG_GRETH_GIGA == 0)} then {
-	if { $tmpvar_14 == "4" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 0 [list $notmod] 2 }
-	if { $tmpvar_14 == "8" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 0 [list $notmod] 2 }
-	if { $tmpvar_14 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
-	if { $tmpvar_14 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
-	if { $tmpvar_14 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
+	if { $tmpvar_15 == "4" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO4 0 [list $notmod] 2 }
+	if { $tmpvar_15 == "8" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO8 0 [list $notmod] 2 }
+	if { $tmpvar_15 == "16" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO16 0 [list $notmod] 2 }
+	if { $tmpvar_15 == "32" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO32 0 [list $notmod] 2 }
+	if { $tmpvar_15 == "64" } then { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_GRETH_FIFO64 0 [list $notmod] 2 }}
 	global CONFIG_GRETH_FMC_MODE
 	if {($CONFIG_GRETH_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRETH_FMC_MODE $CONFIG_GRETH_FMC_MODE [list $notmod] 2 }
 	global CONFIG_GRETH_PHY_ADDR
@@ -3459,6 +3763,11 @@ proc clear_choices { } {
 	global CONFIG_DSU_ETHSZ4; set CONFIG_DSU_ETHSZ4 0
 	global CONFIG_DSU_ETHSZ8; set CONFIG_DSU_ETHSZ8 0
 	global CONFIG_DSU_ETHSZ16; set CONFIG_DSU_ETHSZ16 0
+	global CONFIG_NFC2_FT_NONE; set CONFIG_NFC2_FT_NONE 0
+	global CONFIG_NFC2_FT_DMR; set CONFIG_NFC2_FT_DMR 0
+	global CONFIG_NFC2_FT_TMR; set CONFIG_NFC2_FT_TMR 0
+	global CONFIG_NFC2_FT_BCH; set CONFIG_NFC2_FT_BCH 0
+	global CONFIG_NFC2_FT_TECHSPEC; set CONFIG_NFC2_FT_TECHSPEC 0
 	global CONFIG_GRETH_FIFO4; set CONFIG_GRETH_FIFO4 0
 	global CONFIG_GRETH_FIFO8; set CONFIG_GRETH_FIFO8 0
 	global CONFIG_GRETH_FIFO16; set CONFIG_GRETH_FIFO16 0
@@ -3737,17 +4046,29 @@ proc update_choices { } {
 	global CONFIG_DSU_ETHSZ16
 	if { $CONFIG_DSU_ETHSZ16 == 1 } then { set tmpvar_13 "16" }
 	global tmpvar_14
-	set tmpvar_14 "8"
+	set tmpvar_14 "None"
+	global CONFIG_NFC2_FT_NONE
+	if { $CONFIG_NFC2_FT_NONE == 1 } then { set tmpvar_14 "None" }
+	global CONFIG_NFC2_FT_DMR
+	if { $CONFIG_NFC2_FT_DMR == 1 } then { set tmpvar_14 "Parity-DMR" }
+	global CONFIG_NFC2_FT_TMR
+	if { $CONFIG_NFC2_FT_TMR == 1 } then { set tmpvar_14 "TMR" }
+	global CONFIG_NFC2_FT_BCH
+	if { $CONFIG_NFC2_FT_BCH == 1 } then { set tmpvar_14 "BCH" }
+	global CONFIG_NFC2_FT_TECHSPEC
+	if { $CONFIG_NFC2_FT_TECHSPEC == 1 } then { set tmpvar_14 "TechSpec" }
+	global tmpvar_15
+	set tmpvar_15 "8"
 	global CONFIG_GRETH_FIFO4
-	if { $CONFIG_GRETH_FIFO4 == 1 } then { set tmpvar_14 "4" }
+	if { $CONFIG_GRETH_FIFO4 == 1 } then { set tmpvar_15 "4" }
 	global CONFIG_GRETH_FIFO8
-	if { $CONFIG_GRETH_FIFO8 == 1 } then { set tmpvar_14 "8" }
+	if { $CONFIG_GRETH_FIFO8 == 1 } then { set tmpvar_15 "8" }
 	global CONFIG_GRETH_FIFO16
-	if { $CONFIG_GRETH_FIFO16 == 1 } then { set tmpvar_14 "16" }
+	if { $CONFIG_GRETH_FIFO16 == 1 } then { set tmpvar_15 "16" }
 	global CONFIG_GRETH_FIFO32
-	if { $CONFIG_GRETH_FIFO32 == 1 } then { set tmpvar_14 "32" }
+	if { $CONFIG_GRETH_FIFO32 == 1 } then { set tmpvar_15 "32" }
 	global CONFIG_GRETH_FIFO64
-	if { $CONFIG_GRETH_FIFO64 == 1 } then { set tmpvar_14 "64" }
+	if { $CONFIG_GRETH_FIFO64 == 1 } then { set tmpvar_15 "64" }
 }
 
 

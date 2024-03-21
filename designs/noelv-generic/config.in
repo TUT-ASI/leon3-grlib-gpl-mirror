@@ -43,6 +43,8 @@ comment 'Peripherals             '
     source lib/gaisler/misc/ahbstat.in
   endmenu
 
+  source lib/gaisler/nandfctrl2/nandfctrl2.in
+
 #  mainmenu_option next_comment
 #  comment 'On-chip RAM/ROM                 '
 #    source lib/gaisler/misc/ahbrom.in

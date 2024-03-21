@@ -17,6 +17,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-----------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -34,19 +35,21 @@ library techmap;
 use techmap.gencomp.all;
 
 entity l2c_lite_ahb is
-	generic (
-		tech     : integer := 0;
-		hmindex  : integer := 0;
-		hsindex  : integer := 0;
-		ways     : integer := 2;
-		waysize  : integer := 64;
-		linesize : integer := 32;
-		repl     : integer := 0;
-		haddr    : integer := 16#000#;
-		hmask    : integer := 16#000#;
-		ioaddr   : integer := 16#000#;
-		cached   : integer := 16#FFFF#;
-		be_dw    : integer := 32);
+        generic (
+                tech     : integer := 0;
+                hmindex  : integer := 0;
+                hsindex  : integer := 0;
+                ways     : integer := 2;
+                waysize  : integer := 64;
+                linesize : integer := 32;
+                repl     : integer := 0;
+                haddr    : integer := 16#000#;
+                hmask    : integer := 16#000#;
+                ioaddr   : integer := 16#000#;
+                bioaddr  : integer := 16#000#;
+                biomask  : integer := 16#000#;
+                cached   : integer := 16#FFFF#;
+                be_dw    : integer := 32);
 	port (
 		rstn : in std_ulogic;
 		clk  : in std_ulogic;
@@ -111,18 +114,20 @@ begin
 
         ctrl : l2c_lite_core
         generic map(
-                tech     => tech,
-                hsindex  => hsindex,
-                haddr    => haddr,
-                hmask    => hmask,
-                ioaddr   => ioaddr,
-                waysize  => waysize,
-                linesize => linesize,
-                cached   => cached,
-                repl     => repl,
-                ways     => ways,
-                bm_dw_l  => bm_dw,
-                addr_width  => addr_width)
+                tech       => tech,
+                hsindex    => hsindex,
+                haddr      => haddr,
+                hmask      => hmask,
+                ioaddr     => ioaddr,
+                bioaddr    => bioaddr,
+                biomask    => biomask,
+                waysize    => waysize,
+                linesize   => linesize,
+                cached     => cached,
+                repl       => repl,
+                ways       => ways,
+                bm_dw_l    => bm_dw,
+                addr_width => addr_width)
         port map(
                 rstn             => rstn,
                 clk              => clk,

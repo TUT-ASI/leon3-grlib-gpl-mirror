@@ -1,0 +1,3 @@
+NANDFCTRL2 enable
+CONFIG_NANDFCTRL2_ENABLE
+  Say Y here to enable the NAND Flash Memory Controller.

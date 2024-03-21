@@ -161,13 +161,12 @@ architecture rtl of itracenv is
   constant trace_lane0         : std_logic_vector(255 downto  64) := (others => '0');
   constant trace_lane1         : std_logic_vector(511 downto 320) := (others => '0');
 
-  constant trace_skipres       : integer                          := 0;
+  constant trace_skipinst      : integer                          := 0;
   constant trace_pc32          : std_logic_vector( 31 downto   1) := (others => '0');
-  constant trace_pc            : std_logic_vector( 54 downto   1) := (others => '0');
+  constant trace_pc            : std_logic_vector( 56 downto   1) := (others => '0');
 --  constant trace_pc            : std_logic_vector( 42 downto   1) := (others => '0');
 --  constant trace_inst_xlo      : std_logic_vector( 58 downto  43) := (others => '0');
-  constant trace_skipresh      : integer                          := 58;
-  constant trace_skipinst      : integer                          := 59;
+  constant trace_skipres       : integer                          := 58;
   constant trace_result_v      : integer                          := 60;
   constant trace_xdata_v       : integer                          := 61;
   constant trace_exception     : integer                          := 62;
@@ -666,7 +665,7 @@ begin
             fsd(j)         <= '0';
             if XLEN = 32 then
               fsd(j)       <= to_bit(i = fpu_lane and is_fpu_fsd(ucinst));
-              pc(j)        <= lane(trace_pc32'range) & '0';
+              pc(j)        <= sext(lane(trace_pc32'range) & '0', pc(0));
               wdata(j)     <= uext(lane(trace_result32'range), wdata(0));
               fsd_hi(j)    <= uext(lane(trace_result_hi'range), fsd_hi(0));
               wcsr(j)      <= uext(lane(trace_csrw32'range), wcsr(0));

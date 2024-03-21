@@ -36,7 +36,7 @@ end;
 
 architecture rtl of ahbrom is
 constant abits : integer := 8;
-constant bytes : integer := 172;
+constant bytes : integer := 176;
 constant dbits : integer := 32;
 
 constant hconfig : ahb_config_type := (
@@ -127,17 +127,18 @@ begin
         when 16#0001E# => romdata <= X"930f0000";
         when 16#0001F# => romdata <= X"37010100";
         when 16#00020# => romdata <= X"97020000";
-        when 16#00021# => romdata <= X"93824202";
+        when 16#00021# => romdata <= X"93828202";
         when 16#00022# => romdata <= X"73905230";
-        when 16#00023# => romdata <= X"0f100000";
-        when 16#00024# => romdata <= X"732540f1";
-        when 16#00025# => romdata <= X"93051000";
-        when 16#00026# => romdata <= X"6370b500";
-        when 16#00027# => romdata <= X"13040000";
-        when 16#00028# => romdata <= X"67000400";
-        when 16#00029# => romdata <= X"73001000";
-        when 16#0002A# => romdata <= X"6ff0dfff";
-        when 16#0002B# => romdata <= X"00000000";
+        when 16#00023# => romdata <= X"9302f01c";
+        when 16#00024# => romdata <= X"7390127c";
+        when 16#00025# => romdata <= X"732540f1";
+        when 16#00026# => romdata <= X"93051000";
+        when 16#00027# => romdata <= X"6370b500";
+        when 16#00028# => romdata <= X"13040000";
+        when 16#00029# => romdata <= X"67000400";
+        when 16#0002A# => romdata <= X"73001000";
+        when 16#0002B# => romdata <= X"6ff0dfff";
+        when 16#0002C# => romdata <= X"00000000";
         when others => romdata <= (others => '-');
       end case;
     else --little endian
@@ -175,17 +176,18 @@ begin
         when 16#0001E# => romdata <= X"00000f93";
         when 16#0001F# => romdata <= X"00010137";
         when 16#00020# => romdata <= X"00000297";
-        when 16#00021# => romdata <= X"02428293";
+        when 16#00021# => romdata <= X"02828293";
         when 16#00022# => romdata <= X"30529073";
-        when 16#00023# => romdata <= X"0000100f";
-        when 16#00024# => romdata <= X"f1402573";
-        when 16#00025# => romdata <= X"00100593";
-        when 16#00026# => romdata <= X"00b57063";
-        when 16#00027# => romdata <= X"00000413";
-        when 16#00028# => romdata <= X"00040067";
-        when 16#00029# => romdata <= X"00100073";
-        when 16#0002A# => romdata <= X"ffdff06f";
-        when 16#0002B# => romdata <= X"00000000";
+        when 16#00023# => romdata <= X"1cf00293";
+        when 16#00024# => romdata <= X"7c129073";
+        when 16#00025# => romdata <= X"f1402573";
+        when 16#00026# => romdata <= X"00100593";
+        when 16#00027# => romdata <= X"00b57063";
+        when 16#00028# => romdata <= X"00000413";
+        when 16#00029# => romdata <= X"00040067";
+        when 16#0002A# => romdata <= X"00100073";
+        when 16#0002B# => romdata <= X"ffdff06f";
+        when 16#0002C# => romdata <= X"00000000";
            when others => romdata <= (others => '-');
         end case;
     end if; 

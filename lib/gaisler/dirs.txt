@@ -57,6 +57,7 @@ plic
 aplic
 leon5
 leon5v0
+leon5v0/blockred
 grfpc5
 socbridge
 l2c_lite

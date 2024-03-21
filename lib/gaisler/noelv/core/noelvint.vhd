@@ -53,7 +53,8 @@ use gaisler.noelv.nv_etrace_out_type;
 
 package noelvint is
 
-  type    pmpaddr_vec_type   is array (0 to PMPENTRIES - 1) of pmpaddr_type;
+  type pmpcfg_vec_type  is array (0 to PMPENTRIES - 1) of word8;
+  type pmpaddr_vec_type is array (0 to PMPENTRIES - 1) of pmpaddr_type;
 
   type pmp_precalc_type is record
     valid : std_ulogic;
@@ -114,12 +115,11 @@ package noelvint is
     mmu_sptfault  : std_ulogic; -- Take page fault on any sPT walk.
     mmu_hptfault  : std_ulogic; -- Take page fault on any hPT walk.
     mmu_oldfence  : std_ulogic; -- Use old sfence/hfence mechanism.
-    pmpcfg0       : word64;
-    pmpcfg2       : word64;
+    pmpcfg        : pmpcfg_vec_type;
     precalc       : pmp_precalc_vec(0 to PMPENTRIES - 1);
     mmwp          : std_ulogic;
     mml           : std_ulogic;
-    cctrl        : csr_out_cctrl_type;
+    cctrl         : csr_out_cctrl_type;
   end record;
 
   constant nv_csr_out_type_none : nv_csr_out_type := (
@@ -131,8 +131,7 @@ package noelvint is
     mmu_sptfault  => '0',
     mmu_hptfault  => '0',
     mmu_oldfence  => '0',
-    pmpcfg0       => (others => '0'),
-    pmpcfg2       => (others => '0'),
+    pmpcfg       => (others => (others => '0')),
     precalc       => PMPPRECALCRES,
     mmwp          => '0',
     mml           => '0',
@@ -819,7 +818,7 @@ package noelvint is
       dtcmen        : integer range 0  to 1;        -- Data TCM
       -- MMU
       mmuen         : integer range 0  to 2;        -- >0 - MMU enable
-      riscv_mmu     : integer range 0  to 3;
+      riscv_mmu     : integer range 0  to 3;        -- sparc / sv32 / sv39 /s48
       pmp_no_tor    : integer range 0  to 1;        -- Disable PMP TOR
       pmp_entries   : integer range 0  to 16;       -- Implemented PMP registers
       pmp_g         : integer range 0  to 10;       -- PMP grain is 2^(pmp_g + 2) bytes
@@ -828,10 +827,11 @@ package noelvint is
       -- Interrupts
       imsic         : integer range 0  to 1;        -- IMSIC implemented
       -- RNMI
-      rnmi_iaddr   : integer;                      -- RNMI interrupt trap handler address
-      rnmi_xaddr   : integer;                      -- RNMI exception trap handler address
+      rnmi_iaddr    : integer;                      -- RNMI interrupt trap handler address
+      rnmi_xaddr    : integer;                      -- RNMI exception trap handler address
       -- Extensions
       ext_noelv     : integer range 0  to 1;        -- NOEL-V Extensions
+      ext_noelvalu  : integer range 0  to 1;        -- NOEL-V ALU Extensions
       ext_m         : integer range 0  to 1;        -- M Base Extension Set
       ext_a         : integer range 0  to 1;        -- A Base Extension Set
       ext_c         : integer range 0  to 1;        -- C Base Extension Set
@@ -875,14 +875,17 @@ package noelvint is
       tbuf          : integer;                      -- Trace buffer size in kB
       scantest      : integer;                      -- Scantest support
       rfreadhold    : integer range 0  to 1 := 0;   -- Register File Read Hold
---      fpu_debug    : integer range 0  to 1 := 0;   -- FCSR bits for controlling the FPU
---      fpu_lane     : integer range 0  to 1 := 0;   -- Lane where (non-memory) FPU instructions go
-      endian         : integer range 0  to 1 := GRLIB_CONFIG_ARRAY(grlib_little_endian)
+--    dsuen_delay   : integer range 0  to 1 := 1;   -- Delay dbgi.dsuen (no UNOPTFLAT with Verilator)
+--      show_misa_x    : integer range 0  to 1 := 1;   -- Extensions visible in MISA X
+--      allow_x_ctrl   : integer range 0  to 1 := 1;   -- Allow X to be turned off
+--      fpu_debug      : integer range 0  to 1 := 0;   -- FCSR bits for controlling the FPU
+--      fpu_lane       : integer range 0  to 1 := 0;   -- Lane where (non-memory) FPU instructions go
+      endian           : integer range 0  to 1 := GRLIB_CONFIG_ARRAY(grlib_little_endian)
       );
     port (
-      clk            : in  std_ulogic;           -- clk
-      rstn           : in  std_ulogic;           -- active low reset
-      holdn          : in  std_ulogic;           -- active low hold signal
+      clk            : in  std_ulogic;           -- Clock
+      rstn           : in  std_ulogic;           -- Active low reset
+      holdn          : in  std_ulogic;           -- Active low hold signal
       ici            : out nv_icache_in_type;    -- I$ In Port
       ico            : in  nv_icache_out_type;   -- I$ Out Port
       bhti           : out nv_bht_in_type;       -- BHT In Port
@@ -910,16 +913,17 @@ package noelvint is
       fpuia          : out fpu5_in_async_type;   -- FPU Unit In Port
       fpuo           : in  fpu5_out_type;        -- FPU Unit Out Port
       fpuoa          : in  fpu5_out_async_type;  -- FPU Unit Out Port
-      cnt            : out nv_counter_out_type;  -- Perf counters
-      itracei        : out itrace_in_type;
-      itraceo        : in  itrace_out_type;
-      csr_mmu        : out nv_csr_out_type;         -- CSR values for MMU
-      mmu_csr        : in  nv_csr_in_type;          -- CSR values for MMU
-      perf           : in  std_logic_vector(31 downto 0);
-      cap            : in  std_logic_vector(9  downto 0);
+      cnt            : out nv_counter_out_type;  -- Perf event Out Port
+      itracei        : out itrace_in_type;       -- Trace information
+      itraceo        : in  itrace_out_type;      -- Trace control
+      csr_mmu        : out nv_csr_out_type;      -- CSR values for MMU
+      mmu_csr        : in  nv_csr_in_type;       -- CSR values for MMU
+      perf           : in  std_logic_vector(31 downto 0);  -- Performance data
+      cap            : in  std_logic_vector(9  downto 0);  -- Trace capability
       tbo            : in  nv_trace_out_type;    -- Trace Unit Out Port
-      eto            : out nv_etrace_out_type;
-      sclk           : in  std_ulogic;
+      eto            : out nv_etrace_out_type;   -- E-trace output
+      sclk           : in  std_ulogic;           -- [Currently unused]
+      pwrd           : out std_ulogic;           -- Activate power down mode 
       testen         : in  std_ulogic;
       testrst        : in  std_ulogic
       );

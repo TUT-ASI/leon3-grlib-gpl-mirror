@@ -25,6 +25,7 @@ package cfgmap is
 
   -- AHB master index
   constant GRETH_HMINDEX    : integer := CFG_LOCAL_NCPU;
+  constant NFC2_HMINDEX     : integer := CFG_LOCAL_NCPU + 1;
   
   -- AHB slave index
   constant L2C_HSINDEX      : integer := 0;
@@ -51,8 +52,9 @@ package cfgmap is
   constant GRETH_PINDEX     : integer := 4;
   constant GRETH_PHY_PINDEX : integer := 5;
   constant AHBUART_PINDEX   : integer := 6;
-  constant LOGAN0_PINDEX    : integer := 7;
-  constant LOGAN1_PINDEX    : integer := 8;
+  constant NFC2_PINDEX      : integer := 7;
+  constant LOGAN0_PINDEX    : integer := 8;
+  constant LOGAN1_PINDEX    : integer := 9;
 
   -- APB slave address
   constant MEM_PADDR        : integer := 16#800#;
@@ -69,6 +71,8 @@ package cfgmap is
   constant GRETH_PHY_PMASK  : integer := 16#FF0#;
   constant AHBUART_PADDR    : integer := 16#860#;
   constant AHBUART_PMASK    : integer := 16#FFF#;
+  constant NFC2_PADDR       : integer := 16#870#;
+  constant NFC2_PMASK       : integer := 16#FFE#;
   constant LOGAN0_PADDR     : integer := 16#D00#;
   constant LOGAN0_PMASK     : integer := 16#F00#;
   constant LOGAN1_PADDR     : integer := 16#E00#;
@@ -87,5 +91,6 @@ package cfgmap is
   constant AHBSTAT_PIRQ     : integer := 4;
   constant GRETH_PIRQ       : integer := 5;
   constant GRETH_PHY_PIRQ   : integer := 6;
+  constant NFC2_PIRQ        : integer := 7;
 
 end; 
