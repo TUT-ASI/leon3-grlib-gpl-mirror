@@ -2220,7 +2220,7 @@ architecture rtl of iunv is
     if single_issue = 0 then
       if v_fusel_eq(fusel(0), ALU or LD or MUL or FPU) and valid_in(0) = '1' then
         if rd_valid(0) = '1' then
-          if rd(0) = rfa1(1) or rd(0) = rfa2(1) then
+          if rd(0) = rfa1(one) or rd(0) = rfa2(one) then
             lalu_pre(1) := '1';
           end if;
         end if;
@@ -4021,8 +4021,8 @@ architecture rtl of iunv is
     if r.e.stforw(0) = '0' then
       if late_alu = 1 then
         if    single_issue = 0 and
-              r.wb.lalu(1) = '1' and v_rd_eq(r, wb, 1, rfa2) then
-          data := r.wb.wdata(1);
+              r.wb.lalu(one) = '1' and v_rd_eq(r, wb, one, rfa2) then
+          data := r.wb.wdata(one);
         elsif r.wb.lalu(0) = '1' and v_rd_eq(r, wb, 0, rfa2) then
           data := r.wb.wdata(0);
         end if;
@@ -4060,7 +4060,7 @@ architecture rtl of iunv is
     --   0  |   e   | addi x2, x1, 3
     if forw_in(1) = '0' then
       if    single_issue = 0 and
-            v_rd_eq(r, late, 1, rfa1) and v_fusel_eq(r, late, 1, MUL or FPU) then
+            v_rd_eq(r, late, one, rfa1) and v_fusel_eq(r, late, one, MUL or FPU) then
         op1   := "001";
       elsif v_rd_eq(r, late, 0, rfa1) then
         if    v_fusel_eq(r, late, 0, LD) then
@@ -4081,7 +4081,7 @@ architecture rtl of iunv is
     -- Do not forward for Store operation
     if not v_fusel_eq(r, same, lane, ST) and forw_in(2) = '0' then
       if    single_issue = 0 and
-            v_rd_eq(r, late, 1, rfa2) and v_fusel_eq(r, late, 1, MUL or FPU) then
+            v_rd_eq(r, late, one, rfa2) and v_fusel_eq(r, late, one, MUL or FPU) then
         op2   := "001";
       elsif v_rd_eq(r, late, 0, rfa2) then
         if    v_fusel_eq(r, late, 0, LD) then
@@ -4248,7 +4248,7 @@ architecture rtl of iunv is
     --   0  |   x   | add x1, x2, x0
     --   1  |   x   | ...
     elsif single_issue = 0 and
-          v_rd_eq(r, late, 1, rfa1) then
+          v_rd_eq(r, late, one, rfa1) then
       op1       := "011";
     elsif v_rd_eq(r, late, 0, rfa1) then
       op1       := "100";
@@ -4266,7 +4266,7 @@ architecture rtl of iunv is
           (slane xor swap) = '1' then
       op2       := "010";
     elsif single_issue = 0 and
-          v_rd_eq(r, late, 1, rfa2) then
+          v_rd_eq(r, late, one, rfa2) then
       op2       := "011";
     elsif v_rd_eq(r, late, 0, rfa2) then
       op2       := "100";
@@ -4408,7 +4408,7 @@ architecture rtl of iunv is
     --   0  |   x   | add x1, x2, x0
     --   1  |   x   | ...
     elsif single_issue = 0 and
-          v_rd_eq(r, wb, 1, rfa1) then
+          v_rd_eq(r, wb, one, rfa1) then
       op1       := "011";
     elsif v_rd_eq(r, wb, 0, rfa1) then
       op1       := "100";
@@ -4634,12 +4634,12 @@ architecture rtl of iunv is
 
     -- Op1
     if    single_issue = 0 and
-          v_rd_eq_xrdv(r, e,  1, ex1_rdv_in, rfa1) then
+          v_rd_eq_xrdv(r, e,  one, ex1_rdv_in, rfa1) then
       ex_forw_op1       := "11";
     elsif v_rd_eq_xrdv(r, e,  0, ex0_rdv_in, rfa1) then
       ex_forw_op1       := "10";
     elsif single_issue = 0 and
-          v_rd_eq(r, m,  1, rfa1) then
+          v_rd_eq(r, m,  one, rfa1) then
       mem_forw_op1      := "11";
     elsif v_rd_eq(r, m,  0, rfa1) then
       -- Do not forward directly from cache access.
@@ -4648,12 +4648,12 @@ architecture rtl of iunv is
         mem_forw_op1    := "10";
       end if;
     elsif single_issue = 0 and
-          v_rd_eq(r, x,  1, rfa1) then
+          v_rd_eq(r, x,  one, rfa1) then
       xc_forw_op1       := "11";
     elsif v_rd_eq(r, x,  0, rfa1) then
       xc_forw_op1       := "10";
     elsif single_issue = 0 and
-          v_rd_eq(r, wb, 1, rfa1) then
+          v_rd_eq(r, wb, one, rfa1) then
       wb_forw_op1       := "11";
     elsif v_rd_eq(r, wb, 0, rfa1) then
       wb_forw_op1       := "10";
@@ -4685,7 +4685,7 @@ architecture rtl of iunv is
       end if;
     elsif single_issue = 0 and
           mem_forw_op1 = "11" then
-      if v_fusel_eq(r, m, 1, MUL) then
+      if v_fusel_eq(r, m, one, MUL) then
         mux_output_op1  := mul_data_in(one);
       else
         mux_output_op1  := r.m.result(one);
@@ -4902,15 +4902,15 @@ architecture rtl of iunv is
     if    v_fusel_eq(r, x, 0, LD)  and v_rd_eq(r, x, 0, rfa2) then
       mdata     := r.x.data(0)(wordx'range);
     elsif single_issue = 0 and
-          v_fusel_eq(r, x, 1, MUL or FPU) and v_rd_eq(r, x, 1, rfa2) then
+          v_fusel_eq(r, x, one, MUL or FPU) and v_rd_eq(r, x, one, rfa2) then
       mdata     := r.x.result(one);
     elsif v_fusel_eq(r, x, 0, MUL or FPU) and v_rd_eq(r, x, 0, rfa2) and
-          (single_issue = 1 or not v_rd_eq(r, x, 1, rfa2)) then
+          (single_issue = 1 or not v_rd_eq(r, x, one, rfa2)) then
       mdata     := r.x.result(0);
     -- Forward from late ALUs or late Results
     elsif single_issue = 0 and
-          (r.wb.lalu(1) = '1' or v_fusel_eq(r, wb, 1, MUL or FPU)) and
-          v_rd_eq(r, wb, 1, rfa2) and r.m.stforw(0) = '0' then
+          (r.wb.lalu(one) = '1' or v_fusel_eq(r, wb, one, MUL or FPU)) and
+          v_rd_eq(r, wb, one, rfa2) and r.m.stforw(0) = '0' then
       mdata     := r.wb.wdata(one);
     elsif (r.wb.lalu(0) = '1' or v_fusel_eq(r, wb, 0, MUL or LD or FPU)) and
           v_rd_eq(r, wb, 0, rfa2) and r.m.stforw(0) = '0' then
@@ -4922,7 +4922,7 @@ architecture rtl of iunv is
 
     -- Forward from (non-late) ALU in same stage (swapped)
     if single_issue = 0 and
-       v_fusel_eq(r, m, 1, ALU) and v_rd_eq(r, m, 1, rfa2) and r.m.swap = '1' then
+       v_fusel_eq(r, m, one, ALU) and v_rd_eq(r, m, one, rfa2) and r.m.swap = '1' then
       data      := to64(r.m.result(one));
     -- Forward from something above?
     elsif mvalid = '1' then
@@ -5046,7 +5046,7 @@ architecture rtl of iunv is
        mem_branch = '1'                          or       -- mem branch mispredict
        (me_xc_in(0) = '1' and valid_in(0) = '1') or       -- xc in LD/ST op
        (single_issue = 0 and                              -- xc in previous instruction
-        swap_in = '1' and valid_in(1) = '1' and me_xc_in(1) = '1') then
+        swap_in = '1' and valid_in(one) = '1' and me_xc_in(one) = '1') then
       nullify   := '1';
     end if;
 
@@ -8834,10 +8834,10 @@ architecture rtl of iunv is
     -- If there is a swap it is not actually a dependency.
     if v_fusel_eq(r, a, 0, ALU or LD or MUL or FPU)  then
       if single_issue = 0 and
-         v_fusel_eq(r, a, 1, ALU) and r.a.ctrl(1).rdv = '1' and r.a.swap = '0' then
-        if v_rd_eq(r, a, 0, r.a.rfa1(1)) or
-           v_rd_eq(r, a, 0, r.a.rfa2(1)) then
-          lalu(1)     := '1';
+         v_fusel_eq(r, a, one, ALU) and r.a.ctrl(one).rdv = '1' and r.a.swap = '0' then
+        if v_rd_eq(r, a, 0, r.a.rfa1(one)) or
+           v_rd_eq(r, a, 0, r.a.rfa2(one)) then
+          lalu(one)   := '1';
           laludp      := '1';
         end if;
       end if;
@@ -8919,8 +8919,8 @@ architecture rtl of iunv is
         -- Attempted late ALU in lane 1 and its destination equals store (lane 0)
         -- source, with swap so the store is really after the ALU. Thus, the
         -- calculated value should be stored (which it cannot if late ALU).
-        -- lalu(1) = '1' implies that the instruction at A(1) must be valid.
-        (v_fusel_eq(r, a, memory_lane, ST) and lalu(1) = '1' and rd(r, a, 1) = r.a.rfa2(memory_lane) and r.a.swap = '1') or
+        -- lalu(one) = '1' implies that the instruction at A(1) must be valid.
+        (v_fusel_eq(r, a, memory_lane, ST) and lalu(one) = '1' and rd(r, a, 1) = r.a.rfa2(memory_lane) and r.a.swap = '1') or
         -- CSR (which is late) is not an issue in lane 0 (since same lane as store).
         (v_fusel_eq(r, a, memory_lane, ST) and lcsr(1) = '1' and rd(r, a, 1) = r.a.rfa2(memory_lane) and r.a.swap = '1')) then
       hold    := '1';
@@ -9540,17 +9540,17 @@ architecture rtl of iunv is
 
     -- Op2
     if    single_issue = 0 and
-          v_rd_eq_xvalid(r, e, 1, ex1_valid_in, rfa2) then
+          v_rd_eq_xvalid(r, e, one, ex1_valid_in, rfa2) then
       ex_forw_op2       := "11";
     elsif v_rd_eq_xvalid(r, e, 0, ex0_valid_in, rfa2) then
       ex_forw_op2       := "10";
     elsif single_issue = 0 and
-          v_rd_eq(r, m,  1, rfa2) then
+          v_rd_eq(r, m,  one, rfa2) then
       -- Do not forward directly from late ALU.
-      if r.m.alu(1).lalu = '0' then
+      if r.m.alu(one).lalu = '0' then
         -- Do not forward directly from MUL.
         -- Handled by forwarding in a later cycle instead.
-        if not v_fusel_eq(r, m, 1, MUL or FPU) then
+        if not v_fusel_eq(r, m, one, MUL or FPU) then
           mem_forw_op2  := "11";
         end if;
       end if;
@@ -9564,10 +9564,10 @@ architecture rtl of iunv is
         end if;
       end if;
     elsif single_issue = 0 and
-          v_rd_eq(r, x,  1, rfa2) then
+          v_rd_eq(r, x,  one, rfa2) then
       -- Do not forward directly from late ALU.
       -- Handled by forwarding in next cycle instead.
-      if r.x.alu(1).lalu = '0' then
+      if r.x.alu(one).lalu = '0' then
         xc_forw_op2     := "11";
       end if;
     elsif v_rd_eq(r, x,  0, rfa2) then
@@ -9577,7 +9577,7 @@ architecture rtl of iunv is
         xc_forw_op2     := "10";
       end if;
     elsif single_issue = 0 and
-          v_rd_eq(r, wb, 1, rfa2) then
+          v_rd_eq(r, wb, one, rfa2) then
       wb_forw_op2       := "11";
     elsif v_rd_eq(r, wb, 0, rfa2) then
       wb_forw_op2       := "10";
@@ -9594,17 +9594,17 @@ architecture rtl of iunv is
       end if;
     elsif single_issue = 0 and
           xc_forw_op2 = "11" then
-      mux_output_op2    := r.x.result(1);
+      mux_output_op2    := r.x.result(one);
     elsif mem_forw_op2 = "10" then
       mux_output_op2    := r.m.result(0);
     elsif single_issue = 0 and
           mem_forw_op2 = "11" then
-      mux_output_op2    := r.m.result(1);
+      mux_output_op2    := r.m.result(one);
     elsif wb_forw_op2 = "10" then
       mux_output_op2    := r.wb.wdata(0);
     elsif single_issue = 0 and
           wb_forw_op2 = "11" then
-      mux_output_op2    := r.wb.wdata(1);
+      mux_output_op2    := r.wb.wdata(one);
     else
     end if;
 
@@ -9613,7 +9613,7 @@ architecture rtl of iunv is
       stdata            := mux_output_op2;
     elsif single_issue = 0 and
           ex_forw_op2 = "11" then
-      stdata            := ex_result(1);
+      stdata            := ex_result(one);
     elsif ex_forw_op2 = "10" then
       stdata            := ex_result(0);
     else
@@ -10387,16 +10387,16 @@ architecture rtl of iunv is
     -- Since we are evaluating both lanes at the same time we should determine wich lane is executing
     -- the first instruction to determine the actions to perform.
     if single_issue = 0 then
-      if (thit(0) = '1' and swap = '0') or (thit(0) = '1' and swap = '1' and thit(1) = '0') then
+      if (thit(0) = '1' and swap = '0') or (thit(0) = '1' and swap = '1' and thit(one) = '0') then
         trig.action   := taction(0);
         trig.priority := tpri(0);
         trig.hit      := hitvec(0);
-      elsif (thit(1) = '1' and swap = '1') or (thit(1) = '1' and swap = '0' and thit(0) = '0') then
-        trig.action   := taction(1);
-        trig.priority := tpri(1);
-        trig.hit      := hitvec(1);
+      elsif (thit(one) = '1' and swap = '1') or (thit(one) = '1' and swap = '0' and thit(0) = '0') then
+        trig.action   := taction(one);
+        trig.priority := tpri(one);
+        trig.hit      := hitvec(one);
       end if;
-      trig.lanepri := (thit(0) and not(swap)) or (thit(1) and swap);
+      trig.lanepri := (thit(0) and not(swap)) or (thit(one) and swap);
     else
       trig.action   := taction(0);
       trig.priority := tpri(0);
@@ -10586,14 +10586,14 @@ architecture rtl of iunv is
             if v_x_trig.valid(0) = '1'  then
               trigxc.pc      := r.m.ctrl(0).pc;
               trigxc.xc_lane := '0';
-            elsif single_issue = 0 then  -- x_trig.valid(1) = '1'
-              trigxc.pc      := r.m.ctrl(1).pc;
+            elsif single_issue = 0 then  -- x_trig.valid(one) = '1'
+              trigxc.pc      := r.m.ctrl(one).pc;
               trigxc.xc_lane := '1';
             end if;
             trigxc.flush := "1" & not trigxc.xc_lane;
           else
-            if single_issue = 0 and v_x_trig.valid(1) = '1' then
-              trigxc.pc      := r.m.ctrl(1).pc;
+            if single_issue = 0 and v_x_trig.valid(one) = '1' then
+              trigxc.pc      := r.m.ctrl(one).pc;
               trigxc.xc_lane := '1';
             else -- x_trig.valid(0) = '1'
               trigxc.pc      := r.m.ctrl(0).pc;
@@ -10741,13 +10741,13 @@ architecture rtl of iunv is
           if (x_trig.valid(0) or x_ie_trig_taken(0)) = '1'  then
             dpc           := pc2xlen(r.x.ctrl(0).pc);
             trace_trig(0) := '1'; 
-          elsif single_issue = 0 then -- x_trig.valid(1) = '1'
+          elsif single_issue = 0 then -- x_trig.valid(one) = '1'
             dpc             := pc2xlen(r.x.ctrl(one).pc);
             trace_trig(one) := '1'; 
           end if;
         else
           if single_issue = 0 and
-             (x_trig.valid(1) or x_ie_trig_taken(1)) = '1' then
+             (x_trig.valid(one) or x_ie_trig_taken(one)) = '1' then
             dpc             := pc2xlen(r.x.ctrl(one).pc);
             trace_trig(one) := '1'; 
           else -- x_trig.valid(0) = '1'
@@ -10780,12 +10780,12 @@ architecture rtl of iunv is
         if r.x.swap = '0' then
           if x_trig.valid(0) = '1' then
             dpc      := pc2xlen(r.x.ctrl(0).pc);
-          elsif single_issue = 0 then  -- x_trig.valid(1) = '1'
+          elsif single_issue = 0 then  -- x_trig.valid(one) = '1'
             dpc      := pc2xlen(r.x.ctrl(one).pc);
           end if;
         else
           if single_issue = 0 and
-             x_trig.valid(1) = '1' then
+             x_trig.valid(one) = '1' then
             dpc      := pc2xlen(r.x.ctrl(one).pc);
           else -- x_trig.valid(0) = '1'
             dpc      := pc2xlen(r.x.ctrl(0).pc);
@@ -11522,7 +11522,7 @@ begin
       if r.wb.swap = '0' then
         rfi_wen12(0)      := '0';
       else
-        rfi_wen12(1)      := '0';
+        rfi_wen12(one)    := '0';
       end if;
     end if;
 
@@ -11911,12 +11911,12 @@ begin
 
 
     -- To Write Back Stage ------------------------------------------------
-    v.wb.trap_taken(0)     := '1';
+    v.wb.trap_taken(0)       := '1';
     if single_issue = 0 then
-      v.wb.trap_taken(1)   := '0';
+      v.wb.trap_taken(one)   := '0';
       if x_xc_lane_out = '1' then
-        v.wb.trap_taken(0) := '0';
-        v.wb.trap_taken(1) := '1';
+        v.wb.trap_taken(0)   := '0';
+        v.wb.trap_taken(one) := '1';
       end if;
     end if;
 
@@ -13623,7 +13623,7 @@ begin
                        rd(v, e, 0),       -- in  : rd register from RA
                        v.e.ctrl(0).rdv,   -- in  : Valid rd register from RA
                        rd(v, e, 1),       -- in  : rd register from RA
-                       v.e.ctrl(1).rdv,   -- in  : Valid rd register from RA
+                       v.e.ctrl(one).rdv, -- in  : Valid rd register from RA
                        de_lane0_csr,      -- out : CSR must be copied to lane 0
                        de_issue           -- out : Issue Flag
                        );
@@ -15209,13 +15209,13 @@ begin
     rfi.wen1            <= rfi_wen12(0);
     rfi.rdhold          <= rfi_rdhold;
     if single_issue = 0 then
-      rfi.raddr2        <= rfi_raddr12(1);
-      rfi.raddr4        <= rfi_raddr34(1);
-      rfi.ren2          <= rfi_ren12(1);
-      rfi.ren4          <= rfi_ren34(1);
-      rfi.waddr2        <= rfi_waddr12(1);
-      rfi.wdata2        <= rfi_wdata12(1);
-      rfi.wen2          <= rfi_wen12(1);
+      rfi.raddr2        <= rfi_raddr12(one);
+      rfi.raddr4        <= rfi_raddr34(one);
+      rfi.ren2          <= rfi_ren12(one);
+      rfi.ren4          <= rfi_ren34(one);
+      rfi.waddr2        <= rfi_waddr12(one);
+      rfi.wdata2        <= rfi_wdata12(one);
+      rfi.wen2          <= rfi_wen12(one);
     else
       rfi.raddr2        <= (others => '0');
       rfi.raddr4        <= (others => '0');

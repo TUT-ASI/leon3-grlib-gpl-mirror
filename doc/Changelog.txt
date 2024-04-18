@@ -1,3 +1,26 @@
+----------------------- Release 2024.1-b4292 ---------------------------
+
+2024-04-18	L2C_LITE: Fixed backend io address to provide an AMBA
+		AHB BAR that can be scanned for PnP information of the
+		bus behind the L2C_LITE.
+		Fixed the index addressing bug introduced in the
+		2024.1-b4291 release.
+
+2024-04-15	LEON5: Fixed bus access corner case where HBUSREQ was
+		deasserted too early if wbmask=0 was combined with
+		busw>32.
+		Fixed bus access corner case where HTRANS(0) would
+		remain asserted if bus grant was lost in the middle of
+		a burst fetch of a cache line. The AHBCTRL would never
+		have rearbitrated the bus in this instance since HBUSREQ
+		remained asserted, but AMBA 2.0 compliant AHB arbiters
+		are allowed to do this.
+
+2024-04-15	NOEL-V updates
+		- Fixed minor issue with instret CSR
+		- Code rework to fix tool issues with single-issue
+		  configuration
+
 ----------------------- Release 2024.1-b4291 ---------------------------
 
 2024-03-21	NOEL-V updates

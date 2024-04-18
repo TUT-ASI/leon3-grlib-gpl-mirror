@@ -189,9 +189,9 @@ architecture rtl of l2c_lite_core is
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_L2CL, 0, 1, 0),
     2 => (conv_std_logic_vector(bioarea, 12) & zero32(19 downto 0)),
-    4 => gen_pnp_bar(haddr, hmask, 2, 1, 1),
-    5 => gen_pnp_bar(ioaddr, IO_ADDR_MASK, 1, 0, 0),
-    6 => gen_pnp_bar(bioaddr, biomask, 1 , 0 , 0),
+    4 => ahb_membar(haddr, '1', '1', hmask),
+    5 => ahb_membar(ioaddr, '0', '0', IO_ADDR_MASK),
+    6 => ahb_membar(bioaddr, '0', '0', biomask),
     others => zero32
   );
 
@@ -437,7 +437,7 @@ begin
     variable writeback                    : std_ulogic;
     variable cachemiss                    : std_ulogic;
     variable way                          : integer range 0 to ways - 1;
-    variable temp_wb                      : std_logic_vector(7 downto 0);
+  
   procedure update_reg(addr : std_logic_vector(7 downto 2);
                       wr    : std_ulogic;
                       wdata : std_logic_vector;
@@ -662,7 +662,17 @@ begin
           v.hrdata := data & data & data & data;
           --synth bug
           --update_reg(r.haddr(7 downto 2), r.hwrite, hwdata(31 downto 0), v.hrdata);
+        elsif r.hmbsel(2) = '1' then
+          v.bp_acc := '1';
+          if r.hwrite = '0' then
+            v.control_state := BACKEND_READ_S;
+            v.evict.size    := conv_std_logic_vector(size_vector_to_int(r.hsize) - 1, bmrd_size'length);
+          else
+            v.control_state := DIRECT_WRITE_S;
+            v.hwdata        := ahbsi.hwdata;
+          end if;
         end if;
+        
       elsif r.reg.flush_ctrl.en = '1' then
         v.control_state   := FLUSH_S;
         v.flush.way       := (others => '0');
@@ -754,7 +764,7 @@ begin
           if (i > (c_offset - 1)) and (i < (c_offset + size_vector_to_int(r.hsize))) then
             for j in 0 to AHBDW/8 -1 loop
               if j=counter then
-                v.write_buffer(linesize * 8 - 8 * j - 1 downto linesize * 8 - 8 * (j + 1)) := hwdata(AHBDW - 8 * j - 1 downto AHBDW - 8 * (j + 1));
+                v.write_buffer(linesize * 8 - 8 * i - 1 downto linesize * 8 - 8 * (i + 1)) := hwdata(AHBDW - 8 * j - 1 downto AHBDW - 8 * (j + 1));
               end if;
             end loop;
             counter      := counter + 1;

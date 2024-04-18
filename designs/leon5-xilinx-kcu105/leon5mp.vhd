@@ -740,6 +740,8 @@ begin
             haddr    => 16#400#,
             hmask    => 16#C00#,
             ioaddr   => 16#000#,
+            bioaddr  => MEMAHB_IOADDR,
+            biomask  => 16#fff#,
             cached   => CFG_L2_MAP,
             be_dw    => AHBDW)
           port map(

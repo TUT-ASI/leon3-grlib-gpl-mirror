@@ -294,6 +294,7 @@ package devices is
   constant GAISLER_GRIOMMURV     : amba_device_type := 16#0D3#;
   constant GAISLER_SGMII_VCU118  : amba_device_type := 16#0D4#;
   constant GAISLER_APBUART_16550 : amba_device_type := 16#0D5#;
+  constant GAISLER_IOPMP         : amba_device_type := 16#0D6#;
 
 -- Sun Microsystems
 
@@ -653,7 +654,7 @@ package devices is
     GAISLER_1553TST       => "MIL-STD-1553B Test Device       ",
     GAISLER_MEMSCRUB      => "AHB Memory Scrubber             ",
     GAISLER_GRIOMMU       => "IO Memory Management Unit       ",
-    GAISLER_GRIOMMURV     => "RISCV IO Memory Management Unit ",
+    GAISLER_GRIOMMURV     => "RISC-V IO Memory Management Unit",
     GAISLER_SPW2_DMA      => "GRSPW Router DMA interface      ",
     GAISLER_SPWROUTER     => "GRSPW Router                    ",
     GAISLER_EDCLMST       => "EDCL master interface           ",
@@ -735,6 +736,7 @@ package devices is
     GAISLER_IMSIC         => "RISC-V IMSIC                    ",
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
     GAISLER_APBUART_16550 => "Generic UART 16550              ",
+    GAISLER_IOPMP         => "RISC-V IOPMP                    ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (

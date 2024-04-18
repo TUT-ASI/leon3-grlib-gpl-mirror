@@ -4049,6 +4049,14 @@ package body nvsupport is
             funct3 = I_CSRRSI or funct3 = I_CSRRCI);
   end;
 
+  function csr_access_write_only(inst : word) return boolean is
+    variable rd     : reg_t       := rd(inst);
+    variable funct3 : funct3_type := funct3(inst);
+  begin
+    -- CSRRW/CSRRWI and rd=x0, ie write-only?
+    return rd = "00000" and (funct3 = I_CSRRW or funct3 = I_CSRRWI);
+  end;
+
 -- pragma translate_off
   function is_csr(inst : word) return boolean is
     variable active : extension_type := extension_all xor config_all;
@@ -4075,8 +4083,7 @@ package body nvsupport is
     variable rd     : reg_t       := rd(inst);
     variable funct3 : funct3_type := funct3(inst);
   begin
-    -- CSRRW/CSRRWI and rd=x0, ie write-only?
-    return rd = "00000" and (funct3 = I_CSRRW or funct3 = I_CSRRWI);
+    return csr_access_write_only(inst);
   end;
 
   -- There may at some later point be other similar instructions.
@@ -5236,8 +5243,15 @@ package body nvsupport is
 
     -- If we are issuing a CSR read that reads a performance counter this cannot be
     -- issued together with a instruction that comes first in program order. 
-    if (is_csr_access(inst_in(one)) and 
+    if (is_csr_access(inst_in(one)) and not(csr_access_write_only(inst_in(one))) and
        unsigned(csr_category(csr_access_addr(inst_in(one)))(3 downto 0)) = 5)  then
+      conflict := '1';
+    end if;
+    -- If we are issuing a CSR write that writes a performance counter this cannot be
+    -- issued together with a instruction that comes later in program order or it won't
+    -- update the counter. 
+    if (is_csr_access(inst_in(0)) and not(csr_access_read_only(inst_in(0))) and
+       unsigned(csr_category(csr_access_addr(inst_in(0)))(3 downto 0)) = 5)  then
       conflict := '1';
     end if;
 

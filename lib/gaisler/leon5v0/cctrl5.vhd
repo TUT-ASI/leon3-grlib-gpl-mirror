@@ -2998,11 +2998,14 @@ begin
                 std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto log2(xbusw/8)))-1);
             end if;
             v.ahb_htrans := "10";
+          elsif r.granted='0' and r.ahb_htrans(1)='1' then
+            -- Our sequential access may have been interrupted by rearbitration
+            v.ahb_htrans(0) := '0';
           end if;
         end if;
         keepreq := '1';
-        if (v.ahb_haddr(log2(ilinesize*4)-1 downto log2(busw/8))=
-            onev(log2(ilinesize*4)-1 downto log2(busw/8))) and
+        if (v.ahb_haddr(log2(ilinesize*4)-1 downto log2(xbusw/8))=
+            onev(log2(ilinesize*4)-1 downto log2(xbusw/8))) and
           (xbusw=32 or r.ahb_hsize(1 downto 0)/="10" or v.ahb_haddr(log2(xbusw/8)-1+nbfid downto 2)=onev(log2(xbusw/8)-1+nbfid downto 2))then
           keepreq := '0';
         end if;
@@ -3099,6 +3102,9 @@ begin
                 std_logic_vector(unsigned(r.ahb_haddr(log2(LINESZMAX*4)-1 downto 2))-1);
             end if;
             v.ahb_htrans := "10";
+          elsif r.granted='0' and r.ahb_htrans(1)='1' then
+            -- Our sequential access may have been interrupted by rearbitration
+            v.ahb_htrans(0) := '0';
           end if;
         end if;
         keepreq := '1';
