@@ -1,0 +1,103 @@
+#!/usr/bin/env perl6
+
+# TODO MULTIPLE ORIGINS
+
+# Crude but works ↓
+my $url  = ‘https://www.gaisler.com/index.php/downloads/grlib’;
+my $page = run(:out, <curl -->, $url).out.slurp;
+my $line = $page.lines.grep(/｢<a href="/products/grlib/grlib-gpl｣/).head;
+
+my ($tar-link, $changelog-link) = ($line ~~ m:g/‘href="’(<-["]>+)‘"’/)»[0]».Str;
+
+run <curl --remote-name -->, ‘https://www.gaisler.com’~$changelog-link;
+run <curl --remote-name -->, ‘https://www.gaisler.com’~$tar-link, :cwd(‘snapshots’);
+
+my @snapshots = dir ‘snapshots’;
+@snapshots .= map: { die unless /‘-b’(\d+)‘.tar.gz’$ /; +$0 => $_ };
+@snapshots .= sort: *.key;
+
+my $changelog = ‘Changelog.txt’.IO.slurp ~ “\n” ~ ‘Changelog-old.txt’.IO.slurp;
+
+my @changelog-chunks = reverse $changelog.split: /<before ^^‘--’>/, :skip-empty;
+
+@changelog-chunks .= map: {
+    /\N*‘-b’(\d+)‘ --’/
+    ?? (+$0 => $_)
+    !! (--$ => $_) # some really old stuff
+}
+
+my $changelog-counter = 0;
+
+my $last-date = ‘2010-02-01’;
+
+for @snapshots {
+    note “Processing b”, .key;
+    my $archive = .value;
+    my $extracted = $archive.extension: ‘’, :2parts;
+    my $name = $extracted.basename;
+
+    my $changelog = ‘’;
+    my @hits; # to keep track of revisions that are not available
+    for @changelog-chunks[$changelog-counter..∞] -> $log {
+        last if $log.key > .key;
+        $changelog [R~]= $log.value;
+        @hits.push: @changelog-chunks.shift
+    }
+
+    my $date = ($changelog ~~ /\d\d\d\d‘-’\d\d‘-’\d\d/); # whatever we find first
+    $date  //= $last-date;
+    $date .= Str;
+    $last-date = $date;
+
+    # TODO maybe use File::Directory::Tree ?
+    if ‘repo’.IO.e.not {
+        mkdir ‘repo’;
+        run :cwd(‘repo’), <git init>
+    }
+    if run :err(Nil), :cwd(‘repo’), <git rev-parse>, $name {
+        note “$name already committed, skipping”;
+        next
+    }
+
+    rename ‘repo’, ‘old-repo’;
+
+    run <tar -xf>, $archive, ‘-C’, $extracted.parent;
+    run <cp -a>, $extracted.add(‘.’), ‘repo’;
+    die ‘Git repo in the archive’ if ‘repo/.git’.IO.e;
+    run <cp -r old-repo/.git repo>;
+    if ‘old-repo/README.md’.IO.e {
+        copy ‘old-repo/README.md’, ‘repo/README.md’
+    } else {
+        copy ‘README.md’, ‘repo/README.md’
+    }
+    run <rm -rf old-repo>;
+    run <rm -rf>, $extracted;
+
+    my @readme-entries;
+    my $main-visited = False;
+    for @hits {
+        die unless .value ~~ /^‘-’+\s+‘Release’\s+(\S+)\s+‘-’+$$/;
+        my $hit-name = “grlib-gpl-$0”;
+        if $hit-name eq $name {
+            $main-visited = True;
+            next
+        }
+        @readme-entries.push: sprintf “| % -25s|    % -8s|”, $hit-name, ‘No’;
+    }
+    @readme-entries.push: sprintf “| % -25s|    % -8s|”, $name, $main-visited ?? ‘Yes’ !! ‘Yes¹’;
+    my $readme = slurp ‘repo/README.md’;
+    die ‘Weird README’ unless $readme ~~ s/<after “--------|\n”>/{@readme-entries.reverse.join: “\n”}\n/;
+    spurt ‘repo/README.md’, $readme;
+
+    run :cwd(‘repo’), <git add -A>;
+    run :cwd(‘repo’), <git commit -m>, “$name\n\n$changelog”, “--date={$date}T00:00:00+00:00”, ‘--author=Gaisler <>’;
+
+    #run :cwd(‘repo’), <git tag -a>, $name, ‘-m’, $changelog; # annotated
+    run :cwd(‘repo’), <git tag>, $name; # lightweight
+}
+
+#$ = so run :cwd(‘repo’), <git remote set-url origin --add git@github.com:TUT-ASI/leon3-grlib-gpl-mirror.git>;
+#$ = so run :cwd(‘repo’), <git remote set-url origin --add git@gitlab.pld.ttu.ee:ATI_Processor/leon3-grlib-gpl-mirror.git>;
+
+run :cwd(‘repo’), <git push -u origin main>;
+run :cwd(‘repo’), <git push --tags>;
