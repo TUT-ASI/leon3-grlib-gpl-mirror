@@ -1,0 +1,16 @@
+version: "3.7"
+
+services:
+  automation:
+    image: postmodern.alexdaniel.org/grlib-automation:latest
+    build:
+      context: .
+    volumes:
+      - /home/grlib/data/grlib/repo:/srv/repo
+      - /home/grlib/data/grlib/snapshots:/srv/snapshots
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first

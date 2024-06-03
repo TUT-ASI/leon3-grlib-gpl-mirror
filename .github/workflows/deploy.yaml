@@ -1,0 +1,38 @@
+name: Deploy
+
+on: push
+
+jobs:
+
+  build-and-deploy:
+    name: build and deploy (automation)
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: postmodern.alexdaniel.org
+          username: 'grlib'
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: postmodern.alexdaniel.org/grlib-automation:${{ github.sha }} ${{ github.ref == 'refs/heads/automation' && ', postmodern.alexdaniel.org/grlib-automation:latest' || '' }}
+      - name: Set SSH key
+        if: github.ref == 'refs/heads/automation'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+      - name: Auth
+        if: github.ref == 'refs/heads/automation'
+        run: ssh-keyscan -H postmodern.alexdaniel.org >> ~/.ssh/known_hosts
+      - name: Deploy
+        if: github.ref == 'refs/heads/automation'
+        run: docker stack deploy --with-registry-auth -c compose.yaml grlib-automation
+        env:
+          DOCKER_HOST: ssh://grlib@postmodern.alexdaniel.org

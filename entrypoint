@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+while :; do
+  echo "Running the archiver now!"
+  ./archiver
+  sleep 1h
+done
