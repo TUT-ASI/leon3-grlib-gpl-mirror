@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -114,19 +114,14 @@ entity noelvsys is
     testoen  : in  std_ulogic := '1';
     testsig  : in  std_logic_vector(1 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
 
--- GRLIB_INTERNAL_BEGIN
-   ; 
-    -- One bit per cpu for now, cause can be 1 until more causes are added
-    nirq       : in std_logic_vector(0 to ncpu - 1) := (others => '0')
--- GRLIB_INTERNAL_END
     );
 end;
 
 architecture hier of noelvsys is
 
-  type trace_d_vector is array (0 to ncpu - 1) of std_logic_vector(1023 downto 0);
-  signal vtrace_d : trace_d_vector;
-  signal vtrace_v : std_logic_vector(0 to ncpu - 1);
+  -- type trace_d_vector is array (0 to ncpu - 1) of std_logic_vector(1023 downto 0);
+  signal vtrace_d : trace_d_vector(ncpu - 1 downto 0);
+  signal vtrace_v : std_logic_vector(ncpu - 1 downto 0);
   -- AIA configuration functions -------------------------------------
 
   function config_interrupts(cfg : integer) return integer is
@@ -783,6 +778,8 @@ begin
 
 
   old_interrupt_gen : if AIA_en = 0 generate
+    imsico <= (others => imsic_out_none);
+
     -- PLIC -----------------------------------------------------------
     grplic0 : grplic_ahb
       generic map (
@@ -815,17 +812,16 @@ begin
           eip(i).ueip           <= plic_eip(i * 4 + 2);
           eip(i).heip           <= plic_eip(i * 4 + 3);
           eip(i).hgeip          <= (others => '0'); -- Only with APLIC
+          eip(i).mtip           <= '0';
+          eip(i).msip           <= '0';
+          eip(i).ssip           <= '0';
+          eip(i).stime          <= (others => '0');
         end generate eip_gen;
   end generate old_interrupt_gen;
 
     -- nirq_zero : for i in 0 to ncpu-1 generate
     --   nirqi(i) <= (others => '0');
     -- end generate nirq_zero;
-    -- GRLIB_INTERNAL_BEGIN
-    nirq_con : for i in 0 to ncpu-1 generate
-      nirqi(i) <= nirq(i) & nirq(i) & "0000"; -- IRQ NUM 16
-    end generate;
-    -- GRLIB_INTERNAL_END
     
   
 

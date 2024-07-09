@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1017,6 +1017,8 @@ package riscv is
   constant DCAUSE_STEP          : std_logic_vector(2 downto 0) := "100";
   constant DCAUSE_RSTHALT       : std_logic_vector(2 downto 0) := "101";
   constant DCAUSE_GROUPHALT     : std_logic_vector(2 downto 0) := "110";
+  constant DCAUSE_EXTENDED      : std_logic_vector(2 downto 0) := "111";
+  constant EXTDCAUSE_CRITERROR  : std_logic_vector(2 downto 0) := "000";
 
   function rd(inst : std_logic_vector) return reg_t;
   function rs1(inst : std_logic_vector) return reg_t;

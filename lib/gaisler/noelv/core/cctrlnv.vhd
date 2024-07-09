@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ architecture rtl of cctrlnv is
   -- Incoming addresses have, at maximum, this many useful bits.
   function addr_bits return integer is
   begin
-    return maximum(va'length, pa_msb + 1);
+    return maximum(gva_msb + 1, pa_msb + 1);
   end;
 
   -- Actual physical address and page number
@@ -297,6 +297,7 @@ architecture rtl of cctrlnv is
   -- To PT lookup
   -- Virtual address or guest physical address.
   constant gva : std_logic_vector(gva_msb downto 0)  := (others => '0');
+  constant gvn : std_logic_vector(gva_msb downto 12) := (others => '0');
 
   -- From PT lookup
   -- Guest physical address or actual physical address.
@@ -659,17 +660,24 @@ architecture rtl of cctrlnv is
   end;
   subtype ctxword is std_logic_vector(context_length - 1 downto 0);
 
+  -- 1xx - V, x1x - hPT, xx1 - (v)sPT
+  -- 000  (H)U/(H)S   no SATP                  (no mapping - not used in TLB entries)
+  -- 001  (H)U/(H)S   SATP                     (stage-1 mapping only, via SATP)
+  -- With H extension
+  -- 010              HGATP                    (only used explicitly, in the actual hTLB)
+  -- 011              <impossible>             (HGATP only valid with V)
+  -- 100  VS/VU       neither VSATP nor HGATP  (no mapping - not used in TLB entries)
+  -- 101  VS/VU       VSATP                    (stage-1 mapping only, via VSATP)
+  -- 110  VS/VU       HGATP                    (stage-2 mapping only - guest physical (VA+2 bits) from IU)
+  -- 111  VS/VU       VSATP and HGATP          (2-stage mapping)
   subtype mode_t is word3;
 
   type tlbent is record
     valid    : std_ulogic;
     ctx      : ctxword;
---    -- 00 - SATP, 01 - VSATP, 10 - HGATP
-    -- 000 - S no SATP, 001 - S SATP
-    -- 100 - VS no VSATP or HGATP, 101 - VS VSATP, 110 - VS HGATP, 111 VS VSATP and HGATP
     mode     : mode_t;
     mask     : std_logic_vector(va_size_a'range);
-    vaddr    : std_logic_vector(vpn'range);
+    vaddr    : std_logic_vector(gvn'range);
     paddr    : std_logic_vector(gpn'range);
     perm     : word5;                         -- priv write/priv read/user write/user read OK
     busw     : std_ulogic;                    --   RISC-V SUXWR
@@ -831,6 +839,7 @@ architecture rtl of cctrlnv is
   type cbo_type is record
     d1type    : word3;
     d2type    : word3;
+    hold      : std_logic;
   end record;
 
   -- AMO TYPE
@@ -994,6 +1003,7 @@ architecture rtl of cctrlnv is
     iflushpend    : std_ulogic;
     dflushpend    : std_ulogic;
     slowwrpend    : std_ulogic;     -- Write cannot be done via store buffer.
+    syncbar       : std_ulogic;
     holdn         : std_ulogic;     -- 0 - inhibit progress due to handling slow operation.
     ramreload     : std_ulogic;
     stbuffull     : std_ulogic;     -- No more space in write buffer.
@@ -1170,7 +1180,7 @@ architecture rtl of cctrlnv is
     v.dtcmenp    := '0'; v.dtcmenva := '0'; v.dtcmenvc := '0'; v.dtcmperm := "0000";
     v.dtcmaddr   := (others => '0'); v.dtcmctx := (others => '0'); v.itcmwipe := '0'; v.dtcmwipe := '0';
     v.s          := as_normal; v.imisspend := '0'; v.ifailkind := "00"; v.dmisspend := '0'; v.dfailkind := "00";
-    v.iflushpend := '1'; v.dflushpend := '1'; v.slowwrpend := '0'; v.holdn := '1';
+    v.iflushpend := '1'; v.dflushpend := '1'; v.slowwrpend := '0'; v.holdn := '1'; v.syncbar := '0';
     v.ramreload  := '0';
     v.stbuffull := '0';
     v.flushwrd   := (others => '0'); v.flushwri := (others => '0'); v.regflpipe := (others => regfl_pipe_entry_zero);
@@ -1253,6 +1263,7 @@ architecture rtl of cctrlnv is
     v.amo.s4offs   := (others => '0');
     v.cbo.d1type   := (others => '0');
     v.cbo.d2type   := (others => '0');
+    v.cbo.hold     := '0';
 
     return v;
   end cctrlnv_regs_res;
@@ -1496,7 +1507,7 @@ architecture rtl of cctrlnv is
     return ok;
   end;
 
-  -- Physical addresses should have zeroes at the top, right?
+  -- Physical addresses should have zeroes at the top.
   function physical_ok(addr : std_logic_vector) return boolean is
   begin
     -- Addresses are always OK for RV32!
@@ -1505,6 +1516,17 @@ architecture rtl of cctrlnv is
     end if;
 
     return u2i(addr(addr'high downto physaddr)) = 0;
+  end;
+
+  -- Guest physical addresses should have zeroes at the top.
+  function gphysical_ok(addr : std_logic_vector) return boolean is
+  begin
+    -- Addresses are always OK for RV32!
+    if riscv_mmu = sv32 then
+      return true;
+    end if;
+
+    return u2i(addr(addr'high downto ga_msb)) = 0;
   end;
 
   -- Virtual addresses must be sign extended.
@@ -1519,10 +1541,46 @@ architecture rtl of cctrlnv is
            u2i(not addr(addr'high downto va'high)) = 0;
   end;
 
+  function get_mode(csr : nv_csr_out_type; v : std_ulogic) return mode_t is
+    -- Non-constant
+    variable mode : mode_t := (others => '0');
+  begin
+    if v = '0' then
+      mode(0) := to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.satp) /= 0);
+    elsif mmuen /= 0 and ext_h = 1 and v = '1' then
+      mode(2) := '1';
+      mode(1) := to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.hgatp) /= 0);
+      mode(0) := to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.vsatp) /= 0);
+    end if;
+
+    return mode;
+  end;
+
+  function is_v(mode : mode_t) return boolean is
+  begin
+    return is_riscv and mmuen = 1 and ext_h = 1 and mode(2) = '1';
+  end;
+
+  function is_v(mode : mode_t) return std_logic is
+  begin
+    return to_bit(is_v(mode));
+  end;
+
+  function has_hgatp(mode : mode_t) return boolean is
+  begin
+    return is_riscv and mmuen = 1 and ext_h = 1 and mode(1) = '1';
+  end;
+
+  function has_xsatp(mode : mode_t) return boolean is
+  begin
+    return is_riscv and mmuen = 1 and mode(0) = '1';
+  end;
+
   -- Unlike for RISC-V, the SPARC implementation will call this even
   -- without the MMU being "enabled", thus the checks.
   procedure tlb_lookup(x          : word2;             -- x1 - ITLB, 1x - hTLB
                        tlb        : tlbentarr;
+                       addr_ok    : boolean;           -- Top address bits OK
                        vaddr_repl : gvaddr_repl_type;  -- Copies of virtual address
                        vaddr_in   : std_logic_vector;  -- Virtual address
                        dsuaddr    : std_logic_vector;  -- Unused for RISC-V
@@ -1541,7 +1599,7 @@ architecture rtl of cctrlnv is
                        mxr        : std_logic;         -- Allow R if X
                        vmxr       : std_logic;         -- V allow R if X
                        hx         : std_logic;         -- Allow R _only_ if X
-                       mode       : std_logic_vector;  -- 1xx - V, x1x - hPT, xx1 - (v)sPT
+                       mode       : mode_t;            -- Current V and *APT setup
                        display    : boolean   := false -- Enable debug output
                        ) is
     -- Non-constant
@@ -1569,6 +1627,11 @@ architecture rtl of cctrlnv is
                             get(tlb(n).vaddr, pos, va_size(i)) = get(vaddr, pos, va_size(i)));
         pos := pos + va_size(i);
       end loop;
+      -- Check extra top two bits when guest physical address,
+      -- ie when hPT lookup or guest physical address from IU (V and hPT and not vsPT).
+      if x(1) = '1' or (is_v(mode) and has_hgatp(mode) and not has_xsatp(mode)) then
+        match := match and get(tlb(n).vaddr, pos, 2) = get(vaddr, pos, 2);
+      end if;
 
       if has_context then
         ctx_match := tlb(n).ctx = ctx;
@@ -1586,7 +1649,7 @@ architecture rtl of cctrlnv is
         end if;
       end if;
 
-      if (tlb(n).valid = '1' and ctx_match and match) or
+      if (addr_ok and tlb(n).valid = '1' and ctx_match and match) or
          (not is_riscv and (n) = 0 and enabled = '0')
       then
         if permitted(x(0), su, w, lock, tlb(n).perm,
@@ -1687,8 +1750,7 @@ begin
     function mmu_base(r : cctrlnv_regs; csr : nv_csr_out_type; mode : mode_t) return std_logic_vector is
     begin
       if is_riscv then
---        if mode = "00" then
-        if get_hi(mode) = '0' then
+        if not is_v(mode) then
           return gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.satp);
         else
           return gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.vsatp);
@@ -1699,12 +1761,14 @@ begin
     end;
 
     function hmmu_base(csr : nv_csr_out_type; gpaddr : gaddr_type) return std_logic_vector is
-      variable base : paddr_type;
+      -- Non-constant
+      variable base     : paddr_type;
+      variable base_tmp : std_logic_vector(gaisler.mmucacheconfig.pa_msb(riscv_mmu) downto 0);
     begin
       if is_riscv then
-        base := gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.hgatp)(base'range);
+        base_tmp := gaisler.mmucacheconfig.satp_base(riscv_mmu, csr.hgatp);
+        base     := base_tmp(base'range);
         -- Two extra bits of address at the top, so possibly "add" n*4k to base.
---        base := uadd(base, gpaddr(gpaddr'high downto gpaddr'high - 1) & x"000");
         set(base, 12, get_hi(gpaddr, 2));
         return base;
       else
@@ -1726,9 +1790,7 @@ begin
 -- pragma translate_on
         end if;
         if has_context then
---          if mode = "00" then
-          if get_hi(mode) = '0' then
---            ctx := gaisler.mmucacheconfig.satp_asid(riscv_mmu, csr.hgatp)(vmidlen - 1 downto 0) &
+          if not is_v(mode) then
             ctx := zerov(vmidlen - 1 downto 0) &
                    gaisler.mmucacheconfig.satp_asid(riscv_mmu, csr.satp) (asidlen - 1 downto 0);
           else
@@ -1742,85 +1804,63 @@ begin
       end if;
     end;
 
-    function get_mode(csr : nv_csr_out_type; v : std_ulogic) return mode_t is
-      -- Non-constant
-      variable mode : mode_t := (others => '0');
+    -- This will never be called for Sparc!
+    function hmmu_enabled(csr : nv_csr_out_type; v : std_ulogic) return boolean is
     begin
-      if v = '0' then
-        mode := "00" & to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.satp) /= 0);
-      elsif mmuen /= 0 and ext_h = 1 and v = '1' then
-        mode := '1' & to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.hgatp) /= 0) &
-                      to_bit(gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.vsatp) /= 0);
+      if not is_riscv or ext_h = 0 or mmuen = 0 then
+        return false;
       end if;
 
-      return mode;
+      return v = '1' and gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.hgatp) /= 0;
     end;
 
-    function hmmu_enabled(r : cctrlnv_regs; csr : nv_csr_out_type; v : std_ulogic) return std_logic is
+    -- This will never be called for Sparc!
+    function hmmu_enabled(mode : mode_t) return boolean is
+    begin
+      return is_v(mode) and has_hgatp(mode);
+    end;
+
+    -- This will never be called for Sparc!
+    function hmmu_only(mode : mode_t) return boolean is
+    begin
+      return hmmu_enabled(mode) and not has_xsatp(mode);
+    end;
+
+    -- This will never be called for RISC-V!
+    function mmu_enabled(r : cctrlnv_regs) return std_logic is
+    begin
+      if is_riscv or mmuen = 0 then
+        return '0';
+      end if;
+
+      return r.mmctrl1.e;
+    end;
+
+    -- Called from places that are common for RISC-V and Sparc
+    function mmu_enabled(r : cctrlnv_regs; mode : mode_t) return std_logic is
     begin
       if mmuen = 0 then
         return '0';
       end if;
-      if ext_h = 1 then
-        if v = '1' and gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.hgatp) /= 0 then
-          return '1';
-        else
-          return '0';
-        end if;
-      else
-        return '0';
-      end if;
-    end;
 
-    function hmmu_only(r : cctrlnv_regs; csr : nv_csr_out_type; mode : mode_t) return std_logic is
-    begin
---      if hmmu_enabled(r, csr, to_bit(mode /= "00")) = '1' then
-      if hmmu_enabled(r, csr, get_hi(mode)) = '1' then
-        if gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.vsatp) = 0 then
-          return '1';
-        else
-          return '0';
-        end if;
-      else
-        return '0';
-      end if;
-    end;
-
-    function mmu_enabled(r : cctrlnv_regs; csr : nv_csr_out_type) return std_logic is
-    begin
-      if mmuen = 0 then
-        return '0';
-      end if;
       if is_riscv then
-        -- This will never be called for RISC-V!
-        return '0';
+        if not is_v(mode) then
+          return to_bit(has_xsatp(mode));
+        else
+          return to_bit(has_xsatp(mode) or hmmu_enabled(mode));
+        end if;
       else
         return r.mmctrl1.e;
       end if;
     end;
 
-    function mmu_enabled(r : cctrlnv_regs; csr : nv_csr_out_type; mode : mode_t) return std_logic is
+    -- This will never be called for Sparc!
+    function mmu_enabled(mode : mode_t) return boolean is
     begin
-      if mmuen = 0 then
-        return '0';
-      end if;
-      if is_riscv then
---        if mode = "00" then
-        if get_hi(mode) = '0' then
-          if gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.satp) /= 0 then
-            return '1';
-          else
-            return '0';
-          end if;
-        elsif ext_h = 0 then
-          return '0';
-        elsif gaisler.mmucacheconfig.satp_mode(riscv_mmu, csr.vsatp) /= 0 then
-          return '1';
-        else
-          return hmmu_enabled(r, csr, '1');
-        end if;
+      if not is_v(mode) then
+        return has_xsatp(mode);
       else
-        return r.mmctrl1.e;
+        return has_xsatp(mode) or hmmu_enabled(mode);
       end if;
     end;
 
@@ -2413,9 +2453,9 @@ begin
         else
           match   := match or x0_addr;
           if vs then
-            match := match and get_hi(e.mode) = '1';
+            match := match and is_v(e.mode);
           else
-            match := match and get_hi(e.mode) = '0';
+            match := match and not is_v(e.mode);
           end if;
         end if;
         if not x0_vmid then
@@ -2542,6 +2582,23 @@ begin
     --------------------------------------------------------------------------
     v          := r;
     vs         := rs;
+
+    -- Clarify for GHDL (240528) that these are not latches
+    vdiagasi     := (others => '0');
+    vneedwb      := '0';
+    vneedwblock  := '0';
+    vtmp4i       := (others => '0');
+    vfoffs       := (others => '0');
+    vbubble0     := '0';
+    vstall       := '0';
+    haddr        := (others => '0');
+    fault        := false;
+    fault_access := false;
+    fault_hyper  := false;
+    part_mask    := (others => '0');
+    part         := (others => '0');
+    ok           := false;
+    entry        := tlbent_empty;
 
     done         := false;
     store_done   := false;
@@ -2718,7 +2775,7 @@ begin
     -- ICache TLB lookup
     -- Note that this is for the previous (registered) access.
     -- Note that this is done in parallel with cache fetch (registered access).
-    if is_riscv and (r.i1.m = '1' or mmu_enabled(r, csro, r.i1.mode) = '0') then
+    if is_riscv and (r.i1.m = '1' or not mmu_enabled(r.i1.mode)) then
       itlbchk         := tlbcheck_none;
       -- Some non-defaults to "fake" an MMU access
       itlbchk.hit     := '1';
@@ -2732,17 +2789,22 @@ begin
       end if;
     else
       if is_riscv then
-        iaddr_ok      := virtual_ok(r.i1.pc);
+        if hmmu_only(r.i1.mode) then
+          iaddr_ok    := gphysical_ok(r.i1.pc);
+        else
+          iaddr_ok    := virtual_ok(r.i1.pc);
+        end if;
         if addr_check_mask(4) = '0' then
           iaddr_ok    := true;
         end if;
       end if;
       -- Pass along actual r.i1.pc too, for LEON5 code equivalence.
-      tlb_lookup("01", r.itlb, r.i1pc_repl, r.i1.pc, "0", r.i1.ctx, r.i1.su, '0', '0',
-                 mmu_enabled(r, csro, r.i1.mode) and not r.i1.m, r.i1ten, '0', ici.inull, r.i1rep, '0',
+      tlb_lookup("01", r.itlb, iaddr_ok, r.i1pc_repl, r.i1.pc, "0", r.i1.ctx, r.i1.su, '0', '0',
+                 mmu_enabled(r, r.i1.mode) and not r.i1.m, r.i1ten, '0', ici.inull, r.i1rep, '0',
                  itlbchk, '0', '0', '0', '0', r.i1.mode,
                  false
                  );
+      iaddr_ok := true;  -- Not used for its original purpose any longer!
     end if;
 
     -- PMP - a separate unit is needed for cached instruction fetch!
@@ -2773,7 +2835,7 @@ begin
         end if;
       end if;
       if actual_tlb_pmp and r.i1.m = '0' and
-         mmu_enabled(r, csro, r.i1.mode) = '1' then
+         mmu_enabled(r.i1.mode) then
         pmp_xc := '0';
       end if;
       if addr_check_mask(6) = '0' then
@@ -2791,7 +2853,7 @@ begin
     if is_riscv and not iaddr_ok then
       if itlbchk.hit = '1' then
         -- Signal page/access fault
-        v.ifailkind := "1" & (r.i1.m or not mmu_enabled(r, csro, r.i1.mode));
+        v.ifailkind := "1" & (r.i1.m or not to_bit(mmu_enabled(r.i1.mode)));
       end if;
     end if;
 
@@ -3060,6 +3122,7 @@ begin
         v.i1.nostream := ici.nostream;
         v.i1.su       := ici.su;
         v.i1.m        := '0';
+        v.i1.mode     := (others => '0');
         if is_riscv then
           -- Machine, supervisor or user mode?
           v.i1.m      := ici.vms(1);
@@ -3108,7 +3171,7 @@ begin
       dtlb_lock  := r.d2lock;
     end if;
 
-    if is_riscv and (r.d1.m = '1' or mmu_enabled(r, csro, r.d1.mode) = '0') then
+    if is_riscv and (r.d1.m = '1' or not mmu_enabled(r.d1.mode)) then
       -- From tlb_lookup and dummy TLB entry.
       dtlbchk        := tlbcheck_none;
       -- Some non-defaults to "fake" an MMU access
@@ -3123,19 +3186,24 @@ begin
       end if;
     else
       if is_riscv then
-        daddr_ok     := virtual_ok(r.d1vaddr);
+        if hmmu_only(r.d1.mode) then
+          daddr_ok   := gphysical_ok(r.d1vaddr);
+        else
+          daddr_ok   := virtual_ok(r.d1vaddr);
+        end if;
         if addr_check_mask(0) = '0' then
           daddr_ok   := true;
         end if;
       end if;
       -- Pass along actual rd1vaddr too, for LEON5 code equivalence.
-      tlb_lookup("00", r.dtlb, r.d1vaddr_repl, r.d1vaddr, dci.maddress,
+      tlb_lookup("00", r.dtlb, daddr_ok, r.d1vaddr_repl, r.d1vaddr, dci.maddress,
                  mmu_ctx(r, csro, r.d1.mode), r.d1.su, dtlb_write, dtlb_lock,
-                 mmu_enabled(r, csro, r.d1.mode) and not r.d1.m, r.d1chk,
+                 mmu_enabled(r, r.d1.mode) and not r.d1.m, r.d1chk,
                  r.d1specialasi, dci.nullify, '0', dci.dsuen,
                  dtlbchk, r.d1.sum, r.d1.mxr, r.d1.vmxr, r.d1.hx, r.d1.mode,
                  true
                  );
+      daddr_ok := true;  -- Not used for its original purpose any longer!
     end if;
 
 
@@ -3244,8 +3312,7 @@ begin
                  pmp_hit,
                  pmp_entries, pmp_no_tor, pmp_g, pmp_msb, ext_smepmp);
       end if;
-      if actual_tlb_pmp and r.d1.m = '0' and
-         mmu_enabled(r, csro, r.d1.mode) = '1' then
+      if actual_tlb_pmp and r.d1.m = '0' and mmu_enabled(r.d1.mode) then
         pmp_xc := '0';
       end if;
       if addr_check_mask(2) = '0' then
@@ -3320,7 +3387,7 @@ begin
       v.d2tcmhit     := dtcmhit;
 
       if is_riscv and pmp.valid = '1' and not daddr_ok then
-        v.dfailkind := "1" & (r.d1.m or not mmu_enabled(r, csro, r.d1.mode));
+        v.dfailkind := "1" & (r.d1.m or not to_bit(mmu_enabled(r.d1.mode)));
         v.dmisspend := '1';
       elsif is_riscv and pmp.valid = '1' and pmp_xc = '1' then
         v.dfailkind := "11";
@@ -3405,7 +3472,7 @@ begin
     -- We need to check data PMP here if the TLB was just rechecked.
     if is_riscv and r.holdn = '0' and r.dtlbrecheck = '1' and r.d1ten = '1' and pmp.valid = '1' then
       if not daddr_ok then
-        v.dfailkind := "1" & (r.d1.m or not mmu_enabled(r, csro, r.d1.mode));
+        v.dfailkind := "1" & (r.d1.m or not to_bit(mmu_enabled(r.d1.mode)));
         v.dmisspend := '1';
       elsif pmp_xc = '1' then
         v.dfailkind := "11";
@@ -3515,14 +3582,6 @@ begin
     amo_snoop := '0';
     if ext_a /= 0 then
       if r.holdn = '1' then
-        if dci.eenaddr = '1' then
-          v.amo.d1type := dci.amo;
-        else
-          v.amo.d1type := (others => '0');
-        end if;
-        v.amo.d2type(5)           := r.amo.d1type(5) and (not dci.nullify);
-        v.amo.d2type(4 downto 0)  := r.amo.d1type(4 downto 0);
-
         -- AMO_LR
         if r.amo.d2type(5) = '1' and r.amo.d2type(1 downto 0) = "10" and r.d2paddrv = '1' then
           v.amo.addr     := r.d2paddr(v.amo.addr'range);
@@ -3581,6 +3640,16 @@ begin
             v.amo.d2type   := (others => '0');
           end if;
         end if;
+      end if;
+
+      if r.holdn = '1' then
+        if dci.eenaddr = '1' then
+          v.amo.d1type := dci.amo;
+        else
+          v.amo.d1type := (others => '0');
+        end if;
+        v.amo.d2type(5)           := r.amo.d1type(5) and (not dci.nullify);
+        v.amo.d2type(4 downto 0)  := r.amo.d1type(4 downto 0);
       end if;
 
       -- AMO data
@@ -3878,12 +3947,12 @@ begin
     -- still be using physical addresses.
 
     -- Set default 1:1 mapping if MMU disabled
-    if not is_riscv and mmu_enabled(r, csro) = '0' then
+    if not is_riscv and mmu_enabled(r) = '0' then
       v.dtlb(0) := tlbent_defmap;
       v.itlb(0) := tlbent_defmap;
     end if;
     -- Clear valid bits on flush or MMU disable
-    if r.tlbflush(0) = '1' or (not is_riscv and mmu_enabled(r, csro) = '0') then
+    if r.tlbflush(0) = '1' or (not is_riscv and mmu_enabled(r) = '0') then
       for x in v.dtlb'range loop
         v.dtlb(x).valid := '0';
       end loop;
@@ -4138,6 +4207,13 @@ begin
       end if;
     end if;
 
+    -- memory barrier
+    if dci.bar(1 downto 0) /= "00" and r.holdn='1' then
+      -- for now the store/load barrier is implemented as a full synchronizing
+      -- barrier for simplicity. This case may be optimized later.
+      v.syncbar := '1';
+    end if;
+
     -- Do this above FSM as it may set ramreload
     if r.imisspend = '0' and r.dmisspend  = '0' and r.slowwrpend = '0' and
        r.iflushpend = '0' and r.dflushpend = '0' and r.ramreload  = '1' then
@@ -4214,7 +4290,7 @@ begin
     v.h2tlbclr := '0';
     htlbchk := tlbcheck_none;
     if ext_h = 1 and r.h_do = '1' then
-      tlb_lookup('1' & r.h_x, r.htlb, r.h_addr_repl, r.h_addr, "0", mmu_ctx(r, csro), '0', r.h_ls, '0',
+      tlb_lookup('1' & r.h_x, r.htlb, true, r.h_addr_repl, r.h_addr, "0", mmu_ctx(r, csro), '0', r.h_ls, '0',
                  to_bit(ext_h), r.h_do, '0', '0', '0', '0',
                  htlbchk, '0', r.h_mxr, r.h_vmxr, r.h_hx, "010",
                  true
@@ -4387,6 +4463,9 @@ begin
           end if;
         --elsif v.cbo.d2type(2) = '1' then
         --  v.s := as_cbo;
+        elsif v.syncbar='1' then
+          v.syncbar := '0';
+          if r.d1chk='1' then v.ramreload := '1'; end if;
         elsif ici.parkreq = '1' then
           v.s := as_parked;
         end if;
@@ -4419,7 +4498,7 @@ begin
       -- This is the actual entrypoint into as_mmuwalk.
       when as_mmu_pt1addr_chk =>
         if mmuen = 1 and is_riscv then
-          if hmmu_enabled(r, csro, r.h_v) = '1' then
+          if hmmu_enabled(csro, r.h_v) then
             v.h_done       := '0';  -- Do not remember finished lookup any longer.
             -- OK?
             if htlbchk.hit = '1' then
@@ -4464,7 +4543,7 @@ begin
               v.h_cause := "00";   -- Back here afterwards.
 
               v.hnewent.ctx      := mmu_ctx(r, csro);
-              v.hnewent.vaddr    := r.h_addr(vpn'range);
+              v.hnewent.vaddr    := r.h_addr(gvn'range);
               v.hnewent.modified := '0';
               v.h_x              := '0';
               v.h_ls             := '0';
@@ -4579,7 +4658,7 @@ begin
             v.pmp_low   := fit0ext(mmu_data & "00", v.pmp_low);
             v.h_cause := "01";   -- Back here afterwards.
 
-            v.hnewent.vaddr    := r.h_addr(vpn'range);
+            v.hnewent.vaddr    := r.h_addr(gvn'range);
             v.hnewent.ctx      := mmu_ctx(r, csro);
             v.hnewent.modified := r.h_ls;
 
@@ -4914,7 +4993,7 @@ begin
           if is_access_i(r.mmusel) then
             v.newent.ctx      := r.i2.ctx;
             v.newent.mode     := r.i2.mode;
-            v.newent.vaddr    := r.i2.pc(vpn'range);
+            v.newent.vaddr    := r.i2.pc(gvn'range);
             v.newent.modified := '0';
             if not is_riscv then
               v.newerrclass   := "01";
@@ -4925,7 +5004,7 @@ begin
           else
             v.newent.ctx      := mmu_ctx(r, csro, r.d2.mode);
             v.newent.mode     := r.d2.mode;
-            v.newent.vaddr    := r.d2vaddr(vpn'range);
+            v.newent.vaddr    := r.d2vaddr(gvn'range);
             v.newent.modified := to_bit(is_access_w(r.mmusel));
             if not is_riscv then
               v.newerrclass   := "10";
@@ -4999,8 +5078,8 @@ begin
                 v.s := as_rdasi2;
 
               -- Not valid?
-              elsif not ((hmmu_enabled(r, csro, r.h_v) = '0' and is_valid_pte(rdb64, r.newent.mask, pa_msb + 1)) or
-                         (hmmu_enabled(r, csro, r.h_v) = '1' and is_valid_pte(rdb64, r.newent.mask, gpa_msb + 1))) then
+              elsif not ((not hmmu_enabled(csro, r.h_v) and is_valid_pte(rdb64, r.newent.mask, pa_msb + 1)) or
+                         (    hmmu_enabled(csro, r.h_v) and is_valid_pte(rdb64, r.newent.mask, gpa_msb + 1))) then
                 v.s           := as_mmuwalk_pterr;
                 if not is_riscv then
                   v.mmuerr.fav  := '1';
@@ -5030,7 +5109,7 @@ begin
                 fault        := false;
                 fault_access := false;
                 fault_hyper  := false;
-                if hmmu_enabled(r, csro, r.h_v) = '1' then
+                if hmmu_enabled(csro, r.h_v) then
                   -- Writeback permission according to hypervisor TLB, and not always fault?
                   if csro.mmu_h_adfault = '0' then
                     if r.h_w = '1' then
@@ -5113,7 +5192,7 @@ begin
               else
 
                 -- Check PTE range with hypervisor page tables, if applicable.
-                if hmmu_enabled(r, csro, r.h_v) = '1' then
+                if hmmu_enabled(csro, r.h_v) then
                   if is_access_i(r.mmusel) then
                     v.h_addr := fit0ext(v.newent.paddr & x"000", v.h_addr);
                     virtual2physical(r.i2.pc, v.newent.mask, v.h_addr);
@@ -5185,7 +5264,7 @@ begin
               elsif is_riscv then
                 -- This is needed to split the PMP dependancy chain.
                 -- Also enables hypervisor guest translation to take place.
-                if hmmu_enabled(r, csro, r.h_v) = '1' then
+                if hmmu_enabled(csro, r.h_v) then
                   v.h_do     := '1';
                   v.h_x      := '0';
                   v.h_ls     := '0';
@@ -5845,7 +5924,7 @@ begin
 
           if done then
             -- Check PTE range with hypervisor page tables, if applicable.
-            if hmmu_enabled(r, csro, r.h_v) = '1' then
+            if hmmu_enabled(csro, r.h_v) then
                 if is_access_i(r.mmusel) then
                   v.h_addr := fit0ext(r.newent.paddr & x"000", v.h_addr);
                   virtual2physical(r.i2.pc, r.newent.mask, v.h_addr);
@@ -6347,7 +6426,7 @@ begin
               else
                 -- Set top data bits as not checking sTLB address, ASID, VMID, hTLB address.
                 if r.d2size = "00" then                         -- sfence.vma
-                  if ext_h = 1 and get_hi(r.d2.mode) = '1' then
+                  if ext_h = 1 and is_v(r.d2.mode) then
                     set_hi(v.d2data, r.d2.su & r.d2.m & "01");  --  Check current VMID when vs.
                     set(v.d2data, asidlen, get(mmu_ctx(r, csro), asidlen, vmidlen));
                   else
@@ -6443,13 +6522,8 @@ begin
                   -- Use low part from 0x2f ASI for VMID/ASID.
                   v.newent.ctx       := get_lo(r.dregval, v.newent.ctx'length);
 
-                  v.newent.vaddr     := r.d2vaddr(vpn'range);
+                  v.newent.vaddr     := r.d2vaddr(gvn'range);
                   v.newent.paddr     := d64(v.newent.paddr'range);
-                  -- For hTLB, two extra "virtual" address bits are needed, which
-                  -- cannot be passed the normal way.
-                  if ext_h = 1 and r.d2vaddr(10) = '1' then
-                    set_hi(v.newent.vaddr, r.d2vaddr(9) & r.d2vaddr(11));
-                  end if;
 
                   v.newent.valid     := d64(rv_pte_v);
                   v.newent.perm      := d64(rv_pte_pbmt'low - 1) & d64(rv_pte_u downto rv_pte_r);
@@ -7170,6 +7244,7 @@ begin
           elsif r.amo.d2type(1 downto 0) = "11" then -- SC
             v.amo.d2type    := (others => '0');
             v.amo.reserved  := '0';
+            odco.way        := (others => '0');
             odco.mds        := '0';
             odco.data(0)    := (others => '0');
             -- Cancel SC: if valid, need to invalidate reservation
@@ -7231,6 +7306,7 @@ begin
               v.cbo.d2type(2) := '0';
               v.s           := as_normal;
               v.slowwrpend  := '0';
+              v.cbo.hold   := '1';
             end if;
           end if;
         else
@@ -7306,14 +7382,14 @@ begin
             v.h2tlbid     := uadd(r.h2tlbid, 1);
           end if;
           if r.itlb(u2i(r.itlbprobeid)).valid = '1' then
-            if flushmatch(false, get_hi(r.d2.mode) = '1',
+            if flushmatch(false, is_v(r.d2.mode),
                           r.itlb(u2i(r.itlbprobeid)), r.d2vaddr, r.d2data) then
               v.itlb(u2i(r.itlbprobeid)).valid := '0';
               v.perf(13) := '1';
             end if;
           end if;
           if r.dtlb(u2i(r.d2tlbid)).valid = '1' then
-            if flushmatch(false, get_hi(r.d2.mode) = '1',
+            if flushmatch(false, is_v(r.d2.mode),
                           r.dtlb(u2i(r.d2tlbid)), r.d2vaddr, r.d2data) then
               v.dtlb(u2i(r.d2tlbid)).valid := '0';
               v.perf(14) := '1';
@@ -7445,6 +7521,8 @@ begin
 
       when as_start_walk =>
        if mmuen = 1 and walk_state then
+        iaddr_ok  := true;
+        daddr_ok  := true;
         -- Ensure PTE writes get snooped
         if not is_access_asi_walk(r.mmusel) then
           v.ahb.snoopmask := (others => '0');
@@ -7478,13 +7556,14 @@ begin
           when access_i =>
             mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.i2.mode)(gpn'range);
             haddr                                   := pt_addr(mmu_data, v.newent.mask, r.i2.pc, "00");
---            v.h_v               := to_bit(r.i2.mode /= "00");
-            v.h_v               := get_hi(r.i2.mode);
+            v.h_v               := is_v(r.i2.mode);
+            iaddr_ok            := virtual_ok(r.i2.pc);
             -- Actually hypervisor but no supervisor page tables?
-            if hmmu_only(r, csro, r.i2.mode) = '1' then
+            if hmmu_only(r.i2.mode) then
+              iaddr_ok          := gphysical_ok(r.i2.pc);
               v.newent.ctx      := r.i2.ctx;
               v.newent.mode     := r.i2.mode;
-              v.newent.vaddr    := r.i2.pc(vpn'range);
+              v.newent.vaddr    := r.i2.pc(gvn'range);
               v.mmuerr.at_ls    := '0';        -- Load/Execute
               v.mmuerr.at_id    := '1';        -- Instruction space
               v.mmuerr.at_su    := r.i2.su;
@@ -7496,13 +7575,14 @@ begin
           when access_r | access_asi_walk =>
             mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.d2.mode)(gpn'range);
             haddr                                   := pt_addr(mmu_data, v.newent.mask, r.d2vaddr, "00");
---            v.h_v               := to_bit(r.d2.mode /= "00");
-            v.h_v               := get_hi(r.d2.mode);
+            v.h_v               := is_v(r.d2.mode);
+            daddr_ok            := virtual_ok(r.d2vaddr);
             -- Actually hypervisor but no supervisor page tables?
-            if hmmu_only(r, csro, r.d2.mode) = '1' then
+            if hmmu_only(r.d2.mode) then
+              daddr_ok          := gphysical_ok(r.d2vaddr);
               v.newent.ctx      := mmu_ctx(r, csro, r.d2.mode);
               v.newent.mode     := r.d2.mode;
-              v.newent.vaddr    := r.d2vaddr(vpn'range);
+              v.newent.vaddr    := r.d2vaddr(gvn'range);
               v.mmuerr.at_ls    := to_bit(is_access_w(r.mmusel));
               v.mmuerr.at_id    := '0';
               v.mmuerr.at_su    := r.d2.su;
@@ -7520,12 +7600,13 @@ begin
           when others =>
             mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.d2.mode)(gpn'range);
             haddr                                   := pt_addr(mmu_data, v.newent.mask, r.d2vaddr, "00");
---            v.h_v               := to_bit(r.d2.mode /= "00");
-            v.h_v               := get_hi(r.d2.mode);
+            v.h_v               := is_v(r.d2.mode);
+            daddr_ok            := virtual_ok(r.d2vaddr);
             -- Actually hypervisor but no supervisor page tables?
-            if hmmu_only(r, csro, r.d2.mode) = '1' then
+            if hmmu_only(r.d2.mode) then
+              daddr_ok          := gphysical_ok(r.d2vaddr);
               v.newent.ctx      := mmu_ctx(r, csro, r.d2.mode);
-              v.newent.vaddr    := r.d2vaddr(vpn'range);
+              v.newent.vaddr    := r.d2vaddr(gvn'range);
               v.newent.mode     := r.d2.mode;
               v.mmuerr.at_ls    := '1';
               v.mmuerr.at_id    := '0';
@@ -7537,6 +7618,13 @@ begin
             end if;
           end case;
 
+          if addr_check_mask(4) = '0' then
+            iaddr_ok := true;
+          end if;
+          if addr_check_mask(0) = '0' then
+            daddr_ok := true;
+          end if;
+
           v.ahb.haddr := haddr(v.ahb.haddr'range);
           if ext_h = 1 then
             v.h_addr  := haddr(v.h_addr'range);
@@ -7544,16 +7632,16 @@ begin
           v.pmp_low   := fit0ext(mmu_data & "00", v.pmp_low);
 
           -- First level page table accessibility
-          if hmmu_enabled(r, csro, v.h_v) = '1' then
-            v.h_do                         := '1';
-            v.h_x                          := '0';
-            v.h_ls                         := '0';
+          if hmmu_enabled(csro, v.h_v) then
+            v.h_do            := '1';
+            v.h_x             := '0';
+            v.h_ls            := '0';
             -- Possible L1 PT read fault due to L2 PT.
             -- Instruction or data access.
-            v.itypehyper                 := v.h_x       & '0';
-            v.dtypehyper                 := (not v.h_x) & '0';
+            v.itypehyper      := v.h_x       & '0';
+            v.dtypehyper      := (not v.h_x) & '0';
           elsif actual_tlb_pmp then
-            v.pmp_do                       := '1';
+            v.pmp_do          := '1';
           end if;
 
           -- Prepare for second TLB level.
@@ -7571,8 +7659,16 @@ begin
             v.h_x             := v.mmuerr.at_id;
             -- Possible access fault due to L2 PT.
             -- Instruction or data access.
-            v.itypehyper    := '0' & v.h_x;
-            v.dtypehyper    := '0' & not v.h_x;
+            v.itypehyper      := '0' & v.h_x;
+            v.dtypehyper      := '0' & not v.h_x;
+            if not iaddr_ok or not daddr_ok then
+              v.s := as_hmmuwalk_pterr;
+            else
+            end if;
+          else
+            if not iaddr_ok or not daddr_ok then
+              v.s := as_mmuwalk_pterr;
+            end if;
           end if;
         end if;
        else
@@ -7590,6 +7686,8 @@ begin
       do_access := false;  -- Cannot really be true if we get here!
       v.s := as_start_walk;
     else
+      iaddr_ok  := true;
+      daddr_ok  := true;
       do_access := false;  -- Cannot really be true if we get here!
       -- Ensure PTE writes get snooped
       if not is_access_asi_walk(r.mmusel) then
@@ -7624,13 +7722,14 @@ begin
         when access_i =>
           mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, v.i2.mode)(gpn'range);
           haddr                                   := pt_addr(mmu_data, v.newent.mask, v.i2.pc, "00");
---          v.h_v               := to_bit(v.i2.mode /= "00");
-          v.h_v               := get_hi(v.i2.mode);
+          v.h_v               := is_v(v.i2.mode);
+          iaddr_ok            := virtual_ok(v.i2.pc);
           -- Actually hypervisor but no supervisor page tables?
-          if hmmu_only(r, csro, v.i2.mode) = '1' then
+          if hmmu_only(v.i2.mode) then
+            iaddr_ok          := gphysical_ok(v.i2.pc);
             v.newent.ctx      := v.i2.ctx;
             v.newent.mode     := v.i2.mode;
-            v.newent.vaddr    := v.i2.pc(vpn'range);
+            v.newent.vaddr    := v.i2.pc(gvn'range);
             v.mmuerr.at_ls    := '0';        -- Load/Execute
             v.mmuerr.at_id    := '1';        -- Instruction space
             v.mmuerr.at_su    := r.i2.su;
@@ -7642,13 +7741,14 @@ begin
         when access_r | access_asi_walk =>
           mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, v.d2.mode)(gpn'range);
           haddr                                   := pt_addr(mmu_data, v.newent.mask, v.d2vaddr, "00");
---          v.h_v               := to_bit(v.d2.mode /= "00");
-          v.h_v               := get_hi(v.d2.mode);
+          v.h_v               := is_v(v.d2.mode);
+          daddr_ok            := virtual_ok(v.d2vaddr);
           -- Actually hypervisor but no supervisor page tables?
-          if hmmu_only(r, csro, v.d2.mode) = '1' then
+          if hmmu_only(v.d2.mode) then
+            daddr_ok          := gphysical_ok(v.d2vaddr);
             v.newent.ctx      := mmu_ctx(r, csro, v.d2.mode);
             v.newent.mode     := v.d2.mode;
-            v.newent.vaddr    := v.d2vaddr(vpn'range);
+            v.newent.vaddr    := v.d2vaddr(gvn'range);
             v.mmuerr.at_ls    := to_bit(is_access_w(r.mmusel));
             v.mmuerr.at_id    := '0';
             v.mmuerr.at_su    := v.d2.su;
@@ -7666,12 +7766,13 @@ begin
         when others =>
           mmu_data(gpn'length + 10 - 1 downto 10) := mmu_base(r, csro, r.d2.mode)(gpn'range);
           haddr                                   := pt_addr(mmu_data, v.newent.mask, r.d2vaddr, "00");
---          v.h_v               := to_bit(r.d2.mode /= "00");
-          v.h_v               := get_hi(r.d2.mode);
+          v.h_v               := is_v(r.d2.mode);
+          daddr_ok            := virtual_ok(r.d2vaddr);
           -- Actually hypervisor but no supervisor page tables?
-          if hmmu_only(r, csro, r.d2.mode) = '1' then
+          if hmmu_only(r.d2.mode) then
+            daddr_ok          := gphysical_ok(r.d2vaddr);
             v.newent.ctx      := mmu_ctx(r, csro, r.d2.mode);
-            v.newent.vaddr    := r.d2vaddr(vpn'range);
+            v.newent.vaddr    := r.d2vaddr(gvn'range);
             v.newent.mode     := r.d2.mode;
             v.mmuerr.at_ls    := '1';
             v.mmuerr.at_id    := '0';
@@ -7683,6 +7784,13 @@ begin
           end if;
         end case;
 
+        if addr_check_mask(4) = '0' then
+          iaddr_ok := true;
+        end if;
+        if addr_check_mask(0) = '0' then
+          daddr_ok := true;
+        end if;
+
         v.ahb.haddr := haddr(v.ahb.haddr'range);
         if ext_h = 1 then
           v.h_addr  := haddr(v.h_addr'range);
@@ -7690,16 +7798,16 @@ begin
         v.pmp_low   := fit0ext(mmu_data & "00", v.pmp_low);
 
         -- First level page table accessibility
-        if hmmu_enabled(r, csro, v.h_v) = '1' then
-          v.h_do                         := '1';
-          v.h_x                          := '0';
-          v.h_ls                         := '0';
+        if hmmu_enabled(csro, v.h_v) then
+          v.h_do            := '1';
+          v.h_x             := '0';
+          v.h_ls            := '0';
           -- Possible L1 PT read fault due to L2 PT.
           -- Instruction or data access.
-          v.itypehyper                 := v.h_x       & '0';
-          v.dtypehyper                 := (not v.h_x) & '0';
+          v.itypehyper      := v.h_x       & '0';
+          v.dtypehyper      := (not v.h_x) & '0';
         elsif actual_tlb_pmp then
-          v.pmp_do                       := '1';
+          v.pmp_do          := '1';
         end if;
 
         -- Prepare for second TLB level.
@@ -7717,8 +7825,16 @@ begin
           v.h_x             := v.mmuerr.at_id;
           -- Possible access fault due to L2 PT.
           -- Instruction or data access.
-          v.itypehyper    := '0' & v.h_x;
-          v.dtypehyper    := '0' & not v.h_x;
+          v.itypehyper      := '0' & v.h_x;
+          v.dtypehyper      := '0' & not v.h_x;
+          if not iaddr_ok or not daddr_ok then
+            v.s := as_hmmuwalk_pterr;
+          else
+          end if;
+        else
+          if not iaddr_ok or not daddr_ok then
+            v.s := as_mmuwalk_pterr;
+          end if;
         end if;
       end if;
     end if;
@@ -7766,6 +7882,11 @@ begin
       v.amo.data := odco.data(u2i(odco.way));
     end if;
 
+    -- CBO: extend hold until tag is updated
+    if rs.dtwrite = '0' and r.s /= as_cbo then
+      v.cbo.hold := '0';
+    end if;
+
     if v.itcmwipe = '1' or v.dtcmwipe = '1' then
       v.itcmenp  := '0';
       v.itcmenva := '0';
@@ -7792,8 +7913,8 @@ begin
     v.holdn := '1';
     if v.imisspend  = '1' or v.dmisspend  = '1' or v.slowwrpend = '1' or
        v.iflushpend = '1' or v.dflushpend = '1' or v.ramreload  = '1' or
-       v.stbuffull  = '1' or freeze = '1' or
-       v.amo.hold = '1' then
+       v.stbuffull  = '1' or v.syncbar='1' or freeze = '1' or
+       v.amo.hold = '1' or v.cbo.hold = '1' then
       v.holdn := '0';
     end if;
 
@@ -7926,6 +8047,7 @@ begin
         v.iflushpend     := RRES.iflushpend;
         v.dflushpend     := RRES.dflushpend;
         v.slowwrpend     := RRES.slowwrpend;
+        v.syncbar        := RRES.syncbar;
         v.irdbufen       := RRES.irdbufen;
         v.holdn          := RRES.holdn;
         v.ahb.hbusreq    := RRES.ahb.hbusreq;
@@ -7962,6 +8084,7 @@ begin
         -- Cache block Operations
         v.cbo.d1type     := RRES.cbo.d1type;
         v.cbo.d2type     := RRES.cbo.d2type;
+        v.cbo.hold       := RRES.cbo.hold;
         -- RISC-V does not use a default TLB, so must invalidate.
         if is_riscv then
           for x in v.itlb'range loop

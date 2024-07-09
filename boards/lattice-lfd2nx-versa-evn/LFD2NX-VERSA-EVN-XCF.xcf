@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE		ispXCF	SYSTEM	"IspXCF.dtd" >
+<ispXCF version="R2.1">
+	<Comment></Comment>
+	<Chain>
+		<Comm>JTAG2SPI</Comm>
+		<Device>
+			<SelectedProg value="TRUE"/>
+			<Pos>1</Pos>
+			<Vendor>Lattice</Vendor>
+			<Family>LIFCL</Family>
+			<Name>LIFCL-40</Name>
+			<Package>All</Package>
+			<Bypass>
+				<InstrLen>8</InstrLen>
+				<InstrVal>11111111</InstrVal>
+				<BScanLen>1</BScanLen>
+				<BScanVal>0</BScanVal>
+			</Bypass>
+			<File>../earlyIO_heartbeat_impl_1.bit</File>
+			<FileTime>01/22/21 20:42:32</FileTime>
+			<MemoryType>External SPI Flash Memory (SPI FLASH)</MemoryType>
+			<Operation>Erase,Program,Verify</Operation>
+			<Option>
+				<SVFVendor>JTAG STANDARD</SVFVendor>
+				<Usercode>0x00000000</Usercode>
+				<AccessMode>Direct Programming</AccessMode>
+			</Option>
+			<FPGALoader>
+			<CPLDDevice>
+				<Device>
+					<Pos>1</Pos>
+					<Vendor>Lattice</Vendor>
+					<Family>LIFCL</Family>
+					<Name>LIFCL-40</Name>
+					<IDCode>0x110f1043</IDCode>
+					<Package>All</Package>
+					<PON>LIFCL-40</PON>
+					<Bypass>
+						<InstrLen>8</InstrLen>
+						<InstrVal>11111111</InstrVal>
+						<BScanLen>1</BScanLen>
+						<BScanVal>0</BScanVal>
+					</Bypass>
+					<MaskFile>C:/lscc/programmer/radiant/2.2/data/vmdata/database\Jedi\jedi_40.msk</MaskFile>
+					<MemoryType>Static Random Access Memory (SRAM)</MemoryType>
+					<Operation>Refresh Verify ID</Operation>
+					<Option>
+						<SVFVendor>JTAG STANDARD</SVFVendor>
+						<IOState>HighZ</IOState>
+						<PreloadLength>362</PreloadLength>
+						<IOVectorData>0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF</IOVectorData>
+						<AccessMode>Direct Programming</AccessMode>
+					</Option>
+				</Device>
+			</CPLDDevice>
+			<FlashDevice>
+				<Device>
+					<Pos>1</Pos>
+					<Vendor>Macronix</Vendor>
+					<Family>SPI Serial Flash</Family>
+					<Name>MX25L12833F</Name>
+					<IDCode>0x18</IDCode>
+					<Package>8-pin SOP</Package>
+					<Operation>Erase,Program,Verify</Operation>
+					<File>../earlyIO_heartbeat_impl_1.bit</File>
+					<AddressBase>0x00000000</AddressBase>
+					<EndAddress>0x000C0000</EndAddress>
+					<DeviceSize>128</DeviceSize>
+					<DataSize>809164</DataSize>
+					<NumberOfDevices>1</NumberOfDevices>
+					<ReInitialize value="FALSE"/>
+				</Device>
+			</FlashDevice>
+			<FPGADevice>
+				<Device>
+					<Pos>1</Pos>
+					<Name></Name>
+					<File>C:/Users/sliu1/Documents/PCB_Design/CLNX/CrossLink-NX Eval Board/Test Procedure/earlyIO_heartbeat_impl_1.bit</File>
+					<LocalChainList>
+						<LocalDevice index="-99"
+							name="Unknown"
+							file="C:/Users/sliu1/Documents/PCB_Design/CLNX/CrossLink-NX Eval Board/Test Procedure/earlyIO_heartbeat_impl_1.bit"/>
+					</LocalChainList>
+					<Option>
+						<SVFVendor>JTAG STANDARD</SVFVendor>
+					</Option>
+				</Device>
+			</FPGADevice>
+			</FPGALoader>
+		</Device>
+	</Chain>
+	<ProjectOptions>
+		<Program>SEQUENTIAL</Program>
+		<Process>ENTIRED CHAIN</Process>
+		<OperationOverride>No Override</OperationOverride>
+		<StartTAP>TLR</StartTAP>
+		<EndTAP>TLR</EndTAP>
+		<DisableCheckBoard value="TRUE"/>
+		<VerifyUsercode value="FALSE"/>
+		<TCKDelay>3</TCKDelay>
+	</ProjectOptions>
+	<CableOptions>
+		<CableName>USB2</CableName>
+		<PortAdd>FTUSB-0</PortAdd>
+		<USBID>Lattice CrossLink-NX Eval Board A Location 0000 Serial FT4IZEGLA</USBID>
+	</CableOptions>
+</ispXCF>

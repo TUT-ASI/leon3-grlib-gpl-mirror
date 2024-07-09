@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ use gaisler.noelvint.nv_ras_out_none;
 
 package nvsupport is
 
-  constant FUSELBITS   : integer := 12;
+  constant FUSELBITS   : integer := 13;
   subtype  fuseltype  is std_logic_vector(FUSELBITS - 1 downto 0);
 
   subtype  category_t is std_logic_vector(10 downto 0);
@@ -226,6 +226,8 @@ package nvsupport is
 
   type csr_dcsr_type is record
     xdebugver   : word4;
+    extcause    : word3;
+    cetrig      : std_ulogic;
     ebreakm     : std_ulogic;
     ebreaks     : std_ulogic;
     ebreaku     : std_ulogic;
@@ -244,6 +246,8 @@ package nvsupport is
 
   constant csr_dcsr_rst : csr_dcsr_type := (
     xdebugver   => "0100",
+    extcause    => "000",
+    cetrig      => '0',
     ebreakm     => '0',
     ebreaks     => '0',
     ebreaku     => '0',
@@ -308,19 +312,20 @@ package nvsupport is
     );
 
 
-  constant HWPERFMONITORS       : integer := 29;
+  constant HWPERFMONITORS    : integer := 29;
 
   -- Set of counters with advanced event filtering (AND of multiple events)
-  constant MHPCOUNT_FIL         : std_logic_vector (HWPERFMONITORS + 3 - 1 downto 0) := (others => '1');
+  constant MHPCOUNT_FIL      : std_logic_vector(HWPERFMONITORS + 3 - 1 downto 0) := (others => '1');
   -- Set number of events Classes
-  constant MHPEVENT_C         : integer:= 16;
+  constant MHPEVENT_C        : integer := 16;
   -- Set maximum number of Events in each Class
-  constant MHPEVENT_EC       : integer:= 32;
-  -- Set the pourpouse of each event class
-  constant PIPELINE_EV_0     : integer:= 0;
-  constant CACHETLB_EV_0     : integer:= 1;
-  constant FPU_EV_0          : integer:= 2;
-  constant DBG_EV            : integer:= MHPEVENT_C-1;
+  constant MHPEVENT_EC       : integer := 32;
+  -- Set the purpose of each event class
+  constant PIPELINE_EV_0     : integer := 0;
+  constant CACHETLB_EV_0     : integer := 1;
+  constant FPU_EV_0          : integer := 2;
+  constant DBG_EV            : integer := MHPEVENT_C - 1;
+  subtype events_type is std_logic_vector(MHPEVENT_EC - 1 downto 0);
   -- 0-2 of hpmcounter_type and hpmevent_vec are not used!
   subtype hpmcounter_type is word64_arr(0 to HWPERFMONITORS + 3 - 1);
   type hpmevent_type is record
@@ -330,24 +335,26 @@ package nvsupport is
     uinh     : std_ulogic;
     vsinh    : std_ulogic;
     vuinh    : std_ulogic;
-    class    : std_logic_vector(log2(MHPEVENT_C)-1 downto 0); -- Class  Event selector
-    events   : std_logic_vector(MHPEVENT_EC-1 downto 0); -- Class  Event selector
+    class    : std_logic_vector(log2(MHPEVENT_C) - 1 downto 0);  -- Class  Event selector
+    events   : events_type;                                      -- Class  Event selector
   end record ;
 
   constant hpmevent_none : hpmevent_type := ('0', '0', '0', '0', '0', '0', (others => '0'), (others => '0'));
 
   type hpmevent_vec is array (0 to HWPERFMONITORS + 3 - 1) of hpmevent_type;
   -- Define event array type
-  type evt_type is array (MHPEVENT_C-1 downto 0) of std_logic_vector (MHPEVENT_EC-1 downto 0);
+  type evt_type is array (MHPEVENT_C - 1 downto 0) of events_type;
   constant evt_none_type : evt_type := ((others => (others => '0')));
-  function filter_hpmevent (hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic;
+  function filter_hpmevent(hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic;
 
   -- CSR Type -----------------------------------------------------------------
   type csr_status_type is record
+    mdt         : std_ulogic; -- Added by Smdbltrp extension
     mbe         : std_ulogic;
     sbe         : std_ulogic;
     sxl         : word2;
     uxl         : word2;
+    sdt         : std_ulogic; -- Added by Ssdbltrp extension
     tsr         : std_ulogic;
     tw          : std_ulogic;
     tvm         : std_ulogic;
@@ -371,10 +378,12 @@ package nvsupport is
   end record;
 
   constant csr_status_rst : csr_status_type := (
+    mdt         => '1',
     mbe         => '0',
     sbe         => '0',
     sxl         => "10",
     uxl         => "10",
+    sdt         => '0',
     tsr         => '0',
     tw          => '0',
     tvm         => '0',
@@ -450,6 +459,7 @@ package nvsupport is
   type csr_envcfg_type is record
     stce   : std_ulogic;
     pbmte  : std_ulogic;
+    dte    : std_ulogic;
     cbze   : std_ulogic;
     cbcfe  : std_ulogic;
     cbie   : word2;
@@ -458,6 +468,7 @@ package nvsupport is
   constant csr_envcfg_rst : csr_envcfg_type := (
     stce   => '0',
     pbmte  => '0',
+    dte    => '0',
     cbze   => '0',
     cbcfe  => '0',
     cbie   => (others => '0'),
@@ -551,10 +562,6 @@ package nvsupport is
     hviprio2    : wordx;
     vstopei     : wordx;
     vstopi      : wordx;
-    -- Registers to interface with IMSIC
-    vsirego     : wordx;
-    vstopei_w   : std_ulogic;
-    vsireg_w    : std_ulogic;
     -- Supervisor Trap Setup
     stvec       : wordx;
     scounteren  : word;
@@ -571,10 +578,6 @@ package nvsupport is
     -- Supervisor AIA (Smaia or Ssaia)
     stopei      : wordx;
     stopi       : wordx;
-    -- Registers to interface with IMSIC
-    sirego      : wordx;
-    stopei_w    : std_ulogic;
-    sireg_w     : std_ulogic;
 
     -- Supervisor Protection and Translation
     satp        : wordx;
@@ -609,10 +612,6 @@ package nvsupport is
     mtopi       : wordx;
     mvien       : wordx;
     mvip        : wordx;
-    -- Registers to interface with IMSIC
-    mirego      : wordx;
-    mtopei_w    : std_ulogic;
-    mireg_w     : std_ulogic;
 
     -- Machine Trap Handling added by Hypervisor extension
     mtval2      : wordx;
@@ -690,9 +689,6 @@ package nvsupport is
     hviprio2    => zerox,
     vstopei     => zerox,
     vstopi      => zerox,
-    vsirego     => zerox,
-    vstopei_w   => '0',
-    vsireg_w    => '0',
     stvec       => zerox,
     scounteren  => zerow,
     senvcfg     => csr_envcfg_rst,
@@ -705,9 +701,6 @@ package nvsupport is
     sireg       => zerox,
     stopei      => zerox,
     stopi       => zerox,
-    sirego      => zerox,
-    stopei_w    => '0',
-    sireg_w     => '0',
     satp        => zerox,
     mstatus     => csr_status_rst,
     medeleg     => zerox,
@@ -734,9 +727,6 @@ package nvsupport is
     mtopi       => zerox,
     mvien       => zerox,
     mvip        => zerox,
-    mirego      => zerox,
-    mtopei_w    => '0',
-    mireg_w     => '0',
     mtval2      => zerox,
     mtinst      => zerox,
     menvcfg     => csr_envcfg_rst,
@@ -963,6 +953,7 @@ package nvsupport is
   function is_hsv(inst : word) return boolean;
   function is_hlsv(inst : word) return boolean;
   function is_fence_i(inst : word) return boolean;
+  function is_fence(inst : word) return boolean;
   function is_diag(active : extension_type; inst : word) return boolean;
   function is_diag_store(inst : word) return boolean;
   function is_csr_access(inst : word) return boolean;
@@ -994,7 +985,12 @@ package nvsupport is
                                 pc     : std_logic_vector) return boolean;
 
   function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
-                  cfg : pmpcfg_vec_type; n : natural) return word8;
+                  cfg : pmpcfg_vec_type; n : natural; bit : integer
+                  ) return std_logic;
+  function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
+                  cfg : pmpcfg_vec_type; n : natural;
+                  start : integer; bits : integer
+                  ) return std_logic_vector;
   function pmpcfg(cfg : pmpcfg_vec_type; first : integer; last : integer) return wordx;
 
   function pc_valid(
@@ -1060,6 +1056,7 @@ package nvsupport is
   constant XC_INST_INST_PAGE_FAULT      : cause_type;
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type;
   constant XC_INST_STORE_PAGE_FAULT     : cause_type;
+  constant XC_INST_DOUBLE_TRAP          : cause_type;
   constant XC_INST_SOFTWARE_CHECK       : cause_type;
   constant XC_INST_INST_G_PAGE_FAULT    : cause_type;
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type;
@@ -1374,18 +1371,23 @@ package nvsupport is
 
   function to_vsstatus(status : csr_status_type
                       ) return wordx;
-  function to_vsstatus(wdata : wordx
+  function to_vsstatus(wdata       : wordx;
+                       ssdbltrp_en : std_ulogic
                       ) return csr_status_type;
 
   function to_mstatus(status : csr_status_type) return wordx;
-  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
+  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type;
+                      smdbltrp_en : std_ulogic;
+                      ssdbltrp_en : std_ulogic) return csr_status_type;
 
   function to_mstatush(status : csr_status_type) return wordx;
-  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type;
+  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type;
+                       smdbltrp_en  : std_ulogic) return csr_status_type;
 
   function to_sstatus(status : csr_status_type
                      ) return wordx;
-  function to_sstatus(wdata : wordx; mstatus : csr_status_type
+  function to_sstatus(wdata : wordx; mstatus : csr_status_type;
+                      ssdbltrp_en : std_ulogic 
                      ) return csr_status_type;
 
   function to_hvictl(hvictl : csr_hvictl_type) return wordx;
@@ -1658,6 +1660,7 @@ package body nvsupport is
   constant FPU          : fuseltype := fusel(8);     -- From FPU
   constant ALU_SPECIAL  : fuseltype := fusel(9);     -- Only for early ALU in lane 0!
   constant DIAG         : fuseltype := fusel(10);    -- Diagnostic cache load/store
+  constant UNKNOWN      : fuseltype := fusel(11);    -- Unknown (regarding fusel) instruction
   constant NOT_LATE     : fuseltype := not (ALU or BRANCH);  -- All except ALU and Branch Unit
 
   -- Shortens addresses to the size that is actually needed (see addr_type).
@@ -1776,6 +1779,7 @@ package body nvsupport is
   constant XC_INST_INST_PAGE_FAULT      : cause_type := to_cause(12);
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type := to_cause(13);
   constant XC_INST_STORE_PAGE_FAULT     : cause_type := to_cause(15);
+  constant XC_INST_DOUBLE_TRAP          : cause_type := to_cause(16);
   constant XC_INST_SOFTWARE_CHECK       : cause_type := to_cause(18);
   constant XC_INST_INST_G_PAGE_FAULT    : cause_type := to_cause(20);
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type := to_cause(21);
@@ -1840,8 +1844,8 @@ package body nvsupport is
 
   constant RST_VEC          : wordx := extend_wordx(x"00010040");
 
-  constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"0000b3ff");
-  constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"0000b1ff");
+  constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"0004b3ff");
+  constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"0004b1ff");
 
 
 
@@ -4164,6 +4168,13 @@ package body nvsupport is
     return opcode = OP_FENCE and funct3 = I_FENCE_I;
   end;
 
+  function is_fence(inst : word) return boolean is
+    variable opcode : opcode_type := opcode(inst);
+    variable funct3 : funct3_type := funct3(inst);
+  begin
+    return opcode = OP_FENCE and funct3 = I_FENCE;
+  end;
+
   function is_diag(active : extension_type; inst : word) return boolean is
     variable ext_noelv : boolean     := is_enabled(active, x_noelv);
     variable opcode    : opcode_type := opcode(inst);
@@ -4620,7 +4631,8 @@ package body nvsupport is
   begin
     if op = OP_STORE    or op = OP_LOAD    or
        op = OP_STORE_FP or op = OP_LOAD_FP or
-       op = OP_AMO      or op = OP_FENCE then
+       op = OP_AMO      or op = OP_FENCE   or
+       is_wfi(inst) then
       return true;
     end if;
 
@@ -5268,7 +5280,7 @@ package body nvsupport is
     -- We want to annull next instructions and it is
     -- easier if wfi is issued alone.
     -- for lane 0 the conflict is already set to 1
-    if is_wfi(inst_in(1)) then
+    if is_wfi(inst_in(one)) then
       conflict := '1';
     end if;
 
@@ -5768,7 +5780,7 @@ package body nvsupport is
     variable funct7      : funct7_type  := funct7(inst);
     variable funct12     : funct12_type := funct12(inst);
     -- Non-constant
-    variable fusel       : fuseltype    := NONE;
+    variable fusel       : fuseltype    := UNKNOWN;
   begin
     case op is
       when LUI | OP_IMM | OP_IMM_32 =>
@@ -5780,6 +5792,10 @@ package body nvsupport is
           if    funct5 = R_LR then
             fusel := (AMO or LD);
           elsif funct5 = R_SC then
+            -- The fusel code for SC gets both LD and SD set!
+            -- The reason is that SC returns a value from cctrl, even though
+            -- it did not actually read that value from memory.
+            -- Note that dcache_gen() ensures that SC is only passed as a write to cctrl.
             fusel := (AMO or LD or ST);
           else
             fusel := (AMO or LD or ST);
@@ -6343,6 +6359,10 @@ package body nvsupport is
                     illegal   := '1';
                   end if;
 
+                  if prv_in = PRIV_LVL_U then
+                    illegal := '1';
+                  end if;
+
                   if not ext_svinval and funct7 = F7_HINVAL_VVMA then
                     illegal   := '1';
                     xc_v      := '0';
@@ -6360,6 +6380,10 @@ package body nvsupport is
                     end if;
                   else
                     illegal     := '1';
+                  end if;
+
+                  if prv_in = PRIV_LVL_U then
+                    illegal := '1';
                   end if;
 
                   if not ext_svinval and funct7 = F7_HINVAL_GVMA then
@@ -6540,13 +6564,25 @@ package body nvsupport is
 
   -- Fetch pmpcfg data
   function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
-                  cfg : pmpcfg_vec_type; n : natural) return word8 is
+                  cfg : pmpcfg_vec_type; n : natural;
+                  start : integer; bits : integer
+                  ) return std_logic_vector is
+    -- Non-constant
+    variable data : word8 := (others => '0');
   begin
     if n < pmp_entries then
-      return cfg(n);
-    else
-      return x"00";
+      data := cfg(n);
     end if;
+
+    return get(data, start, bits);
+  end;
+
+  function pmpcfg(pmp_entries : integer range pmpcfg_vec_type'range;
+                  cfg : pmpcfg_vec_type; n : natural; bit : integer
+                  ) return std_logic is
+    variable data : word8 := pmpcfg(pmp_entries, cfg, n, 0, 8);
+  begin
+    return data(bit);
   end;
 
   function pmpcfg(cfg : pmpcfg_vec_type; first : integer; last : integer) return wordx is
@@ -6613,10 +6649,6 @@ package body nvsupport is
 
   -- Interrupt code priority
   constant cause_prio : cause_arr(0 to 15) := (
--- GRLIB_INTERNAL_BEGIN
-    -- TODO: If smrnmi isn't implemented then IRQ_NMI should have the highest priority.
-    -- IRQ_NMI,
--- GRLIB_INTERNAL_END
     IRQ_M_EXTERNAL,  IRQ_M_SOFTWARE,  IRQ_M_TIMER,
     IRQ_S_EXTERNAL,  IRQ_S_SOFTWARE,  IRQ_S_TIMER,
     IRQ_SG_EXTERNAL,
@@ -6918,6 +6950,7 @@ package body nvsupport is
     if XLEN = 64 then
       vsstatus(33 downto 32) := status.uxl;
     end if;
+    vsstatus(24)             := status.sdt;
     vsstatus(19 downto 18)   := status.mxr & status.sum;
     vsstatus(16 downto 13)   := "00" & status.fs;
     vsstatus(           8)   := status.spp;
@@ -6928,13 +6961,17 @@ package body nvsupport is
   end;
 
   -- Return vsstatus as a record type from an XLEN bit data
-  function to_vsstatus(wdata : wordx
+  function to_vsstatus(wdata         : wordx;
+                       ssdbltrp_en   : std_ulogic
                       ) return csr_status_type is
     -- Non-constant
     variable vsstatus : csr_status_type;
   begin
 
     vsstatus.uxl    := "10";
+    if ssdbltrp_en = '1' then 
+      vsstatus.sdt    := wdata(24);
+    end if;
     vsstatus.mxr    := wdata(19);
     vsstatus.sum    := wdata(18);
     vsstatus.xs     := "00";
@@ -6944,6 +6981,15 @@ package body nvsupport is
     vsstatus.spie   := wdata(5);
     vsstatus.sie    := wdata(1);
 
+
+    -- When the SDT bit is set to 1 by an explicit CSR write, 
+    -- the SIE (Supervisor Interrupt Enable) bit is cleared to 0.
+    --if ext_ssdbltrp then
+    if ssdbltrp_en = '1' then 
+      if wdata(24) = '1' then
+        vsstatus.sie := '0';
+      end if;
+    end if;
     return vsstatus;
   end;
 
@@ -6962,9 +7008,11 @@ package body nvsupport is
 
     mstatus(XLEN-1)         := (status.fs(1) and status.fs(0)) or (status.xs(1) and status.xs(0));
     if XLEN = 64 then
+      mstatus(42)           := status.mdt; 
       mstatus(39 downto 38) := status.mpv & status.gva;
       mstatus(35 downto 32) := status.sxl & status.uxl;
     end if;
+    mstatus(24)             := status.sdt; 
     mstatus(22 downto 20)   := status.tsr & status.tw & status.tvm;
     mstatus(19 downto 17)   := status.mxr & status.sum & status.mprv;
     mstatus(16 downto 11)   := "00" & status.fs & status.mpp;
@@ -6976,12 +7024,18 @@ package body nvsupport is
   end;
 
   -- Return mstatus as a record type from an XLEN bit data
-  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
+  function to_mstatus(wdata        : wordx; 
+                      mstatus_in   : csr_status_type;
+                      smdbltrp_en  : std_ulogic;
+                      ssdbltrp_en  : std_ulogic) return csr_status_type is
     -- Non-constant
     variable mstatus : csr_status_type := mstatus_in;
   begin
 
     if XLEN = 64 then
+      if smdbltrp_en = '1' then
+        mstatus.mdt   := wdata(42 * (XLEN / 64)); 
+      end if;
       mstatus.mpv  := wdata(39 * (XLEN / 64));
       mstatus.gva  := wdata(38 * (XLEN / 64));
     end if;
@@ -6989,6 +7043,9 @@ package body nvsupport is
     mstatus.sbe    := '0';
     mstatus.sxl    := "10";
     mstatus.uxl    := "10";
+    if ssdbltrp_en = '1' then
+      mstatus.sdt    := wdata(24);
+    end if;
     mstatus.tsr    := wdata(22);
     mstatus.tw     := wdata(21);
     mstatus.tvm    := wdata(20);
@@ -7007,6 +7064,22 @@ package body nvsupport is
     mstatus.sie    := wdata(1);
     mstatus.uie    := wdata(0);
 
+    -- When the SDT bit is set to 1 by an explicit CSR write, 
+    -- the SIE (Supervisor Interrupt Enable) bit is cleared to 0.
+    if ssdbltrp_en = '1' then
+      if wdata(24) = '1' then
+        mstatus.sie := '0';
+      end if;
+    end if;
+    -- When the MDT bit is set to 1 by an explicit CSR write, 
+    -- the MIE (Machine Interrupt Enable) bit is cleared to 0.
+    if smdbltrp_en = '1' then
+      if (XLEN = 64 and wdata(42 * (XLEN / 64)) = '1') or
+         (XLEN = 32 and mstatus_in.mdt = '1') then
+        mstatus.mie := '0';
+      end if;
+    end if;
+
     return mstatus;
   end;
 
@@ -7015,19 +7088,32 @@ package body nvsupport is
     -- Non-constant
     variable mstatus : word64 := zerow64;
   begin
+    mstatus(10)         := status.mdt;
     mstatus(7 downto 6) := status.mpv & status.gva;
 
     return mstatus(wordx'range);
   end;
 
   -- Return mstatush as a record type from an XLEN bit data
-  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type) return csr_status_type is
+  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type;
+                       smdbltrp_en  : std_ulogic) return csr_status_type is
     -- Non-constant
     variable mstatus : csr_status_type := mstatus_in;
   begin
 
+    if smdbltrp_en = '1' then
+      mstatus.mdt := wdata(10);
+    end if;
     mstatus.mpv := wdata(7);
     mstatus.gva := wdata(6);
+
+    -- When the MDT bit is set to 1 by an explicit CSR write, 
+    -- the MIE (Machine Interrupt Enable) bit is cleared to 0.
+    if smdbltrp_en = '1' then
+      if wdata(10) = '1' then
+        mstatus.mie := '0';
+      end if;
+    end if;
 
     return mstatus;
   end;
@@ -7042,6 +7128,7 @@ package body nvsupport is
     if XLEN = 64 then
       sstatus(33 downto 32) := status.uxl;
     end if;
+    sstatus(24)             := status.sdt;
     sstatus(19 downto 18)   := status.mxr & status.sum;
     sstatus(16 downto 13)   := "00" & status.fs;
     sstatus(8)              := status.spp;
@@ -7052,7 +7139,8 @@ package body nvsupport is
   end;
 
   -- Return sstatus as a record type from an XLEN bit data
-  function to_sstatus(wdata : wordx; mstatus : csr_status_type
+  function to_sstatus(wdata       : wordx; mstatus : csr_status_type;
+                      ssdbltrp_en : std_ulogic 
                      ) return csr_status_type is
     -- Non-constant
     variable sstatus : csr_status_type;
@@ -7062,6 +7150,9 @@ package body nvsupport is
     sstatus         := mstatus;
 
     sstatus.uxl     := "10";
+    if ssdbltrp_en = '1' then
+      sstatus.sdt     := wdata(24);
+    end if;
     sstatus.mxr     := wdata(19);
     sstatus.sum     := wdata(18);
     sstatus.xs      := "00";
@@ -7071,6 +7162,14 @@ package body nvsupport is
     sstatus.upie    := wdata(4);
     sstatus.sie     := wdata(1);
     sstatus.uie     := wdata(0);
+
+    -- When the SDT bit is set to 1 by an explicit CSR write, 
+    -- the SIE (Supervisor Interrupt Enable) bit is cleared to 0.
+    if ssdbltrp_en = '1' then
+      if wdata(24) = '1' then
+        sstatus.sie := '0';
+      end if;
+    end if;
 
     return sstatus;
   end;
@@ -7292,6 +7391,7 @@ package body nvsupport is
   begin
     xenvcfg.stce   := envcfg.stce   and mask.stce;
     xenvcfg.pbmte  := envcfg.pbmte  and mask.pbmte;
+    xenvcfg.dte    := envcfg.dte    and mask.dte;
     xenvcfg.cbze   := envcfg.cbze   and mask.cbze;
     xenvcfg.cbcfe  := envcfg.cbcfe  and mask.cbcfe;
     xenvcfg.cbie   := envcfg.cbie   and (mask.cbie'range => orv(mask.cbie));
@@ -7307,6 +7407,7 @@ package body nvsupport is
   begin
     xenvcfg(63)         := envcfg.stce;
     xenvcfg(62)         := envcfg.pbmte;
+    xenvcfg(59)         := envcfg.dte;
     xenvcfg(7)          := envcfg.cbze;
     xenvcfg(6)          := envcfg.cbcfe;
     xenvcfg(5 downto 4) := envcfg.cbie;
@@ -7333,6 +7434,7 @@ package body nvsupport is
     if XLEN = 64 then
       xenvcfg.stce   := wdata(63 * (XLEN / 64)) and mask.stce;
       xenvcfg.pbmte  := wdata(62 * (XLEN / 64)) and mask.pbmte;
+      xenvcfg.dte    := wdata(59 * (XLEN / 64)) and mask.dte;
     end if;
     xenvcfg.cbze    := wdata(7) and mask.cbze;
     xenvcfg.cbcfe   := wdata(6) and mask.cbcfe;
@@ -7348,6 +7450,7 @@ package body nvsupport is
     variable xenvcfgh : word64 := zerow64;
   begin
     xenvcfgh(31 downto 29) := envcfg.stce & envcfg.pbmte & '0';
+    xenvcfgh(27)           := envcfg.dte;
 
     return xenvcfgh(wordx'range);
   end;
@@ -7369,6 +7472,7 @@ package body nvsupport is
   begin
     xenvcfg.stce   := wdata(31) and mask.stce;
     xenvcfg.pbmte  := wdata(30) and mask.pbmte;
+    xenvcfg.dte    := wdata(27) and mask.dte;
 
     return xenvcfg;
   end;
@@ -7376,6 +7480,7 @@ package body nvsupport is
   function gen_envcfg_mmask(active : extension_type) return csr_envcfg_type is
     variable sstc    : boolean := is_enabled(active, x_sstc);
     variable pbmte   : boolean := false; --is_enabled(active, x_svpbmt);
+    variable dte     : boolean := is_enabled(active, x_ssdbltrp);
     variable zicboz  : boolean := false; --is_enabled(active, x_zicboz);
     variable zicbom  : boolean := is_enabled(active, x_zicbom);
     variable fiom    : boolean := false; --is_enabled(active, x_fiom);
@@ -7384,6 +7489,7 @@ package body nvsupport is
   begin
     xenvcfg.stce   := to_bit(sstc);
     xenvcfg.pbmte  := to_bit(pbmte);
+    xenvcfg.dte    := to_bit(dte);
     xenvcfg.cbze   := to_bit(zicboz);
     xenvcfg.cbcfe  := to_bit(zicbom);
     xenvcfg.cbie   := (others => to_bit(zicbom));
@@ -7469,9 +7575,10 @@ package body nvsupport is
       hpmevent.uinh     := wdata(60);
       hpmevent.vsinh    := wdata(59);
       hpmevent.vuinh    := wdata(58);
-      hpmevent.class    := wdata(56 downto 57-log2(MHPEVENT_C));
-      hpmevent.events   := wdata(MHPEVENT_EC-1 downto 0);
+      hpmevent.class    := wdata(56 downto 57 - log2(MHPEVENT_C));
+      hpmevent.events   := wdata(hpmevent.events'range);
     end if;
+
     return hpmevent;
   end;
 
@@ -7502,8 +7609,9 @@ package body nvsupport is
     rdata(60) := hpmevent.uinh;
     rdata(59) := hpmevent.vsinh;
     rdata(58) := hpmevent.vuinh;
-    rdata(56 downto 57-log2(MHPEVENT_C)) := hpmevent.class;
-    rdata(MHPEVENT_EC-1 downto 0) := hpmevent.events;
+    rdata(56 downto 57 - log2(MHPEVENT_C)) := hpmevent.class;
+    rdata(hpmevent.events'range)           := hpmevent.events;
+
     return rdata(wordx'range);
   end;
 
@@ -7540,31 +7648,25 @@ package body nvsupport is
     return output;
   end;
 
-  -- Returns and event signal for an hpmcounter.
-  -- IF THE COUNTER SUPPORT MASKING, the N upper bits of hpmevent are
+  -- Returns an event signal for an hpmcounter.
+  -- IF THE COUNTER SUPPORTS MASKING, the N upper bits of hpmevent are
   -- used to define the event class, the remaining bits are used as a
-  -- mask that selects (1) or ignores (0) the events within a given class
-  -- the output event is or reduction of any of the selected events
-  -- IF THE COUNTER DOESN'T SUPPORT MASKING it returns NO_EVENT if the mask has
-  -- more than one bit active
+  -- mask that selects (1) or ignores (0) the events within a given class.
+  -- The output event is an or reduction of any of the selected events.
+  -- IF THE COUNTER DOESN'T SUPPORT MASKING, it returns NO_EVENT if the mask has
+  -- more than one bit active.
 
   -- hpmevent: hpmevent register for our target counter
   -- evt: Vector of input events
   -- cnt: Index of the target counter (EG: 3 -> mphcounter3)
   function filter_hpmevent(hpmevent : hpmevent_type; evt : evt_type; cnt : integer) return std_logic is
+    variable class  : integer     := u2i(hpmevent.class);
+    variable mask   : events_type := hpmevent.events;
+    variable filter : std_logic   := MHPCOUNT_FIL(cnt);  -- Check if target counter has filter events enabled
     -- Non-constant
     variable rdata  : std_logic := '1';
-    variable filter : std_logic := '0';  -- Check if filtering is enabled
-    variable class  : integer;
-    variable mask   : std_logic_vector (MHPEVENT_EC-1 downto 0);
   begin
-    class  := u2i(hpmevent.class);
-    mask   := hpmevent.events;
-    -- Check if target counter has filter events enabled
-    filter := MHPCOUNT_FIL(cnt);
-
     if filter = '1' then
-      --rdata := or (evt(class) and mask);
       rdata := or_reduce((evt(class) and mask));
     else
       -- Check if mask is a power of 2 and not 0
@@ -7658,7 +7760,7 @@ package body nvsupport is
     variable pmpaddr_m1 : pmpaddr_type;
   begin
     for i in 0 to pmp_entries - 1 loop
-      a := pmpcfg(pmp_entries, pmpcfg_in, i)(4 downto 3);
+      a := pmpcfg(pmp_entries, pmpcfg_in, i, 3, 2);
 
       -- Bottom address for PMP_TOR.
       pmpaddr_m1   := pmpaddrzero;

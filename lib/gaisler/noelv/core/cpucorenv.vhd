@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -124,6 +124,9 @@ entity cpucorenv is
     ext_ssaia           : integer range 0  to 1         := 0;  -- Ssaia Extension
     ext_smstateen       : integer range 0  to 1         := 0;  -- Smstateen Extension
     ext_smrnmi          : integer range 0  to 1         := 0;  -- Smrnmi Extension
+    ext_ssdbltrp        : integer range 0  to 1         := 0;  -- Ssdbltrp Extension
+    ext_smdbltrp        : integer range 0  to 1         := 0;  -- Smdbltrp Extension
+    ext_sddbltrp        : integer range 0  to 1         := 0;  -- Sddbltrp Extension
     ext_smepmp          : integer range 0  to 1         := 0;  -- Smepmp Extension
     ext_zicbom          : integer range 0  to 1         := 0;  -- Zicbom Extension
     ext_zicond          : integer range 0  to 1         := 0;  -- Zicond Extension
@@ -464,6 +467,9 @@ begin
       ext_ssaia     => ext_ssaia,
       ext_smstateen => ext_smstateen,
       ext_smrnmi    => ext_smrnmi,
+      ext_ssdbltrp  => ext_ssdbltrp,
+      ext_smdbltrp  => ext_smdbltrp,
+      ext_sddbltrp  => ext_sddbltrp,
       ext_smepmp    => ext_smepmp,
       ext_zicbom    => ext_zicbom,
       ext_zicond    => ext_zicond,
@@ -855,10 +861,10 @@ begin
         rdata4          => rff_rdummy   -- Dummy
         );
 
-   end generate;
-
+    end generate;    
   end generate;
-
+  
+    
   -- L1 Caches -----------------------------------------------------------------
 
   cmem1 : cachememnv

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -372,6 +372,7 @@ package body utilnv is
   -- Return data interpreted as unsigned, as an integer.
   function u2i(data : std_logic_vector) return integer is
   begin
+    assert data'length <= 31;
     if notx(data) then
       return to_integer(unsigned(data));
     else
@@ -381,6 +382,7 @@ package body utilnv is
 
   function u2i(data : bit_vector) return integer is
   begin
+    assert data'length <= 31;
     return to_integer(unsigned(to_stdlogicvector(data)));
   end;
 

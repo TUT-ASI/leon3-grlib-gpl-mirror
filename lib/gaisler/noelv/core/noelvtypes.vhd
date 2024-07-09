@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -109,7 +109,8 @@ package noelvtypes is
                       x_zcb,
                       x_time, x_sstc, x_imsic,
                       x_smepmp, x_smaia, x_ssaia,
-                      x_smstateen, x_smrnmi,
+                      x_smstateen, x_smrnmi, 
+                      x_ssdbltrp, x_smdbltrp, x_sddbltrp,
                       x_smcsrind, x_sscsrind,
                       x_zicbom, x_zicond, x_zimop, x_zcmop,
                       x_svinval,

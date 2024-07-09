@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ package noelv_cpu_cfg is
     single_issue  => 0,
     ext_m         => 1,
     ext_a         => 1,
-    ext_c         => 1,
+    ext_c         => 0,
     ext_h         => 1,
     ext_zcb       => 1,
     ext_zba       => 1,
@@ -51,6 +51,9 @@ package noelv_cpu_cfg is
     ext_ssaia     => 1,
     ext_smstateen => 1,
     ext_smrnmi    => 1,
+    ext_ssdbltrp  => 1,
+    ext_smdbltrp  => 1,
+    ext_sddbltrp  => 1,
     ext_smepmp    => 1,
     imsic         => 1,
     ext_zicbom    => 1,

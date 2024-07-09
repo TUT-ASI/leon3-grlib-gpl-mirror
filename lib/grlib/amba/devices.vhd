@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,6 +66,7 @@ package devices is
   constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
   constant VENDOR_NEC        : amba_vendor_type := 16#29#;
   constant VENDOR_HONEYWELL  : amba_vendor_type := 16#2A#;
+  constant VENDOR_AITECH     : amba_vendor_type := 16#30#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
@@ -1183,6 +1184,17 @@ package devices is
     device_table => honeywell_device_table
     );
 
+  constant AITECH_DESC : vendor_description := "Aitech Systems          ";
+
+  constant aitech_device_table : device_table_type := (
+    others => "Unknown Device                  ");
+
+  constant aitech_lib : vendor_library_type := (
+    vendorid     => VENDOR_AITECH,
+    vendordesc   => AITECH_DESC,
+    device_table => aitech_device_table
+    );
+
   constant NASA_GSFC_DESC : vendor_description := "NASA GSFC               ";
 
   constant nasa_gsfc_device_table : device_table_type := (
@@ -1314,32 +1326,42 @@ package devices is
     VENDOR_OPENCHIP     => openchip_lib,
     VENDOR_OPENCORES    => opencores_lib,
     VENDOR_CONTRIB      => contrib_lib,
-    VENDOR_BSC          => bsc_lib,
     VENDOR_DLR          => dlr_lib,
     VENDOR_EONIC        => eonic_lib,
     VENDOR_TELECOMPT    => telecompt_lib,
+    VENDOR_DTU          => dtu_lib,
+    VENDOR_BSC          => bsc_lib,
+    VENDOR_RADIONOR     => radionor_lib,
     VENDOR_GLEICHMANN   => gleichmann_lib,
     VENDOR_MENTA        => menta_lib,
-    VENDOR_EMBEDDIT     => embeddit_lib,
     VENDOR_SUN          => sun_lib,
-    VENDOR_RADIONOR     => radionor_lib,
+    VENDOR_L3T          => l3t_lib,
     VENDOR_ORBITA       => orbita_lib,
     VENDOR_SYNOPSYS     => synopsys_lib,
-    VENDOR_CETON        => ceton_lib,
-    VENDOR_SSTL         => sstl_lib,
-    VENDOR_ACTEL        => actel_lib,
     VENDOR_NASA         => nasa_lib,
     VENDOR_NIIET        => niiet_lib,
-    VENDOR_L3T          => l3t_lib,
-    VENDOR_NASA_GSFC    => nasa_gsfc_lib,
-    VENDOR_S3           => s3_lib,
-    VENDOR_UC_BERKELEY  => uc_berkeley_lib,
-    VENDOR_AAC          => aac_lib,
     VENDOR_JHUAPL_SRI   => jhuapl_sri_lib,
     VENDOR_JHUAPL_SEE   => jhuapl_see_lib,
     VENDOR_JHUAPL_SER   => jhuapl_ser_lib,
     VENDOR_JHUAPL_SES   => jhuapl_ses_lib,
     VENDOR_SEMIBLOCKS   => semiblocks_lib,
+    VENDOR_NEC          => nec_lib,
+    VENDOR_HONEYWELL    => honeywell_lib,
+    VENDOR_AITECH       => aitech_lib,
+    VENDOR_S3           => s3_lib,
+    VENDOR_TAS          => tas_lib,
+    VENDOR_RECORE       => recore_lib,
+    VENDOR_AAC          => aac_lib,
+    VENDOR_UC_BERKELEY  => uc_berkeley_lib,
+    VENDOR_ACTEL        => actel_lib,
+    VENDOR_APPLECORE    => applecore_lib,
+    VENDOR_C3E          => c3e_lib,
+    VENDOR_CBKPAN       => cbkpan_lib,
+    VENDOR_CETON        => ceton_lib,
+    VENDOR_SSTL         => sstl_lib,
+    VENDOR_EMBEDDIT     => embeddit_lib,
+    VENDOR_NASA_GSFC    => nasa_gsfc_lib,
+    VENDOR_AZST         => azst_lib,
     others              => unknown_lib);
 
   type system_table_type is array (0 to 65535) of device_description;

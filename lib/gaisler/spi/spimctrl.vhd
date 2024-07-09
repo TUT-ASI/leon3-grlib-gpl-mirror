@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,9 @@
 -------------------------------------------------------------------------------
 -- Entity:      spimctrl
 -- File:        spimctrl.vhd
--- Author:      Jan Andersson - Cobham Gaisler AB
+-- Author:      Jan Andersson - Frontgrade Gaisler AB
+--              support@gaisler.com
+-- Modified:    Axel Karlsson - Frontgrade Gaisler AB
 --              support@gaisler.com
 --
 -- Description: SPI flash memory controller. Supports a wide range of SPI
@@ -36,6 +38,11 @@
 -- Post revision 1: Remove support for SD card
 --
 -- Revision 2 added support for DSPI/QSPI & 4-byte addressing
+-- 
+-- Revision 3. No new updates. There were a collision in the revision number for different 
+-- versions of the SPIMCTRL. Both the GRLIB and GR716B had revision number 2 but were seperate
+-- incompatible implementations of the IP. For clarity the GRLIB version has been changed
+-- to revision #3 and the GR716B is kept as revision #2.
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -94,7 +101,7 @@ end spimctrl;
 
 architecture rtl of spimctrl is
   
-  constant REVISION : amba_version_type := 2;
+  constant REVISION : amba_version_type := 3;
 
   constant HCONFIG : ahb_config_type := (
     0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPIMCTRL, 0, REVISION, hirq),
@@ -385,6 +392,7 @@ begin  -- rtl
     variable v                : spim_reg_type;
     variable change           : std_ulogic;
     variable regaddr          : std_logic_vector(7 downto 2);
+    variable lowaddr          : std_logic_vector(1 downto 0);
     variable hsplit           : std_logic_vector(NAHBMST-1 downto 0);
     variable ahbirq           : std_logic_vector((NAHBIRQ-1) downto 0);
     variable lastbit          : std_ulogic;
@@ -399,6 +407,7 @@ begin  -- rtl
     v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(1 downto 0) & '0';
     change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1'; v.bd := r.bd(0) & '0';
     regaddr := r.haddr(7 downto 2); hsplit := (others => '0');
+    lowaddr := r.haddr(1 downto 0);
     hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2), conv_integer(ahbsi.endian));
     ahbirq := (others => '0'); ahbirq(hirq) := r.irq;
     read_flash := false;
@@ -573,7 +582,7 @@ begin  -- rtl
         end if;
       elsif r.hsize = "000" then
         -- 8b
-        case r.haddr(1 downto 0) is
+        case lowaddr is
           when "00"   => v.hwdata := ahbdrivedata(v.hwdata(31 downto 24));
           when "01"   => v.hwdata := ahbdrivedata(v.hwdata(23 downto 16));
           when "10"   => v.hwdata := ahbdrivedata(v.hwdata(15 downto 8));

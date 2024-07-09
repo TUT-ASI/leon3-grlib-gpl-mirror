@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -74,7 +74,6 @@ architecture rtl of ahb_be is
     wr_len      : std_logic_vector(log_2(max_burst_length)-1 downto 0);
     rd_len      : std_logic_vector(log_2(max_burst_length)-1 downto 0);
     wr_data     : std_logic_vector(be_dw_int-1 downto 0);
-    wdata_valid : std_logic;
     rd_addr     : std_logic_vector(addr_width-1 downto 0);
     wr_addr     : std_logic_vector(addr_width-1 downto 0);
   end record;

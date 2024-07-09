@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ use grlib.riscv.reg_t;
 library gaisler;
 use gaisler.noelvtypes.all;
 use gaisler.noelv.XLEN;
+use gaisler.noelv.GEILEN;
 use gaisler.noelv.nv_irq_in_type;
 use gaisler.noelv.nv_irq_out_type;
 use gaisler.noelv.nv_nirq_in_type;
@@ -376,6 +377,7 @@ package noelvint is
     mmucacheclr      : std_ulogic;
     amo              : std_logic_vector(5 downto 0);
     cbo              : std_logic_vector(2 downto 0);
+    bar              : std_logic_vector(2 downto 0);
     iudiag_miso      : nv_intreg_miso_type;
   end record;
 
@@ -384,7 +386,7 @@ package noelvint is
     '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
     "000", '0', '0', '0', '0',
     '0', '0', '0',
-    "000000", "000", nv_intreg_miso_none
+    "000000", "000", "000", nv_intreg_miso_none
   );
 
   type nv_dcache_out_type is record
@@ -591,6 +593,7 @@ package noelvint is
     trace       : trace_type;
     tpbuf_en    : std_ulogic;
     info        : trace_info;
+
   end record;
 
   constant itrace_in_none : itrace_in_type := (
@@ -850,6 +853,9 @@ package noelvint is
       ext_ssaia     : integer range 0  to 1;        -- Ssaia Extension
       ext_smstateen : integer range 0  to 1;        -- Smstateen Extension
       ext_smrnmi    : integer range 0  to 1;        -- Smrnmi Extension
+      ext_ssdbltrp  : integer range 0  to 1;        -- Ssdbltrp Extension
+      ext_smdbltrp  : integer range 0  to 1;        -- Smdbltrp Extension
+      ext_sddbltrp  : integer range 0  to 1;        -- Sddbltrp Extension
       ext_smepmp    : integer range 0  to 1;        -- Smepmp Extension
       ext_zicbom    : integer range 0  to 1;        -- Zicbom Extension
       ext_zicond    : integer range 0  to 1;        -- Zicond Extension

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ package noelv is
 
   constant AIA_SUPPORT          : integer := 0;   -- 0 = AIA support is disabled in GRLIB
   constant SMRNMI_SUPPORT       : integer := 0;   -- 0 = SMRNMI support is disabled in GRLIB
-
+  constant DBLTRP_SUPPORT       : integer := 0;   -- 0 = Double trap extensions support is disabled in GRLIB
   -- Types --------------------------------------------------------------------
 
 
@@ -247,6 +247,8 @@ package noelv is
   type nv_debug_in_vector  is array (natural range <>) of nv_debug_in_type;
   type nv_debug_out_vector is array (natural range <>) of nv_debug_out_type;
 
+  type trace_d_vector is array (natural range<>) of std_logic_vector(1023 downto 0);
+
   -- Hart-Encoder Interface
   type nv_etrace_out_type is record
     -- Mandatory signals
@@ -322,6 +324,9 @@ package noelv is
     ext_ssaia     : integer;
     ext_smstateen : integer;
     ext_smrnmi    : integer;
+    ext_ssdbltrp  : integer;
+    ext_smdbltrp  : integer;
+    ext_sddbltrp  : integer;
     ext_smepmp    : integer;
     imsic         : integer;
     ext_zicbom    : integer;
@@ -468,6 +473,9 @@ package noelv is
       ext_ssaia         : integer range 0  to 1         := 0;  -- Ssaia Extension 
       ext_smstateen     : integer range 0  to 1         := 0;  -- Sstateeen Extension 
       ext_smrnmi        : integer range 0  to 1         := 0;  -- Smrnmi Extension 
+      ext_ssdbltrp      : integer range 0  to 1         := 0;  -- Ssdbltrp Extension
+      ext_smdbltrp      : integer range 0  to 1         := 0;  -- Smdbltrp Extension
+      ext_sddbltrp      : integer range 0  to 1         := 0;  -- Sddbltrp Extension
       ext_smepmp        : integer range 0  to 1         := 0;  -- Smepmp Extension
       ext_zicbom        : integer range 0  to 1         := 0;  -- Zicbom Extension
       ext_zicond        : integer range 0  to 1         := 0;  -- Zicond Extension
@@ -629,10 +637,6 @@ package noelv is
       scanen  : in  std_ulogic := '0';
       testoen : in  std_ulogic := '1';
       testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
--- GRLIB_INTERNAL_BEGIN
-   ; 
-    nirq : in std_logic_vector(0 to ncpu - 1) := (others => '0')
--- GRLIB_INTERNAL_END
       );
   end component;
 

@@ -1,0 +1,63 @@
+
+# LEON3 configuration written in linux configuration language
+#
+# Comments and bug reports to support@gaisler.com
+#
+#
+
+mainmenu_name "LEON3MP Design Configuration"
+
+mainmenu_option next_comment
+  comment 'Synthesis      '
+  source lib/techmap/gencomp/tech.in
+endmenu
+
+source lib/gaisler/subsys/leon_dsu_stat_base.in
+source lib/grlib/amba/amba.in
+
+mainmenu_option next_comment
+  comment 'Debug Link           '
+  source lib/gaisler/uart/dcom.in
+  source lib/gaisler/jtag/jtag.in
+endmenu
+
+mainmenu_option next_comment
+comment 'Peripherals             '
+
+  mainmenu_option next_comment
+  comment 'On-chip RAM                 '
+    comment 'AHBRAM           '
+    source lib/gaisler/misc/ahbram.in
+    comment 'FTAHBRAM           '
+    source lib/gaisler/misc/ftahbram.in
+  endmenu
+  mainmenu_option next_comment
+  comment 'AHB Status Registers        '
+    source lib/gaisler/misc/ahbstat.in
+  endmenu
+
+  source lib/gaisler/spi/spimctrl.in
+
+  mainmenu_option next_comment
+  comment 'CAN	'
+    source lib/gaisler/can/grcan.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'UART, timer, I/O port and interrupt controller'
+    comment 'UART           '
+    source lib/gaisler/uart/uart1.in
+    comment 'IRQ           '
+    source lib/gaisler/irqmp/irqmp.in
+    comment 'TIMER           '
+    source lib/gaisler/misc/gptimer.in
+    comment 'GPIO           '
+    source lib/gaisler/misc/grgpio.in
+  endmenu
+
+endmenu
+
+mainmenu_option next_comment
+comment 'VHDL Debugging        '
+  source lib/grlib/util/debug.in
+endmenu

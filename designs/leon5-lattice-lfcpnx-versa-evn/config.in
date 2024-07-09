@@ -1,0 +1,48 @@
+#
+# LEON5 configuration written in linux configuration language
+#
+#
+# Comments and bug reports to support@gaisler.com
+#
+#
+
+mainmenu_name "LEON5 Design Configuration"
+
+mainmenu_option next_comment
+  comment 'Synthesis      '
+  source lib/techmap/gencomp/tech.in
+endmenu
+
+source lib/gaisler/leon5/leon5.in
+
+mainmenu_option next_comment
+  comment 'Debug Link           '
+  source lib/gaisler/uart/dcom.in
+  source lib/gaisler/jtag/jtag.in
+endmenu
+
+mainmenu_option next_comment
+comment 'Peripherals             '
+
+  mainmenu_option next_comment
+  comment 'AHB Status Register             '
+    source lib/gaisler/misc/ahbstat.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'On-chip RAM/ROM                 '
+    source lib/gaisler/misc/ahbrom.in
+    source lib/gaisler/misc/ahbram.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'GPIO'
+    source lib/gaisler/misc/grgpio.in
+  endmenu
+
+endmenu
+
+mainmenu_option next_comment
+comment 'VHDL Debugging        '
+  source lib/gaisler/leon5/debug5.in
+endmenu

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -221,6 +221,9 @@ architecture hier of noelvcpu is
     ext_ssaia     => 0,
     ext_smstateen => 0,
     ext_smrnmi    => 0,
+    ext_ssdbltrp  => 0,
+    ext_smdbltrp  => 0,
+    ext_sddbltrp  => 0,
     ext_smepmp    => 0,
     imsic         => 0,
     ext_zicbom    => 0,
@@ -296,6 +299,9 @@ architecture hier of noelvcpu is
       ext_ssaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
       ext_smstateen => 1*RDV_SUPPORT,
       ext_smrnmi    => 1*SMRNMI_SUPPORT*RDV_SUPPORT,
+      ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smepmp    => 1,
       imsic         => 1*AIA_SUPPORT*RDV_SUPPORT,
       ext_zicbom    => 1*RDV_SUPPORT,
@@ -303,7 +309,7 @@ architecture hier of noelvcpu is
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
-      ext_zfa       => 1*RDV_SUPPORT,
+      ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 0,
@@ -367,6 +373,9 @@ architecture hier of noelvcpu is
       ext_ssaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
       ext_smstateen => 1*RDV_SUPPORT,
       ext_smrnmi    => 1*SMRNMI_SUPPORT*RDV_SUPPORT,
+      ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smepmp    => 1,
       imsic         => 1*AIA_SUPPORT*RDV_SUPPORT,
       ext_zicbom    => 1*RDV_SUPPORT,
@@ -374,7 +383,7 @@ architecture hier of noelvcpu is
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
-      ext_zfa       => 1*RDV_SUPPORT,
+      ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 0,
@@ -434,6 +443,9 @@ architecture hier of noelvcpu is
       ext_ssaia     => 0,
       ext_smstateen => 0,
       ext_smrnmi    => 0,
+      ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
+      ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smepmp    => 1,
       imsic         => 0,
       ext_zicbom    => 1*RDV_SUPPORT,
@@ -441,7 +453,7 @@ architecture hier of noelvcpu is
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
-      ext_zfa       => 1*RDV_SUPPORT,
+      ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 0,
@@ -501,6 +513,9 @@ architecture hier of noelvcpu is
       ext_ssaia     => 0,
       ext_smstateen => 0,
       ext_smrnmi    => 0,
+      ext_ssdbltrp  => 0,
+      ext_smdbltrp  => 0,
+      ext_sddbltrp  => 0,
       ext_smepmp    => 1,
       imsic         => 0,
       ext_zicbom    => 0,
@@ -568,6 +583,9 @@ architecture hier of noelvcpu is
       ext_ssaia     => 0,
       ext_smstateen => 0,
       ext_smrnmi    => 0,
+      ext_ssdbltrp  => 0,
+      ext_smdbltrp  => 0,
+      ext_sddbltrp  => 0,
       ext_smepmp    => 1,
       imsic         => 0,
       ext_zicbom    => 0,
@@ -657,8 +675,8 @@ begin
       -- Interrupts
       imsic           => cfg_c(c.typ).imsic,
       -- RNMI
-      rnmi_iaddr      => 16#40010#,
-      rnmi_xaddr      => 16#40011#,
+      rnmi_iaddr      => 16#30010#,
+      rnmi_xaddr      => 16#30011#,
       -- Extensions
       ext_noelv       => 1*RDV_SUPPORT,
       ext_noelvalu    => 1*RDV_SUPPORT,
@@ -680,6 +698,9 @@ begin
       ext_ssaia       => cfg_c(c.typ).ext_ssaia,
       ext_smstateen   => cfg_c(c.typ).ext_smstateen,
       ext_smrnmi      => cfg_c(c.typ).ext_smrnmi,
+      ext_ssdbltrp    => cfg_c(c.typ).ext_ssdbltrp,
+      ext_smdbltrp    => cfg_c(c.typ).ext_smdbltrp,
+      ext_sddbltrp    => cfg_c(c.typ).ext_sddbltrp,
       ext_smepmp      => cfg_c(c.typ).ext_smepmp,
       ext_zicbom      => cfg_c(c.typ).ext_zicbom,
       ext_zicond      => cfg_c(c.typ).ext_zicond,

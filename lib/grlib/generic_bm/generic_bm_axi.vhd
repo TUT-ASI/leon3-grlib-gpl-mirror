@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -128,49 +128,13 @@ architecture rtl of generic_bm_axi is
   constant burst_chop_mask_ptwo  : integer := chop_mask_sel(power_of_two(burst_chop_mask), max_burst_length_ptwo, be_dw);
 
   signal fe_wdata     : std_logic_vector(be_dw-1 downto 0);
-  signal fe_rvalid_wc : std_logic;
-  signal fe_ren       : std_logic;
-  signal fe_fwrite    : std_logic;
-
-  signal fe_burst_done : std_logic;
-
-  signal fe_rvalid_rc : std_logic;
-  signal fe_rlast     : std_logic;
   signal fe_rdata     : std_logic_vector(be_dw-1 downto 0);
 
-  signal wc_start : std_logic;
-  signal wc_done  : std_logic;
-  signal rc_start : std_logic;
-
-  signal fifo_valid_wc : std_logic_vector(1 downto 0);
-
-  signal active_wc : std_logic;
-  signal active_rc : std_logic;
-
-  signal be_rlast : std_logic;
-  signal wc_addr  : std_logic_vector(4 downto 0);
-  signal rc_addr  : std_logic_vector(4 downto 0);
-
-  signal wr_req          : std_logic;
-  signal rd_req          : std_logic;
-  signal wr_len          : std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
-  signal rd_len          : std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
-  signal wr_size         : std_logic_vector(2 downto 0);
-  signal rd_size         : std_logic_vector(2 downto 0);
-  signal wr_addr         : std_logic_vector(31 downto 0);
-  signal rd_addr         : std_logic_vector(31 downto 0);
-  signal wr_data         : std_logic_vector(be_dw-1 downto 0);
-  signal rd_data         : std_logic_vector(be_dw-1 downto 0);
-  signal rd_data_comb    : std_logic_vector(be_dw-1 downto 0);
-  signal rdata_valid     : std_logic;
-  signal wdata_valid     : std_logic;
-  signal rd_gnt          : std_logic;
-  signal wr_gnt          : std_logic;
-  signal wdata_ren       : std_logic;
-  signal wr_done         : std_logic;
-  signal rd_done         : std_logic;
-
-  signal be_no_align : std_logic;
+  signal wr_len       : std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
+  signal rd_len       : std_logic_vector(log_2(max_burst_length_ptwo)-1 downto 0);
+  signal wr_data      : std_logic_vector(be_dw-1 downto 0);
+  signal rd_data      : std_logic_vector(be_dw-1 downto 0);
+  signal rd_data_comb : std_logic_vector(be_dw-1 downto 0);
 
   signal bm_me_rc_out_burst_addr : std_logic_vector(addr_width-1 downto 0);
   signal bm_me_wc_out_burst_addr : std_logic_vector(addr_width-1 downto 0);
@@ -189,11 +153,9 @@ architecture rtl of generic_bm_axi is
   signal ahb_be_in    : ahb_be_in_type;
   signal ahb_be_out   : ahb_be_out_type;
 
-
   signal excl_size : std_logic_vector(log_2(max_size)-1 downto 0);
 
   signal endian : std_logic;
-
 
   signal excl_en      : std_logic;
   signal excl_nowrite : std_logic;
@@ -395,7 +357,6 @@ begin
   ahb_be_in.rd_req        <= bm_me_rc_out.request;
   ahb_be_in.wr_size       <= bm_me_wc_out.rsize;
   ahb_be_in.rd_size       <= bm_me_rc_out.rsize;
-  ahb_be_in.wdata_valid   <= wdata_valid;
   ahb_be_in.lock          <= bm_me_rc_out.lock;
   ahb_be_in.lock_remove   <= bmfre_out.lock_remove;
 

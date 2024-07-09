@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -121,6 +121,14 @@ function is_ptd(what : va_type; data : std_logic_vector) return boolean;
 function satp_base(what : va_type; satp : std_logic_vector) return std_logic_vector;
 function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector;
 function satp_mode(what : va_type; satp : std_logic_vector) return integer;
+function compute_hgatp(
+  hgatp_prv : std_logic_vector;
+  hgatp_in : std_logic_vector;
+  proc_xlen : integer;
+  vmid_len : integer;
+  phys_addr : integer;
+  riscv_mmu : integer
+) return std_logic_vector;
 function pt_addr(what : va_type; data  : std_logic_vector; mask : std_logic_vector;
                  vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector;
 function pte_paddr(what : va_type; data : std_logic_vector) return std_logic_vector;
@@ -597,6 +605,60 @@ package body mmucacheconfig is
     return 0;        -- Can never happen!
   end;
 
+  function compute_hgatp(
+      hgatp_prv : std_logic_vector;
+      hgatp_in  : std_logic_vector;
+      proc_xlen : integer;
+      vmid_len  : integer;
+      phys_addr : integer;
+      riscv_mmu : integer
+  ) return std_logic_vector is
+      constant HGATP32_MODE : std_logic_vector(31 downto 31)                := "1";
+      constant HGATP32_VMID : std_logic_vector(22 + vmid_len - 1 downto 22) := (others => '1');
+      constant HGATP32_PPN  : std_logic_vector(21 downto 0)                 := (others => '1');
+
+      constant HGATP64_VMID : std_logic_vector(44 + vmid_len - 1 downto 44) := (others => '1');
+      constant HGATP64_MODE : std_logic_vector(63 downto 60)                := (others => '1');
+      -- ppn[1:0] is zero, 16 KiB alignment
+      constant HGATP64_PPN  : std_logic_vector(phys_addr - 1 - 12 downto 2) := (others => '1');
+
+      constant SUPPORTS_IMPL_MMU_SV32 : boolean := riscv_mmu  = 1;
+      constant SUPPORTS_IMPL_MMU_SV39 : boolean := riscv_mmu >= 2;
+      constant SUPPORTS_IMPL_MMU_SV48 : boolean := riscv_mmu >= 3;
+      constant BARE : integer := 0;
+      constant SV39 : integer := 8;
+      constant SV48 : integer := 9;
+
+      variable mask      : std_logic_vector(hgatp_in'range) := (others => '0');
+      variable hgatp_out : std_logic_vector(hgatp_in'range) := (others => '0');
+      variable mode64_in : integer range 0 to 15 := u2i(hgatp_in(proc_xlen - 1 downto proc_xlen - 4));
+  begin
+    if proc_xlen = 32 then
+      assert not SUPPORTS_IMPL_MMU_SV39 and not SUPPORTS_IMPL_MMU_SV48 severity failure; -- Illegal config
+
+      if (SUPPORTS_IMPL_MMU_SV32) then
+        mask(HGATP32_MODE'range) := HGATP32_MODE;
+        mask(HGATP32_VMID'range) := HGATP32_VMID;
+        mask(HGATP32_PPN'range ) := HGATP32_PPN;
+      end if;
+      hgatp_out := hgatp_in and mask;
+	  return hgatp_out;
+    else
+      assert not SUPPORTS_IMPL_MMU_SV32 severity failure; -- Illegal config
+      mask(HGATP64_VMID'range) := HGATP64_VMID; -- Base mask
+      mask(HGATP64_PPN'range)  := HGATP64_PPN;  -- Base mask
+      -- Any of the legal modes trying to be written?
+      if (mode64_in = BARE or
+         (SUPPORTS_IMPL_MMU_SV39 and mode64_in = SV39) or
+         (SUPPORTS_IMPL_MMU_SV48 and mode64_in = SV48))
+      then
+        -- Insert the mode part of the mask if valid mode
+        mask(HGATP64_MODE'range) := HGATP64_MODE; 
+      end if;
+      return (hgatp_prv and not mask) or (hgatp_in and mask);
+    end if;
+  end function;
+
   -- Calculates page table address.
   function pt_addr(what  : va_type;
                    data  : std_logic_vector; mask : std_logic_vector;
@@ -733,9 +795,9 @@ package body mmucacheconfig is
   procedure virtual2physical(what  : va_type;
                              vaddr : std_logic_vector; mask : std_logic_vector;
                              paddr : inout std_logic_vector) is
-    constant pa_tmp      : std_logic_vector := pa(what);       -- constant
+    --constant pa_tmp      : std_logic_vector := pa(what);       -- constant
     -- Non-constant
-    variable xpaddr      : std_logic_vector(pa_tmp'range) := (others => '0');
+    variable xpaddr      : std_logic_vector(pa_msb(what) downto 0) := (others => '0');
     variable pos         : integer;
   begin
     --     RISC-V requires high bits to equal MSB of VA.

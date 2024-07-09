@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1311,8 +1311,18 @@ package body fputilnv is
       when others  =>
         -- Since formality seems to be a bit confused here,
         -- avoid complications, for now.
-        -- This is thus only correct for F/D.
-        exp := u2vec(e + bias, exp);
+        -- Remove the first three parts for formality, but
+		-- WARNING that it then is only correct for F/D!
+        if e + bias < -mbits then
+          exp := (others => '0');
+        elsif e + bias < 1 then
+          exp := (others => '0');
+          mant(mant'high + (e + bias)) := '1';
+        elsif e + bias > 2 ** ebits - 1 then
+          -- Infinity
+        else
+          exp := u2vec(e + bias, exp);
+        end if;
     end case;
 
     return sign & exp & mant;

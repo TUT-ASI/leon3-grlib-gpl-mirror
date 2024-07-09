@@ -1,0 +1,245 @@
+
+
+Prompt for target technology
+CONFIG_SYN_INFERRED
+  Selects the target technology for memory and pads.
+  The following are available:
+
+  - Inferred: Generic FPGA or ASIC targets if your synthesis tool
+    is capable of inferring RAMs and pads automatically.
+
+  - Actel ProAsic/P/3, IGLOO/2, RTG4, PolarFire and Axcelerator FPGAs
+  - Aeroflex UT130HBD, UT90RHBD
+  - Altera: Most Altera FPGA families
+  - Altera-CycloneIII: Altera Cyclone-III/IV FPGA family
+  - Altera-Stratix: Altera Stratix FPGA family
+  - Altera-StratixII: Altera Stratix/Cyclone-II FPGA families
+  - Altera-StratixIII: Altera Stratix-III FPGA family
+  - Altera-StratixIV: Altera Stratix-IV FPGA family
+  - Altera-StratixV: Altera Stratix-V FPGA family
+  - ATC18: Atmel-Nantes 0.18 um rad-hard CMOS
+  - NanoXploree : Brave-Medium 
+  - Lattice: Nexus
+  - Quicklogic : Eclipse/E/II FPGAs
+  - UMC-0.18 : UMC 0.18 um CMOS with Virtual Silicon libraries
+  - Xilinx-Spartan/2/3/6: Xilinx Spartan/2/3/6 libraries
+  - Xilinx-Spartan3E: Xilinx Spartan3E libraries
+  - Xilinx-Virtex/E: Xilinx Virtex/E libraries
+  - Xilinx-Virtex2/4/5/6/7: Xilinx Virtex2/4/5/6/7 libraries
+
+  Note: Level of technology support depends on type of GRLIB
+  distribution. A technology may be present in this list while the
+  tech support files are missing from the GRLIB distribution.
+  Actel support is only available in commercial and FT distributions.
+
+  Additional target technologies are available that are not selectable
+  via the xconfig tool.
+
+Ram library
+CONFIG_MEM_VIRAGE
+  Select RAM generators for ASIC targets.
+
+Transceiver type
+CONFIG_TRANS_GTP0
+  Select the transceiver type used in your FPGA
+
+Infer ram
+CONFIG_SYN_INFER_RAM
+  Say Y here if you want the synthesis tool to infer your
+  RAM automatically. Say N to directly instantiate technology-
+  specific RAM cells for the selected target technology package.
+
+Infer pads
+CONFIG_SYN_INFER_PADS
+  Say Y here if you want the synthesis tool to infer pads.
+  Say N to directly instantiate technology-specific pads from
+  the selected target technology package.
+
+No async reset
+CONFIG_SYN_NO_ASYNC
+  Say Y here if you disable asynchronous reset in some of the IP cores.
+  Might be necessary if the target library does not have cells with
+  asynchronous set/reset.
+
+Scan support
+CONFIG_SYN_SCAN
+  Say Y here to enable scan support in some cores. This will enable
+  the scan support generics where available and add logic to make
+  the design testable using full-scan.
+
+Number of processors
+CONFIG_PROC_NUM
+  The number of processor cores.
+
+FPU selection
+CONFIG_FPU_NANOFPU
+  Select which type of floating point unit is included into the LEON5.
+
+  The NanoFPU is a very small, low performance FPU that is available in
+  all versions of GRLIB.
+
+  GRFPU5 is a high performance pipelined FPU, which provides much higher
+  performance than the NanoFPU but also uses more area. The GRFPU5 is not
+  available in all versions of GRLIB.
+
+Cache/TLB performance configuration
+CONFIG_LEON5_HP
+  The cache controller supports different size configuration. See
+  leon5sys section in grip.pdf for further information
+
+Cache memory Configuration
+CONFIG_LEON5_CMCFG_TAG
+  Data cache tag configuration:
+  0 - two memories (one two-port, one one-port), valid bits in two-
+      port memory
+  1 - one dual port memory, valid bits in flip flops
+  2 - two single port memories, valid bits in flip flops
+  3 - reserved
+CONFIG_LEON5_CMCFG_DATA
+  Data cache data configuration:
+  0 - Use standard 32-bit one-port memories for data
+  4 - Use one-port memories with byte writes for data
+
+AHB data width
+CONFIG_AHB_32BIT
+  If there are AHB slaves connected to the LEON5 system that support
+  accesses wider than 32 bits, this option should be set to match the
+  supported width. In addition, the wide slave AHB bus map must be set
+  to indicate which address ranges can be accessed using wide accesses.
+
+Wide slave AHB bus map
+CONFIG_BWMASK
+  Setting indicating which parts of the memory space that can be
+  accessed using wide accesses. This must be set manually as it
+  can not be detected through the AMBA Plug-and-play information.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment supports wide access or not. The right-most
+  (LSB) bit defines the maximum width of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area supports wide access.
+  For example, a value of 00F3 defines address ranges
+  0x00000000-0x1FFFFFFF and 0x40000000-0x7FFFFFFF as wide access capable.
+
+
+Fixed cacheability map
+CONFIG_CACHE_FIXED
+  If this variable is 0, the cacheable memory regions are defined
+  by the AHB plug&play information (default). To override the
+  plug&play settings, this variable can be set to indicate which
+  areas should be cached.
+
+  The value is treated as a 16-bit hex value with each bit defining
+  if a 256 Mbyte segment should be cached or not. The right-most
+  (LSB) bit defines the cacheability of AHB address 0 - 256 MByte,
+  while the left-most bit (MSB) defines AHB address 3840 - 4096 MByte.
+  If the bit is set, the corresponding area is cacheable. For example,
+  a value of 00F3 defines address ranges 0x00000000-0x1FFFFFFF and
+  0x40000000-0x7FFFFFFF as cacheable.
+DSU enable
+CONFIG_DSU_UART
+  Say Y to enable the AHB uart (serial-to-AHB). This is the most
+  commonly used debug communication link.
+
+JTAG Enable
+CONFIG_DSU_JTAG
+  Say Y to enable the JTAG debug link (JTAG-to-AHB). Debugging is done 
+  with GRMON through the boards JTAG chain at speeds of up to 800 kbits/s. 
+
+  The TAP controller can be implemented in custom macros on
+  Altera, Actel Proasic/3 and Xilinx devices. The commercial
+  GRLIB also includes a generic TAP controller in VHDL.
+
+  Supported JTAG cables are Xilinx Parallel Cable III and IV, 
+  Xilinx Platform cables (USB), and Altera parallel and USB cables,
+  Amontech JTAG key, various FTDI chip based USB/JTAG devices, and
+  Actel Flash Pro 3/4 cable.
+
+AHB status register
+CONFIG_AHBSTAT_ENABLE
+  Say Y here to enable the AHB status register (AHBSTAT IP).
+  The register will latch the AHB address and master index when
+  an error response is returned by any AHB slave.
+
+SDRAM separate address buses
+CONFIG_AHBSTAT_NFTSLV
+  The AHB status register can also latch the AHB address on an external
+  input. Select here how many of such inputs are required.
+
+On-chip rom
+CONFIG_AHBROM_ENABLE
+  Say Y here to add a block on on-chip rom to the AHB bus. The ram
+  provides 0-waitstates read access,  burst support, and 8-, 16- 
+  and 32-bit data size. The rom will be syntheised into block rams
+  on Xilinx and Altera FPGA devices, and into gates on ASIC 
+  technologies. GRLIB includes a utility to automatically create
+  the rom VHDL model (ahbrom.vhd) from an ELF file. Refer to the GRLIB
+  documentation for details.
+
+On-chip rom address
+CONFIG_AHBROM_START
+  Set the start address of AHB ROM (HADDR[31:20]). The ROM will occupy
+  a 1 Mbyte slot at the selected address. Default is 000, corresponding
+  to AHB address 0x00000000. When address 0x0 is selected, the rom area
+  of any other memory controller is set to 0x10000000 to avoid conflicts.
+
+Enable pipeline register for on-chip rom
+CONFIG_AHBROM_PIPE
+  Say Y here to add a data pipeline register to the on-chip rom.
+  This should be done when the rom is implemenented in (ASIC) gates,
+  or in logic cells on FPGAs. Do not use this option when the rom is
+  implemented in block rams. If enabled, the rom will operate with 
+  one waitstate.
+
+On-chip ram
+CONFIG_AHBRAM_ENABLE
+  Say Y here to add a block on on-chip ram to the AHB bus. The ram
+  provides 0-waitstates read access and 0/1 waitstates write access.
+  All AHB burst types are supported, as well as 8-, 16- and 32-bit
+  data size.
+
+On-chip ram size
+CONFIG_AHBRAM_SZ1
+  Set the size of the on-chip AHB ram. The ram is infered/instantiated
+  as four byte-wide ram slices to allow byte and half-word write
+  accesses. It is therefore essential that the target package can
+  infer byte-wide rams. This is currently supported on the generic,
+  virtex, virtex2, proasic and axellerator targets.
+
+On-chip ram address
+CONFIG_AHBRAM_START
+  Set the start address of AHB RAM (HADDR[31:20]). The RAM will occupy
+  a 1 Mbyte slot at the selected address. Default is A00, corresponding
+  to AHB address 0xA0000000.
+
+On-chip ram pipeline stage
+CONFIG_AHBRAM_PIPE
+  Set this option to add an extra pipeline stage to the read data of the 
+  on-chip RAM. This can improve timing, especially when the memory is 
+  large, at the cost of adding an additional cycle delay on read.
+GPIO port
+CONFIG_GRGPIO_ENABLE
+  Say Y here to enable a general purpose I/O port. The port can be
+  configured from 1 - 32 bits, whith each port signal individually
+  programmable as input or output. The port signals can also serve
+  as interrupt inputs.
+
+GPIO port witdth
+CONFIG_GRGPIO_WIDTH
+  Number of bits in the I/O port. Must be in the range of 1 - 32.
+
+GPIO interrupt mask
+CONFIG_GRGPIO_IMASK
+  The I/O port interrupt mask defines which bits in the I/O port
+  should be able to create an interrupt. 
+
+
+IU assembly printing
+CONFIG_IU_DISAS
+  Enable printing of executed instructions to the console.
+
+Write trace to console
+CONFIG_AHB_DTRACE
+  Say yes here to write a trace of all AHB transfers to the
+  simulator console. Has not impact on final netlist.
+

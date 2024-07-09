@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -108,7 +108,6 @@ package generic_bm_pkg is
     rd_size       : std_logic_vector(2 downto 0);
     --  wr_addr     : std_logic_vector(31 downto 0);
     --  rd_addr     : std_logic_vector(31 downto 0);
-    wdata_valid   : std_logic;
     lock          : std_logic;
     lock_remove   : std_logic;
   end record;

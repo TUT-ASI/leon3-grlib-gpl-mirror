@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -167,13 +167,6 @@ begin
       v.eip(iereg)(iebit) := '0';
     end if;
       
-    -- AHB write
-    seteipnum_int := to_integer(unsigned(seteipnum));
-    if ahbw = '1' and seteipnum_int /= 0 then
-      iereg := seteipnum_int/XLEN;
-      iebit := seteipnum_int mod XLEN;
-      v.eip(iereg)(iebit) := '1';
-    end if;
 
     ------------------------------------------------------------------------------
     -- Indirectly accessed interrupt-file registers interface
@@ -269,6 +262,14 @@ begin
     v.eie(0)(0) := '0'; -- Read-only zero bit
     v.eip(0)(0) := '0'; -- Read-only zero bit
 
+
+    -- AHB write
+    seteipnum_int := to_integer(unsigned(seteipnum));
+    if ahbw = '1' and seteipnum_int /= 0 then
+      iereg := seteipnum_int/XLEN;
+      iebit := seteipnum_int mod XLEN;
+      v.eip(iereg)(iebit) := '1';
+    end if;
     
     -- Outputs to the CPU
     -- If eidelivery is set to 0x40000000, the eip bit
@@ -278,7 +279,7 @@ begin
     else
       eipo  <= v.eipo;
     end if;
-    topei <= v.topei;
+    topei <= r.topei;
 
 
     rin <= v;

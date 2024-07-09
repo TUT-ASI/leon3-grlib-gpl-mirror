@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1254,37 +1254,37 @@ package body riscv_disas is
   function fli_imm(rs1 : reg_t) return string is
   begin
     case rs1 is
-      when "00000" => return "-1.0";
-      when "00001" => return "min";
-      when "00010" => return "2.0^-16";
-      when "00011" => return "2.0^-15";
-      when "00100" => return "2.0^-8";
-      when "00101" => return "2.0^-7";
-      when "00110" => return "2.0^-4";
-      when "00111" => return "2.0^-3";
-      when "01000" => return "0.25";
-      when "01001" => return "0.3125";
-      when "01010" => return "0.375";
-      when "01011" => return "0.4375";
-      when "01100" => return "0.5";
-      when "01101" => return "0.625";
-      when "01110" => return "0.75";
-      when "01111" => return "0.875";
-      when "10000" => return "1.0";
-      when "10001" => return "1.25";
-      when "10010" => return "1.5";
-      when "10011" => return "1.75";
-      when "10100" => return "2.0";
-      when "10101" => return "2.5";
-      when "10110" => return "3.0";
-      when "10111" => return "4.0";
-      when "11000" => return "8.0";
-      when "11001" => return "16.0";
-      when "11010" => return "128.0";
-      when "11011" => return "256.0";
-      when "11100" => return "32768.0";
-      when "11101" => return "65536.0";
-      when "11110" => return "inf";
+      when "00000" => return "-1.0";          -- "-1.0";
+      when "00001" => return "min";           -- "min";
+      when "00010" => return "1.52587891e-5"; -- "2.0^-16";
+      when "00011" => return "3.05175781e-5"; -- "2.0^-15";
+      when "00100" => return "3.90625e-3";    -- "2.0^-8";
+      when "00101" => return "7.8125e-3";     -- "2.0^-7";
+      when "00110" => return "0.0625";        -- "2.0^-4";
+      when "00111" => return "0.125";         -- "2.0^-3";
+      when "01000" => return "0.25";          -- "0.25";
+      when "01001" => return "0.3125";        -- "0.3125";
+      when "01010" => return "0.375";         -- "0.375";
+      when "01011" => return "0.4375";        -- "0.4375";
+      when "01100" => return "0.5";           -- "0.5";
+      when "01101" => return "0.625";         -- "0.625";
+      when "01110" => return "0.75";          -- "0.75";
+      when "01111" => return "0.875";         -- "0.875";
+      when "10000" => return "1.0";           -- "1.0";
+      when "10001" => return "1.25";          -- "1.25";
+      when "10010" => return "1.5";           -- "1.5";
+      when "10011" => return "1.75";          -- "1.75";
+      when "10100" => return "2.0";           -- "2.0";
+      when "10101" => return "2.5";           -- "2.5";
+      when "10110" => return "3";             -- "3.0";
+      when "10111" => return "4";             -- "4.0";
+      when "11000" => return "8";             -- "8.0";
+      when "11001" => return "16";            -- "16.0";
+      when "11010" => return "128";           -- "128.0";
+      when "11011" => return "256";           -- "256.0";
+      when "11100" => return "3.2768e+4";     -- "32768.0";
+      when "11101" => return "6.5536e+4";     -- "65536.0";
+      when "11110" => return "inf";           -- "inf";
       when others  => return "nan";
     end case;
   end;
@@ -1673,7 +1673,7 @@ package body riscv_disas is
                   elsif rs2 = "00001" then
                     disas := strpad("sfence.inval.ir", disas'length);
                   end if;
-              when F7_SINVAL_VMA =>
+                when F7_SINVAL_VMA =>
                   disas := strpad("sinval.vma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
                 when F7_HINVAL_VVMA =>
                   disas := strpad("hinval.vvma " & reg2st(rs2) & ", " & reg2st(rs1), disas'length);
@@ -1687,6 +1687,7 @@ package body riscv_disas is
                       when "000000000010" => disas := strpad("uret", disas'length);
                       when "000100000010" => disas := strpad("sret", disas'length);
                       when "001100000010" => disas := strpad("mret", disas'length);
+                      when "011100000010" => disas := strpad("mnret", disas'length);
                       when "000100000101" => disas := strpad("wfi", disas'length);
                       when others         => null;
                     end case; -- funct12

@@ -17,7 +17,8 @@ controller/nf2_protocol_wrapper.vhd
 controller/nf2_sefi.vhd
 controller/nf2_edacstats.vhd
 controller/nandfctrl2.vhd
-phy/generic/nf2_generic_phy_internal_pkg.vhd
-phy/generic/nf2_generic_nvddr2_ctrl.vhd
-phy/generic/nf2_generic_nvddr2_phy.vhd
-phy/generic/nf2_generic_sdr_phy.vhd
+phy/generic/nandfctrl2_phy_generic_internal_pkg.vhd
+phy/generic/nandfctrl2_nvddr2_phy_generic_rx.vhd
+phy/generic/nandfctrl2_nvddr2_phy_generic_tx.vhd
+phy/generic/nandfctrl2_nvddr2_phy_generic.vhd
+phy/generic/nandfctrl2_sdr_phy_generic.vhd

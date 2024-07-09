@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -324,6 +324,7 @@ architecture rtl of graplic_ahb is
     child_index  : index_vector(nsources downto 0);   -- Only for the root domain
     sourcecfg    : sourcecfg_vector(ndomains-1 downto 0);
     src_active   : std_logic_vector(nsources downto 0);
+    src_pmode    : std_logic_vector(nsources downto 0);
     src_dm       : std_logic_vector(nsources downto 0);
     sourcecfg_SM : sourcecfg_SM_vector(nsources downto 0); 
     mmsiaddrcfg  : mmsiaddrcfg_type;
@@ -372,6 +373,7 @@ architecture rtl of graplic_ahb is
     child_index => (others => (others => '0')),
     sourcecfg   => (others => RES_sourcecfg),
     src_active  => (others => '0'),
+    src_pmode   => (others => '0'),
     src_dm  => (others => '0'),
     sourcecfg_SM => (others => (others => '0')),
     mmsiaddrcfg => RES_mmsiaddrcfg(mmsiaddrcfg_fixed),
@@ -598,14 +600,20 @@ begin
 
     -- Determine for each source if it is active or not
     -- Determine for each source if it is configured as direct delivery mode or MSI
-    v.src_dm := (others => '0'); 
+    v.src_dm     := (others => '0'); 
     v.src_active := (others =>'0');
+    v.src_pmode  := (others =>'0');
     for i in 0 to ndomains-1 loop
       for j in 1 to nsources loop
         if r.sourcecfg(i).active(j) = '1' then
           v.src_active(j) := '1';
           if r.domaincfg(i).DM = '1' then
             v.src_dm(j) := '1';
+          end if;
+          if S_EN = 1 then
+            if leaf_doms(i) = '1' then
+              v.src_pmode(j) := '1';
+            end if;
           end if;
         end if;
       end loop;
@@ -683,7 +691,9 @@ begin
             v.dm_enable(j*ncpu+i)(k) := '0';
             if r.hart(j)(i).direct = '1' then
               if unsigned(r.target(k).hart_index) = i and r.src_active(k) = '1' then
-                v.dm_enable(j*ncpu+i)(k) := r.setie(k);
+                if j = conv_integer(r.src_pmode(k)) then
+                  v.dm_enable(j*ncpu+i)(k) := r.setie(k);
+                end if;
               end if;
             end if;
           end loop;

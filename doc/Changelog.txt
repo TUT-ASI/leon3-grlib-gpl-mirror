@@ -1,3 +1,35 @@
+----------------------- Release 2024.2-b4293 ---------------------------
+
+2024-07-09	Added support for Lattice Nexus FPGAs.
+		- Techmap support for nexus primitives.
+		- Template designs for LEON3, LEON5 and NOEL-V targeting
+		  CrossLink, Certus and CertusPro FPGAs.
+
+2024-06-30	NOEL-V:
+		- Writes to HPMCOUNTERs are now single-issued
+		- MCONTROL6: The 32 MSBs of the address were masked when
+		  setting a breakpoint
+		- Accessing htimedeltah, henvcfgh and stimecmph could
+		  generate incorrect exception code
+		- HGATP: change to not clear all fields when illegal
+		  mode is set
+		- Update fence instruction to stall until write-buffer
+		  and current snoop access has completed
+		- hfence instruction did not cause illegal instruction
+		  exception when executed in U-mode
+		- PMPCFG: change behavior on illegal NA4 mode
+		- CBO: did not stall until tag update was completed.
+		  Forwarding for address generation was not correct
+		- SC: returned incorrect value is some corner cases
+		- Some code rewrite to workaround issues with some
+		  version of the DC tool
+		- The extra two bits in guest physical addresses was not
+		  stored in the TLB 
+		- APLIC: when interrupt was delegated to S-mode it was
+		  also forwarded to M-mode
+
+2024-06-24	APBUART16550 documentation added to grip.pdf
+
 ----------------------- Release 2024.1-b4292 ---------------------------
 
 2024-04-18	L2C_LITE: Fixed backend io address to provide an AMBA

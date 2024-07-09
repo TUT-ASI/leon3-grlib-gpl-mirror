@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023,        Frontgrade Gaisler
+--  Copyright (C) 2023 - 2024, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,9 +189,9 @@ architecture rtl of l2c_lite_core is
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_L2CL, 0, 1, 0),
     2 => (conv_std_logic_vector(bioarea, 12) & zero32(19 downto 0)),
-    4 => ahb_membar(haddr, '1', '1', hmask),
-    5 => ahb_membar(ioaddr, '0', '0', IO_ADDR_MASK),
-    6 => ahb_membar(bioaddr, '0', '0', biomask),
+    4 => gen_pnp_bar(haddr, hmask, 2, 1, 1),
+    5 => gen_pnp_bar(ioaddr, IO_ADDR_MASK, 1, 0, 0),
+    6 => gen_pnp_bar(bioaddr, biomask, 2 , 0 , 0),
     others => zero32
   );
 

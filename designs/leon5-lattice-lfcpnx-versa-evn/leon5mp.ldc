@@ -1,0 +1,2 @@
+#create_clock -name {OSCI2_hf_clk_out_o} -period 4.444 [get_pins OSCI2/lscc_osc_inst/u_OSC/HFCLKOUT]
+create_clock -name {clk_in} -period 10 [get_ports clk_in]
