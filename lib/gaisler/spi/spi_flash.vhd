@@ -749,22 +749,27 @@ architecture sim of spi_flash is
                 spi := true;
                 dpi := false;
                 qpi := false;
+                if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in ESPI mode"); end if;
                 exit receiving;
               when GOTODSPI =>
                 spi := false;
                 dpi := true;
                 qpi := false;
+                if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in DSPI mode"); end if;
                 exit receiving;
               when GOTOQSPI =>
                 spi := false;
                 dpi := false;
                 qpi := true;
+                if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in QSPI mode"); end if;
                 exit receiving;
               when GOTOEXTADDR =>
                 deltaaddr4b := 8;
+                if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in extended address mode"); end if;
                 exit receiving;
               when GOTONRMADDR =>
                 deltaaddr4b := 0;
+                if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in 3 byte address mode"); end if;
                 exit receiving;
               when NOPCMD =>
                 exit receiving;

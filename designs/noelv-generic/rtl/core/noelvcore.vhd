@@ -61,67 +61,72 @@ entity noelvcore is
     cpu_freq                : integer := 10000;
     oepol                   : integer := padoen_polarity(CFG_PADTECH);
     devid                   : integer := NOELV_SOC;
-    disas                   : integer := CFG_LOCAL_DISAS     -- Enable disassembly to console
+    disas                   : integer := CFG_LOCAL_DISAS;    -- Enable disassembly to console
+    tohost                  : std_logic_vector(63 downto 0) := (others => '1'); -- addr for tohost
+    fromhost                : std_logic_vector(63 downto 0) := (others => '1'); -- addr for fromhost
+    htif                    : integer := 0
     );
   port (
     -- Clock & reset
-    clkm        : in  std_ulogic;
-    resetn      : in  std_ulogic;
-    lock        : in  std_ulogic;
-    rstno       : out std_ulogic;
+    clkm          : in  std_ulogic;
+    resetn        : in  std_ulogic;
+    lock          : in  std_ulogic;
+    rstno         : out std_ulogic;
     -- misc
-    dmen        : in  std_ulogic;
-    dmbreak     : in  std_ulogic;
-    dmreset     : out std_ulogic;
-    cpu0errn    : out std_ulogic;
+    dmen          : in  std_ulogic;
+    dmbreak       : in  std_ulogic;
+    dmreset       : out std_ulogic;
+    cpu0errn      : out std_ulogic;
     -- GPIO
-    gpio_i      : in  std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
-    gpio_o      : out std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
-    gpio_oe     : out std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
+    gpio_i        : in  std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
+    gpio_o        : out std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
+    gpio_oe       : out std_logic_vector(CFG_GRGPIO_WIDTH-1 downto 0);
     -- UART
-    uart_rx     : in  std_logic_vector(0 downto 0);
-    uart_ctsn   : in  std_logic_vector(0 downto 0);
-    uart_tx     : out std_logic_vector(0 downto 0);
-    uart_rtsn   : out std_logic_vector(0 downto 0);
+    uart_rx       : in  std_logic_vector(0 downto 0);
+    uart_ctsn     : in  std_logic_vector(0 downto 0);
+    uart_tx       : out std_logic_vector(0 downto 0);
+    uart_rtsn     : out std_logic_vector(0 downto 0);
     -- Memory controller
-    mem_aximi   : in  axi_somi_type;
-    mem_aximo   : out axi_mosi_type;
-    mem_ahbsi0  : out ahb_slv_in_type;
-    mem_ahbso0  : in  ahb_slv_out_type;
-    mem_apbi0   : out apb_slv_in_type;
-    mem_apbo0   : in  apb_slv_out_type;
+    mem_aximi     : in  axi_somi_type;
+    mem_aximo     : out axi_mosi_type;
+    mem_ahbsi0    : out ahb_slv_in_type;
+    mem_ahbso0    : in  ahb_slv_out_type;
+    mem_apbi0     : out apb_slv_in_type;
+    mem_apbo0     : in  apb_slv_out_type;
     -- PROM controller
-    rom_ahbsi1  : out ahb_slv_in_type;
-    rom_ahbso1  : in  ahb_slv_out_type;
+    rom_ahbsi1    : out ahb_slv_in_type;
+    rom_ahbso1    : in  ahb_slv_out_type;
     -- Ethernet PHY
-    ethi        : in  eth_in_type;
-    etho        : out eth_out_type;
-    eth_apbi    : out apb_slv_in_type;
-    eth_apbo    : in  apb_slv_out_type;
+    ethi          : in  eth_in_type;
+    etho          : out eth_out_type;
+    eth_apbi      : out apb_slv_in_type;
+    eth_apbo      : in  apb_slv_out_type;
     -- NANDFCTRL
-    nf2_phyi    : in  nf2_to_phy_out_type := NF2_TO_PHY_OUT_NONE;
-    nf2_phyo    : out nf2_to_phy_in_type;
+    nf2_core_clk  : in  std_ulogic          := '0';
+    nf2_core_rstn : in  std_ulogic          := '0';
+    nf2_phyi      : in  nf2_to_phy_out_type := NF2_TO_PHY_OUT_NONE;
+    nf2_phyo      : out nf2_to_phy_in_type;
     -- Debug UART
-    duart_rx    : in  std_ulogic;
-    duart_tx    : out std_ulogic;
+    duart_rx      : in  std_ulogic;
+    duart_tx      : out std_ulogic;
     -- Debug JTAG
-    trst        : in std_ulogic := '1';
-    tck         : in std_ulogic;
-    tms         : in std_ulogic;
-    tdi         : in std_ulogic;
-    tdo         : out std_ulogic;
+    trst          : in std_ulogic           := '1';
+    tck           : in std_ulogic;
+    tms           : in std_ulogic;
+    tdi           : in std_ulogic;
+    tdo           : out std_ulogic;
     -- RISC-V JTAG
-    jtag_rv_tck : in std_ulogic := '0';
-    jtag_rv_tms : in std_ulogic := '0';
-    jtag_rv_tdi : in std_ulogic := '0';
-    jtag_rv_tdo : out std_ulogic
+    jtag_rv_tck   : in std_ulogic           := '0';
+    jtag_rv_tms   : in std_ulogic           := '0';
+    jtag_rv_tdi   : in std_ulogic           := '0';
+    jtag_rv_tdo   : out std_ulogic
   );
 end;
 
 architecture rtl of noelvcore is
-  
+
   -- Constants ------------------------
-  
+
   constant ncpu     : integer := CFG_LOCAL_NCPU;
 
   constant nextmst  : integer := 2;
@@ -146,7 +151,7 @@ architecture rtl of noelvcore is
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_MIG_7SERIES, 0, 0, 0),
     4 => ahb_membar(L2C_HADDR, '1', '1', L2C_HMASK),
     others => zero32);
-  
+
   -- Signals --------------------------
 
   -- Misc
@@ -173,7 +178,7 @@ architecture rtl of noelvcore is
   signal mem_ahbso  : ahb_slv_out_vector := (others => ahbs_none);
   signal mem_ahbmi  : ahb_mst_in_type;
   signal mem_ahbmo  : ahb_mst_out_vector := (others => ahbm_none);
-  
+
   -- Memory
   signal axi3_aximo : axi3_mosi_type;
 
@@ -187,7 +192,7 @@ architecture rtl of noelvcore is
   -- Ethernet
   signal ethi_int   : eth_in_type;
 
-  
+
   -- Attributes -----------------------
 
   attribute keep                     : boolean;
@@ -221,7 +226,7 @@ begin
   ---  NOEL-V SUBSYSTEM ------------------------------------------------
   ----------------------------------------------------------------------
 
-  noelv0 : noelvsys 
+  noelv0 : noelvsys
     generic map (
       fabtech   => fabtech,
       memtech   => memtech,
@@ -240,11 +245,15 @@ begin
       rfconf    => CFG_LOCAL_RFCONF,
       --tcmconf   => CFG_LOCAL_TCMCONF,
       mulconf   => CFG_LOCAL_MULCONF,
+      intcconf   => CFG_LOCAL_INTCCONF,
       disas     => disas,
       ahbtrace  => 0,
       cfg       => CFG_LOCAL_CFG,
       devid     => devid,
-      nodbus    => CFG_LOCAL_NODBUS
+      nodbus    => CFG_LOCAL_NODBUS,
+      tohost    => tohost,
+      fromhost  => fromhost,
+      htif      => htif
       )
     port map(
       clk       => clkm, -- : in  std_ulogic;
@@ -268,12 +277,12 @@ begin
       dsuen     => dmen, -- : in  std_ulogic;
       dsubreak  => dmbreak, -- : in  std_ulogic;
       cpu0errn  => cpu0errn, -- : out std_ulogic;
-      --dmreset   => dmreset, 
+      --dmreset   => dmreset,
       -- UART connection
       uarti     => u1i, -- : in  uart_in_type;
       uarto     => u1o  -- : out uart_out_type
       );
-  
+
   uart_rtsn(0)  <= u1o.rtsn;
   uart_tx(0)    <= u1o.txd;
   u1i.ctsn      <= uart_ctsn(0);
@@ -282,7 +291,7 @@ begin
   -----------------------------------------------------------------------------
   -- Debug UART ---------------------------------------------------------------
   -----------------------------------------------------------------------------
-  
+
   dcomgen : if CFG_AHB_UART = 1 generate
     dcom0 : ahbuart
       generic map(
@@ -315,7 +324,7 @@ begin
   -----------------------------------------------------------------------------
   -- JTAG debug link ----------------------------------------------------------
   -----------------------------------------------------------------------------
-  
+
   ahbjtaggen0 : if CFG_AHB_JTAG = 1 generate
     ahbjtag0 : ahbjtag
       generic map(
@@ -365,10 +374,13 @@ begin
         tckn      => open,
         tapo_tckn => open,
         tapo_ninst=> open,
-        tapo_iupd => open); 
+        tapo_iupd => open);
   end generate;
   no_ahbjtagrvgen0 : if CFG_LOCAL_AHB_JTAG_RV = 0 generate
     jtag_rv_tdo <= '0';
+    -- pragma translate_off
+    dbgmo(JTAG_RV_DM_HMINDEX) <= ahbm_none;
+    -- pragma translate_on
   end generate;
 
   -----------------------------------------------------------------------
@@ -392,7 +404,7 @@ begin
           ioaddr    => L2C_IOADDR,
           cached    => CFG_L2_MAP,
           repl      => CFG_L2_RAN,
-          ways      => CFG_L2_WAYS, 
+          ways      => CFG_L2_WAYS,
           linesize  => CFG_L2_LSZ,
           waysize   => CFG_L2_SIZE,
           memtech   => memtech,
@@ -430,7 +442,7 @@ begin
           ahbso => ahbso(L2C_HSINDEX),
           aximi => mem_aximi,
           aximo => axi3_aximo);
-          
+
           mem_aximo.aw.id     <= axi3_aximo.aw.id;
           mem_aximo.aw.addr   <= axi3_aximo.aw.addr;
           mem_aximo.aw.len    <= axi3_aximo.aw.len;
@@ -453,10 +465,10 @@ begin
           mem_aximo.ar.valid  <= axi3_aximo.ar.valid;
           mem_aximo.r         <= axi3_aximo.r;
     end generate;
-    
+
     mem_ahbsi0  <= ahbs_in_none;
     mem_apbi0   <= apb_slv_in_none;
-    -- No APB interface on memory controller  
+    -- No APB interface on memory controller
     apbo(MEM_PINDEX)  <= apb_none;
   end generate;
   noaxi_gen : if (CFG_L2_AXI = 0) generate
@@ -465,19 +477,19 @@ begin
         generic map (
           hslvidx   => L2C_HSINDEX,
           hmstidx   => 0,
-          cen       => CFG_L2_PEN, 
+          cen       => CFG_L2_PEN,
           haddr     => L2C_HADDR,
           hmask     => L2C_HMASK,
           ioaddr    => L2C_IOADDR,
           cached    => CFG_L2_MAP,
           repl      => CFG_L2_RAN,
-          ways      => CFG_L2_WAYS, 
+          ways      => CFG_L2_WAYS,
           linesize  => CFG_L2_LSZ,
           waysize   => CFG_L2_SIZE,
           memtech   => memtech,
           bbuswidth => CFG_LOCAL_L2C_BBWIDTH,
           bioaddr   => 16#FFD#,
-          biomask   => 16#fff#, 
+          biomask   => 16#fff#,
           sbus      => 0,
           mbus      => 1,
           arch      => CFG_L2_SHARE,
@@ -490,11 +502,11 @@ begin
           ahbmi   => mem_ahbmi,
           ahbmo   => mem_ahbmo(0),
           ahbsov  => mem_ahbso);
-      
+
       ahb_men : ahbctrl                -- AHB arbiter/multiplexer
         generic map (
           defmast => CFG_DEFMST,
-          split   => CFG_SPLIT, 
+          split   => CFG_SPLIT,
           rrobin  => CFG_RROBIN,
           ioaddr  => 16#FFD#,
           ioen    => 1,
@@ -508,7 +520,7 @@ begin
           mem_ahbmo,
           mem_ahbsi,
           mem_ahbso);
-      
+
       mem_ahbmo(NAHBMST-1 downto 1) <= (others => ahbm_none);
       mem_ahbso(NAHBMST-1 downto 1) <= (others => ahbs_none);
       mem_ahbsi0              <= mem_ahbsi;
@@ -533,7 +545,7 @@ begin
   ----------------------------------------------------------------------
 
   --  AHB Status Register
-  ahbs : if CFG_AHBSTAT = 1 generate  
+  ahbs : if CFG_AHBSTAT = 1 generate
     stati <= ahbstat_in_none;
     ahbstat0 : ahbstat
       generic map(
@@ -610,14 +622,14 @@ begin
         ipaddrh => CFG_ETH_IPM, ipaddrl => CFG_LOCAL_ETH_IPL,
         giga => CFG_GRETH1G, ramdebug => 0, gmiimode => CFG_LOCAL_ETH_GMII,
         edclsepahb => 1)
-      port map( rst => rstn, clk => clkm, 
+      port map( rst => rstn, clk => clkm,
                 ahbmi => ahbmi, ahbmo => ahbmo(GRETH_HMINDEX),
                 ahbmi2 => dbgmi(GRETH_DM_HMINDEX), ahbmo2 => dbgmo(GRETH_DM_HMINDEX),
                 apbi => apbi, apbo => apbo(GRETH_PINDEX), ethi => ethi_int, etho => etho);
-    
+
     eth_in_sig : process (ethi)
     begin
-      ethi_int <= ethi;  
+      ethi_int <= ethi;
       ethi_int.edclsepahb <= '1';
     end process;
 
@@ -675,10 +687,11 @@ begin
         ecc1_chunk   => CFG_NFC2_ECC1_CHUNK,
         ecc1_cap     => CFG_NFC2_ECC1_CAP,
 
-        rst_cycles   => 10,
+        rst_cycles   => CFG_NFC2_RST_CYCLES,
+        tag_size     => CFG_NFC2_TAG_SIZE,
 
-        ft           =>  CFG_NFC2_FT,
-        scantest     =>  0,
+        ft           => CFG_NFC2_FT,
+        scantest     => 0,
 
         oepol        => oepol
         )
@@ -686,8 +699,8 @@ begin
         rstn      => rstn, -- apb/ahb reset and clock.
         clk_sys   => clkm,
 
-        core_rstn => rstn, -- nandfctrl2 reset and clock.
-        clk_core  => clkm,
+        core_rstn => nf2_core_rstn, -- nandfctrl2 core reset and clock.
+        clk_core  => nf2_core_clk,
 
         apbi      => apbi,
         apbo      => apbo(NFC2_PINDEX),
@@ -740,4 +753,3 @@ begin
 -- pragma translate_on
 
 end rtl;
-

@@ -94,6 +94,8 @@ package config is
   constant CFG_NFC2_ECC1_GFSIZE : integer := 0;
   constant CFG_NFC2_ECC1_CHUNK : integer := 0;
   constant CFG_NFC2_ECC1_CAP : integer := 0;
+  constant CFG_NFC2_RST_CYCLES : integer := 0;
+  constant CFG_NFC2_TAG_SIZE : integer := 0;
   constant CFG_NFC2_FT : integer := 0;
 -- Gaisler Ethernet core
   constant CFG_GRETH : integer := 0;

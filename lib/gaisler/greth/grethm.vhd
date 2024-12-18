@@ -72,7 +72,9 @@ entity grethm is
     maxsize        : integer := 1500;
     rgmiimode      : integer range 0 to 1  := 0;
     gmiimode       : integer range 0 to 1  := 0;
-    num_desc       : integer range 128 to 65536 := 128
+    num_desc       : integer range 128 to 65536 := 128;
+    timestamps     : integer range 0 to 1 := 0; -- Only for gbit
+    external_mdio_ctrl : integer range 0 to 1 := 0 -- Only for gbit
     );
   port(
     rst            : in  std_ulogic;
@@ -82,14 +84,20 @@ entity grethm is
     apbi           : in  apb_slv_in_type;
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
-    etho           : out eth_out_type
+    etho           : out eth_out_type;
     -- Debug Interface
-    ; debug_rx      : out std_logic_vector(63 downto 0);
-    debug_tx        : out std_logic_vector(63 downto 0);
-    debug_gtx       : out std_logic_vector(63 downto 0)
+    debug_rx       : out std_logic_vector(63 downto 0);
+    debug_tx       : out std_logic_vector(63 downto 0);
+    debug_gtx      : out std_logic_vector(63 downto 0);
+    -- Timestamping, only for GBIT
+    timestamp      : in  std_logic_vector(63 downto 0) := (others => '0');
+    -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0. Only for GBIT.
+    phy_aneg_valid  : in  std_ulogic := '0';
+    -- Index 0: 100, 1: gbit, 2: fduplex
+    phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
   );
 end entity;
-  
+
 architecture rtl of grethm is
 begin
 
@@ -182,8 +190,10 @@ begin
         ramdebug       => ramdebug,
         mdiohold       => mdiohold,
         rgmiimode      => rgmiimode,
-        gmiimode       => gmiimode
-        ) 
+        gmiimode       => gmiimode,
+        timestamps     => timestamps,
+        external_mdio_ctrl => external_mdio_ctrl
+        )
       port map (
         rst            => rst,
         clk            => clk,
@@ -195,7 +205,10 @@ begin
         etho           => etho
         , debug_rx    => debug_rx,
         debug_tx      => debug_tx,
-        debug_gtx     => debug_gtx
+        debug_gtx     => debug_gtx,
+        timestamp     => timestamp,
+        phy_aneg_valid  => phy_aneg_valid,
+        phy_aneg_result => phy_aneg_result
         );
   end generate;
 

@@ -1,0 +1,217 @@
+/*
+ * Automatically generated C config: don't edit
+ */
+#define AUTOCONF_INCLUDED
+#define CONFIG_HAS_SHARED_GRFPU 1
+/*
+ * Synthesis      
+ */
+#undef  CONFIG_SYN_INFERRED
+#undef  CONFIG_SYN_AXCEL
+#undef  CONFIG_SYN_AXDSP
+#undef  CONFIG_SYN_FUSION
+#undef  CONFIG_SYN_PROASIC
+#undef  CONFIG_SYN_PROASICPLUS
+#undef  CONFIG_SYN_PROASIC3
+#undef  CONFIG_SYN_PROASIC3E
+#undef  CONFIG_SYN_PROASIC3L
+#undef  CONFIG_SYN_IGLOO
+#undef  CONFIG_SYN_IGLOO2
+#undef  CONFIG_SYN_SF2
+#undef  CONFIG_SYN_RTG4
+#undef  CONFIG_SYN_POLARFIRE
+#undef  CONFIG_SYN_UT130HBD
+#undef  CONFIG_SYN_UT90NHBD
+#undef  CONFIG_SYN_CYCLONEIII
+#undef  CONFIG_SYN_STRATIX
+#undef  CONFIG_SYN_STRATIXII
+#undef  CONFIG_SYN_STRATIXIII
+#undef  CONFIG_SYN_STRATIXIV
+#undef  CONFIG_SYN_STRATIXV
+#undef  CONFIG_SYN_ALTERA
+#undef  CONFIG_SYN_ATC18
+#undef  CONFIG_SYN_ATC18RHA
+#undef  CONFIG_SYN_CUSTOM1
+#undef  CONFIG_SYN_DARE
+#undef  CONFIG_SYN_CMOS9SF
+#undef  CONFIG_SYN_NEXUS
+#undef  CONFIG_SYN_BRAVEMED
+#undef  CONFIG_SYN_ECLIPSE
+#undef  CONFIG_SYN_RH_LIB18T
+#undef  CONFIG_SYN_RHUMC
+#undef  CONFIG_SYN_RHS65
+#undef  CONFIG_SYN_SAED32
+#undef  CONFIG_SYN_SMIC13
+#undef  CONFIG_SYN_TM65GPLUS
+#undef  CONFIG_SYN_TSMC90
+#undef  CONFIG_SYN_UMC
+#undef  CONFIG_SYN_ARTIX7
+#undef  CONFIG_SYN_KINTEX7
+#define CONFIG_SYN_KINTEXU 1
+#undef  CONFIG_SYN_SPARTAN3
+#undef  CONFIG_SYN_SPARTAN3E
+#undef  CONFIG_SYN_SPARTAN6
+#undef  CONFIG_SYN_VIRTEX2
+#undef  CONFIG_SYN_VIRTEX4
+#undef  CONFIG_SYN_VIRTEX5
+#undef  CONFIG_SYN_VIRTEX6
+#undef  CONFIG_SYN_VIRTEX7
+#undef  CONFIG_SYN_ZYNQ7000
+#undef  CONFIG_SYN_INFER_RAM
+#undef  CONFIG_SYN_INFER_PADS
+#undef  CONFIG_SYN_NO_ASYNC
+#undef  CONFIG_SYN_SCAN
+/*
+ * Clock generation
+ */
+#undef  CONFIG_CLK_INFERRED
+#undef  CONFIG_CLK_HCLKBUF
+#undef  CONFIG_CLK_UT130HBD
+#undef  CONFIG_CLK_ALTDLL
+#undef  CONFIG_CLK_BRAVEMED
+#undef  CONFIG_CLK_PRO3PLL
+#undef  CONFIG_CLK_PRO3EPLL
+#undef  CONFIG_CLK_PRO3LPLL
+#undef  CONFIG_CLK_FUSPLL
+#undef  CONFIG_CLK_LIB18T
+#undef  CONFIG_CLK_RHUMC
+#undef  CONFIG_CLK_DARE
+#undef  CONFIG_CLK_SAED32
+#undef  CONFIG_CLK_EASIC45
+#undef  CONFIG_CLK_RHS65
+#define CONFIG_CLK_CLKPLLE2 1
+#undef  CONFIG_CLK_CLKDLL
+#undef  CONFIG_CLK_DCM
+#define CONFIG_CLK_MUL (2)
+#define CONFIG_CLK_DIV (6)
+#undef  CONFIG_PCI_SYSCLK
+/*
+ * Processor            
+ */
+#define CONFIG_NOELV 1
+#define CONFIG_PROC_NUM (1)
+#define CONFIG_NOELV_RV64 1
+#undef  CONFIG_NOELV_RV32
+#define CONFIG_NOELV_XLEN (64)
+#undef  CONFIG_NOELV_HP
+#define CONFIG_NOELV_GP 1
+#undef  CONFIG_NOELV_MC
+#define CONFIG_NOELV_FULL 1
+#undef  CONFIG_NOELV_LITE
+#define CONFIG_NOELV_DISSUE 1
+#undef  CONFIG_NOELV_SISSUE
+#define CONFIG_PROC_TYP (3)
+#define CONFIG_PROC_NOFPU (0)
+#define CONFIG_PROC_LITE (0)
+#define CONFIG_PROC_S (0)
+/*
+ * Interrupt settings       
+ */
+#define CONFIG_DOMAINS_NUM (4)
+#define CONFIG_EIID_NUM (63)
+/*
+ * VHDL debug settings       
+ */
+#undef  CONFIG_IU_DISAS
+/*
+ * NOEL-V subsystem GPL settings       
+ */
+#define CONFIG_PROC_NODBUS 1
+/*
+ * L2 Cache
+ */
+#undef  CONFIG_L2_ENABLE
+#undef  CONFIG_L2_LITE
+#undef  CONFIG_L2_ASSO1
+#undef  CONFIG_L2_ASSO2
+#undef  CONFIG_L2_ASSO3
+#define CONFIG_L2_ASSO4 1
+#undef  CONFIG_L2_SZ1
+#undef  CONFIG_L2_SZ2
+#undef  CONFIG_L2_SZ4
+#undef  CONFIG_L2_SZ8
+#undef  CONFIG_L2_SZ16
+#undef  CONFIG_L2_SZ32
+#define CONFIG_L2_SZ64 1
+#undef  CONFIG_L2_SZ128
+#undef  CONFIG_L2_SZ256
+#undef  CONFIG_L2_SZ512
+#define CONFIG_L2_LINE32 1
+#undef  CONFIG_L2_LINE64
+#undef  CONFIG_L2_HPROT
+#undef  CONFIG_L2_PEN
+#undef  CONFIG_L2_WT
+#undef  CONFIG_L2_RAN
+#undef  CONFIG_L2_SHARE
+#define CONFIG_L2_MAP 00FF
+#define CONFIG_L2_MTRR (0)
+#define CONFIG_L2_EDAC_NONE 1
+#undef  CONFIG_L2_EDAC_YES
+#undef  CONFIG_L2_EDAC_TECHSPEC
+#define CONFIG_L2_AXI 1
+/*
+ * AMBA configuration
+ */
+#define CONFIG_AHB_DEFMST (0)
+#define CONFIG_AHB_RROBIN 1
+#define CONFIG_AHB_SPLIT 1
+#define CONFIG_AHB_FPNPEN 1
+#define CONFIG_AHB_IOADDR FFF
+#define CONFIG_APB_HADDR 800
+#undef  CONFIG_AHB_MON
+#undef  CONFIG_AHB_DTRACE
+/*
+ * Debug Link           
+ */
+#define CONFIG_DSU_UART 1
+#define CONFIG_DSU_JTAG 1
+#define CONFIG_DSU_ETH 1
+#undef  CONFIG_DSU_ETHSZ1
+#define CONFIG_DSU_ETHSZ2 1
+#undef  CONFIG_DSU_ETHSZ4
+#undef  CONFIG_DSU_ETHSZ8
+#undef  CONFIG_DSU_ETHSZ16
+#define CONFIG_DSU_IPMSB C0A8
+#define CONFIG_DSU_IPLSB 0033
+#define CONFIG_DSU_ETHMSB 020000
+#define CONFIG_DSU_ETHLSB 000000
+#undef  CONFIG_DSU_ETH_PROG
+/*
+ * Peripherals             
+ */
+/*
+ * Memory controller             
+ */
+/*
+ * MIG 7-Series memory controller   
+ */
+#define CONFIG_MIG_7SERIES 1
+#define CONFIG_MIG_7SERIES_MODEL 1
+#define CONFIG_AHBSTAT_ENABLE 1
+#define CONFIG_AHBSTAT_NFTSLV (1)
+/*
+ * NANDFCTRL
+ */
+#undef  CONFIG_NANDFCTRL2_ENABLE
+/*
+ * Ethernet             
+ */
+#define CONFIG_GRETH_ENABLE 1
+#undef  CONFIG_GRETH_GIGA
+#undef  CONFIG_GRETH_FIFO4
+#define CONFIG_GRETH_FIFO8 1
+#undef  CONFIG_GRETH_FIFO16
+#undef  CONFIG_GRETH_FIFO32
+#undef  CONFIG_GRETH_FIFO64
+#undef  CONFIG_GRETH_FMC_MODE
+#define CONFIG_GRETH_PHY_ADDR (7)
+/*
+ * UARTs, timers and irq control         
+ */
+#define CONFIG_GRGPIO_ENABLE 1
+#define CONFIG_GRGPIO_WIDTH (20)
+#define CONFIG_GRGPIO_IMASK FFFE
+/*
+ * VHDL Debugging        
+ */
+#define CONFIG_DEBUG_UART 1

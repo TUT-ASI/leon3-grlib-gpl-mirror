@@ -564,6 +564,14 @@
 #define CONFIG_NFC2_ECC1_CAP 0
 #endif
 
+#ifndef CONFIG_NFC2_RST_CYCLES
+#define CONFIG_NFC2_RST_CYCLES 0
+#endif
+
+#ifndef CONFIG_NFC2_TAG_SIZE
+#define CONFIG_NFC2_TAG_SIZE 0
+#endif
+
 #if defined CONFIG_NFC2_FT_DMR
 #define CONFIG_NFC2_FT 1
 #elif defined CONFIG_NFC2_FT_TMR

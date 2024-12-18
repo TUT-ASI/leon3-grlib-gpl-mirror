@@ -47,7 +47,9 @@ package noelv is
 
   constant GEILEN               : integer := 16;
 
-  constant AIA_SUPPORT          : integer := 0;   -- 0 = AIA support is disabled in GRLIB
+  constant AIA_SUPPORT          : integer := 1;   -- 0 = AIA support is disabled in GRLIB
+  constant ZICFISS_SUPPORT      : integer := 1;   -- 0 = ZICFISS support is disabled in GRLIB
+  constant ZICFILP_SUPPORT      : integer := 1;   -- 0 = ZICFILP support is disabled in GRLIB
   constant SMRNMI_SUPPORT       : integer := 0;   -- 0 = SMRNMI support is disabled in GRLIB
   constant DBLTRP_SUPPORT       : integer := 0;   -- 0 = Double trap extensions support is disabled in GRLIB
   -- Types --------------------------------------------------------------------
@@ -93,15 +95,15 @@ package noelv is
     mtopei_w  : std_ulogic;                              -- Machine top external interrupt write
     stopei_w  : std_ulogic;                              -- Supervisor top external interrupt write
     vstopei_w : std_ulogic;                              -- Virtual Supervisor top external interrupt write
-    
+
     miselect  : std_logic_vector(XLEN-1 downto 0);       -- Machine indirect register select value
     siselect  : std_logic_vector(XLEN-1 downto 0);       -- Supervisor indirect register select value
     vsiselect : std_logic_vector(XLEN-1 downto 0);       -- Virtual Supervisor indirect register select value
-    
+
     mireg     : std_logic_vector(XLEN-1 downto 0);       -- Machine indirect register alias value
     sireg     : std_logic_vector(XLEN-1 downto 0);       -- Supervisor indirect register alias value
     vsireg    : std_logic_vector(XLEN-1 downto 0);       -- Virtual Supervisor indirect register alias value
-    
+
     mireg_w   : std_ulogic;                              -- Machine indirect register alias write
     sireg_w   : std_ulogic;                              -- Supervisor indirect register alias write
     vsireg_w  : std_ulogic;                              -- Virtual Supervisor indirect register alias write
@@ -112,7 +114,7 @@ package noelv is
     mtopei   : std_logic_vector(XLEN-1 downto 0);        -- Machine top external interrupt register value
     stopei   : std_logic_vector(XLEN-1 downto 0);        -- Supervisor top external interrupt register value
     vstopei  : std_logic_vector(XLEN-1 downto 0);        -- Virtual top external interrupt register value
-    
+
     mireg    : std_logic_vector(XLEN-1 downto 0);        -- Machine indirect register alias value
     sireg    : std_logic_vector(XLEN-1 downto 0);        -- Supervisor indirect register alias value
     vsireg   : std_logic_vector(XLEN-1 downto 0);        -- Virtual indirect register alias value
@@ -125,7 +127,7 @@ package noelv is
     mtopei_w  => '0',
     stopei_w  => '0',
     vstopei_w => '0',
-    
+
     miselect  => (others => '0'),
     siselect  => (others => '0'),
     vsiselect => (others => '0'),
@@ -133,7 +135,7 @@ package noelv is
     mireg     => (others => '0'),
     sireg     => (others => '0'),
     vsireg    => (others => '0'),
-    
+
     mireg_w   => '0',
     sireg_w   => '0',
     vsireg_w  => '0',
@@ -149,6 +151,8 @@ package noelv is
     sireg    => (others => '0'),
     vsireg   => (others => '0')
     );
+
+
 
   -- Stats --------------------------------------------------------------------
   type nv_cstat_type is record
@@ -185,9 +189,9 @@ package noelv is
     --jal           : std_logic;
     --dcache_flush  : std_logic;
   end record;
-  
+
   type nv_counter_out_vector is array (natural range <>) of nv_counter_out_type;
-  
+
   -- Debug --------------------------------------------------------------------
   type nv_debug_in_type is record
     dsuen       : std_ulogic;                           -- DSU Enable
@@ -249,6 +253,38 @@ package noelv is
 
   type trace_d_vector is array (natural range<>) of std_logic_vector(1023 downto 0);
 
+-- GRLIB_INTERNAL_BEGIN
+-- Bus snooper used by cosim
+  type memTraceW is record
+    physAddr : std_logic_vector(32 - 1 downto 0); -- Where can I get this width?
+    data     : std_logic_vector(AHBDW  - 1 downto 0);
+    size     : std_logic_vector(2 downto 0);
+    valid    : std_logic;
+    rw       : std_logic;
+    id       : std_logic_vector(3 downto 0);
+  end record;
+
+  constant memTraceWRes : memTraceW := (
+    physAddr => (others => '0'),
+    data     => (others => '0'),
+    size     => (others => '0'),
+    valid    => '0',
+    rw       => '0',
+    id       => (others => '0')
+  );
+  type mem_trace is record
+    ahbmip : ahb_mst_in_type;
+    ahbsip : ahb_slv_in_type;
+    mtr    : memTraceW;
+  end record;
+  constant mem_trace_res : mem_trace := (
+    ahbmip => ahbm_in_none,
+    ahbsip => ahbs_in_none,
+    mtr    => memTraceWRes
+  );
+-- GRLIB_INTERNAL_END
+
+
   -- Hart-Encoder Interface
   type nv_etrace_out_type is record
     -- Mandatory signals
@@ -280,9 +316,9 @@ package noelv is
     iretire   => (others => '0'),
     ilastsize => (others => '0')
   );
-  
+
   type nv_etrace_out_vector is array (natural range <>) of nv_etrace_out_type;
-  
+
   -- E-trace sink Interfaces
   type nv_etrace_sink_in_type is record
     full  : std_logic;
@@ -328,11 +364,14 @@ package noelv is
     ext_smdbltrp  : integer;
     ext_sddbltrp  : integer;
     ext_smepmp    : integer;
+    ext_svpbmt    : integer;
     imsic         : integer;
     ext_zicbom    : integer;
     ext_zicond    : integer;
     ext_zimop     : integer;
     ext_zcmop     : integer;
+    ext_zicfiss   : integer;
+    ext_zicfilp   : integer;
     ext_svinval   : integer;
     ext_zfa       : integer;
     ext_zfh       : integer;
@@ -344,6 +383,8 @@ package noelv is
     pmp_no_tor    : integer;
     pmp_entries   : integer;
     pmp_g         : integer;
+    pma_entries   : integer;
+    pma_masked    : integer;
     asidlen       : integer;
     vmidlen       : integer;
     perf_cnts     : integer;
@@ -445,8 +486,10 @@ package noelv is
       pmp_no_tor        : integer range 0  to 1         := 0;  -- Disable PMP TOR
       pmp_entries       : integer range 0  to 16        := 16; -- Implemented PMP registers
       pmp_g             : integer range 0  to 10        := 0;  -- PMP grain is 2^(pmp_g + 2) bytes
-      asidlen           : integer range 0 to  16        := 0;  -- Max 9 for Sv32
-      vmidlen           : integer range 0 to  14        := 0;  -- Max 7 for Sv32
+      pma_entries       : integer range 0  to 16        := 8;  -- Implemented PMA entries
+      pma_masked        : integer range 0  to 1         := 0;  -- PMA done using masks
+      asidlen           : integer range 0  to 16        := 0;  -- Max 9 for Sv32
+      vmidlen           : integer range 0  to 14        := 0;  -- Max 7 for Sv32
       -- Interrupts
       imsic             : integer range 0  to 1         := 0;  -- IMSIC implemented
       -- RNMI
@@ -468,19 +511,22 @@ package noelv is
       ext_zbkc          : integer range 0  to 1         := 0;  -- Zbkc Extension
       ext_zbkx          : integer range 0  to 1         := 0;  -- Zbkx Extension
       ext_sscofpmf      : integer range 0  to 1         := 0;  -- Sscofpmf Extension
-      ext_sstc          : integer range 0  to 2         := 0;  -- Sctc Extension (2 : only time csr impl.)  
+      ext_sstc          : integer range 0  to 2         := 0;  -- Sctc Extension (2 : only time csr impl.)
       ext_smaia         : integer range 0  to 1         := 0;  -- Smaia Extension
-      ext_ssaia         : integer range 0  to 1         := 0;  -- Ssaia Extension 
-      ext_smstateen     : integer range 0  to 1         := 0;  -- Sstateeen Extension 
-      ext_smrnmi        : integer range 0  to 1         := 0;  -- Smrnmi Extension 
+      ext_ssaia         : integer range 0  to 1         := 0;  -- Ssaia Extension
+      ext_smstateen     : integer range 0  to 1         := 0;  -- Sstateeen Extension
+      ext_smrnmi        : integer range 0  to 1         := 0;  -- Smrnmi Extension
       ext_ssdbltrp      : integer range 0  to 1         := 0;  -- Ssdbltrp Extension
       ext_smdbltrp      : integer range 0  to 1         := 0;  -- Smdbltrp Extension
       ext_sddbltrp      : integer range 0  to 1         := 0;  -- Sddbltrp Extension
       ext_smepmp        : integer range 0  to 1         := 0;  -- Smepmp Extension
+      ext_svpbmt        : integer range 0  to 1         := 0;  -- Svpbmt Extension
       ext_zicbom        : integer range 0  to 1         := 0;  -- Zicbom Extension
       ext_zicond        : integer range 0  to 1         := 0;  -- Zicond Extension
       ext_zimop         : integer range 0  to 1         := 0;  -- Zimop Extension
       ext_zcmop         : integer range 0  to 1         := 0;  -- Zcmop Extension
+      ext_zicfiss       : integer range 0  to 1         := 0;  -- Zicfiss Extension
+      ext_zicfilp       : integer range 0  to 1         := 0;  -- Zicfilp Extension
       ext_svinval       : integer range 0  to 1         := 0;  -- Svinval Extension
       ext_zfa           : integer range 0  to 1         := 0;  -- Zfa Extension
       ext_zfh           : integer range 0  to 1         := 0;  -- Zfh Extension
@@ -529,7 +575,7 @@ package noelv is
       dbgo        : out nv_debug_out_type;-- debug out
       eto         : out nv_etrace_out_type;
       cnt         : out nv_counter_out_type;
-      pwrd        : out std_ulogic           -- Activate power down mode 
+      pwrd        : out std_ulogic           -- Activate power down mode
       );
   end component;
 
@@ -547,6 +593,7 @@ package noelv is
       fpuconf  : integer;
       tcmconf  : integer;
       mulconf  : integer;
+      intcconf : integer;
       disas    : integer;
       pbaddr   : integer;
       cfg      : integer;
@@ -560,8 +607,8 @@ package noelv is
       ahbo   : out ahb_mst_out_type;
       ahbsi  : in  ahb_slv_in_type;
       ahbso  : in  ahb_slv_out_vector;
-      imsici : out imsic_in_type;       
-      imsico : in  imsic_out_type;     
+      imsici : out imsic_in_type;
+      imsico : in  imsic_out_type;
       irqi   : in  nv_irq_in_type;
       irqo   : out nv_irq_out_type;
       nirqi  : in  nv_nirq_in_type;
@@ -569,7 +616,7 @@ package noelv is
       dbgo   : out nv_debug_out_type;
       eto    : out nv_etrace_out_type;
       cnt    : out nv_counter_out_type;
-      pwrd   : out std_ulogic        
+      pwrd   : out std_ulogic
       );
   end component;
 
@@ -593,13 +640,17 @@ package noelv is
       fpuconf  : integer;
       tcmconf  : integer := 0;
       mulconf  : integer := 0;
+      intcconf : integer := 0;
       disas    : integer;
       ahbtrace : integer;
       cfg      : integer := 0;
       devid    : integer := 0;
       nodbus   : integer := 0;
       trace    : integer := 0;
-      scantest : integer := 0
+      scantest : integer := 0;
+      htif     : integer := 1;
+      tohost   : std_logic_vector(63 downto 0) := (others => '1'); -- addr for tohost
+      fromhost : std_logic_vector(63 downto 0) := (others => '1')  -- addr for fromhost
       );
     port (
       clk      : in  std_ulogic;
@@ -672,7 +723,7 @@ package noelv is
       cbmi    : in  ahb_mst_in_type;
       cbmo    : out ahb_mst_out_type;
       cbsi    : in  ahb_slv_in_type;
-      -- 
+      --
       dbgi   : in  nv_debug_out_vector(0 to ncpu-1);
       dbgo   : out nv_debug_in_vector(0 to ncpu-1);
       dsui   : in  nv_dm_in_type;
@@ -758,8 +809,8 @@ package noelv is
       mtimer  : integer range 0 to 1          := 1;
       sswi    : integer range 0 to 1          := 1;
       -- Watchdog
-      watchdog    : integer range 0 to 1      := 1;  
-      wdtickbit   : integer range 0 to 63     := 4   
+      watchdog    : integer range 0 to 1      := 1;
+      wdtickbit   : integer range 0 to 63     := 4
       );
     port (
       rst         : in  std_ulogic;

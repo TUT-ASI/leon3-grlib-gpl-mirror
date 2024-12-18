@@ -276,7 +276,7 @@ package body fputilnv is
         case funct3 is
           when R_WORD   => illegal := not ext_f;
           when R_DOUBLE => illegal := not ext_d;
-          when R_HALF   => illegal := not (ext_f and ext_zfhmin);
+          when R_HALF   => illegal := not (ext_f and (ext_zfhmin or ext_zfbfmin));
           when others   => illegal := true;
         end case;
       when OP_FMADD | OP_FMSUB | OP_FNMSUB | OP_FNMADD =>
@@ -302,7 +302,7 @@ package body fputilnv is
                 illegal := not (ext_f and ext_zfh);
               when R_FMV_X_W  | R_FMV_W_X  |
                    R_FCVT_S_D =>
-                illegal := not (ext_f and ext_zfhmin);
+                illegal := not (ext_f and (ext_zfhmin or ext_zfbfmin));
               when others =>
                 illegal := true;
             end case;
@@ -353,7 +353,7 @@ package body fputilnv is
               when "000" =>
                 -- The move instructions only work for 16/32 bit float on RV32.
                 if fmt = "10" then
-                  illegal_fmt := not ext_zfhmin;
+                  illegal_fmt := not (ext_zfhmin or ext_zfbfmin);
                 end if;
                 -- FLI.S/D/H
                 if ext_zfa and rfa2 = "00001" and funct5 = R_FMV_W_X then
@@ -376,25 +376,19 @@ package body fputilnv is
             end case;
           -- Convert between floating point types
           when R_FCVT_S_D =>  -- R_FCVT_D_S
-            if ext_zfa and rfa2(4 downto 2) = "001" then
-              if rfa2(1) = '1' then
-                if ext_zfbfmin then
-                  if rfa2(0) = '1' or (fmt /= "00" and fmt /= "10") then
-                    illegal := true;
-                  end if;
-                else
-                  illegal := true;
-                end if;
-              else
-                -- FROUND[NX].S/D/H
-                -- Encoded as 4/5
-                case fmt is
-                  when "00"   => null;
-                  when "01"   => null;
-                  when "10"   => illegal := illegal or not ext_zfhmin;
-                  when others => illegal := true;
-                end case;
-              end if;
+            if    ext_zfbfmin and rfa2 = "01000" and fmt = "10" then
+              -- FCVT.BF16.S
+            elsif ext_zfbfmin and rfa2 = "00110" and fmt = "00" then
+              -- FCVT.S.BF16
+            elsif ext_zfa and rfa2(4 downto 1) = "0010" then
+              -- FROUND[NX].S/D/H
+              -- Encoded as 4/5
+              case fmt is
+                when "00"   => null;
+                when "01"   => null;
+                when "10"   => illegal := illegal or not ext_zfhmin;
+                when others => illegal := true;
+              end case;
             elsif rfa2(4 downto 2) = "000" then
               case conversion is
                 when "0001" => null;
@@ -652,6 +646,7 @@ package body fputilnv is
         when R_FCMP     => return FPU_CMP;
         when R_FCVT_S_W => return FPU_CVT_S_W;
         when R_FMV_W_X  => return FPU_MV_W_X;
+        when R_FMVP_5_X => return FPU_MV_W_X;
         when R_FDIV     => return FPU_DIV;
         when R_FSQRT    => return FPU_SQRT;
         when others     => return FPU_UNKNOWN;
@@ -698,6 +693,11 @@ package body fputilnv is
     ren(1) := fs1_gen(inst);
     ren(2) := fs2_gen(inst);
     ren(3) := fs3_gen(inst);
+
+
+    -- I DONT KNOW WHY, BUT IF I UNCOMMENT THE ASSERT DOESNT WORK
+
+    -- assert op /= FPU_UNKNOWN report "Not supported FPU opcode" severity failure; --//TODO
 
     op_out := (valid, op, funct3, rm, fmt, rd, (rs1, rs2, rs3), ren);
   end;

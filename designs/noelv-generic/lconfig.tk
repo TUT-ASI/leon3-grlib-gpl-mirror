@@ -2492,15 +2492,17 @@ proc menu12 {w title} {
 	int $w.config.f 12 18 "ecc1_gfsize   " CONFIG_NFC2_ECC1_GFSIZE
 	int $w.config.f 12 19 "ecc1_chunk    " CONFIG_NFC2_ECC1_CHUNK
 	int $w.config.f 12 20 "ecc1_cap      " CONFIG_NFC2_ECC1_CAP
+	int $w.config.f 12 21 "rst_cycles    " CONFIG_NFC2_RST_CYCLES
+	int $w.config.f 12 22 "tag_size      " CONFIG_NFC2_TAG_SIZE
 	global tmpvar_14
-	minimenu $w.config.f 12 21 "GRSPW2 FIFO protection           " tmpvar_14 CONFIG_NFC2_FT_NONE
-	menu $w.config.f.x21.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
-	$w.config.f.x21.x.menu add radiobutton -label "None" -variable tmpvar_14 -value "None" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_14 -value "Parity-DMR" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "TMR" -variable tmpvar_14 -value "TMR" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "BCH" -variable tmpvar_14 -value "BCH" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "TechSpec" -variable tmpvar_14 -value "TechSpec" -command "update_active"
-	menusplit $w $w.config.f.x21.x.menu 5
+	minimenu $w.config.f 12 23 "GRSPW2 FIFO protection           " tmpvar_14 CONFIG_NFC2_FT_NONE
+	menu $w.config.f.x23.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
+	$w.config.f.x23.x.menu add radiobutton -label "None" -variable tmpvar_14 -value "None" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_14 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "TMR" -variable tmpvar_14 -value "TMR" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "BCH" -variable tmpvar_14 -value "BCH" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "TechSpec" -variable tmpvar_14 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x23.x.menu 5
 
 
 
@@ -2579,7 +2581,11 @@ proc update_menu12 {} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x19.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x19.l configure -state normal; } else {.menu12.config.f.x19.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x19.l configure -state disabled}
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x20.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x20.l configure -state normal; } else {.menu12.config.f.x20.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x20.l configure -state disabled}
-	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {configure_entry .menu12.config.f.x21 normal {x l}} else {configure_entry .menu12.config.f.x21 disabled {x l}}
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x21.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x21.l configure -state normal; } else {.menu12.config.f.x21.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x21.l configure -state disabled}
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu12.config.f.x22.x configure -state normal -foreground [ cget .ref -foreground ]; .menu12.config.f.x22.l configure -state normal; } else {.menu12.config.f.x22.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu12.config.f.x22.l configure -state disabled}
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {configure_entry .menu12.config.f.x23 normal {x l}} else {configure_entry .menu12.config.f.x23 disabled {x l}}
 }
 
 
@@ -2627,6 +2633,10 @@ proc update_define_menu12 {} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CHUNK "$CONFIG_NFC2_ECC1_CHUNK" 512}
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CAP "$CONFIG_NFC2_ECC1_CAP" 16}
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CAP "$CONFIG_NFC2_ECC1_CAP" 10}
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CAP "$CONFIG_NFC2_ECC1_CAP" 0}
 	global tmpvar_14
 	global CONFIG_NFC2_FT_NONE
 	if {$tmpvar_14 == "None"} then {set CONFIG_NFC2_FT_NONE 1} else {set CONFIG_NFC2_FT_NONE 0}
@@ -3197,6 +3207,8 @@ set CONFIG_NFC2_ECC0_CAP 60
 set CONFIG_NFC2_ECC1_GFSIZE 13
 set CONFIG_NFC2_ECC1_CHUNK 512
 set CONFIG_NFC2_ECC1_CAP 16
+set CONFIG_NFC2_RST_CYCLES 10
+set CONFIG_NFC2_TAG_SIZE 0
 set tmpvar_14 "(not set)"
 set CONFIG_NFC2_FT_NONE 0
 set CONFIG_NFC2_FT_DMR 0
@@ -3605,6 +3617,10 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CHUNK $CONFIG_NFC2_ECC1_CHUNK $notmod }
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CAP $CONFIG_NFC2_ECC1_CAP $notmod }
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_RST_CYCLES $CONFIG_NFC2_RST_CYCLES $notmod }
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_TAG_SIZE $CONFIG_NFC2_TAG_SIZE $notmod }
 	global tmpvar_14
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {
 	if { $tmpvar_14 == "None" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 0 [list $notmod] 2 }

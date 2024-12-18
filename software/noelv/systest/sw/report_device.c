@@ -1,4 +1,6 @@
+// clang-format off
 #include "report.h"
+#include <stddef.h>
 
 #ifndef GRLIB_REPORTDEV_CUSTOM
 
@@ -25,7 +27,7 @@ typedef short testmod_type;
 
 
 volatile testmod_type *grtestmod = (volatile testmod_type *) GRLIB_REPORTDEV_BASE;
-static void grtestmod_write(r,v)
+static void grtestmod_write(size_t r, testmod_type v)
 {
 	grtestmod[r*REPORTDEV_OFFSET] = v;
 }

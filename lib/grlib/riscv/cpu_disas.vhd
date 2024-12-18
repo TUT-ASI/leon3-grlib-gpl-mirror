@@ -59,6 +59,7 @@ port (
   fsd_hi        : in  std_logic_vector;                 -- High half of fsd on RV32
   wregen_f      : in  std_ulogic;                       -- FPU Regfile Write Enable
   memen         : in  std_ulogic;                       -- Memory access
+  cfi           : in  std_ulogic;                       -- Actual CFI instruction (not Zimop/Zcmop)
   wcsren        : in  std_ulogic;                       -- CSR Write Enable
   wcsrdata      : in  std_logic_vector;                 -- CSR Write Data
   prv           : in  std_logic_vector(1 downto 0);     -- Privileged Level
@@ -117,6 +118,7 @@ begin
           wcsrdata,               -- CSR Write Data
           wcsren,                 -- CSR Write Enable
           memen,                  -- Memory access
+          cfi,                    -- Actual CFI instruction (not Zimop/Zcmop)
           inst,                   -- Instruction
           cinst,                  -- Compressed Instruction
           comp,                   -- Compressed Flag

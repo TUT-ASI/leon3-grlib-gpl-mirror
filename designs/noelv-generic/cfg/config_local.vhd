@@ -24,6 +24,7 @@ package config_local is
   constant CFG_LOCAL_RFCONF       : integer := 0; 
   constant CFG_LOCAL_TCMCONF      : integer := 0; 
   constant CFG_LOCAL_MULCONF      : integer := 0;
+  constant CFG_LOCAL_INTCCONF     : integer := 0;
   constant CFG_LOCAL_JTAG_NSYNC   : integer := 1; 
   constant CFG_LOCAL_JTAG_AINST   : integer := 2; 
   constant CFG_LOCAL_JTAG_DINST   : integer := 3; 

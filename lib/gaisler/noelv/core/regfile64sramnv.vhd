@@ -76,7 +76,7 @@ architecture rtl of regfile64sramnv is
 
   constant abits : integer := reg_t'length;
   constant dbits : integer := wdata1'length;
-  
+
   subtype  data_t is std_logic_vector(dbits - 1 downto 0);
 
   constant RPORTS : integer := 4;
@@ -121,7 +121,7 @@ architecture rtl of regfile64sramnv is
     lwrite2     => (others => (others => '0')),
     lwrite3     => (others => (others => '0')),
     lwrite4     => (others => (others => '0'))
-    
+
   );
 
   signal rdata10, rdata11 : data_t;
@@ -224,7 +224,7 @@ begin  -- rtl
       end if;
 
 
-      
+
     end if;
 
     -- Store most recent valid value
@@ -265,7 +265,7 @@ begin  -- rtl
       v.lwrite4(u2i(waddr2)) := "1";
     end if;
 
-    
+
     -- PORT1
     if we1 = '1' and rdhold = '0' then
       if waddr1 = raddr1 then
@@ -370,7 +370,7 @@ begin  -- rtl
       end if;
     end if;
 
-    
+
     rdata1v := (others => '0');
     rdzp1   := '1';
     if r.raddr1 /= "00000" or reg0write = 1 then
@@ -465,7 +465,7 @@ begin  -- rtl
       forw_sel4 := '1';
     end if;
 
-    
+
     -- Reset
     if rstn = '0' then
       v         := reg_type_rst;

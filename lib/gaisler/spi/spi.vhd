@@ -60,8 +60,8 @@ package spi is
   constant QUADOUT_INDEX   : integer := 17;
   constant DUALIN_INDEX    : integer := 18;
   constant QUADIN_INDEX    : integer := 19;
-  subtype WRITECMD_RANGE    is Natural range 31 downto 24;
   constant XIP_INDEX       : integer := 20;
+  subtype WRITECMD_RANGE    is Natural range 31 downto 24;
   
 
   type spi_out_type is record
@@ -234,8 +234,11 @@ package spi is
     io2         : std_ulogic;
     io3         : std_ulogic;
     cd          : std_ulogic;
+    rstaddrm    : std_ulogic;
   end record;
+  constant spimctrl_in_none : spimctrl_in_type := (others => '0');
 
+  
   type spimctrl_out_type is record
     mosi        : std_ulogic;
     miso        : std_ulogic;
@@ -246,6 +249,9 @@ package spi is
     iooen       : std_ulogic;
     sck         : std_ulogic;
     csn         : std_ulogic;
+    csn1        : std_ulogic;
+    csn2        : std_ulogic;
+    csn3        : std_ulogic;
     cdcsnoen    : std_ulogic;
 --    errorn      : std_ulogic;
     ready       : std_ulogic;
@@ -253,7 +259,7 @@ package spi is
   end record;
 
   constant spimctrl_out_none : spimctrl_out_type :=
-    ('0', '0', '1', '1', '0', '1', '0', '0', '1', '1', '0', '0');
+    ('0', '0', '1', '1', '0', '1', '0', '0', '1', '1', '1', '1', '1', '0', '0');
 
   component spimctrl
     generic (
@@ -280,19 +286,20 @@ package spi is
       dummycycles  : integer range 0 to 15  := 0;
       DSPI         : integer range 0 to 1   := 0;
       QSPI         : integer range 0 to 1   := 0;
-      extaddr      : integer range 0 to 1   := 0;
+      extaddr      : integer range 0 to 2   := 0;
       reconf       : integer range 0 to 1   := 0;
       writecmd     : integer range 0 to 255 := 16#02#;
       allow_writes : integer range 0 to 1   := 0;
       xip_byte     : integer range 0 to 1   := 0;
-      xip_polarity : integer range 0 to 1   := 1
+      xip_polarity : integer range 0 to 1   := 1;
+      multiple_csn : integer range 0 to 1   := 0
       );
     port (
       rstn    : in  std_ulogic;
       clk     : in  std_ulogic;
       ahbsi   : in  ahb_slv_in_type;
       ahbso   : out ahb_slv_out_type;
-      spii    : in  spimctrl_in_type;
+      spii    : in  spimctrl_in_type := spimctrl_in_none;
       spio    : out spimctrl_out_type
     );
   end component;

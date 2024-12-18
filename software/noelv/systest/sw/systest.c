@@ -12,8 +12,6 @@
 #include "greth.h"
 #include "l2c.h"
 #include "l2capi.h"
-#include "aclint.h"
-#include "imsic.h"
 #include "apuart16550.h"
 
 #ifndef CONSOLE_DEBUG
@@ -24,7 +22,7 @@
 #define APBUART_ADDR_SYSTEST 0xfc001000ULL // De-RISC
 #endif
 #ifndef APBUART16550_ADDR_SYSTEST
-#define APBUART16550_ADDR_SYSTEST 0xfc001000ULL // De-RISC
+#define APBUART16550_ADDR_SYSTEST 0xff900000ULL // De-RISC
 #endif
 #ifndef SPIMCTRL_ADDR_SYSTEST
 #define SPIMCTRL_ADDR_SYSTEST 0xfff90000ULL // Generic
@@ -53,15 +51,6 @@
 #ifndef L2C_ADDR_SYSTEST
 #define L2C_ADDR_SYSTEST 0xff000000ULL // De-RISC: 0xff000000ULL
 #endif
-#ifndef ACLINT_ADDR_SYSTEST
-#define ACLINT_ADDR_SYSTEST 0xe0000000ULL // Generic
-#endif
-#ifndef IMSIC_ADDR_SYSTEST
-#define IMSIC_ADDR_SYSTEST 0xa0000000ULL  // Generic
-#endif
-#ifndef APLIC_ADDR_SYSTEST
-#define APLIC_ADDR_SYSTEST 0xf8000000ULL  // Generic
-#endif
 // Default PIRQ
 #ifndef SPICTRL_PIRQ
 #define SPICTRL_PIRQ 6 // Generic: 8 | De-RISC: 6
@@ -84,8 +73,7 @@
 #define GRIOMMU_SYSTEST (1 << 8)
 #define GRETH_SYSTEST (1 << 9)
 #define L2C_SYSTEST (1 << 10)
-#define AIA_SYSTEST (1 << 11)
-#define APBUART16550_SYSTEST (1 << 12)
+#define APBUART16550_SYSTEST (1 << 11)
 
 #ifndef SYSTEST_TYPE
 #define SYSTEST_TYPE L2C_SYSTEST
@@ -191,27 +179,6 @@ int main() {
     char* memaddr = 0x0ULL;
     test_failed |= l2c_test(memaddr, (struct l2cregs*)l2c_addr);
     print_test_result(test_failed, "L2Cache");
-  }
-  //if ((SYSTEST_TYPE) & ACLINT_SYSTEST) {
-  //  printf("Starting aCLINT test\n");
-  //  addr_t aclint_addr = ACLINT_ADDR_SYSTEST;
-  //  test_failed |= aclint_test(aclint_addr);
-  //  print_test_result(test_failed, "aCLINT");
-  //}
-  if ((SYSTEST_TYPE) & AIA_SYSTEST) {
-    printf("Starting AIA test\n");
-    addr_t aclint_addr = ACLINT_ADDR_SYSTEST;
-    addr_t imsic_addr  = IMSIC_ADDR_SYSTEST;
-    addr_t aplic_addr  = APLIC_ADDR_SYSTEST;
-    int cpus      = 1;  // Number of CPUS in the system
-    int geilen    = 16; // GEILEN constant of the RISCV system
-    int domains   = 4;  // APLIC implemented domains
-    int lite      = 1;  // Executes a shorter version of the test
-    int smstateen = 1;  // Smstateen exntension is implemented
-    int smrnmi    = 0;  // Smrnmi exntension is implemented
-    test_failed |= aia_test(aclint_addr, imsic_addr, aplic_addr, 
-                            cpus, geilen, domains, lite, smstateen, smrnmi);
-    print_test_result(test_failed, "AIA");
   }
   if ((SYSTEST_TYPE) & APBUART16550_SYSTEST) {
     //printf("Starting APBUART16550 test\n");

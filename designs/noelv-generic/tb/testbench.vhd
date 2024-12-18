@@ -40,14 +40,16 @@ use work.config.all;
 
 entity testbench is
   generic(
-    fabtech : integer := CFG_FABTECH;
-    memtech : integer := CFG_MEMTECH;
-    padtech : integer := CFG_PADTECH;
-    clktech : integer := CFG_CLKTECH;
-    disas   : integer := CFG_DISAS;
-    dm_ctrl : integer := 0;
-    romfile : string := "prom.srec"; -- rom contents
-    ramfile : string := "ram.srec"  -- ram contents
+    fabtech  : integer := CFG_FABTECH;
+    memtech  : integer := CFG_MEMTECH;
+    padtech  : integer := CFG_PADTECH;
+    clktech  : integer := CFG_CLKTECH;
+    disas    : integer := CFG_DISAS;
+    dm_ctrl  : integer := 0;
+    romfile  : string  := "prom.srec"; -- rom contents
+    ramfile  : string  := "ram.srec";  -- ram contents
+    htif     : integer := 0;
+    tohost   : integer := 0
     );
 end;
 
@@ -125,7 +127,10 @@ begin
       disas             => disas,
       SIMULATION        => 1,
       romfile           => romfile,
-      ramfile           => ramfile
+      ramfile           => ramfile,
+      tohost            => std_logic_vector(to_unsigned(tohost, 64)),
+      fromhost          => (others => '1'),
+      htif              => htif
       )
     port map(
       reset             => system_rst,

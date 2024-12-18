@@ -1,11 +1,17 @@
 #ifndef REPORT_H_
 #define REPORT_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdint.h>
 
-#define get_pid() ({ unsigned long __tmp; \
-  asm volatile ("csrr %0, 0xf14" : "=r"(__tmp)); \
-  __tmp; })
+#define get_pid()                                                              \
+  ({                                                                           \
+    unsigned long __tmp;                                                       \
+    asm volatile("csrr %0, mhartid" : "=r"(__tmp));                              \
+    __tmp;                                                                     \
+  })
 
 #ifdef NOELV_SYSTEST
 typedef uint64_t addr_t;
@@ -28,5 +34,7 @@ void report_mem_test(void);
 
 int fail(int id);
 
+#ifdef __cplusplus
+}
 #endif
-
+#endif

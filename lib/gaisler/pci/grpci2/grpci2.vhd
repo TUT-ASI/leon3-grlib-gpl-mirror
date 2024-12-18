@@ -96,7 +96,7 @@ entity grpci2 is
     nsync       : integer range 0 to 2 := 2; -- with nsync = 0, wrfst needed on syncram...
     hostrst     : integer range 0 to 2 := 0; -- 0: PCI reset is never driven, 1: PCI reset is driven from AHB reset if host, 2: PCI reset is always driven from AHB reset
     bypass      : integer range 0 to 1 := 1;
-    ft          : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 5 := 0;
     scantest    : integer range 0 to 1 := 0;
     debug       : integer range 0 to 1 := 0;
     tbapben     : integer range 0 to 1 := 0;
@@ -189,7 +189,7 @@ type pci_config_space_multi_type is array (0 to multifunc) of pci_config_space_t
 
 type pci_fifo_out_type is record
   data  : std_logic_vector(31 downto 0);
-  err   : std_logic_vector(3 downto 0);
+  err   : std_logic_vector(4*(1-ft/4)+ft/4 downto 0);
 end record;
 constant pci_fifo_out_none : pci_fifo_out_type := ((others => '0'), (others => '0'));
 type pci_fifo_in_type is record

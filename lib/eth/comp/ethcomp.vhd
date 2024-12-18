@@ -152,33 +152,35 @@ package ethcomp is
   
   component greth_gbitc is
     generic(
-      ifg_gap        : integer := 24; 
-      attempt_limit  : integer := 16;
-      backoff_limit  : integer := 10;
-      slot_time      : integer := 128;
-      mdcscaler      : integer range 0 to 255 := 25; 
-      nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 3 := 0;
-      edclbufsz      : integer range 1 to 64 := 1;
-      burstlength    : integer range 4 to 128 := 32;
-      macaddrh       : integer := 16#00005E#;
-      macaddrl       : integer := 16#000000#;
-      ipaddrh        : integer := 16#c0a8#;
-      ipaddrl        : integer := 16#0035#;
-      phyrstadr      : integer range 0 to 32 := 0;
-      sim            : integer range 0 to 1 := 0;
-      oepol          : integer range 0 to 1 := 0;
-      scanen         : integer range 0 to 1 := 0;
-      mdint_pol      : integer range 0 to 1 := 0;
-      enable_mdint   : integer range 0 to 1 := 0;
-      multicast      : integer range 0 to 1 := 0;
-      edclsepahbg    : integer range 0 to 1 := 0;
-      ramdebug       : integer range 0 to 2 := 0;
-      mdiohold       : integer := 1;
-      gmiimode       : integer range 0 to 1 := 0;
-      mdiochain      : integer range 0 to 1 := 0;
-      rgmiimode      : integer range 0 to 1 := 0;
-      iotest         : integer range 0 to 1 := 0
+      ifg_gap            : integer := 24;
+      attempt_limit      : integer := 16;
+      backoff_limit      : integer := 10;
+      slot_time          : integer := 128;
+      mdcscaler          : integer range 0 to 255 := 25;
+      nsync              : integer range 1 to 2 := 2;
+      edcl               : integer range 0 to 3 := 0;
+      edclbufsz          : integer range 1 to 64 := 1;
+      burstlength        : integer range 4 to 128 := 32;
+      macaddrh           : integer := 16#00005E#;
+      macaddrl           : integer := 16#000000#;
+      ipaddrh            : integer := 16#c0a8#;
+      ipaddrl            : integer := 16#0035#;
+      phyrstadr          : integer range 0 to 32 := 0;
+      sim                : integer range 0 to 1 := 0;
+      oepol              : integer range 0 to 1 := 0;
+      scanen             : integer range 0 to 1 := 0;
+      mdint_pol          : integer range 0 to 1 := 0;
+      enable_mdint       : integer range 0 to 1 := 0;
+      multicast          : integer range 0 to 1 := 0;
+      edclsepahbg        : integer range 0 to 1 := 0;
+      ramdebug           : integer range 0 to 2 := 0;
+      mdiohold           : integer := 1;
+      gmiimode           : integer range 0 to 1 := 0;
+      mdiochain          : integer range 0 to 1 := 0;
+      rgmiimode          : integer range 0 to 1 := 0;
+      iotest             : integer range 0 to 1 := 0;
+      timestamps         : integer range 0 to 1 := 0;
+      external_mdio_ctrl : integer range 0 to 1 := 0
     );
     port(
       rst            : in  std_ulogic;
@@ -290,7 +292,13 @@ package ethcomp is
       -- Debug Interface
       debug_rx        : out std_logic_vector(63 downto 0);
       debug_tx        : out std_logic_vector(63 downto 0);
-      debug_gtx       : out std_logic_vector(63 downto 0)
+      debug_gtx       : out std_logic_vector(63 downto 0);
+      -- Timestamping
+      timestamp       : in  std_logic_vector(63 downto 0) := (others => '0');
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
       );
   end component;
 
@@ -383,33 +391,35 @@ package ethcomp is
 
   component greth_gbit_gen is
     generic(
-      memtech        : integer := 0;
-      ifg_gap        : integer := 24; 
-      attempt_limit  : integer := 16;
-      backoff_limit  : integer := 10;
-      slot_time      : integer := 128;
-      mdcscaler      : integer range 0 to 255 := 25; 
-      nsync          : integer range 1 to 2 := 2;
-      edcl           : integer range 0 to 3 := 1;
-      edclbufsz      : integer range 1 to 64 := 1;
-      burstlength    : integer range 4 to 128 := 32;
-      macaddrh       : integer := 16#00005E#;
-      macaddrl       : integer := 16#000000#;
-      ipaddrh        : integer := 16#c0a8#;
-      ipaddrl        : integer := 16#0035#;
-      phyrstadr      : integer range 0 to 32 := 0;
-      sim            : integer range 0 to 1 := 0;
-      oepol          : integer range 0 to 1 := 0;
-      scanen         : integer range 0 to 1 := 0;
-      ft             : integer range 0 to 2 := 0;
-      edclft         : integer range 0 to 2 := 0;
-      mdint_pol      : integer range 0 to 1 := 0;
-      enable_mdint   : integer range 0 to 1 := 0;
-      multicast      : integer range 0 to 1 := 0;
-      edclsepahbg    : integer range 0 to 1 := 0;
-      ramdebug       : integer range 0 to 2 := 0;
-      rgmiimode      : integer range 0 to 1 := 0;
-      gmiimode       : integer range 0 to 1 := 0
+      memtech            : integer := 0;
+      ifg_gap            : integer := 24;
+      attempt_limit      : integer := 16;
+      backoff_limit      : integer := 10;
+      slot_time          : integer := 128;
+      mdcscaler          : integer range 0 to 255 := 25;
+      nsync              : integer range 1 to 2 := 2;
+      edcl               : integer range 0 to 3 := 1;
+      edclbufsz          : integer range 1 to 64 := 1;
+      burstlength        : integer range 4 to 128 := 32;
+      macaddrh           : integer := 16#00005E#;
+      macaddrl           : integer := 16#000000#;
+      ipaddrh            : integer := 16#c0a8#;
+      ipaddrl            : integer := 16#0035#;
+      phyrstadr          : integer range 0 to 32 := 0;
+      sim                : integer range 0 to 1 := 0;
+      oepol              : integer range 0 to 1 := 0;
+      scanen             : integer range 0 to 1 := 0;
+      ft                 : integer range 0 to 2 := 0;
+      edclft             : integer range 0 to 2 := 0;
+      mdint_pol          : integer range 0 to 1 := 0;
+      enable_mdint       : integer range 0 to 1 := 0;
+      multicast          : integer range 0 to 1 := 0;
+      edclsepahbg        : integer range 0 to 1 := 0;
+      ramdebug           : integer range 0 to 2 := 0;
+      rgmiimode          : integer range 0 to 1 := 0;
+      gmiimode           : integer range 0 to 1 := 0;
+      timestamps         : integer range 0 to 1 := 0;
+      external_mdio_ctrl : integer range 0 to 1 := 0
       );
     port(
       rst            : in  std_ulogic;
@@ -484,9 +494,62 @@ package ethcomp is
       edclsepahb     : in   std_ulogic;
       edcldisable    : in   std_ulogic;
       speed          : out  std_ulogic;
-      gbit           : out  std_ulogic
+      gbit           : out  std_ulogic;
+      --timestamping
+      timestamp      : in   std_logic_vector(63 downto 0) := (others => '0');
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
       );
   end component;
-  
+
+  component mdio_ctrl is
+    generic (
+      mdio_clk_divisor : positive := 1;
+      oe_polarity : std_logic := '1'; -- Output enable polarity
+      -- MDIO output data vs clock delay in clk cycles.
+      -- Needs to be minimum 10 ns according to spec.
+      mdio_output_delay : positive := 1;
+      -- MDIO input data vs output clock delay in clk cycles.
+      -- Minimum is 2 due to input register.
+      -- PHYs can have 0 ns to 300 ns output delay according to the spec.
+      mdio_input_delay : integer range 2 to 2147483647 := 2;
+      -- Which PHYs to init, a 1 will cause the controller to enable auto negotiation.
+      phy_init_mask : std_logic_vector(31 downto 0) := (others => '0');
+      -- The number of times the controller will try to reset a phy in case of
+      -- link failure during the reset procedure. A loss of link during subsequent
+      -- stages of the initialization process are not affected by this generic.
+      phy_reset_retry_count : natural := 0
+    );
+    port (
+      clk : in std_logic;
+      rstn : in std_logic; -- Active low reset
+
+      -- MDIO Interface
+      mdio_clk : out std_logic;
+      mdio_i : in std_logic;
+      mdio_o : out std_logic;
+      mdio_oe : out std_logic; -- Output Enable
+      mdio_irq : in std_logic;
+
+      -- Initialize PHYs after reset?
+      perform_startup_init : in std_logic;
+
+      -- APB Slave
+      psel      : in   std_logic;
+      penable   : in   std_logic;
+      paddr     : in   std_logic_vector(31 downto 0);
+      pwrite    : in   std_logic;
+      pwdata    : in   std_logic_vector(31 downto 0);
+      prdata    : out  std_logic_vector(31 downto 0);
+
+      irq : out std_logic;
+
+      -- Auto negotiation results.
+      aneg_valid : out std_logic_vector(31 downto 0); -- Which PHY
+      aneg_results : out std_logic_vector(2 downto 0) -- 0: 100M, 1: gbit, 2: full duplex
+    );
+  end component;
 end package;
 

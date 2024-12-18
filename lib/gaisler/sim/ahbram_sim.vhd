@@ -101,7 +101,6 @@ signal ramdata  : std_logic_vector(dw-1 downto 0);
 signal hwdata   : std_logic_vector(dw-1 downto 0);
 
 type ram_type is array (0 to (2**ramaddr'length)-1) of std_logic_vector(ramdata'range);
-signal ram : ram_type;
 signal read_address : std_logic_vector(ramaddr'range);
 
 begin
@@ -285,7 +284,7 @@ begin
 --  aram : syncrambw generic map (tech, abits, dw, scantest) port map (
 --  clk, ramaddr, hwdata, ramdata, ramsel, write, ahbsi.testin); 
   RamProc: process(clk) is
-
+  variable ram : ram_type;
   variable L1 : line;
   variable FIRST : boolean := true;
   variable ADR : std_logic_vector(19 downto 0);
@@ -306,7 +305,7 @@ begin
       if conv_integer(write) > 0 then
         for i in 0 to dw/8-1 loop
          if (write(i) = '1') then
-           ram(to_integer(unsigned(ramaddr)))(i*8+7 downto i*8) <= hwdata(i*8+7 downto i*8);
+           ram(to_integer(unsigned(ramaddr)))(i*8+7 downto i*8) := hwdata(i*8+7 downto i*8);
          end if;
         end loop;
       end if;
@@ -314,7 +313,7 @@ begin
     end if;
 
     if (rst = '0') and (FIRST = true) then
-      ram <= (others => (others => '0'));
+      ram := (others => (others => '0'));
       
       L1:= new string'("");
       while not endfile(TCF) loop
@@ -350,7 +349,7 @@ begin
               ofs := conv_integer(recaddr(log2(dw/32)+2 downto 2));
 
               for i in 0 to wrd-1 loop
-                ram((ai+i)/(dw/32))(dw-32-(32*(i+ofs) mod dw)+31 downto (dw-32-32*(i+ofs) mod dw)) <= 
+                ram((ai+i)/(dw/32))(dw-32-(32*(i+ofs) mod dw)+31 downto (dw-32-32*(i+ofs) mod dw)) :=
                 recdata(i*32 to i*32+32-1);
               end loop;
 
@@ -366,9 +365,9 @@ begin
       
     end if;
 
+    ramdata <= ram(to_integer(unsigned(read_address)));
   end process RamProc;
   
-  ramdata <= ram(to_integer(unsigned(read_address)));
 
   reg : process (clk)
   begin

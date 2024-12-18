@@ -35,7 +35,7 @@ struct uart_regs {
    // Custom Registers                                                                                         
    volatile uint32_t ccr;      // Custom Control Register                                                      0x20
    volatile uint32_t rfc;      // Receiver FIFO Count                                                          0x24
-   volatile uint32_t tfc;      // Transciever FIFO Count                                                       0x28
+   volatile uint32_t tfc;      // Transmitter FIFO Count                                                       0x28
    volatile uint32_t dmr;      // Debug Mode Register                                                          0x2c
    volatile uint32_t dbr;      // Debug Register                                                               0x30
 };

@@ -96,6 +96,8 @@
   constant CFG_NFC2_ECC1_GFSIZE   : integer := CONFIG_NFC2_ECC1_GFSIZE;
   constant CFG_NFC2_ECC1_CHUNK    : integer := CONFIG_NFC2_ECC1_CHUNK;
   constant CFG_NFC2_ECC1_CAP      : integer := CONFIG_NFC2_ECC1_CAP;
+  constant CFG_NFC2_RST_CYCLES    : integer := CONFIG_NFC2_RST_CYCLES;
+  constant CFG_NFC2_TAG_SIZE      : integer := CONFIG_NFC2_TAG_SIZE;
   constant CFG_NFC2_FT            : integer := CONFIG_NFC2_FT;
 -- Gaisler Ethernet core
   constant CFG_GRETH   	    : integer := CONFIG_GRETH_ENABLE;
@@ -117,4 +119,3 @@
 
 -- GRLIB debugging
   constant CFG_DUART    : integer := CONFIG_DEBUG_UART;
-

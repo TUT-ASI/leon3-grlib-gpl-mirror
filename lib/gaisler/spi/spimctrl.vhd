@@ -27,8 +27,7 @@
 --
 -- Description: SPI flash memory controller. Supports a wide range of SPI
 --              memory devices with the data read instruction configurable via
---              generics. Also has limited support for initializing and reading
---              SD Cards in SPI mode.
+--              generics.
 -- 
 -- The controller has two memory areas. The flash area where the flash memory
 -- is directly mapped and the I/O area where core registers are mapped.
@@ -43,6 +42,11 @@
 -- versions of the SPIMCTRL. Both the GRLIB and GR716B had revision number 2 but were seperate
 -- incompatible implementations of the IP. For clarity the GRLIB version has been changed
 -- to revision #3 and the GR716B is kept as revision #2.
+--
+-- Revision 4. Support for multiple memory devices added. Behaviour for when writing to the
+-- ROM area is allowed slightly changed. Can now be controlled with a register bit during
+-- runtime instead of purely statically through a VHDL generic.
+--
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -82,12 +86,13 @@ entity spimctrl is
     dummycycles  : integer range 0 to 15  := 0;  -- # dummy cycles after cmd (not used if dummybyte=1)
     DSPI         : integer range 0 to 1   := 0;  -- Full Dual SPI mode (all transactins 2-2-2)
     QSPI         : integer range 0 to 1   := 0;  -- Full Quad SPI mode (all transactins 4-4-4)
-    extaddr      : integer range 0 to 1   := 0;  -- Extended address mode (0=>3-Bytes, 1=>4-Bytes)
+    extaddr      : integer range 0 to 2   := 0;  -- Extended address mode (0=>3-Bytes, 1=>4-Bytes, 2=>use bootstrap signal rstaddrm to determine mode)
     reconf       : integer range 0 to 1   := 0;  -- Enables changing configuration through reg. interface
     writecmd     : integer range 0 to 255 := 16#02#; -- Mem. dev. write command
-    allow_writes : integer range 0 to 1   := 0;  -- Allow writes to the memory area. Otherwise return error resp.
+    allow_writes : integer range 0 to 1   := 0;  -- Determines if writes are allowed to the flash area (else error response)
     xip_byte     : integer range 0 to 1   := 0;  -- Send XIP byte after address phase
-    xip_polarity : integer range 0 to 1   := 1   -- Value shifted into the memory in the xip byte and dummy cycles phase
+    xip_polarity : integer range 0 to 1   := 1;  -- Value shifted into the memory in the xip byte and dummy cycles phase
+    multiple_csn : integer range 0 to 1   := 0   -- Allow the use of chip select signals 1-3
     );
   port (
     rstn    : in  std_ulogic;
@@ -101,7 +106,7 @@ end spimctrl;
 
 architecture rtl of spimctrl is
   
-  constant REVISION : amba_version_type := 3;
+  constant REVISION : amba_version_type := 4;
 
   constant HCONFIG : ahb_config_type := (
     0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPIMCTRL, 0, REVISION, hirq),
@@ -138,6 +143,7 @@ architecture rtl of spimctrl is
   constant STAT_REG_OFF  : std_logic_vector(7 downto 2) := "000010";
   constant RX_REG_OFF    : std_logic_vector(7 downto 2) := "000011";
   constant TX_REG_OFF    : std_logic_vector(7 downto 2) := "000100";
+  constant CTRL2_REG_OFF : std_logic_vector(7 downto 2) := "000111";
   
   -----------------------------------------------------------------------------
   -- Subprograms
@@ -310,6 +316,8 @@ architecture rtl of spimctrl is
        hold           : std_ulogic;     -- Do not shift ar
        insplit        : std_ulogic;     -- SPLIT response issued
        unsplit        : std_ulogic;     -- SPLIT complete not issued
+       csn            : std_ulogic;     -- Combined chip select signal for both SPI memories
+       ds             : std_logic_vector(1 downto 0);
        --
        readcmd        : std_logic_vector(7 downto 0); -- Mem. dev. READ command
        writecmd       : std_logic_vector(7 downto 0); -- Mem. dev. WRITE command
@@ -323,6 +331,8 @@ architecture rtl of spimctrl is
        QSPI           : std_ulogic;     -- Full Quad SPI mode (all transactins 4-4-4)
        extaddr        : std_ulogic;     -- Extended address mode (0 -> 3 Bytes, 1 -> 4 Bytes)
        xip_byte       : std_ulogic;     -- Write XIP (disable) byte after address phase.
+       allow_writes   : std_ulogic;     -- Determines if writes are allowed or not (error response) to the flash area
+       dsconf         : std_logic_vector(3 downto 0); -- chip select split configuration
        -- SPI flash device
        spi            : spiflash_type;
        -- AHB
@@ -331,7 +341,7 @@ architecture rtl of spimctrl is
        hwrite         : std_ulogic;
        hsel           : std_ulogic;
        hmbsel         : std_logic_vector(0 to 1);
-       haddr          : std_logic_vector((req_addr_bits-1) downto 0);
+       haddr          : std_logic_vector(31 downto 0);
        hwdata         : std_logic_vector(MAXDW-1 downto 0);
        hready         : std_ulogic;
        frdata         : std_logic_vector(MAXDW-1 downto 0);  -- Flash response data
@@ -402,6 +412,10 @@ begin  -- rtl
     variable hrdata           : std_logic_vector(MAXDW-1 downto 0);
     variable hwdatax          : std_logic_vector(31 downto 0);
     variable samplecmp        : std_logic_vector(1 downto 0);
+    variable addr             : std_logic_vector(31 downto 0);
+    variable csn_mask         : std_logic_vector(31 downto 0);
+    variable ds               : std_logic_vector(1 downto 0);
+    
   begin  -- process comb
 
     v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(1 downto 0) & '0';
@@ -433,7 +447,36 @@ begin  -- rtl
       v.spio.io3 := '1';
     end if;
 
-
+    -- 'Device Select' logic 
+    csn_mask := (others => '1');
+    if r.reg.ctrl.usrc = '0' then 
+      case r.dsconf is 
+        when "0000" => ds := "00";                                                             -- Always use SPIM0
+        when "0001" => ds := "01";                                                             -- Always use SPIM1
+        when "0010" => ds := "10";                                                             -- Always use SPIM2
+        when "0011" => ds := "11";                                                             -- Always use SPIM3
+        when "0100" => ds := r.haddr(18 downto 17); csn_mask(31 downto 17) := (others => '0'); -- 128 KiB
+        when "0101" => ds := r.haddr(19 downto 18); csn_mask(31 downto 18) := (others => '0'); -- 256 KiB
+        when "0110" => ds := r.haddr(20 downto 19); csn_mask(31 downto 19) := (others => '0'); -- 512 KiB
+        when "0111" => ds := r.haddr(21 downto 20); csn_mask(31 downto 20) := (others => '0'); -- 1 MiB
+        when "1000" => ds := r.haddr(22 downto 21); csn_mask(31 downto 21) := (others => '0'); -- 2 MiB
+        when "1001" => ds := r.haddr(23 downto 22); csn_mask(31 downto 22) := (others => '0'); -- 4 MiB
+        when "1010" => ds := r.haddr(24 downto 23); csn_mask(31 downto 23) := (others => '0'); -- 8 MiB
+        when "1011" => ds := r.haddr(25 downto 24); csn_mask(31 downto 24) := (others => '0'); -- 16 MiB
+        when "1100" => ds := r.haddr(26 downto 25); csn_mask(31 downto 25) := (others => '0'); -- 32 MiB
+        when "1101" => ds := r.haddr(27 downto 26); csn_mask(31 downto 26) := (others => '0'); -- 64 MiB
+        when "1110" => ds := r.haddr(28 downto 27); csn_mask(31 downto 27) := (others => '0'); -- 128 MiB
+        when others => ds := r.haddr(29 downto 28); csn_mask(31 downto 28) := (others => '0'); -- 256 MiB
+      end case;
+    else
+      ds := r.ds;
+    end if;
+    
+    if multiple_csn = 0 then
+      ds       := "00";
+      csn_mask := (others => '1');
+    end if;
+    
     ---------------------------------------------------------------------------
     -- AHB communication
     ---------------------------------------------------------------------------
@@ -446,12 +489,12 @@ begin  -- rtl
           v.hready := ahbsi.hmbsel(CTRL_BANK) and ahbsi.hwrite;            
           v.hsize := ahbsi.hsize;
           v.hwrite := ahbsi.hwrite;
-          v.haddr := ahbsi.haddr(r.haddr'range);
+          v.haddr(req_addr_bits-1 downto 0) := ahbsi.haddr(req_addr_bits-1 downto 0);
           v.hsel := '1';
           if ahbsi.hmbsel(FLASH_BANK) = '1' then
             v.hburst(r.hburst'range) := ahbsi.hburst(r.hburst'range);
             v.seq := ahbsi.htrans(0);
-            if (allow_writes=0 and ahbsi.hwrite = '1') or disable_flash then
+            if (r.allow_writes='0' and ahbsi.hwrite = '1') or disable_flash then
               v.hresp := HRESP_ERROR;
               v.hsel := '0';
             else
@@ -503,21 +546,26 @@ begin  -- rtl
           v.rrdata(QUADOUT_INDEX)     := r.quadoutput;
           v.rrdata(DUALIN_INDEX)      := r.dualinput;
           v.rrdata(QUADIN_INDEX)      := r.quadinput;
-          v.rrdata(WRITECMD_RANGE)    := r.writecmd;
           v.rrdata(XIP_INDEX)         := r.xip_byte;
-          
+          v.rrdata(WRITECMD_RANGE)    := r.writecmd;
         when CTRL_REG_OFF =>
-          v.rrdata(3) := r.spio.csn;
+          v.rrdata(6 downto 5) := r.ds;
+          v.rrdata(3) := r.csn;
           v.rrdata(2) := r.reg.ctrl.eas;
           v.rrdata(1) := r.reg.ctrl.ien;
           v.rrdata(0) := r.reg.ctrl.usrc;
         when STAT_REG_OFF =>
+          v.rrdata(8) := to_ulogic(multiple_csn);
           v.rrdata(7) := to_ulogic(allow_writes);
           v.rrdata(6) := to_ulogic(reconf);
           v.rrdata(2) := '1';
           v.rrdata(1) := r.reg.stat.busy;
           v.rrdata(0) := r.reg.stat.done;
-        when RX_REG_OFF => v.rrdata(7 downto 0) := r.ar(7 downto 0);
+        when RX_REG_OFF => 
+          v.rrdata(7 downto 0) := r.ar(7 downto 0);
+        when CTRL2_REG_OFF => 
+          v.rrdata(3 downto 0) := r.dsconf;
+          v.rrdata(4)          := r.allow_writes;
         when others => null;
       end case;
     end if;
@@ -537,16 +585,19 @@ begin  -- rtl
           v.quadoutput  := hwdatax(QUADOUT_INDEX);
           v.dualinput   := hwdatax(DUALIN_INDEX);
           v.quadinput   := hwdatax(QUADIN_INDEX);
-          v.writecmd    := hwdatax(WRITECMD_RANGE);
           v.xip_byte    := hwdatax(XIP_INDEX);
-          
+          v.writecmd    := hwdatax(WRITECMD_RANGE);
         end if;
         when CTRL_REG_OFF =>
-          v.rst           := hwdatax(4);
+          if multiple_csn /= 0 then 
+            v.ds := hwdatax(6 downto 5);
+          end if;
+          
+          v.rst := hwdatax(4);
           if (r.reg.ctrl.usrc and not hwdatax(0)) = '1' then
-            v.spio.csn := '1';
+            v.csn := '1';
           elsif hwdatax(0) = '1' then
-            v.spio.csn := hwdatax(3);
+            v.csn := hwdatax(3);
           end if;
           v.reg.ctrl.eas  := hwdatax(2);
           v.reg.ctrl.ien  := hwdatax(1);
@@ -559,6 +610,11 @@ begin  -- rtl
           if r.reg.ctrl.usrc = '1' then
             v.sreg := hwdatax(7 downto 0);
           end if;
+        when CTRL2_REG_OFF =>
+          if multiple_csn /= 0 then
+            v.dsconf := hwdatax(3 downto 0);
+          end if;
+          v.allow_writes := hwdatax(4);
         when others => null;
       end case;
     end if;
@@ -813,7 +869,7 @@ begin  -- rtl
         if (r.go or r.spio.sck) = '0' and r.bd ="00" then
           if r.spi.hburst(0) = '0' then   -- not an incrementing burst
             v.spi.state := SPI_CSWAIT;  -- CSN wait              
-            v.spio.csn := '1';
+            v.csn := '1';
             v.go := '1';
             v.stop := '1';
             v.seq := '1';             -- Make right choice in SPI_CSWAIT
@@ -831,10 +887,10 @@ begin  -- rtl
           if getOutputMode(r) > 0 then
             v.bcnt(2) := '0';
           end if;
-          if r.spio.csn = '1' then
+          if r.csn = '1' then
             -- New access, command and address
             v.go := '0';
-            v.spio.csn := '0';
+            v.csn := '0';
             v.spi.state := SPI_READ;
             
             v.spio.misooen := INPUT;
@@ -881,22 +937,23 @@ begin  -- rtl
           else
             -- Burst ended and new access
             v.spi.state := SPI_CSWAIT;
-            v.spio.csn := '1';
+            v.csn := '1';
             v.stop := '1';
             v.bcnt := "011";
           end if;
 
           v.spio.ready := '0';
           
-          if (r.spio.csn = '1') or (r.seq = '0') then
+          if (r.csn = '1') or (r.seq = '0') then
             -- New access. Set command and address of incoming access
             v.ar := (others => '0');
+            addr := r.haddr;
+            addr := addr and csn_mask;
             if offset /= 0 then
-              v.ar(r.haddr'range) := r.haddr + cslv(offset, req_addr_bits);
-            else
-              v.ar(r.haddr'range) := r.haddr;
+              addr(r.haddr'range) := addr + cslv(offset, req_addr_bits);
             end if;
-
+            v.ar(31 downto 0) := addr;
+            
             if r.hwrite = '0' then
               v.sreg := r.readcmd;
             else
@@ -972,8 +1029,7 @@ begin  -- rtl
             v.spi.state := SPI_READY;
           else
             v.spi.state := SPI_READ;
-            v.spio.csn := '0';
-            
+            v.csn := '0';
             v.spio.misooen := INPUT;
             v.spio.mosioen := OUTPUT;
             v.spio.iooen   := OUTPUT;
@@ -1080,6 +1136,30 @@ begin  -- rtl
       
     end if;
     
+    -- Select and drive CSN using Chip Select Select signal
+    case ds is
+      when "00" => 
+        v.spio.csn  := v.csn;
+        v.spio.csn1 := '1';
+        v.spio.csn2 := '1';
+        v.spio.csn3 := '1';
+      when "01" => 
+        v.spio.csn  := '1';
+        v.spio.csn1 := v.csn;
+        v.spio.csn2 := '1';
+        v.spio.csn3 := '1';
+      when "10" => 
+        v.spio.csn  := '1';
+        v.spio.csn1 := '1';
+        v.spio.csn2 := v.csn;
+        v.spio.csn3 := '1';
+      when others => 
+        v.spio.csn  := '1';
+        v.spio.csn1 := '1';
+        v.spio.csn2 := '1';
+        v.spio.csn3 := v.csn;
+    end case;
+    
     ---------------------------------------------------------------------------
     -- System and core reset
     ---------------------------------------------------------------------------
@@ -1110,6 +1190,7 @@ begin  -- rtl
       v.hmbsel           := (others => '0');
       v.ahbcancel        := '0';
       v.hwdata           := (others => '0');
+      v.haddr            := (others => '0');
       --
       v.spio.sck         := '0';
       v.spio.mosi        := '1';
@@ -1120,6 +1201,12 @@ begin  -- rtl
       v.spio.misooen     := INPUT;
       v.spio.iooen       := OUTPUT;
       v.spio.csn         := '1';
+      v.spio.csn1        := '1';
+      v.spio.csn2        := '1';
+      v.spio.csn3        := '1';
+      v.dsconf           := (others => '0');
+      v.csn              := '1';
+      v.ds               := (others => '0');
 --       v.spio.errorn      := '1';
       --
       v.readcmd          := cslv(readcmd,8);
@@ -1132,8 +1219,13 @@ begin  -- rtl
       v.dummycycles      := cslv(dummycycles,4);
       v.DSPI             := to_ulogic(DSPI);
       v.QSPI             := to_ulogic(QSPI);
-      v.extaddr          := to_ulogic(extaddr);
+      case extaddr is
+        when 0      => v.extaddr := '0';
+        when 1      => v.extaddr := '1';
+        when others => v.extaddr := spii.rstaddrm;
+      end case;
       v.xip_byte         := to_ulogic(xip_byte);
+      v.allow_writes     := to_ulogic(allow_writes);
       --
       v.spio.ready       := '0';      
     end if;

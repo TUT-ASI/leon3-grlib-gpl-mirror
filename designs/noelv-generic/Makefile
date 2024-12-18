@@ -35,12 +35,15 @@ GRLIB_SIMULATOR ?= ModelSim
 # Options used during compilation
 VCOMOPT=-explicit -O0
 
+# Extra simulator options
+ARGV=
+
 # GRLIB Options
 VSIMOPT=
 
 # Simulator switches
 ifeq ("$(GRLIB_SIMULATOR)","ALDEC")
-VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks
+VSIMOPT+= +access +w -voptargs="+acc" +notimingchecks -ieee_nowarn
 else
 VSIMOPT+=-voptargs="+acc -nowarn 1" +notimingchecks
 endif
@@ -48,6 +51,8 @@ endif
 # Simulation scripts
 VSIMOPT+= -do $(GRLIB)/bin/runvsim.do
 ASIMDO = run -all
+
+VSIMOPT+=$(ARGV)
 
 # Toplevel
 VSIMOPT+= $(SIMTOP)

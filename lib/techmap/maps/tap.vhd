@@ -214,7 +214,7 @@ begin
      tapo_tck <= ltck; tapo_tckn <= not ltck;
    end generate;
 
-   nx : if (tech = nexus) generate
+   gen_nx : if (tech = nexus) generate
      u0 : nexus_tap
        port map (
          tck => tck, tms => tms, tdi => tdi, tdo => tdo,

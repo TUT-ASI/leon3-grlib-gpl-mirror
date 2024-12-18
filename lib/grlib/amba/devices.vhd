@@ -296,6 +296,14 @@ package devices is
   constant GAISLER_SGMII_VCU118  : amba_device_type := 16#0D4#;
   constant GAISLER_APBUART_16550 : amba_device_type := 16#0D5#;
   constant GAISLER_IOPMP         : amba_device_type := 16#0D6#;
+  constant GAISLER_EFPGA         : amba_device_type := 16#0D7#;
+  constant GAISLER_GRISOC_MB_EXT : amba_device_type := 16#0D8#;
+  constant GAISLER_GRISOC_MB_INT : amba_device_type := 16#0D9#;
+  constant GAISLER_GRISOC_BOOT   : amba_device_type := 16#0DA#;
+  constant GAISLER_GRISOC_CRYPTO : amba_device_type := 16#0DB#;
+  constant GAISLER_GRISOC_SRNG   : amba_device_type := 16#0DC#;
+  constant GAISLER_GRPPSTIMER    : amba_device_type := 16#0DD#;
+  constant GAISLER_GRLSEDC       : amba_device_type := 16#0DE#;
 
 -- Sun Microsystems
 
@@ -738,6 +746,13 @@ package devices is
     GAISLER_L2CL          => "L2-Cache Controller - Lite      ",
     GAISLER_APBUART_16550 => "Generic UART 16550              ",
     GAISLER_IOPMP         => "RISC-V IOPMP                    ",
+    GAISLER_EFPGA         => "AHB interface to eFPGA28RH_30K  ",
+    GAISLER_GRISOC_MB_EXT => "GRISoC Mailbox interface        ",
+    GAISLER_GRISOC_MB_INT => "GRISoC Mailbox interface (int)  ",
+    GAISLER_GRISOC_BOOT   => "GRISoC Boot FSM                 ",
+    GAISLER_GRISOC_CRYPTO => "GRISoC Crypto accelerator       ",
+    GAISLER_GRISOC_SRNG   => "GRISoC Secure RNG               ",
+    GAISLER_GRPPSTIMER    => "PPS Timer                       ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (

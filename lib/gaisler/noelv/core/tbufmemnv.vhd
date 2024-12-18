@@ -71,9 +71,9 @@ architecture rtl of tbufmemnv is
   constant ADDRBITS     : integer := 4 + log2(tbuf);
   constant nrams        : integer := getnrams;
   constant TRACE_CELLS  : integer := 8;
-  
+
   -- Types ------------------------------------------------------------------
-  
+
   -- Signals ----------------------------------------------------------------
   signal enable         : std_logic_vector(1 downto 0);
 
@@ -103,9 +103,7 @@ begin
 -- pragma translate_off
   trace_out.data(trace_out.data'high downto 64*TRACE_CELLS) <= (others => '0');
 -- pragma translate_on
-  
-  -- Drive test signals
-  
-end;
-  
 
+  -- Drive test signals
+
+end;

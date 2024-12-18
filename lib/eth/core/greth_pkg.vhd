@@ -197,6 +197,7 @@ package grethpkg is
     status       : std_logic_vector(1 downto 0);
     debug1       : std_logic_vector(31 downto 0);
     debug2       : std_logic_vector(31 downto 0);
+    sfd          : std_ulogic;
   end record;
 
   type gbit_rx_host_type is record
@@ -209,7 +210,8 @@ package grethpkg is
     gotframe     : std_ulogic;
     mcasthash    : std_logic_vector(5 downto 0);
     debug1       : std_logic_vector(31 downto 0);
-    debug2       : std_logic_vector(31 downto 0);  
+    debug2       : std_logic_vector(31 downto 0);
+    sfd          : std_ulogic;
   end record;
 
   type gbit_host_rx_type is record
@@ -238,7 +240,8 @@ package grethpkg is
     read         : std_logic_vector(3 downto 0);
     status       : std_logic_vector(2 downto 0);
     debug1       : std_logic_vector(31 downto 0);
-    debug2       : std_logic_vector(31 downto 0);    
+    debug2       : std_logic_vector(31 downto 0);
+    sfd          : std_ulogic;
   end record;
 
   type gbit_host_gtx_type is record

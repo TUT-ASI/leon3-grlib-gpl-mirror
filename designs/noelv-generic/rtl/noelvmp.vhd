@@ -56,7 +56,10 @@ entity noelvmp is
     padtech                 : integer := CFG_PADTECH;
     clktech                 : integer := CFG_CLKTECH;
     disas                   : integer := CFG_DISAS;
-    SIMULATION              : integer := 0
+    SIMULATION              : integer := 0;
+    tohost                  : std_logic_vector(63 downto 0) := (others => '1');
+    fromhost                : std_logic_vector(63 downto 0) := (others => '1');
+    htif                    : integer := 0
     -- pragma translate_off
     ; ramfile               : string  := "ram.srec"
     ; romfile               : string  := "prom.srec"
@@ -190,7 +193,11 @@ begin
     clktech     => CFG_CLKTECH,
     cpu_freq    => CPU_FREQ,
     devid       => NOELV_SOC,
-    disas       => disas)
+    disas       => disas,
+    tohost      => tohost,
+    fromhost    => fromhost,
+    htif        => htif
+  )
   port map (
     -- Clock & reset
     clkm        => clkm, 
@@ -330,7 +337,7 @@ begin
           haddr    => L2C_HADDR,
           hmask    => L2C_HMASK,
           tech     => 0,
-          kbytes   => 1024,
+          kbytes   => 16384,
           pipe     => 0,
           maccsz   => AHBDW,
           fname    => ramfile)

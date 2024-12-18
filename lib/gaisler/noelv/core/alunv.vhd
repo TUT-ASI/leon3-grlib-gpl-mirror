@@ -679,7 +679,7 @@ package body alunv is
                     end if;
                   when others =>
                     -- SLLI with rd = x0 are custom HINTs.
-                    if funct7(6 downto 1) = "000000" or funct7(6 downto 1) = "010000" then -- shamt[5:0]
+                    if funct7(6 downto 1) = "000000" then -- shamt[5:0]
                       if is_rv64 or funct7(0) = '0' then  -- >31 bit shift illegal on rv32.
                         illegal := '0';
                       end if;

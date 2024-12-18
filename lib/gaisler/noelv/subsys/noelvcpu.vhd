@@ -31,6 +31,8 @@ use grlib.amba.all;
 library gaisler;
 use gaisler.noelv.all;
 use gaisler.noelv_cpu_cfg.all;
+library grlib;
+use grlib.stdlib.all;
 
 entity noelvcpu is
   generic (
@@ -46,6 +48,7 @@ entity noelvcpu is
     fpuconf  : integer;
     tcmconf  : integer;
     mulconf  : integer;
+    intcconf : integer;
     disas    : integer;
     pbaddr   : integer;
     cfg      : integer;
@@ -63,12 +66,12 @@ entity noelvcpu is
     ahbso  : in  ahb_slv_out_vector;
     irqi   : in  nv_irq_in_type;
     irqo   : out nv_irq_out_type;
-    nirqi  : in  nv_nirq_in_type;  
+    nirqi  : in  nv_nirq_in_type;
     dbgi   : in  nv_debug_in_type;
     dbgo   : out nv_debug_out_type;
     eto    : out nv_etrace_out_type;
     cnt    : out nv_counter_out_type;
-    pwrd   : out std_ulogic     
+    pwrd   : out std_ulogic
 
     );
 end;
@@ -122,7 +125,7 @@ architecture hier of noelvcpu is
               cfg_valid := true;
             end if;
           end if;
-        when 16 => -- Custom
+        when 15 => -- Custom
           cfg_res.typ := 5;
           cfg_res.fpu := 1;
           cfg_res.sissue  := cfg_custom0.single_issue;
@@ -225,11 +228,14 @@ architecture hier of noelvcpu is
     ext_smdbltrp  => 0,
     ext_sddbltrp  => 0,
     ext_smepmp    => 0,
+    ext_svpbmt    => 0,
     imsic         => 0,
     ext_zicbom    => 0,
     ext_zicond    => 0,
     ext_zimop     => 0,
     ext_zcmop     => 0,
+    ext_zicfiss   => 0,
+    ext_zicfilp   => 0,
     ext_svinval   => 0,
     ext_zfa       => 0,
     ext_zfh       => 0,
@@ -241,6 +247,8 @@ architecture hier of noelvcpu is
     pmp_no_tor    => 0,
     pmp_entries   => 0,
     pmp_g         => 0,
+    pma_entries   => 0,
+    pma_masked    => 0,
     asidlen       => 0,
     vmidlen       => 0,
     perf_cnts     => 0,
@@ -276,6 +284,7 @@ architecture hier of noelvcpu is
   -- Set to one to disable extensions not supported in RISCV-DV
   constant RISCV_DV : integer := 0;
   constant RDV_SUPPORT : integer := 1 - RISCV_DV;
+  constant AIA_EN   : integer := conv_integer(conv_std_logic((AIA_SUPPORT * intcconf) /= 0));
 
   constant cfg_c : cfg_type(0 to 7) := (
     -- HP
@@ -295,32 +304,37 @@ architecture hier of noelvcpu is
       ext_zbkx      => 1,
       ext_sscofpmf  => 1*RDV_SUPPORT,
       ext_sstc      => 1*RDV_SUPPORT,
-      ext_smaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
-      ext_ssaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
+      ext_smaia     => 1*AIA_EN*RDV_SUPPORT,
+      ext_ssaia     => 1*AIA_EN*RDV_SUPPORT,
       ext_smstateen => 1*RDV_SUPPORT,
       ext_smrnmi    => 1*SMRNMI_SUPPORT*RDV_SUPPORT,
       ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smepmp    => 1,
-      imsic         => 1*AIA_SUPPORT*RDV_SUPPORT,
+      ext_svpbmt    => 0,
+      imsic         => 1*AIA_EN*RDV_SUPPORT,
       ext_zicbom    => 1*RDV_SUPPORT,
       ext_zicond    => 1*RDV_SUPPORT,
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
+      ext_zicfiss   => 1*ZICFISS_SUPPORT*RDV_SUPPORT,
+      ext_zicfilp   => 1*ZICFILP_SUPPORT*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
       ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
-      ext_zfbfmin   => 0,
+      ext_zfbfmin   => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
       pmp_entries   => 8,
       pmp_g         => 10,
+      pma_entries   => 0,
+      pma_masked    => 1,
       asidlen       => 8,
-      vmidlen       => 4,
+      vmidlen       => 4*RDV_SUPPORT,
       perf_cnts     => 16,
       perf_evts     => 128,
       perf_bits     => 32,
@@ -369,32 +383,37 @@ architecture hier of noelvcpu is
       ext_zbkx      => 1,
       ext_sscofpmf  => 1*RDV_SUPPORT,
       ext_sstc      => 1*RDV_SUPPORT,
-      ext_smaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
-      ext_ssaia     => 1*AIA_SUPPORT*RDV_SUPPORT,
+      ext_smaia     => 1*AIA_EN*RDV_SUPPORT,
+      ext_ssaia     => 1*AIA_EN*RDV_SUPPORT,
       ext_smstateen => 1*RDV_SUPPORT,
       ext_smrnmi    => 1*SMRNMI_SUPPORT*RDV_SUPPORT,
       ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smepmp    => 1,
-      imsic         => 1*AIA_SUPPORT*RDV_SUPPORT,
+      ext_svpbmt    => 0,
+      imsic         => 1*AIA_EN*RDV_SUPPORT,
       ext_zicbom    => 1*RDV_SUPPORT,
       ext_zicond    => 1*RDV_SUPPORT,
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
+      ext_zicfiss   => 1*ZICFISS_SUPPORT*RDV_SUPPORT,
+      ext_zicfilp   => 1*ZICFILP_SUPPORT*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
       ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
-      ext_zfbfmin   => 0,
+      ext_zfbfmin   => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
       pmp_entries   => 8,
       pmp_g         => 10,
+      pma_entries   => 0,
+      pma_masked    => 1,
       asidlen       => 8,
-      vmidlen       => 4,
+      vmidlen       => 4*RDV_SUPPORT,
       perf_cnts     => 16,
       perf_evts     => 128,
       perf_bits     => 32,
@@ -446,23 +465,28 @@ architecture hier of noelvcpu is
       ext_ssdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_smdbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
       ext_sddbltrp  => 1*DBLTRP_SUPPORT*RDV_SUPPORT,
-      ext_smepmp    => 1,
+      ext_smepmp    => 0,
+      ext_svpbmt    => 0,
       imsic         => 0,
       ext_zicbom    => 1*RDV_SUPPORT,
       ext_zicond    => 1*RDV_SUPPORT,
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
+      ext_zicfiss   => 1*ZICFISS_SUPPORT*RDV_SUPPORT,
+      ext_zicfilp   => 1*ZICFILP_SUPPORT*RDV_SUPPORT,
       ext_svinval   => 1*RDV_SUPPORT,
       ext_zfa       => 1,
       ext_zfh       => 1,
       ext_zfhmin    => 1,
-      ext_zfbfmin   => 0,
+      ext_zfbfmin   => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
       pmp_entries   => 0,
       pmp_g         => 10,
+      pma_entries   => 0,
+      pma_masked    => 0,
       asidlen       => 0,
       vmidlen       => 0,
       perf_cnts     => 3,
@@ -517,22 +541,27 @@ architecture hier of noelvcpu is
       ext_smdbltrp  => 0,
       ext_sddbltrp  => 0,
       ext_smepmp    => 1,
+      ext_svpbmt    => 0,
       imsic         => 0,
       ext_zicbom    => 0,
       ext_zicond    => 1,
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
+      ext_zicfiss   => 0,
+      ext_zicfilp   => 0,
       ext_svinval   => 0,
       ext_zfa       => 1,
       ext_zfh       => 0,
       ext_zfhmin    => 1,
-      ext_zfbfmin   => 0,
+      ext_zfbfmin   => 1,
       mode_s        => 0,
       mode_u        => 1,
       fpulen        => 64,
       pmp_no_tor    => 0,
       pmp_entries   => 8,
       pmp_g         => 10,
+      pma_entries   => 0,
+      pma_masked    => 0,
       asidlen       => 0,
       vmidlen       => 0,
       perf_cnts     => 8,
@@ -586,12 +615,15 @@ architecture hier of noelvcpu is
       ext_ssdbltrp  => 0,
       ext_smdbltrp  => 0,
       ext_sddbltrp  => 0,
-      ext_smepmp    => 1,
+      ext_smepmp    => 0,
+      ext_svpbmt    => 0,
       imsic         => 0,
       ext_zicbom    => 0,
       ext_zicond    => 0,
       ext_zimop     => 1*RDV_SUPPORT,
       ext_zcmop     => 1*RDV_SUPPORT,
+      ext_zicfiss   => 0,
+      ext_zicfilp   => 0,
       ext_svinval   => 0,
       ext_zfa       => 0,
       ext_zfh       => 0,
@@ -601,8 +633,10 @@ architecture hier of noelvcpu is
       mode_u        => 1,
       fpulen        => 0,
       pmp_no_tor    => 0,
-      pmp_entries   => 8,
+      pmp_entries   => 0,
       pmp_g         => 10,
+      pma_entries   => 0,
+      pma_masked    => 0,
       asidlen       => 0,
       vmidlen       => 0,
       perf_cnts     => 3,
@@ -670,6 +704,8 @@ begin
       pmp_no_tor      => cfg_c(c.typ).pmp_no_tor,
       pmp_entries     => cfg_c(c.typ).pmp_entries,
       pmp_g           => cfg_c(c.typ).pmp_g,
+      pma_entries     => cfg_c(c.typ).pma_entries,
+      pma_masked      => cfg_c(c.typ).pma_masked,
       asidlen         => cfg_c(c.typ).asidlen,
       vmidlen         => cfg_c(c.typ).vmidlen,
       -- Interrupts
@@ -702,10 +738,13 @@ begin
       ext_smdbltrp    => cfg_c(c.typ).ext_smdbltrp,
       ext_sddbltrp    => cfg_c(c.typ).ext_sddbltrp,
       ext_smepmp      => cfg_c(c.typ).ext_smepmp,
+      ext_svpbmt      => cfg_c(c.typ).ext_svpbmt,
       ext_zicbom      => cfg_c(c.typ).ext_zicbom,
       ext_zicond      => cfg_c(c.typ).ext_zicond,
       ext_zimop       => cfg_c(c.typ).ext_zimop,
       ext_zcmop       => cfg_c(c.typ).ext_zcmop,
+      ext_zicfiss     => cfg_c(c.typ).ext_zicfiss,
+      ext_zicfilp     => cfg_c(c.typ).ext_zicfilp,
       ext_svinval     => cfg_c(c.typ).ext_svinval,
       ext_zfa         => cfg_c(c.typ).ext_zfa,
       ext_zfh         => cfg_c(c.typ).ext_zfh,

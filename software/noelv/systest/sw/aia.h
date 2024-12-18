@@ -1,1 +1,0 @@
-int aia_test(addr_t aclint_addr, addr_t imsic_addr, addr_t aplic_addr, int cpus, int geilen, int domains, int lite, int smstateen, int smrnmi);

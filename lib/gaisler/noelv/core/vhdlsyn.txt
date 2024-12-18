@@ -13,6 +13,7 @@ fputilnv.vhd
 cachememnv.vhd
 mul64.vhd
 div64.vhd
+crypto.vhd
 regfile64sramnv.vhd
 regfile64dffnv.vhd
 alunv.vhd

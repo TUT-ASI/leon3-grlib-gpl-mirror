@@ -55,7 +55,8 @@ package riscv_disas is
   function insn2st(pc           : std_logic_vector;
                    insn         : std_logic_vector(31 downto 0);
                    cinsn        : std_logic_vector(15 downto 0);
-                   comp         : std_ulogic) return string;
+                   comp         : std_ulogic;
+                   cfi          : std_ulogic := '0') return string;
 
   function cause2string(cause : std_logic_vector) return string;
 
@@ -76,6 +77,7 @@ package riscv_disas is
                        wcdata   : std_logic_vector;
                        wcen     : std_ulogic;
                        memen    : std_ulogic;
+                       cfi      : std_ulogic;
                        inst     : std_logic_vector(31 downto 0);
                        cinst    : std_logic_vector(15 downto 0);
                        comp     : std_ulogic;
@@ -1022,6 +1024,7 @@ package body riscv_disas is
       when CSR_MSTATEEN2H        => return "mstateen2h";
       when CSR_MSTATEEN3H        => return "mstateen3h";
 
+
       -- Machine Configuration
       when CSR_MENVCFG          => return "menvcfg";
       when CSR_MSECCFG          => return "mseccfg";
@@ -1446,10 +1449,11 @@ package body riscv_disas is
     return to_integer(unsigned(data));
   end;
 
-  function insn2st(pc           : std_logic_vector;
-                   insn         : std_logic_vector(31 downto 0);
-                   cinsn        : std_logic_vector(15 downto 0);
-                   comp         : std_ulogic) return string is
+  function insn2st(pc    : std_logic_vector;
+                   insn  : std_logic_vector(31 downto 0);
+                   cinsn : std_logic_vector(15 downto 0);
+                   comp  : std_ulogic;
+                   cfi   : std_ulogic := '0') return string is
 
     constant bb2        : string(1 to 2) := (others => ' ');
     constant bb4        : string(1 to 4) := (others => ' ');
@@ -1483,7 +1487,7 @@ package body riscv_disas is
         disas := strpad("lui " & reg2st(rd) & ", " & tostf(imm20), disas'length);
 
       when AUIPC =>
-        if rd = "00000" then
+        if rd = "00000" and cfi = '1' then
           disas := strpad("lpad " & tostf(imm20), disas'length);
         else
           disas := strpad("auipc " & reg2st(rd) & ", " & tostf(imm20), disas'length);
@@ -1704,21 +1708,21 @@ package body riscv_disas is
             case funct7 is
               when F7_MOPR_0  | F7_MOPR_4  | F7_MOPR_8  | F7_MOPR_12 |
                    F7_MOPR_16 | F7_MOPR_20 | F7_MOPR_24 | F7_MOPR_28 =>
-                if    funct12 = F12_SSRDPOPCHK and rd = "00000" and (rs1 = "00001" or rs1 = "00101") then
+                if    funct12 = F12_SSRDPOPCHK and rd = "00000" and (rs1 = "00001" or rs1 = "00101") and cfi = '1' then
                   disas := strpad("sspopchk " & reg2st(rs1), disas'length);
-                elsif funct12 = F12_SSRDPOPCHK and rd /= "00000" and rs1 = "00000" then
+                elsif funct12 = F12_SSRDPOPCHK and rd /= "00000" and rs1 = "00000" and cfi = '1' then
                   disas := strpad("ssrdp " & reg2st(rd), disas'length);
                 else
                   disas := strpad("mop.r." &
-                                  tost(funct12(10) & funct12(7 downto 6) & funct12(1 downto 0)) & " " &
+                                  tost(u2i(funct12(10) & funct12(7 downto 6) & funct12(1 downto 0))) & " " &
                                   reg2st(rd) & ", " & reg2st(rs1), disas'length);
                 end if;
                when F7_MOPRR_0 | F7_MOPRR_1 | F7_MOPRR_2 | F7_MOPRR_3 |
                     F7_MOPRR_4 | F7_MOPRR_5 | F7_MOPRR_6 | F7_MOPRR_7  =>
-                 if funct7 = F7_SSPUSH and rd = "00000" and rs1 = "00000" and (rs2 = "00001" or rs2 = "00101") then
+                 if funct7 = F7_SSPUSH and rd = "00000" and rs1 = "00000" and (rs2 = "00001" or rs2 = "00101") and cfi = '1' then
                   disas := strpad("sspush " & reg2st(rs2), disas'length);
                 else
-                  disas := strpad("mop.rr." & tost(funct7(5) & funct7(2 downto 1)) & " " &
+                  disas := strpad("mop.rr." & tost(u2i(funct7(5) & funct7(2 downto 1))) & " " &
                                   reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
                 end if;
               when others =>
@@ -1925,6 +1929,7 @@ package body riscv_disas is
                        wcdata     : std_logic_vector;
                        wcen       : std_ulogic;
                        memen      : std_ulogic;
+                       cfi        : std_ulogic;
                        inst       : std_logic_vector(31 downto 0);
                        cinst      : std_logic_vector(15 downto 0);
                        comp       : std_ulogic;
@@ -1968,12 +1973,14 @@ package body riscv_disas is
       -- Print Instruction
       grlib.testlib.print("C" & tost(hndx) & "-" & tost(way) & " " & prv2string(prv, v) &
                           " : " & strpad(tost(cycle), 8) & " [" &
-                          tost(valid) & "] " & insn2st(pc, inst, cinst, comp) &
+                          tost(valid) & "] " & insn2st(pc, inst, cinst, comp, cfi) &
                           print_str(not wren_f, "W[" & strpad(reg2st(rd),   3)) &
                           print_str(    wren_f, "W[" & strpad(fpreg2st(rd), 4)) & "=" &
                           print_str(fsd, tost(fsd_hi & vwrdata)) & print_str(not fsd, tost(vwrdata)) &
                           "][" & tost(wren) & "]" &
-                          print_str(wcen, " C[" & strpad(csr2str(csr), 14) & "=" & tost(wcdata) & "][" & tost(wcen) & "]") &
+                          print_str(wcen, " C[" & print_str(cfi, "ssp           ") &
+                                                  print_str(not cfi, strpad(csr2str(csr), 14)) & "=" &
+                                    tost(wcdata) & "][" & tost(wcen) & "]") &
                           print_str(memen, " M[" & tost(wcdata) & "]") &
 --                          " IPC = " & tost(ipc) & " Dual = " & tost(dual) &
                           print_str(trap, " E[cause =" & tost(vcause) & "] E[tval =" & tost(vtval) & "][" & tost(trap) & "]")

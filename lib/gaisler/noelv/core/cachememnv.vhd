@@ -35,6 +35,8 @@ use grlib.stdlib.log2;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 use grlib.stdlib.tost_bits;
+use grlib.stdlib.tost;
+use grlib.stdlib.print;
 library gaisler;
 use gaisler.utilnv.u2i;
 use gaisler.noelvint.nv_cram_in_type;
@@ -78,6 +80,7 @@ architecture rtl of cachememnv is
   constant iidx     : std_logic_vector(iidxwidth - 1 downto 0)                   := (others => '0');
   constant itag_hi  : std_logic_vector(cramo.itagdout(0)'high downto itagwidth)  := (others => '0');
   constant itag_lo  : std_logic_vector(itagwidth - 1 downto 0)                   := (others => '0');
+  constant itag_lo1 : std_logic_vector(itagwidth - 1 downto 1)                   := (others => '0');
   constant didx     : std_logic_vector(didxwidth - 1 downto 0)                   := (others => '0');
   constant dtag_hi  : std_logic_vector(cramo.dtagcdout(0)'high downto dtagwidth) := (others => '0');
   constant dtag_lo  : std_logic_vector(dtagwidth - 1 downto 0)                   := (others => '0');
@@ -581,35 +584,40 @@ begin
     variable dctags     : dctags_type;
     variable dstags     : dstags_type;
     variable idx, cidx  : integer;
-    variable tagupd     : boolean;
+    variable itagupd    : boolean;
+    variable dtagupd    : boolean;
     type boolarr       is array(natural range <>) of boolean;
     variable ctagupd    : boolarr(0 to DWAYS - 1);
   begin
     if rising_edge(sclk) then
-      tagupd := false;
+      itagupd := false;
+      dtagupd := false;
+	    idx := u2i(crami.iindex(iidx'range));
       for w in 0 to IWAYS-1 loop
+        assert notx(crami.itagen(w)) report "crami.itagen(" & tost(w) & ") is " & tost(crami.itagen) severity warning;
+        assert notx(crami.itagwrite) report "crami.itawrite" & " is " & tost(crami.itagwrite) severity warning;
         if crami.itagen(w) = '1' and crami.itagwrite = '1' then
-          idx := u2i(crami.iindex(iidx'range));
-          if notx(itags(idx)(w)) then tagupd := true; end if;
+          itagupd := true;
           itags(idx)(w) := crami.itagdin(w)(itag_lo'range);
           assert notx(crami.itagdin(w)) report "Writing X into Itag!" severity failure;
         end if;
       end loop;
-      if tagupd then
+      if itagupd then
         for w1 in 0 to IWAYS-2 loop
           for w2 in w1+1 to IWAYS-1 loop
-            assert itags(idx)(w1)(dtag_lo1'range) /= itags(idx)(w2)(dtag_lo1'range)
-              report "Duplicated Itag written" severity failure;
+            if notx(itags(idx)(w1)) then
+              assert itags(idx)(w1)(itag_lo1'range) /= itags(idx)(w2)(itag_lo1'range)
+                report "Duplicated Itag written" severity failure;
+            end if;
           end loop;
         end loop;
       end if;
-      tagupd  := false;
       ctagupd := (others => false);
       for w in 0 to DWAYS-1 loop
         if dtagconf = 0 and crami.dtaguwrite(w) = '1' then
           cidx         := u2i(crami.dtaguindex(didx'range));
           if notx(dctags(cidx)(w)) then
-            tagupd     := true;
+            dtagupd     := true;
             ctagupd(w) := true;
           end if;
           dctags(cidx)(w) := crami.dtagudin(w)(dtag_lo'range);
@@ -618,7 +626,7 @@ begin
         if dtagconf /= 0 and crami.dtagcuen(w) = '1' and crami.dtagcuwrite = '1' then
           cidx := u2i(crami.dtagcuindex(didx'range));
           if notx(dctags(cidx)(w)) then
-            tagupd     := true;
+            dtagupd     := true;
             ctagupd(w) := true;
           end if;
           dctags(cidx)(w) := crami.dtagudin(w)(dtag_lo'range);
@@ -627,13 +635,13 @@ begin
         if crami.dtagsen(w) = '1' and crami.dtagswrite = '1' then
           idx      := u2i(crami.dtagsindex(didx'range));
           if notx(dstags(idx)(w)) then
-            tagupd := true;
+            dtagupd := true;
           end if;
           dstags(idx)(w) := crami.dtagsdin(w)(dtag_lo1'range);
           assert notx(crami.dtagsdin(w)) report "Writing X into Dstag!" severity failure;
         end if;
       end loop;
-      if tagupd then
+      if dtagupd then
         for w1 in 0 to DWAYS-2 loop
           if dctags(idx)(w1) = "UUUUUUUUUUUUUUUUUUUUU" then
             next;
@@ -642,9 +650,10 @@ begin
             if dctags(idx)(w2) = "UUUUUUUUUUUUUUUUUUUUU" then
               next;
             end if;
-            assert dctags(idx)(w1)(dtag_lo1'range) /= dctags(idx)(w2)(dtag_lo1'range)
+            assert dctags(cidx)(w1)(dtag_lo1'range) /= dctags(cidx)(w2)(dtag_lo1'range)
 --              report "Duplicated dtag written" severity failure;
-              report "Duplicated dtag written " & tost_bits(dctags(idx)(w1)) & " " & tost_bits(dctags(idx)(w2)) severity failure;
+              report "Duplicated dtag written " & tost_bits(dctags(cidx)(w1)) & " " & tost_bits(dctags(cidx)(w2)) &
+              " cidx = " & tost(cidx) & " w1 = " & tost(w1) & " w2 = " & tost(w2) severity failure;
             assert dstags(idx)(w1)(dtag_lo1'range) /= dstags(idx)(w2)(dtag_lo1'range)
               or (dtagconf=0 and (dctags(idx)(w1)(0)='0' or dctags(idx)(w2)(0)='0'))
               report "Duplicated snoop-dtag written" severity failure;

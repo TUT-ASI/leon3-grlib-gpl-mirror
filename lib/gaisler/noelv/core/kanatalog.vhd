@@ -23,8 +23,8 @@
 -- Author:      Francisco Bas, Frontgrade Gaisler AB
 -- Description: Kanata log generator for pipeline visualization.
 --              This entity generates a log with kanata format that can
---              be open with Konata instruction pipeline visualizer. 
---              The Kanata format consist on several instructions that 
+--              be open with Konata instruction pipeline visualizer.
+--              The Kanata format consist on several instructions that
 --              instruct the visualizer on how to represent the pipeline.
 --              More information in: https://github.com/shioyadan/Konata
 ------------------------------------------------------------------------------

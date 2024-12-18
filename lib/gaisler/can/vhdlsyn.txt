@@ -4,6 +4,5 @@ can_oc.vhd
 can_mc.vhd
 canmux.vhd
 can_rd.vhd
-can_top_core_sync.vhd
 can_oc_core.vhd
 grcan.vhd

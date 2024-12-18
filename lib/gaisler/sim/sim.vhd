@@ -1014,6 +1014,27 @@ component spwtrace is
       );
   end component;
 
+  -- Component for the RISC-V HTIF simulation interface
+  component htif_sim is
+    generic (
+      dbg           : boolean := false;
+      dev_cmd_width : integer := 8;
+      data_width    : integer := 64;
+      addr_width    : integer := 32;
+      tohost_addr   : std_logic_vector(63 downto 0);
+      fromhost_addr : std_logic_vector(63 downto 0)
+    );
+    port (
+      clk   : in std_logic;
+      addr  : in std_logic_vector(addr_width - 1 downto 0);
+      data  : in std_logic_vector(data_width - 1 downto 0);
+      size  : in std_logic_vector(2 downto 0);
+      valid : in std_logic;
+      rw    : in std_logic;
+      id    : in std_logic_vector(3 downto 0)
+    );
+  end component htif_sim;
+
 end;
 
 package body sim is
@@ -1323,6 +1344,25 @@ package body sim is
 
   end;
 
+  procedure rv64gc_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 1 => print("  Hello world");
+    when 2 => print("  Hypervisor test");
+    when 3 => print("  AIA test");
+    when 4 => print("  Triggers test");
+    when 5 => print("  Atomics test");
+    when 6 => print("  PMP page-table test");
+    when 7 => print("  CFI test");
+    when 8 => print("  Calc test");
+    when 9 => print("  Forwarding test");
+    when others => print("  sub-system test " & tost(subtest));
+    end case;
+
+  end;
+
+
   procedure call_subtest(vendorid, deviceid, subtest : integer) is
   begin
     if vendorid = VENDOR_GAISLER then
@@ -1348,6 +1388,7 @@ package body sim is
         when GAISLER_L4STAT => l4stat_subtest(subtest);
         when GAISLER_GRDMAC => grdmac_subtest(subtest);
         when GAISLER_GRDMAC2 => grdmac2_subtest(subtest);
+        when GAISLER_RV64GC => rv64gc_subtest(subtest);
         when others =>
           print ("  subtest " & tost(subtest));
       end case;

@@ -33,6 +33,8 @@
 #define GRETH_TXBD_ERR_UE 0x4000
 #define GRETH_TXBD_ERR_AL 0x8000
 #define GRETH_TXBD_NUM 128
+/* Timestamped descriptors are twice as large -> half as many */
+#define GRETH_TXBD_NUM_TS (GRETH_TXBD_NUM / 2u)
 #define GRETH_TXBD_NUM_MASK (GRETH_TXBD_NUM-1)
 #define GRETH_TX_BUF_SIZE 2048
 
@@ -53,8 +55,13 @@
 #define GRETH_RXBD_TCP_CSERR 0x1000000
 
 #define GRETH_RXBD_NUM 128
+/* Timestamped descriptors are twice as large -> half as many */
+#define GRETH_RXBD_NUM_TS (GRETH_RXBD_NUM / 2u)
 #define GRETH_RXBD_NUM_MASK (GRETH_RXBD_NUM-1)
 #define GRETH_RX_BUF_SIZE 2048
+
+#define GRETH_CTRL_TS_CAPABLE_BIT 23
+#define GRETH_CTRL_TS_ENABLE_BIT 15
 
 #ifdef NOELV_SYSTEST
 #include <stdint.h>
@@ -64,12 +71,14 @@ typedef uint32_t greth_reg_t;
 typedef uint32_t descrptr_t;
 typedef uint32_t descrctrl_t;
 typedef uint32_t descraddr_t;
+typedef uint32_t descrts_t; /* timestamp component */
 #else
 typedef int addr_t;
 typedef int greth_reg_t;
 typedef int descrptr_t;
 typedef int descrctrl_t;
 typedef int descraddr_t;
+typedef int descrts_t; /* timestamp component */
 #endif
 
 /* Ethernet configuration registers */
@@ -96,6 +105,14 @@ struct descriptor
     volatile descraddr_t addr;
 };
 
+struct descriptor_timestamps
+{
+    volatile descrctrl_t ctrl;
+    volatile descraddr_t addr;
+    volatile descrts_t ts_msb;
+    volatile descrts_t ts_lsb;
+};
+
 struct rxstatus
 {
 
@@ -109,6 +126,7 @@ struct greth_info {
     unsigned int phyaddr;
     unsigned int edcl;
     unsigned int edclen;
+    unsigned int timestamps;
 
     struct descriptor *txd;
     struct descriptor *rxd;
@@ -135,3 +153,4 @@ int greth_checkrx(int *size, struct rxstatus *rxs, struct greth_info *greth);
 
 int greth_checktx(struct greth_info *greth);
 
+int greth_enable_timestamps(struct greth_info *greth);

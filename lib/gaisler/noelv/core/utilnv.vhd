@@ -107,6 +107,14 @@ package utilnv is
                   bits : integer) return unsigned;
   function get_lo(data : signed;
                   bits : integer) return signed;
+  function get_right(data_in : std_logic_vector;
+                     bits    : integer) return std_logic_vector;
+  function get_right(data_in  : std_logic_vector;
+                     template : std_logic_vector) return std_logic_vector;
+  function get_left(data_in : std_logic_vector;
+                    bits    : integer) return std_logic_vector;
+  function get_left(data_in  : std_logic_vector;
+                    template : std_logic_vector) return std_logic_vector;
   function lo_h(v : std_logic_vector) return std_logic_vector;
   function hi_h(v : std_logic_vector) return std_logic_vector;
   procedure uadd_range(src : std_logic_vector; addend : integer; dst : out std_logic_vector);
@@ -158,6 +166,13 @@ package utilnv is
   function repl2w64(v : std_logic_vector) return std_logic_vector;
   function minimum(x : integer; y: integer) return integer;
   function maximum(x : integer; y: integer) return integer;
+  function make_0to(v : std_logic_vector) return std_logic_vector;
+  function make_downto0(v : std_logic_vector) return std_logic_vector;
+  function make_same(v        : std_logic_vector;
+                     template : std_logic_vector) return std_logic_vector;
+  function fit0ext(s_in : std_logic_vector; d_in : std_logic_vector) return std_logic_vector;
+  function fit0ext(s_in : std_logic_vector; length : integer) return std_logic_vector;
+  function fit0ext(s_in : unsigned; d_in : std_logic_vector) return std_logic_vector;
 
 end;
 
@@ -372,7 +387,7 @@ package body utilnv is
   -- Return data interpreted as unsigned, as an integer.
   function u2i(data : std_logic_vector) return integer is
   begin
-    assert data'length <= 31;
+    assert data'length <= 31 report "Data too large for integer" severity failure;
     if notx(data) then
       return to_integer(unsigned(data));
     else
@@ -382,7 +397,7 @@ package body utilnv is
 
   function u2i(data : bit_vector) return integer is
   begin
-    assert data'length <= 31;
+    assert data'length <= 31 report "Data too large for integer" severity failure;
     return to_integer(unsigned(to_stdlogicvector(data)));
   end;
 
@@ -400,11 +415,7 @@ package body utilnv is
 
   function u2i(data : unsigned) return integer is
   begin
-    if notx(data) then
-      return to_integer(data);
-    else
-      return 0;
-    end if;
+    return u2i(std_logic_vector(data));
   end;
 
   -- Return data interpreted as signed, as an integer.
@@ -443,6 +454,7 @@ package body utilnv is
     -- Non-constant
     variable ext      : std_logic_vector(length - 1 downto 0) := (others => '0');
   begin
+    assert v'length <= length report "Value larger than given length" severity failure;
     if v_normal'length > 0 then
       ext := (others => v_normal(v_normal'high));
       ext(v_normal'range) := v;
@@ -477,6 +489,7 @@ package body utilnv is
     -- Non-constant
     variable ext      : std_logic_vector(length - 1 downto 0)   := (others => '0');
   begin
+    assert v'length <= length report "Value larger than given length" severity failure;
     ext(v_normal'range) := v;
 
     return ext;
@@ -831,6 +844,36 @@ package body utilnv is
     return signed(get_lo(std_logic_vector(data), bits));
   end;
 
+  -- Same as get_lo(), except for "normalized" vector direction (n downto 0).
+  function get_right(data_in : std_logic_vector;
+                     bits    : integer) return std_logic_vector is
+    variable data : std_logic_vector(data_in'length - 1 downto 0) := data_in;
+  begin
+    return get_lo(data, bits);
+  end;
+
+  function get_right(data_in  : std_logic_vector;
+                     template : std_logic_vector) return std_logic_vector is
+    variable data : std_logic_vector(data_in'length - 1 downto 0) := data_in;
+  begin
+    return get_lo(data, template'length);
+  end;
+
+  -- Same as get_hi(), except for "normalized" vector direction (n downto 0).
+  function get_left(data_in : std_logic_vector;
+                    bits    : integer) return std_logic_vector is
+    variable data : std_logic_vector(data_in'length - 1 downto 0) := data_in;
+  begin
+    return get_hi(data, bits);
+  end;
+
+  function get_left(data_in  : std_logic_vector;
+                    template : std_logic_vector) return std_logic_vector is
+    variable data : std_logic_vector(data_in'length - 1 downto 0) := data_in;
+  begin
+    return get_hi(data, template'length);
+  end;
+
   -- Sets data in dest from start, away from bit 0.
   procedure set(dest : inout std_logic_vector; start : integer;
                 data : std_logic_vector) is
@@ -896,7 +939,7 @@ package body utilnv is
                    data : std_logic_vector) is
     constant bits : integer := data'length;
   begin
-    set(dest, 0, data);
+    set(dest, dest'low, data);
   end;
 
   -- Return lower half of input.
@@ -921,6 +964,65 @@ package body utilnv is
       severity failure;
 -- pragma translate_on
     return v_normal(v'length - 1 downto v'length / 2);
+  end;
+
+  function make_0to(v : std_logic_vector) return std_logic_vector is
+    -- Non-constant
+    variable r : std_logic_vector(0 to v'length - 1);
+  begin
+    for i in v'range loop
+      r(i) := v(i);
+    end loop;
+
+    return r;
+  end;
+
+  function make_downto0(v : std_logic_vector) return std_logic_vector is
+    -- Non-constant
+    variable r : std_logic_vector(v'length - 1 downto 0);
+  begin
+    for i in v'range loop
+      r(i) := v(i);
+    end loop;
+
+    return r;
+  end;
+
+  function make_same(v        : std_logic_vector;
+                     template : std_logic_vector) return std_logic_vector is
+  begin
+    if template'ascending then
+      return make_0to(v);
+    else
+      return make_downto0(v);
+    end if;
+  end;
+
+  -- Cut down or zero extend source to fit destination
+  function fit0ext(s_in : std_logic_vector; d_in : std_logic_vector) return std_logic_vector is
+    variable s : std_logic_vector(s_in'length - 1 downto 0) := s_in;
+    variable d : std_logic_vector(d_in'length - 1 downto 0) := d_in;
+    -- Non-constant
+    variable r : std_logic_vector(d'range)                  := (others => '0');
+  begin
+    if d'length > s'length then
+      r(s'range) := s;
+    else
+      r          := s(r'range);
+    end if;
+
+    return r;
+  end;
+
+  function fit0ext(s_in : std_logic_vector; length : integer) return std_logic_vector is
+    variable d : std_logic_vector(length - 1 downto 0) := (others => '0');
+  begin
+    return fit0ext(s_in, d);
+  end;
+
+  function fit0ext(s_in : unsigned; d_in : std_logic_vector) return std_logic_vector is
+  begin
+    return fit0ext(std_logic_vector(s_in), d_in);
   end;
 
 end;

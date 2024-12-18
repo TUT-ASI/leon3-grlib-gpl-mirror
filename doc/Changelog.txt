@@ -1,3 +1,76 @@
+----------------------- Release 2024.4-b4295 ---------------------------
+
+2024-12-18	NOEL-V updates
+		- Internal APB bus in noelvsys has been moved from 
+		  0xFC0000000 to 0xFF9000000 and some devices has been 
+		  reorganized. New UART address is now 0xFF900000.
+		- Added option in noelvsys to include PLIC and APLIC
+		- Workaround tool issues for Design-compiler and formality
+		- Added NOEL-V template design for the ZCU102 board
+		- Updated BF16 support (Zfbfmin now ratified)
+		- B in MISA is now set when zba, zbb, zbs are implemented
+		- Improved access and fixed issues with access to IMSIC CSRs
+		- Trigger update to support CBO instructions
+		- Updated Smrnmi implementation to support CFI
+		- Updated interrupt prioritization according to AIA
+		- Removed workaround to allow 64-bit debug-module abstract 
+		  command on RV32
+		- Bug fixes:
+		  - CBO.inval and CBO.flush could incorrectly update the TAG
+		    and cause duplicated data tags.
+		  - mstatush was only available when H-extension was enabled
+		  - exception generated for the SSTC extension was incorrect
+		  - ePMP bit in mseccfg was writable when PMP was not
+		    implemented
+		  - updating these CSRs (menvcfgh, frm/fcsr, xtvec, stateen, 
+		    mideleg/hideleg) should not be dual-issued with other
+		    instructions
+		  - incorrect exception when an address in a PTE failed PMA
+		    check
+		  - SIP.lcof was always read zero
+		  - sfence.w.inval and sfence.inval.ir weren't trapping in
+		    U/VU mode and generating virtual instruction exception
+		    correctly
+		  - APLIC interrupt source was shifted by one bit.
+		  - a hit in BTB was not check to actually be a branch/jal
+		    instruction
+		  - SLLI >31 bit shift was not marked as illegal for RV32
+		  - medeleg and hedeleg to incorporate hw-fault exception
+		  - address translation was not enabled for the instruction
+		    following enabling MMU
+		  - VSATP had the same number of PPN bits as SATP and not
+		    all 41 bits of GPA could be used
+		  - fix for a CFI landing pad corner case
+		  - data cache was flushed when executing a fence instruction
+		  - PTE with D = 1 and A = 0 did not result in page-fault
+		  - LWU could be executed on RV32
+		  - issue with tval for mcontrol6 trigger
+		  - SSRDP was not checked for regarding pairing with
+		    instruction using destination
+		  - PMP check for hlvx and  hypervisor fetch and store was 
+		    incorrect (when allowed in PTE)
+		  - wrong fault on W-only pages with ext_zicfiss but SS
+		    disabled
+		  - no illegal instruction exception for sfence.vma and
+		    reading satp when supervisor mode not implemented
+		  - CSR stimecmp was readable when not implemented
+
+2024-11-05	SPIMCTRL: Input signal 'RSTADDRM' added which can be used
+		to select the reset value of the extended address mode
+		configuration.
+		
+2024-10-11	SPIMCTRL: 'allow_writes' configuration now set as register
+        	bit. Old VHDL generic is kept and is instead used as reset
+		value for the new register bit.
+
+2024-10-04	SPIMCTRL: support for several SPI memories
+		The core now supports the use of up to four chip select 
+		signals. It can either be configured to always communicate 
+		with one out of the four devices, or instead use bit pairs 
+		from the address to select which device to use. The second 
+		approach allows a continuous view into the four memories 
+		in the SPIMCTRL ROM address region.
+
 ----------------------- Release 2024.2-b4293 ---------------------------
 
 2024-07-09	Added support for Lattice Nexus FPGAs.

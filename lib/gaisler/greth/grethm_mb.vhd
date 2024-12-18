@@ -35,44 +35,46 @@ use gaisler.net.all;
 
 entity grethm_mb is
   generic(
-    hindex         : integer := 0;
-    ehindex        : integer := 0;
-    pindex         : integer := 0;
-    paddr          : integer := 0;
-    pmask          : integer := 16#FFF#;
-    pirq           : integer := 0;
-    memtech        : integer := 0;
-    ifg_gap        : integer := 24; 
-    attempt_limit  : integer := 16;
-    backoff_limit  : integer := 10;
-    slot_time      : integer := 128;
-    mdcscaler      : integer range 0 to 255 := 25; 
-    enable_mdio    : integer range 0 to 1 := 0;
-    fifosize       : integer range 4 to 512 := 8;
-    nsync          : integer range 1 to 2 := 2;
-    edcl           : integer range 0 to 3 := 0;
-    edclbufsz      : integer range 1 to 64 := 1;
-    burstlength    : integer range 4 to 128 := 32;
-    macaddrh       : integer := 16#00005E#;
-    macaddrl       : integer := 16#000000#;
-    ipaddrh        : integer := 16#c0a8#;
-    ipaddrl        : integer := 16#0035#;
-    phyrstadr      : integer range 0 to 32 := 0;
-    rmii           : integer range 0 to 1 := 0;
-    sim            : integer range 0 to 1 := 0;
-    giga           : integer range 0 to 1  := 0;
-    oepol          : integer range 0 to 1  := 0;
-    scanen         : integer range 0 to 1  := 0;
-    ft             : integer range 0 to 2  := 0;
-    edclft         : integer range 0 to 2  := 0;
-    mdint_pol      : integer range 0 to 1  := 0;
-    enable_mdint   : integer range 0 to 1  := 0;
-    multicast      : integer range 0 to 1  := 0;
-    edclsepahb     : integer range 0 to 1 := 0;
-    ramdebug       : integer range 0 to 2  := 0;
-    mdiohold       : integer := 1;
-    maxsize        : integer := 1500;
-    gmiimode       : integer range 0 to 1  := 0
+    hindex             : integer := 0;
+    ehindex            : integer := 0;
+    pindex             : integer := 0;
+    paddr              : integer := 0;
+    pmask              : integer := 16#FFF#;
+    pirq               : integer := 0;
+    memtech            : integer := 0;
+    ifg_gap            : integer := 24; 
+    attempt_limit      : integer := 16;
+    backoff_limit      : integer := 10;
+    slot_time          : integer := 128;
+    mdcscaler          : integer range 0 to 255 := 25; 
+    enable_mdio        : integer range 0 to 1 := 0;
+    fifosize           : integer range 4 to 512 := 8;
+    nsync              : integer range 1 to 2 := 2;
+    edcl               : integer range 0 to 3 := 0;
+    edclbufsz          : integer range 1 to 64 := 1;
+    burstlength        : integer range 4 to 128 := 32;
+    macaddrh           : integer := 16#00005E#;
+    macaddrl           : integer := 16#000000#;
+    ipaddrh            : integer := 16#c0a8#;
+    ipaddrl            : integer := 16#0035#;
+    phyrstadr          : integer range 0 to 32 := 0;
+    rmii               : integer range 0 to 1 := 0;
+    sim                : integer range 0 to 1 := 0;
+    giga               : integer range 0 to 1  := 0;
+    oepol              : integer range 0 to 1  := 0;
+    scanen             : integer range 0 to 1  := 0;
+    ft                 : integer range 0 to 2  := 0;
+    edclft             : integer range 0 to 2  := 0;
+    mdint_pol          : integer range 0 to 1  := 0;
+    enable_mdint       : integer range 0 to 1  := 0;
+    multicast          : integer range 0 to 1  := 0;
+    edclsepahb         : integer range 0 to 1 := 0;
+    ramdebug           : integer range 0 to 2  := 0;
+    mdiohold           : integer := 1;
+    maxsize            : integer := 1500;
+    gmiimode           : integer range 0 to 1  := 0;
+    timestamps         : integer range 0 to 1 := 0; -- only for gbit
+    external_mdio_ctrl : integer range 0 to 1 := 0 -- Only for gbit
     );
   port(
     rst            : in  std_ulogic;
@@ -84,10 +86,15 @@ entity grethm_mb is
     apbi           : in  apb_slv_in_type;
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
-    etho           : out eth_out_type
+    etho           : out eth_out_type;
+    timestamp      : in  std_logic_vector(63 downto 0) := (others => '0');
+    -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0. Only for GBIT.
+    phy_aneg_valid  : in  std_ulogic := '0';
+    -- Index 0: 100, 1: gbit, 2: fduplex
+    phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
   );
 end entity;
-  
+
 architecture rtl of grethm_mb is
 begin
 
@@ -147,40 +154,42 @@ begin
   m1000 : if giga = 1 generate
     u0 : greth_gbit_mb
       generic map (
-        hindex         => hindex,
-        ehindex        => ehindex,
-        pindex         => pindex,
-        paddr          => paddr,
-        pmask          => pmask,
-        pirq           => pirq,
-        memtech        => memtech,
-        ifg_gap        => ifg_gap,
-        attempt_limit  => attempt_limit,
-        backoff_limit  => backoff_limit,
-        slot_time      => slot_time,
-        mdcscaler      => mdcscaler,
-        nsync          => nsync,
-        edcl           => edcl,
-        edclbufsz      => edclbufsz,
-        burstlength    => burstlength,
-        macaddrh       => macaddrh,
-        macaddrl       => macaddrl,
-        ipaddrh        => ipaddrh,
-        ipaddrl        => ipaddrl,
-        phyrstadr      => phyrstadr,
-        sim            => sim,
-        oepol          => oepol,
-        scanen         => scanen,
-        ft             => ft,
-        edclft         => edclft,
-        mdint_pol      => mdint_pol,
-        enable_mdint   => enable_mdint,
-        multicast      => multicast,
-        edclsepahb     => edclsepahb,
-        ramdebug       => ramdebug,
-        mdiohold       => mdiohold,
-        gmiimode       => gmiimode
-        ) 
+        hindex             => hindex,
+        ehindex            => ehindex,
+        pindex             => pindex,
+        paddr              => paddr,
+        pmask              => pmask,
+        pirq               => pirq,
+        memtech            => memtech,
+        ifg_gap            => ifg_gap,
+        attempt_limit      => attempt_limit,
+        backoff_limit      => backoff_limit,
+        slot_time          => slot_time,
+        mdcscaler          => mdcscaler,
+        nsync              => nsync,
+        edcl               => edcl,
+        edclbufsz          => edclbufsz,
+        burstlength        => burstlength,
+        macaddrh           => macaddrh,
+        macaddrl           => macaddrl,
+        ipaddrh            => ipaddrh,
+        ipaddrl            => ipaddrl,
+        phyrstadr          => phyrstadr,
+        sim                => sim,
+        oepol              => oepol,
+        scanen             => scanen,
+        ft                 => ft,
+        edclft             => edclft,
+        mdint_pol          => mdint_pol,
+        enable_mdint       => enable_mdint,
+        multicast          => multicast,
+        edclsepahb         => edclsepahb,
+        ramdebug           => ramdebug,
+        mdiohold           => mdiohold,
+        gmiimode           => gmiimode,
+        timestamps         => timestamps,
+        external_mdio_ctrl => external_mdio_ctrl
+        )
       port map (
         rst            => rst,
         clk            => clk,
@@ -195,7 +204,11 @@ begin
         mdchain_ui     => greth_mdiochain_down_first,
         mdchain_uo     => open,
         mdchain_di     => open,
-        mdchain_do     => greth_mdiochain_up_last);
+        mdchain_do     => greth_mdiochain_up_last,
+        timestamp      => timestamp,
+        phy_aneg_valid  => phy_aneg_valid,
+        phy_aneg_result => phy_aneg_result
+      );
   end generate;
 
 end architecture;

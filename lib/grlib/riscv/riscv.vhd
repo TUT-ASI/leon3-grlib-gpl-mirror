@@ -526,6 +526,7 @@ package riscv is
   constant S_FNMSUB     : funct5_type := "10010";
   constant S_FNMADD     : funct5_type := "10011";
 
+
   -----------------------------------------------------------------------------
   -- Opcodes above that are actually the same
   -----------------------------------------------------------------------------
@@ -584,6 +585,8 @@ package riscv is
   constant CSR_FFLAGS           : csratype := x"001";
   constant CSR_FRM              : csratype := x"002";
   constant CSR_FCSR             : csratype := x"003";
+  -- Shadow stack pointer
+  constant CSR_SSP              : csratype := x"011";
   -- User Counter/Timers
   constant CSR_CYCLE            : csratype := x"c00";
   constant CSR_TIME             : csratype := x"c01";

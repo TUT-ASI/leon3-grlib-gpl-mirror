@@ -27,6 +27,9 @@
 /* Set to 1 to run full duplex, 0 to run half duplex */
 #define GRETH_FULLDUPLEX 1
 
+/* Set to 1 to enable timestamping */
+#define GRETH_TIMESTAMPS 0
+
 #define GRETH_ADDR 0x80000b00
 
 /* Destination MAC address */
@@ -43,7 +46,7 @@
 #define SRC_MAC2  0xBE
 #define SRC_MAC3  0xEF
 #define SRC_MAC4  0x00
-#define SRC_MAC5  0x20 
+#define SRC_MAC5  0x20
 
 struct greth_info greth;
 
@@ -84,6 +87,11 @@ int main(void) {
     }
 
     greth_init(&greth);
+
+    /* Enable timestamping if requested by user */
+    if(GRETH_TIMESTAMPS)
+        if(!greth_enable_timestamps(&greth))
+            printf("\nTried to enable timestamps for a non-capable GRETH\n");
 
     printf("\nSending 1500 Mbyte of data to %.02x:%.02x:%.02x:%.02x:%.02x:%.02x\n", buf[0], buf[1], \
                                                                                     buf[2], buf[3], \

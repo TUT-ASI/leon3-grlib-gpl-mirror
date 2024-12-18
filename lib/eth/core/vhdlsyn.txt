@@ -10,3 +10,4 @@ greth_tx.vhd
 greth_rx.vhd
 greth_gbitc.vhd
 grethc.vhd
+mdio_ctrl.vhd

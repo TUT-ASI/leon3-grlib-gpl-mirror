@@ -55,11 +55,14 @@ package noelv_cpu_cfg is
     ext_smdbltrp  => 1,
     ext_sddbltrp  => 1,
     ext_smepmp    => 1,
+    ext_svpbmt    => 1,
     imsic         => 1,
     ext_zicbom    => 1,
     ext_zicond    => 1,
     ext_zimop     => 1,
     ext_zcmop     => 1,
+    ext_zicfiss   => 0,
+    ext_zicfilp   => 0,
     ext_svinval   => 1,
     ext_zfa       => 1,
     ext_zfh       => 1,
@@ -71,6 +74,8 @@ package noelv_cpu_cfg is
     pmp_no_tor    => 0,
     pmp_entries   => 8,
     pmp_g         => 10,
+    pma_entries   => 8,
+    pma_masked    => 0,
     asidlen       => 0,
     vmidlen       => 0,
     perf_cnts     => 16,
@@ -102,4 +107,3 @@ package noelv_cpu_cfg is
     btbsets       => 2);
 
 end;
-

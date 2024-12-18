@@ -271,7 +271,9 @@ package net is
    --   rgmiimode      : integer range 0 to 1  := 0;
       gmiimode       : integer range 0 to 1  := 0;
       mdiochain      : integer range 0 to 1  := 0;
-      iotest         : integer range 0 to 1  := 0
+      iotest         : integer range 0 to 1  := 0;
+      timestamps     : integer range 0 to 1  := 0;
+      external_mdio_ctrl : integer range 0 to 1 := 0
     ); 
     port(
       rst            : in  std_ulogic;
@@ -291,7 +293,12 @@ package net is
       -- Debug Interface
       debug_rx        : out std_logic_vector(63 downto 0);
       debug_tx        : out std_logic_vector(63 downto 0);
-      debug_gtx       : out std_logic_vector(63 downto 0)
+      debug_gtx       : out std_logic_vector(63 downto 0);
+      timestamp       : in  std_logic_vector(63 downto 0) := (others => '0');
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0.
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
     );
   end component;
 
@@ -328,8 +335,10 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       rgmiimode      : integer range 0 to 1  := 0;
-      gmiimode       : integer range 0 to 1  := 0
-      ); 
+      gmiimode       : integer range 0 to 1  := 0;
+      timestamps     : integer range 0 to 1  := 0;
+      external_mdio_ctrl : integer range 0 to 1 := 0
+      );
     port(
       rst            : in  std_ulogic;
       clk            : in  std_ulogic;
@@ -342,7 +351,13 @@ package net is
       -- Debug Interface
       ; debug_rx      : out std_logic_vector(63 downto 0);
       debug_tx        : out std_logic_vector(63 downto 0);
-      debug_gtx       : out std_logic_vector(63 downto 0)
+      debug_gtx       : out std_logic_vector(63 downto 0);
+      -- Timestamping
+      timestamp       : in  std_logic_vector(63 downto 0) := (others => '0');
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
     );
   end component;
 
@@ -385,8 +400,10 @@ package net is
     maxsize        : integer := 1500;
     rgmiimode      : integer range 0 to 1  := 0;
     gmiimode       : integer range 0 to 1  := 0;
-    num_desc       : integer range 128 to 65536 := 128
-    ); 
+    num_desc       : integer range 128 to 65536 := 128;
+    timestamps     : integer range 0 to 1 := 0; -- Only for gbit
+    external_mdio_ctrl : integer range 0 to 1 := 0 -- Only for gbit
+    );
   port(
     rst            : in  std_ulogic;
     clk            : in  std_ulogic;
@@ -396,9 +413,15 @@ package net is
     apbo           : out apb_slv_out_type;
     ethi           : in  eth_in_type;
     etho           : out eth_out_type
-     ; debug_rx    : out std_logic_vector(63 downto 0);
-     debug_tx      : out std_logic_vector(63 downto 0);
-     debug_gtx     : out std_logic_vector(63 downto 0)
+    ; debug_rx    : out std_logic_vector(63 downto 0);
+    debug_tx      : out std_logic_vector(63 downto 0);
+    debug_gtx     : out std_logic_vector(63 downto 0);
+    -- Timestamping, only for GBIT
+    timestamp      : in  std_logic_vector(63 downto 0) := (others => '0');
+    -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0. Only for GBIT.
+    phy_aneg_valid  : in  std_ulogic := '0';
+    -- Index 0: 100, 1: gbit, 2: fduplex
+    phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
   );
   end component;
 
@@ -441,7 +464,9 @@ package net is
       ramdebug       : integer range 0 to 2  := 0;
       mdiohold       : integer := 1;
       maxsize        : integer := 1500;
-      gmiimode       : integer range 0 to 1  := 0
+      gmiimode       : integer range 0 to 1  := 0;
+      timestamps     : integer range 0 to 1 := 0; -- Only for gbit
+      external_mdio_ctrl : integer range 0 to 1 := 0 -- Only for gbit
       );
     port(
       rst            : in  std_ulogic;
@@ -453,7 +478,13 @@ package net is
       apbi           : in  apb_slv_in_type;
       apbo           : out apb_slv_out_type;
       ethi           : in  eth_in_type;
-      etho           : out eth_out_type
+      etho           : out eth_out_type;
+      -- Timestamping, only for GBIT
+      timestamp      : in  std_logic_vector(63 downto 0) := (others => '0');
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0. Only for GBIT.
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
     );
   end component;
 

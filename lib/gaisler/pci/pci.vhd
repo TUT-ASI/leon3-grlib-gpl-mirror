@@ -521,7 +521,7 @@ component grpci2
     nsync       : integer range 0 to 2 := 2; 
     hostrst     : integer range 0 to 2 := 0;-- 0: PCI reset is never driven, 1: PCI reset is driven from AHB reset if host, 2: PCI reset is always driven from AHB reset
     bypass      : integer range 0 to 1 := 1;
-    ft          : integer range 0 to 1 := 0;
+    ft          : integer range 0 to 5 := 0;
     scantest    : integer range 0 to 1 := 0;
     debug       : integer range 0 to 1 := 0;
     tbapben     : integer range 0 to 1 := 0;

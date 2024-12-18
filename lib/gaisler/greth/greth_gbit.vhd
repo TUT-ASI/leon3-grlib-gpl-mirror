@@ -40,38 +40,40 @@ use eth.ethcomp.all;
 
 entity greth_gbit is
   generic(
-    hindex         : integer := 0;
-    pindex         : integer := 0;
-    paddr          : integer := 0;
-    pmask          : integer := 16#FFF#;
-    pirq           : integer := 0;
-    memtech        : integer := 0;
-    ifg_gap        : integer := 24; 
-    attempt_limit  : integer := 16;
-    backoff_limit  : integer := 10;
-    slot_time      : integer := 128;
-    mdcscaler      : integer range 0 to 255 := 25; 
-    nsync          : integer range 1 to 2 := 2;
-    edcl           : integer range 0 to 3 := 0;
-    edclbufsz      : integer range 1 to 64 := 1;
-    burstlength    : integer range 4 to 128 := 32;
-    macaddrh       : integer := 16#00005E#;
-    macaddrl       : integer := 16#000000#;
-    ipaddrh        : integer := 16#c0a8#;
-    ipaddrl        : integer := 16#0035#;
-    phyrstadr      : integer range 0 to 32 := 0;
-    sim            : integer range 0 to 1 := 0;
-    oepol          : integer range 0 to 1 := 0;
-    scanen         : integer range 0 to 1 := 0;
-    ft             : integer range 0 to 2 := 0;
-    edclft         : integer range 0 to 2 := 0;
-    mdint_pol      : integer range 0 to 1 := 0;
-    enable_mdint   : integer range 0 to 1 := 0;
-    multicast      : integer range 0 to 1 := 0;
-    ramdebug       : integer range 0 to 2 := 0;
-    mdiohold       : integer := 1;
-    rgmiimode      : integer range 0 to 1 := 0;
-    gmiimode       : integer range 0 to 1 := 0
+    hindex             : integer := 0;
+    pindex             : integer := 0;
+    paddr              : integer := 0;
+    pmask              : integer := 16#FFF#;
+    pirq               : integer := 0;
+    memtech            : integer := 0;
+    ifg_gap            : integer := 24;
+    attempt_limit      : integer := 16;
+    backoff_limit      : integer := 10;
+    slot_time          : integer := 128;
+    mdcscaler          : integer range 0 to 255 := 25;
+    nsync              : integer range 1 to 2 := 2;
+    edcl               : integer range 0 to 3 := 0;
+    edclbufsz          : integer range 1 to 64 := 1;
+    burstlength        : integer range 4 to 128 := 32;
+    macaddrh           : integer := 16#00005E#;
+    macaddrl           : integer := 16#000000#;
+    ipaddrh            : integer := 16#c0a8#;
+    ipaddrl            : integer := 16#0035#;
+    phyrstadr          : integer range 0 to 32 := 0;
+    sim                : integer range 0 to 1 := 0;
+    oepol              : integer range 0 to 1 := 0;
+    scanen             : integer range 0 to 1 := 0;
+    ft                 : integer range 0 to 2 := 0;
+    edclft             : integer range 0 to 2 := 0;
+    mdint_pol          : integer range 0 to 1 := 0;
+    enable_mdint       : integer range 0 to 1 := 0;
+    multicast          : integer range 0 to 1 := 0;
+    ramdebug           : integer range 0 to 2 := 0;
+    mdiohold           : integer := 1;
+    rgmiimode          : integer range 0 to 1 := 0;
+    gmiimode           : integer range 0 to 1 := 0;
+    timestamps         : integer range 0 to 1 := 0;
+    external_mdio_ctrl : integer range 0 to 1 := 0
     );
   port(
     rst            : in  std_ulogic;
@@ -85,7 +87,12 @@ entity greth_gbit is
     -- Debug Interface
     ; debug_rx      : out std_logic_vector(63 downto 0);
     debug_tx        : out std_logic_vector(63 downto 0);
-    debug_gtx       : out std_logic_vector(63 downto 0)
+    debug_gtx       : out std_logic_vector(63 downto 0);
+    timestamp       : in  std_logic_vector(63 downto 0) := (others => '0');
+    -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0
+    phy_aneg_valid  : in  std_ulogic := '0';
+    -- Index 0: 100, 1: gbit, 2: fduplex
+    phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
   );
 end entity;
   
@@ -96,7 +103,7 @@ architecture rtl of greth_gbit is
   constant fsize           : std_logic_vector(fabits downto 0) :=
     conv_std_logic_vector(fifosize, fabits+1);
   
-  constant REVISION : amba_version_type := 0;
+  constant REVISION : amba_version_type := 1;
 
   constant pconfig : apb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_ETHMAC, 0, REVISION, pirq),
@@ -175,7 +182,9 @@ begin
       ramdebug       => ramdebug,
       mdiohold       => mdiohold,
       rgmiimode      => rgmiimode,
-      gmiimode       => gmiimode
+      gmiimode       => gmiimode,
+      timestamps     => timestamps,
+      external_mdio_ctrl => external_mdio_ctrl
       )
     port map(
       rst            => rst,
@@ -284,7 +293,12 @@ begin
       -- Debug
       debug_rx        => debug_rx,
       debug_tx        => debug_tx,
-      debug_gtx       => debug_gtx
+      debug_gtx       => debug_gtx,
+      -- RX/TX Descriptor timestamp
+      timestamp       => timestamp,
+      -- External MDIO inputs
+      phy_aneg_valid  => phy_aneg_valid,
+      phy_aneg_result => phy_aneg_result
       );
 
   etho.tx_clk <= '0';                   -- driven in rgmii component

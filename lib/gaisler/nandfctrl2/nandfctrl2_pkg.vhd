@@ -21,20 +21,19 @@
 -- Description: NAND flash memory controller 2 package
 ------------------------------------------------------------------------------
 
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
 library grlib;
 use grlib.stdlib.all;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.amba.all;
 
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
 library techmap;
 use techmap.gencomp.all;
 
-library gaisler;
 
 package nandfctrl2_pkg is
 
@@ -133,7 +132,6 @@ package nandfctrl2_pkg is
 
     datai       : flash_data_16bits_bus_type;
     datai_valid : std_logic_vector(max_channels-1 downto 0);
-    dqsi        : std_logic_vector(max_channels-1 downto 0);
 
     rb_n        : std_logic_vector(max_rb-1 downto 0);
   end record;
@@ -141,7 +139,6 @@ package nandfctrl2_pkg is
     phy_ready   => '0',
     datai       => (others => (others => '0')),
     datai_valid => (others => '0'),
-    dqsi        => (others => '0'),
     rb_n        => (others => '0'));
 
 
@@ -194,7 +191,8 @@ package nandfctrl2_pkg is
     nrofce       : integer range 1 to MAX_CE       :=     8;
     nrofch       : integer range 1 to MAX_CHANNELS :=     8;
     nrofrb       : integer range 1 to MAX_RB       :=     8;
-    rnd          : integer range 0 to MAX_SEFI     :=     1;
+
+    rnd          : integer range 0 to 1            :=     1;
 
     mem0_data    : integer range 0 to 32768        := 16384;
     mem0_spare   : integer range 0 to 8192         :=  2208;
@@ -217,6 +215,7 @@ package nandfctrl2_pkg is
     ecc1_cap     : integer range 0 to 60           :=    16;
 
     rst_cycles   : integer range 0 to 200          :=    10;
+    tag_size     : integer range 0 to 63           :=     0;
 
     ft           : integer range 0 to 7            :=     0;
     scantest     : integer range 0 to 1            :=     0;
@@ -252,7 +251,8 @@ package nandfctrl2_pkg is
       SCANTEST     : integer range 0 to 1            := 0;
       SKEW_RX_MAX  : integer range 0 to 7            := 7;
       SKEW_TX_MAX  : integer range 0 to 7            := 7;
-      SYNC_STAGES  : integer range 0 to 3            := 2
+      SYNC_STAGES  : integer range 0 to 3            := 2;
+      TECH         : integer range 0 to NTECH        := inferred
       );
     port(
       rstn_core : in  std_logic;

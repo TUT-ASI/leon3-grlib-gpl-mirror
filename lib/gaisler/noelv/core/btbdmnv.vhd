@@ -53,11 +53,11 @@ end btbdmnv;
 architecture rtl of btbdmnv is
 
   constant INDEX_LOW  : integer := 2+dissue;
-  constant INDEX_HIGH : integer := INDEX_LOW + log2ext(nentries) - 1;                                
+  constant INDEX_HIGH : integer := INDEX_LOW + log2ext(nentries) - 1;
 
   subtype target is std_logic_vector(PCBITS-1 downto 0);
   type btbtarget is array (0 to NENTRIES-1) of target;
-  
+
   subtype tag is std_logic_vector(PCBITS-2-INDEX_HIGH downto 0);
   type btbtag is array (0 to NENTRIES-1) of tag;
 

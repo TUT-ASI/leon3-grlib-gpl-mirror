@@ -1039,7 +1039,10 @@ begin
       end if;
       -- Other
       if v.cmd.cmdtype = CMDTYPE_REG then
-        if v.cmd.aarsize = "100" then
+        --if v.cmd.aarsize = "100" then
+        if v.cmd.aarsize = "100" or (v.cmd.aarsize = "011" and XLEN = 32 and
+                                     v.cmd.regno(15 downto 12) /= x"c") -- allow 64-bit access to trace buffer
+                                     then
           v.cmderr      := CMDERR_OTHER;
         end if;
         if (v.cmd.transfer = '0' and v.cmd.postexec = '0') then

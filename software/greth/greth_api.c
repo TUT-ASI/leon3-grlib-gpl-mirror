@@ -163,6 +163,7 @@ int greth_init(struct greth_info *greth)
     tmp = load((addr_t)&greth->regs->control);
     greth->gbit = (tmp >> 27) & 1;
     greth->edcl = (tmp >> 31) & 1;
+    greth->timestamps = (tmp >> GRETH_CTRL_TS_CAPABLE_BIT) & 1;
     greth->edclen = ((tmp >> 14) & 1) ^ 1;
 
     if (greth->edcl == 0) {
@@ -247,34 +248,82 @@ int greth_init(struct greth_info *greth)
 
 inline int greth_tx(int size, char *buf, struct greth_info *greth)
 {
-    if ((load((addr_t)&(greth->txd[greth->txpnt].ctrl)) >> 11) & 1) {
-        return 0;
-    }
-    greth->txd[greth->txpnt].addr = (greth_reg_t)buf;
-    if (greth->txpnt == 127) {
-        greth->txd[greth->txpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN | size;
-        greth->txpnt = 0;
+    int timestamps_enabled;
+    volatile struct descriptor_timestamps *descriptors_ts;
+
+    timestamps_enabled = load((addr_t)&(greth->regs->control)) &
+                              (1u << GRETH_CTRL_TS_ENABLE_BIT);
+
+    if (timestamps_enabled) {
+        descriptors_ts = (struct descriptors_timestamps *) greth->txd;
+
+        if ((load((addr_t)&(descriptors_ts[greth->txpnt].ctrl)) >> 11) & 1) {
+            return 0;
+        }
+
+        descriptors_ts[greth->txpnt].addr = (greth_reg_t)buf;
+        if (greth->txpnt == GRETH_TXBD_NUM_TS - 1) {
+            descriptors_ts[greth->txpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN | size;
+            greth->txpnt = 0u;
+        } else {
+            descriptors_ts[greth->txpnt].ctrl = GRETH_BD_EN | size;
+            greth->txpnt++;
+        }
     } else {
-        greth->txd[greth->txpnt].ctrl = GRETH_BD_EN | size;
-        greth->txpnt++;
+        if ((load((addr_t)&(greth->txd[greth->txpnt].ctrl)) >> 11) & 1) {
+            return 0;
+        }
+
+        greth->txd[greth->txpnt].addr = (greth_reg_t)buf;
+        if (greth->txpnt == GRETH_TXBD_NUM - 1) {
+            greth->txd[greth->txpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN | size;
+            greth->txpnt = 0u;
+        } else {
+            greth->txd[greth->txpnt].ctrl = GRETH_BD_EN | size;
+            greth->txpnt++;
+        }
     }
+
     greth->regs->control = load((addr_t)&(greth->regs->control)) | GRETH_TXEN; // Original
     return 1;
 }
 
 inline int greth_rx(char *buf, struct greth_info *greth)
 {
-    if (((load((addr_t)&(greth->rxd[greth->rxpnt].ctrl)) >> 11) & 1)) {
-        return 0;
-    }
-    greth->rxd[greth->rxpnt].addr = (greth_reg_t)buf;
-    if (greth->rxpnt == 127) {
-        greth->rxd[greth->rxpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN;
-        greth->rxpnt = 0;
+    int timestamps_enabled;
+    volatile struct descriptor_timestamps *descriptors_ts;
+
+    timestamps_enabled = load((addr_t)&(greth->regs->control)) &
+                              (1u << GRETH_CTRL_TS_ENABLE_BIT);
+
+    if(timestamps_enabled) {
+        descriptors_ts = (struct descriptors_timestamps *) greth->rxd;
+
+        if (((load((addr_t)&(descriptors_ts[greth->rxpnt].ctrl)) >> 11) & 1)) {
+            return 0;
+        }
+        descriptors_ts[greth->rxpnt].addr = (greth_reg_t)buf;
+        if (greth->rxpnt == GRETH_RXBD_NUM_TS - 1) {
+            descriptors_ts[greth->rxpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN;
+            greth->rxpnt = 0;
+        } else {
+            descriptors_ts[greth->rxpnt].ctrl = GRETH_BD_EN; // set it to 2048 (busy bit ON)
+            greth->rxpnt++;
+        }
     } else {
-        greth->rxd[greth->rxpnt].ctrl = GRETH_BD_EN; // set it to 2048 (busy bit ON)
-        greth->rxpnt++;
+        if (((load((addr_t)&(greth->rxd[greth->rxpnt].ctrl)) >> 11) & 1)) {
+            return 0;
+        }
+        greth->rxd[greth->rxpnt].addr = (greth_reg_t)buf;
+        if (greth->rxpnt == GRETH_RXBD_NUM - 1) {
+            greth->rxd[greth->rxpnt].ctrl = GRETH_BD_WR | GRETH_BD_EN;
+            greth->rxpnt = 0;
+        } else {
+            greth->rxd[greth->rxpnt].ctrl = GRETH_BD_EN; // set it to 2048 (busy bit ON)
+            greth->rxpnt++;
+        }
     }
+
     greth->regs->control = load((addr_t)&(greth->regs->control)) | GRETH_RXEN; // Original
     return 1;
 }
@@ -282,10 +331,21 @@ inline int greth_rx(char *buf, struct greth_info *greth)
 inline int greth_checkrx(int *size, struct rxstatus *rxs, struct greth_info *greth)
 {
     int tmp;
-    tmp = load((addr_t)&(greth->rxd[greth->rxchkpnt].ctrl));
+    int timestamps_enabled;
+    volatile struct descriptor_timestamps *descriptors_ts;
+
+    timestamps_enabled = load((addr_t)&(greth->regs->control)) &
+                              (1u << GRETH_CTRL_TS_ENABLE_BIT);
+
+    if (timestamps_enabled) {
+        descriptors_ts = (struct descriptors_timestamps *) greth->rxd;
+        tmp = load((addr_t)&(descriptors_ts[greth->rxchkpnt].ctrl));
+    } else {
+        tmp = load((addr_t)&(greth->rxd[greth->rxchkpnt].ctrl));
+    }
     if (!((tmp >> 11) & 1)) { // Check Enable bit
         *size = tmp & GRETH_BD_LEN; // Get number of bytes received (10 downto 0)
-        if (greth->rxchkpnt == 127) { // TODO: Checking the wrap bit instead?
+        if (tmp & GRETH_BD_WR) { // Descriptor is indicating to wrap.
             greth->rxchkpnt = 0;
         } else {
             greth->rxchkpnt++;
@@ -299,9 +359,20 @@ inline int greth_checkrx(int *size, struct rxstatus *rxs, struct greth_info *gre
 inline int greth_checktx(struct greth_info *greth)
 {
     int tmp;
-    tmp = load((addr_t)&(greth->txd[greth->txchkpnt].ctrl));
+    int timestamps_enabled;
+    volatile struct descriptor_timestamps *descriptors_ts;
+
+    timestamps_enabled = load((addr_t)&(greth->regs->control)) &
+                              (1u << GRETH_CTRL_TS_ENABLE_BIT);
+
+    if (timestamps_enabled) {
+        descriptors_ts = (struct descriptors_timestamps *) greth->rxd;
+        tmp = load((addr_t)&(descriptors_ts[greth->txchkpnt].ctrl));
+    } else {
+        tmp = load((addr_t)&(greth->txd[greth->txchkpnt].ctrl));
+    }
     if (!((tmp >> 11) & 1)) {
-        if (greth->txchkpnt == 127) {
+        if (tmp & GRETH_BD_WR) { /* Descriptor indicates to wrap */
             greth->txchkpnt = 0;
         } else {
             greth->txchkpnt++;
@@ -310,4 +381,12 @@ inline int greth_checktx(struct greth_info *greth)
     } else {
       return 0;
     }
+}
+
+inline int greth_enable_timestamps(struct greth_info *greth)
+{
+    unsigned int tmp;
+    tmp = load((addr_t)&(greth->regs->control));
+    save((addr_t)&(greth->regs->control), tmp | (1 << GRETH_CTRL_TS_ENABLE_BIT));
+    return (tmp >> GRETH_CTRL_TS_CAPABLE_BIT) & 1;
 }

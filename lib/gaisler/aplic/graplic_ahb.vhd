@@ -481,7 +481,7 @@ begin
 
   comb : process(r, ahbsi, amo, dm_ip, dm_id, dm_pr_array) is 
     variable v              : reg_type;
-    variable irqi           : std_logic_vector(nsources-1 downto 0);
+    variable irqi           : std_logic_vector(nsources downto 0);
     variable hwdata         : std_logic_vector(31 downto 0);
     variable hrdata         : std_logic_vector(31 downto 0);
     variable wdata          : std_logic_vector(31 downto 0);
@@ -620,9 +620,10 @@ begin
     end loop;
 
 
+    -- Zero is not a valid interrupt identity number, therefore irqi(0) is always zero.
     -- Taking as an input the state of each source (active/inactive), its configuration
     -- and the state of the interrupt source inputs, calculate IP and IE bits for each sources.
-    v.src_rectified(nsources downto 1) := r.src_inverted(nsources downto 1) xor irqi;
+    v.src_rectified := r.src_inverted xor irqi;
     for i in 1 to nsources loop
       if r.sourcecfg_SM(i) = detached or r.sourcecfg_SM(i) = inactive then
         v.src_rectified(i) := '0';

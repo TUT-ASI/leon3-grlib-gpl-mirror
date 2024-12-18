@@ -49,7 +49,7 @@ entity mul64 is
     scantest  : integer := 0
     );
   port (
-    clk       : in  std_ulogic;       
+    clk       : in  std_ulogic;
     rstn      : in  std_ulogic;
     holdn     : in  std_ulogic;
     ctrl      : in  std_logic_vector(2 downto 0);
