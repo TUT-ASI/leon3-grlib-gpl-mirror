@@ -3,14 +3,15 @@
 # TODO MULTIPLE ORIGINS
 
 # Crude but works ↓
-my $url  = ‘https://www.gaisler.com/index.php/downloads/grlib’;
+my $url  = ‘https://www.gaisler.com/grlib-ip-library’;
 my $page = run(:out, <curl -->, $url).out.slurp;
-my $line = $page.lines.grep(/｢<a href="/products/grlib/grlib-gpl｣/).head;
 
-my ($tar-link, $changelog-link) = ($line ~~ m:g/‘href="’(<-["]>+)‘"’/)»[0]».Str;
+$page.match: /(‘https://download.gaisler.com/products/GRLIB/bin/grlib-gpl-’ .+? ‘.tar.gz’)/;
+my $tar-link = ~$0;
+my $changelog-link = ‘http://download.gaisler.com/products/GRLIB/doc/Changelog.txt’;
 
-run <curl --remote-name -->, ‘https://www.gaisler.com’~$changelog-link, :cwd(‘files’);
-run <curl --remote-name -->, ‘https://www.gaisler.com’~$tar-link, :cwd(‘snapshots’);
+run <curl --remote-name -->, $changelog-link, :cwd(‘files’);
+run <curl --remote-name -->, $tar-link, :cwd(‘snapshots’);
 
 my @snapshots = dir ‘snapshots’;
 @snapshots .= map: { die unless /‘-b’(\d+)‘.tar.gz’$ /; +$0 => $_ };
