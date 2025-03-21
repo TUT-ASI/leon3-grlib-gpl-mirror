@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1218,9 +1218,12 @@ architecture rtl of cctrlnv is
     -- PMA in TLB
     pma_hit     : std_ulogic;
     pma_fit     : std_ulogic;
-    pma_hitv    : std_logic_vector(pma_entries - 1 downto 0);  -- For diagnostics
-    pma_fitv    : std_logic_vector(pma_entries - 1 downto 0);  -- For diagnostics
-    pma_idx     : std_logic_vector(log2x(pma_entries) - 1 downto 0);
+    --pma_hitv    : std_logic_vector(pma_entries - 1 downto 0);  -- For diagnostics
+    --pma_fitv    : std_logic_vector(pma_entries - 1 downto 0);  -- For diagnostics
+    --pma_idx     : std_logic_vector(log2x(pma_entries) - 1 downto 0);
+    pma_hitv    : std_logic_vector(PMAENTRIES - 1 downto 0);  -- For diagnostics
+    pma_fitv    : std_logic_vector(PMAENTRIES - 1 downto 0);  -- For diagnostics
+    pma_idx     : std_logic_vector(log2x(PMAENTRIES) - 1 downto 0);
     pma         : pma_t;
     -- Hypervisor
     h_addr      : gaddr_type;
@@ -2381,9 +2384,12 @@ begin
     variable pmp_x     : std_logic_vector(pmp_entries - 1 downto 0);
     variable pmp_rwx   : word3;
     -- PMA
-    variable pma_hit   : std_logic_vector(pma_entries - 1 downto 0);
-    variable pma_prio  : std_logic_vector(pma_entries - 1 downto 0);
-    variable pma_fit   : std_logic_vector(pma_entries - 1 downto 0);
+    --variable pma_hit   : std_logic_vector(pma_entries - 1 downto 0);
+    --variable pma_prio  : std_logic_vector(pma_entries - 1 downto 0);
+    --variable pma_fit   : std_logic_vector(pma_entries - 1 downto 0);
+    variable pma_hit   : std_logic_vector(PMAENTRIES - 1 downto 0);
+    variable pma_prio  : std_logic_vector(PMAENTRIES - 1 downto 0);
+    variable pma_fit   : std_logic_vector(PMAENTRIES - 1 downto 0);
     variable pma_idx   : std_logic_vector(r.pma_idx'range);
     variable pma       : pma_t;
 

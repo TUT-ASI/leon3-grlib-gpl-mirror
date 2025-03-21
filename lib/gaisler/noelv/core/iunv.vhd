@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -250,8 +250,8 @@ entity iunv is
     cnt            : out nv_counter_out_type;  -- Perf event Out Port
     itracei        : out itrace_in_type;       -- Trace information
     itraceo        : in  itrace_out_type;      -- Trace control
-    pma_addr       : in  word64_arr;           -- PMA addresses
-    pma_data       : in  word64_arr;           -- PMA configuration
+    pma_addr       : in  word64_arr(0 to PMAENTRIES - 1);  -- PMA addresses
+    pma_data       : in  word64_arr(0 to PMAENTRIES - 1);  -- PMA configuration
     csr_mmu        : out nv_csr_out_type;      -- CSR values for MMU
     mmu_csr        : in  nv_csr_in_type;       -- CSR values for MMU
     perf           : in  std_logic_vector(31 downto 0);  -- Performance data

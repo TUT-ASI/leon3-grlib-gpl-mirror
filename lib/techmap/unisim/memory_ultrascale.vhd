@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -95,13 +95,10 @@ begin
   end generate;
 
   a15 : if abits > 15 generate
-    x: generic_syncram generic map (abits, dbits)
+    x0: generic_syncram generic map (abits, dbits)
       port map (clk, address, datain, do(dbits-1 downto 0), write);
     do(dbits+72 downto dbits) <= (others => '0');
-  end generate;
-
-  -- pragma translate_off
-  a_to_high : if abits > 15 generate
+-- pragma translate_off
     x : process
     begin
       assert false
@@ -109,8 +106,8 @@ begin
         severity warning;
       wait;
     end process;
+-- pragma translate_on
   end generate;
-  -- pragma translate_on
   
 end;
 
@@ -549,49 +546,44 @@ architecture behav of ultrascale_syncram_dp is
     ) return integer is
     variable dwidth : integer := 36;
   begin
-
     if use_36 = 0 then
       if abits <= 10 then
-        dwidth := 18;
+        dwidth := 18; -- 1K x 18
       elsif abits = 11 then
-        dwidth := 9;
+        dwidth := 9; -- 2K x 9
       elsif abits = 12 then
-        dwidth := 4;
+        dwidth := 4; -- 4K x 4
       elsif abits = 13 then
-        dwidth := 2;
+        dwidth := 2; -- 8K x 2
       elsif abits >= 14 then
-        dwidth := 1;
+        dwidth := 1; -- 16K x 1
       end if;
     else
-      --Use the B36 primitive if you would need to use 4 or more of the
-      --B18.
+      --Use the B36 primitive if you would need to use 4 or more of the B18
       if abits <= 10 then
-        dwidth := 36;
+        dwidth := 36; -- 1K x 36
       elsif abits = 11 then
-        dwidth := 18;
+        dwidth := 18; -- 2K x 18
       elsif abits = 12 then
-        dwidth := 9;
+        dwidth := 9; -- 4K x 9
       elsif abits = 13 then
-        dwidth := 4;
+        dwidth := 4; -- 8K x 4
       elsif abits = 14 then
-        dwidth := 2;
+        dwidth := 2; -- 16K x 2
       else
-        dwidth := 1;
+        dwidth := 1; -- 32K x 1
       end if;
     end if;
-    
     return dwidth;
-    
   end function calc_gwidth;
 
--- This function return the actual data width provided by the XILINX primitive,
--- given the generic used for the port data width
+-- This function returns the effective data width provided by the XILINX primitive
+-- after excluding the parity bits, given the generic used for the port data width
   function data_width(
     port_width : in integer
     ) return integer is
     variable dwidth : integer := 36;
   begin
-
     if port_width <= 4 then
       dwidth := port_width;
     elsif port_width = 9 then
@@ -602,7 +594,6 @@ architecture behav of ultrascale_syncram_dp is
       dwidth := 32;
     end if;
     return dwidth;
-    
   end function data_width;
 
   function calc_startaddrbit(
@@ -611,7 +602,6 @@ architecture behav of ultrascale_syncram_dp is
     ) return integer is
     variable startbit : integer := 5;
   begin
-    
     if abits <= 10 then
       startbit := 4;
     elsif abits = 11 then
@@ -623,7 +613,7 @@ architecture behav of ultrascale_syncram_dp is
     else
       startbit  := 0;
     end if;
-
+    -- Correction for the 36 Kb RAM
     if use_36 = 1 then
       if abits = 15 then
         startbit := 0;
@@ -631,9 +621,7 @@ architecture behav of ultrascale_syncram_dp is
         startbit := startbit +1;
       end if;
     end if;
-    
     return startbit;
-    
   end function calc_startaddrbit;
   
   signal gnd : std_logic_vector(35 downto 0);
@@ -816,6 +804,9 @@ begin
   
   a15 : if (abits = 15) generate
 
+    -- For this case, only the 36 kb RAM can be used, as 18 kB only supports up
+    -- to 14 bits of address. The RAM is built by cascading blocks of 32K x 1
+
     addr1((C_START36-1) downto 0)      <= (others => '0');
     addr1(abits+(C_START36-1) downto C_START36) <= address1;
     addr1(19 downto abits+(C_START36)) <= (others => '0');
@@ -883,8 +874,7 @@ begin
           SLEEP => gnd(0)
           );
     end generate;
-    
-    
+
   end generate;
 
   -- pragma translate_off
@@ -1324,6 +1314,26 @@ architecture behav of ultrascale_syncram_2p is
       );
   end component;
 
+  component generic_syncram_2p
+    generic (
+      abits    : integer := 8;
+      dbits    : integer := 32;
+      sepclk   : integer := 0;
+      pipeline : integer := 0;
+      rdhold   : integer := 0
+    );
+    port (
+      rclk      : in  std_ulogic;
+      wclk      : in  std_ulogic;
+      rdaddress : in  std_logic_vector (abits -1 downto 0);
+      wraddress : in  std_logic_vector (abits -1 downto 0);
+      data      : in  std_logic_vector (dbits -1 downto 0);
+      wren      : in  std_ulogic;
+      q         : out std_logic_vector (dbits -1 downto 0);
+      rden      : in  std_ulogic := '1'
+      );
+  end component;
+
   component ultrascale_syncram_dp
     generic ( abits : integer := 10; dbits : integer := 8 );
     port (
@@ -1370,73 +1380,75 @@ begin
     write_t <= write & write & write & write &  write & write & write & write;
 
     B18: if dbits <= 36 generate
-      addrrd(4 downto 0)       <= (others => '0');
+
+      -- A single 18 kb block RAM can be used doubling the data width to 36 bits (SDP memory: 512 x 36)
+
+      addrrd(4 downto 0)        <= (others => '0');
       addrrd(abits+4 downto 5)  <= raddress;
       addrrd(19 downto abits+5) <= (others => '0');
-      
+
       addrwr(4 downto 0)        <= (others => '0');
       addrwr(abits+4 downto 5)  <= waddress;
       addrwr(19 downto abits+5) <= (others => '0');
-      
-      x : for i in 0 to ((dbits-1)/36) generate
 
-        do((36*(i+1))-1 downto i*36) <= dout(i)(35 downto 0);
-        din(i)(35 downto 0) <=  di((36*(i+1))-1 downto i*36);
-        
-        r0 : RAMB18E2
-          generic map (
-            DOA_REG => 0, DOB_REG => 0,
-            CLOCK_DOMAINS => "INDEPENDENT",
-            READ_WIDTH_A  => 36, READ_WIDTH_B => 0,
-            WRITE_WIDTH_A => 0, WRITE_WIDTH_B => 36,
-            WRITE_MODE_A => "WRITE_FIRST", WRITE_MODE_B => "WRITE_FIRST",
-            SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
-          port map (
-            CLKARDCLK => rclk,
-            CLKBWRCLK => wclk,
-            
-            DOUTADOUT   => dout(i)(15 downto 0),
-            DOUTBDOUT   => dout(i)(31 downto 16),
-            DOUTPADOUTP => dout(i)(33 downto 32),   DOUTPBDOUTP => dout(i)(35 downto 34),
-            
-            DINADIN    => din(i)(15 downto 0),
-            DINBDIN    => din(i)(31 downto 16),
-            DINPADINP  => din(i)(33 downto 32),  DINPBDINP  => din(i)(35 downto 34),
-            
-            ADDRARDADDR => addrrd(13 downto 0),
-            ADDRBWRADDR => addrwr(13 downto 0),
-            ADDRENA     => vcc,     ADDRENB     => vcc,
+      do(35 downto 0)     <= dout(0)(35 downto 0);
+      din(0)(35 downto 0) <= di(35 downto 0);
 
-            ENARDEN => renable,
-            ENBWREN => write,
-            
-            WEA   => gnd(1 downto 0),
-            WEBWE => write_t(3 downto 0),
+      r0 : RAMB18E2
+        generic map (
+          DOA_REG => 0, DOB_REG => 0,
+          CLOCK_DOMAINS => "INDEPENDENT",
+          READ_WIDTH_A  => 36, READ_WIDTH_B => 0,
+          WRITE_WIDTH_A => 0, WRITE_WIDTH_B => 36,
+          WRITE_MODE_A => "WRITE_FIRST", WRITE_MODE_B => "WRITE_FIRST",
+          SIM_COLLISION_CHECK => "GENERATE_X_ONLY")
+        port map (
+          CLKARDCLK => rclk,
+          CLKBWRCLK => wclk,
 
-            --unused ports
-            CASDOUTA  => open,   CASDOUTB    => open,
-            CASDOUTPA => open,   CASDOUTPB   => open,
-            CASDIMUXA => gnd(0), CASDIMUXB    => gnd(0),
-            CASDINA => gnd(15 downto 0),
-            CASDINB => gnd(15 downto 0),
-            CASDINPA =>gnd(1 downto 0),
-            CASDINPB =>gnd(1 downto 0),
-            CASDOMUXA => gnd(0),   CASDOMUXB    => gnd(0),
-            CASDOMUXEN_A => gnd(0),   CASDOMUXEN_B => gnd(0),
-            CASOREGIMUXA => gnd(0),CASOREGIMUXB => gnd(0),
-            CASOREGIMUXEN_A => gnd(0),CASOREGIMUXEN_B => gnd(0),
-            REGCEAREGCE  => vcc,REGCEB   => vcc,
-            RSTRAMARSTRAM => gnd(0),
-            RSTRAMB       => gnd(0),
-            RSTREGARSTREG => gnd(0),
-            RSTREGB       => gnd(0),
-            SLEEP => gnd(0)
-            );
-        
-      end generate;
-    end generate b18;
+          DOUTADOUT   => dout(0)(15 downto 0),
+          DOUTBDOUT   => dout(0)(31 downto 16),
+          DOUTPADOUTP => dout(0)(33 downto 32),   DOUTPBDOUTP => dout(0)(35 downto 34),
+
+          DINADIN    => din(0)(15 downto 0),
+          DINBDIN    => din(0)(31 downto 16),
+          DINPADINP  => din(0)(33 downto 32),  DINPBDINP  => din(0)(35 downto 34),
+
+          ADDRARDADDR => addrrd(13 downto 0),
+          ADDRBWRADDR => addrwr(13 downto 0),
+          ADDRENA     => vcc,     ADDRENB     => vcc,
+
+          ENARDEN => renable,
+          ENBWREN => write,
+
+          WEA   => gnd(1 downto 0),
+          WEBWE => write_t(3 downto 0),
+
+          --unused ports
+          CASDOUTA  => open,   CASDOUTB    => open,
+          CASDOUTPA => open,   CASDOUTPB   => open,
+          CASDIMUXA => gnd(0), CASDIMUXB    => gnd(0),
+          CASDINA => gnd(15 downto 0),
+          CASDINB => gnd(15 downto 0),
+          CASDINPA =>gnd(1 downto 0),
+          CASDINPB =>gnd(1 downto 0),
+          CASDOMUXA => gnd(0),   CASDOMUXB    => gnd(0),
+          CASDOMUXEN_A => gnd(0),   CASDOMUXEN_B => gnd(0),
+          CASOREGIMUXA => gnd(0),CASOREGIMUXB => gnd(0),
+          CASOREGIMUXEN_A => gnd(0),CASOREGIMUXEN_B => gnd(0),
+          REGCEAREGCE  => vcc,REGCEB   => vcc,
+          RSTRAMARSTRAM => gnd(0),
+          RSTRAMB       => gnd(0),
+          RSTREGARSTREG => gnd(0),
+          RSTREGB       => gnd(0),
+          SLEEP => gnd(0)
+          );
+
+    end generate B18;
 
     B36: if dbits > 36 generate
+
+      -- Use multiple 36 kb RAMs in SDP mode, thus doubling the data width (512 x 72)
 
       addrrd(5 downto 0)       <= (others => '0');
       addrrd(abits+5 downto 6)  <= raddress;
@@ -1510,12 +1522,27 @@ begin
   end generate;
   
 
-  a10: if abits >= 10 generate
+  a10: if abits >= 10 and abits <= 15 generate
     write2 <= '0'; renable2 <= renable; datain2 <= (others => '0');
     
     x0 : ultrascale_syncram_dp generic map (abits, dbits)
       port map (wclk, waddress, datain, open, write, write, 
                 rclk, raddress, datain2, dataout, renable2, write2);
+  end generate;
+
+  a16: if abits > 15 generate
+    x0 : generic_syncram_2p
+      generic map (abits, dbits, sepclk)
+      port map (rclk, wclk, raddress, waddress, datain, write, dataout, renable);
+-- pragma translate_off
+    x : process
+    begin
+      assert false
+        report  "Address depth larger than 15 not supported for ultrascale_syncram_2p. A generic_syncram_2p will be inferred"
+        severity warning;
+      wait;
+    end process;
+-- pragma translate_on
   end generate;
 
 end;

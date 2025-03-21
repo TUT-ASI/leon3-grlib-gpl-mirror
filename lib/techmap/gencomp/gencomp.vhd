@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -575,21 +575,22 @@ constant x50v      : integer := 5;
 
 -- input/output levels
 
-constant ttl      : integer := 0;
-constant cmos     : integer := 1;
-constant pci33    : integer := 2;
-constant pci66    : integer := 3;
-constant lvds     : integer := 4;
-constant sstl2_i  : integer := 5;
-constant sstl2_ii : integer := 6;
-constant sstl3_i  : integer := 7;
-constant sstl3_ii : integer := 8;
-constant sstl18_i : integer := 9;
-constant sstl18_ii: integer := 10;
-constant lvpecl   : integer := 11;
-constant sstl     : integer := 12;
+constant ttl        : integer := 0;
+constant cmos       : integer := 1;
+constant pci33      : integer := 2;
+constant pci66      : integer := 3;
+constant lvds       : integer := 4;
+constant sstl2_i    : integer := 5;
+constant sstl2_ii   : integer := 6;
+constant sstl3_i    : integer := 7;
+constant sstl3_ii   : integer := 8;
+constant sstl18_i   : integer := 9;
+constant sstl18_ii  : integer := 10;
+constant lvpecl     : integer := 11;
+constant sstl       : integer := 12;
 constant sstl12_dci : integer := 13;
-constant hstl_i_18: integer := 14;
+constant hstl_i_18  : integer := 14;
+constant sstl12     : integer := 15;
 
 -- pad types
 

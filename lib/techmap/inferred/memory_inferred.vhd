@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 -- Author:	Jiri Gaisler Gaisler Research
 -- Description:	Behavioural memory generators
 ------------------------------------------------------------------------------
+
+-- synchronous 1-port ram
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -76,6 +78,8 @@ begin
 
 end;
 
+-- synchronous 1-port ram, flip-flops
+
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
@@ -127,7 +131,7 @@ begin
 
 end;
 
--- synchronous 2-port ram, common clock
+-- synchronous 2-port ram
 
 LIBRARY ieee;
 use ieee.std_logic_1164.all;
@@ -209,7 +213,7 @@ begin
 end;
 
 
--- synchronous 2-port ram, common clock, flip-flops
+-- synchronous 2-port ram, flip-flops
 
 LIBRARY ieee;
 use ieee.std_logic_1164.all;

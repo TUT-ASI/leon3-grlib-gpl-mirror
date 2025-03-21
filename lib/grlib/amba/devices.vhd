@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -68,6 +68,7 @@ package devices is
   constant VENDOR_HONEYWELL  : amba_vendor_type := 16#2A#;
   constant VENDOR_AITECH     : amba_vendor_type := 16#30#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
+  constant VENDOR_TTTECH     : amba_vendor_type := 16#40#;
   constant VENDOR_TAS        : amba_vendor_type := 16#A5#;
   constant VENDOR_RECORE     : amba_vendor_type := 16#A6#;
   constant VENDOR_AAC        : amba_vendor_type := 16#AA#;
@@ -304,6 +305,8 @@ package devices is
   constant GAISLER_GRISOC_SRNG   : amba_device_type := 16#0DC#;
   constant GAISLER_GRPPSTIMER    : amba_device_type := 16#0DD#;
   constant GAISLER_GRLSEDC       : amba_device_type := 16#0DE#;
+  constant GAISLER_MDIO_CTRL     : amba_device_type := 16#0DF#;
+  constant GAISLER_OTP_WRPR      : amba_device_type := 16#0E0#;
 
 -- Sun Microsystems
 
@@ -429,6 +432,11 @@ package devices is
 -- NASA device ids
 
   constant NASA_EP32 : amba_device_type := 16#001#;
+
+-- TTTECH device ids
+
+  constant TTTECH_SWITCH : amba_device_type := 16#001#;
+
 
 -- AppleCore device ids
 
@@ -753,6 +761,9 @@ package devices is
     GAISLER_GRISOC_CRYPTO => "GRISoC Crypto accelerator       ",
     GAISLER_GRISOC_SRNG   => "GRISoC Secure RNG               ",
     GAISLER_GRPPSTIMER    => "PPS Timer                       ",
+    GAISLER_MDIO_CTRL     => "Ethernet MDIO Controller        ",
+    GAISLER_GRLSEDC       => "Lattice CRAM Scrubber           ",
+    GAISLER_OTP_WRPR      => "OTP control wrapper             ",
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -1111,6 +1122,19 @@ package devices is
     device_table => nasa_device_table
     );
 
+  constant TTTECH_DESC : vendor_description := "TTTECH                  ";
+
+  constant tttech_device_table : device_table_type := (
+    TTTECH_SWITCH => "TTE Switch                      ",
+    others    => "Unknown Device                  ");
+
+  constant tttech_lib : vendor_library_type := (
+    vendorid     => VENDOR_TTTECH,
+    vendordesc   => TTTECH_DESC,
+    device_table => tttech_device_table
+    );
+  
+
   constant NIIET_DESC : vendor_description := "NIIET                   ";
 
   constant niiet_device_table : device_table_type := (
@@ -1377,6 +1401,7 @@ package devices is
     VENDOR_EMBEDDIT     => embeddit_lib,
     VENDOR_NASA_GSFC    => nasa_gsfc_lib,
     VENDOR_AZST         => azst_lib,
+    VENDOR_TTTECH       => tttech_lib,
     others              => unknown_lib);
 
   type system_table_type is array (0 to 65535) of device_description;

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -13428,18 +13428,157 @@ begin
         wpr(i) <= wpr_none;
       end generate;
     end generate;
-  end generate;
 
-  ungreg: process(uclk)
-  begin
-    if rising_edge(uclk) then
-      ur <= urin;
-      if rstn='0' then
-        ur <= (captcmd => "000");
+    ungreg: process(uclk)
+    begin
+      if rising_edge(uclk) then
+        ur <= urin;
+        if rstn='0' then
+          ur <= (captcmd => "000");
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
 
+  end generate syncrregs;
+
+  asyncrregs : if ASYNC_RESET generate
+    preg : process (uclk,arst)
+    begin
+      if arst='0' then
+        rp <= PRES;
+      elsif rising_edge(uclk) then
+        rp <= rpin;
+      end if;
+    end process;
+
+    reg : process (clk,arst)
+    begin
+      if arst='0' then
+        r <= RRES;
+      elsif rising_edge(clk) then
+        if (holdn = '1') then
+          r <= rin;
+        else
+          if dbgi.pushpc = '1' then
+            r.f.pc <= rin.f.pc;
+          end if;
+          r.w.fpu_unissue             <= rin.w.fpu_unissue;
+          r.w.fp_exc_ack              <= rin.w.fp_exc_ack;
+          r.w.tdata                   <= rin.w.tdata;
+          r.w.s.holdn_deadlock        <= rin.w.s.holdn_deadlock;
+          r.w.s.fpc_deadlock          <= rin.w.s.fpc_deadlock;
+          r.w.s.hissue_deadlock       <= rin.w.s.hissue_deadlock;
+          r.d.iudiag_miso             <= rin.d.iudiag_miso;
+          r.d.holdn_deadlock_counter  <= rin.d.holdn_deadlock_counter;
+          r.d.fpc_deadlock_counter    <= rin.d.fpc_deadlock_counter;
+          r.d.hissue_deadlock_counter <= rin.d.hissue_deadlock_counter;
+          r.x.ipend                   <= rin.x.ipend;
+          if r.x.rstate /= run then
+            r.x.cpustate <= rin.x.cpustate;
+          end if;
+          if r.x.rstate = dsu4 then
+            r.x.rstate <= rin.x.rstate;
+          end if;
+          r.x.miso <= rin.x.miso;
+          r.m.casz <= rin.m.casz;
+          if (holdn or ico.mds) = '0' then
+            r.d.inst <= rin.d.inst;
+            r.d.mexc <= rin.d.mexc;
+            r.d.imexcdata <= rin.d.imexcdata;
+            r.d.way  <= rin.d.way;
+          end if;
+          if (holdn or dco.mds) = '0' then
+            r.x.data <= rin.x.data;
+            r.x.mexc <= rin.x.mexc;
+            r.x.way  <= rin.x.way;
+          end if;
+          --BHT/BTB diagnostic
+          r.d.iudiags          <= rin.d.iudiags;
+          r.d.diag_btb_flush   <= rin.d.diag_btb_flush;
+          r.d.diag_bht_flush   <= rin.d.diag_bht_flush;
+          r.d.btb_diag_in      <= rin.d.btb_diag_in;
+          r.d.bht_diag_in_en   <= rin.d.bht_diag_in_en;
+          r.d.bht_diag_in_wren <= rin.d.bht_diag_in_wren;
+          if FPEN then
+            if holdn = '0' and is_fpu_store(r.a.ctrl.inst(0)) = '1' then
+              if r.a.fp_stdata_latched = '0' then
+                r.a.fp_stdata_latched <= '1';
+                r.a.fpustdata         <= fpu5o.stdata;
+                if r.d.fp_stdata_latched = '1' then
+                  r.a.fpustdata <= r.d.fpustdata;
+                end if;
+              end if;
+            end if;
+            if holdn = '0' and r.d.fpc_issued = '1' then
+              if r.d.fp_stdata_latched = '0' then
+                r.d.fp_stdata_latched <= '1';
+                r.d.fpustdata         <= fpu5o.stdata;
+              end if;
+            end if;
+          end if;
+        end if;
+      end if;
+    end process;
+
+    dsugen : if DBGUNIT generate
+      dsureg : process(clk,arst)
+      begin
+        if arst='0' then
+          dsur <= DRES;
+        elsif rising_edge(clk) then
+          if holdn = '1' then
+            dsur <= dsuin;
+          else
+            dsur.crdy <= dsuin.crdy;
+          end if;
+        end if;
+      end process;
+    end generate;
+
+    irreg : if (DBGUNIT or PWRD2) generate
+      dsureg : process(clk,arst)
+      begin
+        if rstn='0' then
+          ir <= IRES;
+        elsif rising_edge(clk) then
+          if holdn = '1' or dbgi.pushpc = '1' then
+            ir <= irin;
+          end if;
+        end if;
+      end process;
+    end generate;
+
+    wpgen : for i in 0 to 3 generate
+      wpg0 : if nwp > i generate
+        wpreg : process(clk,arst)
+        begin
+          if arst='0' then
+              wpr(i) <= WRES;
+          elsif rising_edge(clk) then
+            if holdn = '1' then
+              wpr(i) <= wprin(i);
+            end if;
+          end if;
+        end process;
+      end generate;
+      wpg1 : if nwp <= i generate
+        wpr(i) <= wpr_none;
+      end generate;
+    end generate;
+
+    ungreg: process(uclk,arst)
+    begin
+      if arst='0' then
+        ur <= (captcmd => "000");
+      elsif rising_edge(uclk) then
+        ur <= urin;
+      end if;
+    end process;
+
+  end generate asyncrregs;
+
+  
+  
 
   nirreg : if not (DBGUNIT or PWRD2) generate
     ir.pwd <= '0'; ir.addr <= (others => '0');

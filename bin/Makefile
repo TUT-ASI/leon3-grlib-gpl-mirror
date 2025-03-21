@@ -1,5 +1,5 @@
-VER=$(VNAME)2024.4
-BID=4295
+VER=$(VNAME)2025.1
+BID=4296
 CC=gcc
 SED=sed
 
@@ -1403,7 +1403,7 @@ vivado-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	fi;
 
 vivado: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
-	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl | tee $(TOP)_vivado.log
+	set -o pipefail && vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl | tee -i $(TOP)_vivado.log
 	@if test -r ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
@@ -1735,8 +1735,9 @@ actel-clean:
 	libero_sim_files libero_syn_files coreconsole \
 	libero.do component *.pdb *.pdb.depends *.stp \
 	*.sdb *_layout.log *.dtf from.ufc from.mem  \
-	 $(TOP)_libero.prjx tooldata $(TOP)_libero.tcl $(TOP)_libero/ \
-	$(TOP)_libero_genbit.tcl $(TOP)_libero_progfpga.tcl
+	$(TOP)_libero.prjx tooldata $(TOP)_libero.tcl $(TOP)_libero/ \
+	$(TOP)_libero_genbit.tcl $(TOP)_libero_progfpga.tcl \
+	$(TOP)_libero.log $(TOP)_libero_genbit.log $(TOP)_libero_progfpga.log
 
 remove-microsemi: remove-microsemi-precomp
 	-@for i in fusion proasic3 proasic3e proasic3l axcelerator smartfusion2 rtg4 polarfire; do \

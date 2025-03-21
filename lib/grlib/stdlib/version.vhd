@@ -1,5 +1,5 @@
 
 package version is
-  constant grlib_version : integer := 2024400;
-  constant grlib_build : integer := 4295;
+  constant grlib_version : integer := 2025100;
+  constant grlib_build : integer := 4296;
 end;

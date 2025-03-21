@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -865,5 +865,53 @@ package net is
       miio  : out eth_out_type
     ) ;
   end component ;
+
+  component mdio_controller is
+    generic (
+      -- APB related generics
+      pindex : integer := 0; -- APB Bus Index
+      paddr : integer := 0; -- APB Address
+      pmask : integer := 16#FFF#; -- APB Address Mask
+      pirq : integer := 0; -- APB IRQ Index
+      -- Core related generics
+      mdio_clk_divisor : positive := 1;
+      oe_polarity : std_logic := '1'; -- Output enable polarity
+      -- MDIO output data vs clock delay in clk cycles.
+      -- Needs to be minimum 10 ns according to spec.
+      mdio_output_delay : positive := 1;
+      -- MDIO input data vs output clock delay in clk cycles.
+      -- Minimum is 2 due to input register.
+      -- PHYs can have 0 ns to 300 ns output delay according to the spec.
+      mdio_input_delay : integer range 2 to 2147483647 := 2;
+      -- Which PHYs to init, a 1 will cause the controller to enable auto negotiation.
+      phy_init_mask : std_logic_vector(31 downto 0) := (others => '0');
+      -- The number of times the controller will try to reset a phy in case of
+      -- link failure during the reset procedure. A loss of link during subsequent
+      -- stages of the initialization process are not affected by this generic.
+      phy_reset_retry_count : natural := 0
+    );
+    port (
+      clk : in std_logic;
+      rstn : in std_logic; -- Active low reset
+
+      -- MDIO Interface
+      mdio_clk : out std_logic;
+      mdio_i : in std_logic;
+      mdio_o : out std_logic;
+      mdio_oe : out std_logic; -- Output Enable
+      mdio_irq : in std_logic;
+
+      -- Initialize PHYs after reset?
+      perform_startup_init : in std_logic;
+
+      -- APB Slave
+      apbi : in apb_slv_in_type;
+      apbo : out apb_slv_out_type;
+
+      -- Auto negotiation results.
+      aneg_valid : out std_logic_vector(31 downto 0); -- Which PHY
+      aneg_results : out std_logic_vector(2 downto 0) -- 0: 100M, 1: gbit, 2: full duplex
+    );
+  end component;
 end;
 

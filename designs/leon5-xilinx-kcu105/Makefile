@@ -42,7 +42,7 @@ SIMTOP=testbench
 VCOMOPT=-explicit -O0
 
 # GRLIB Options
-VSIMOPT= -L secureip -L unisims_ver  
+VSIMOPT= -L secureip -L unisims_ver glbl
 GRLIB_COMPILE_VIVADO_IP=Y
 
 
@@ -88,6 +88,7 @@ VHDLSYNFILES= rtl/ddr4ram.vhd rtl/axi_mig4_7series.vhd rtl/ahb2axi_mig4_7series.
 VHDLSIMFILES= testbench.vhd 
 
 VERILOGSYNFILES=
+VERILOGSIMFILES=$(XILINX_VIVADO)/data/verilog/src/glbl.v
 
 TECHLIBS = unisim
 SKIP_SIM_TECHLIBS = 1

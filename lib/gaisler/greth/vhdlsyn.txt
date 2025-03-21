@@ -7,6 +7,7 @@ greth_gbit_mb.vhd
 greths_mb.vhd
 grethm.vhd
 grethm_mb.vhd
+mdio_controller.vhd
 adapters/rgmii.vhd
 adapters/rgmii_kc705.vhd
 adapters/rgmii_series7.vhd

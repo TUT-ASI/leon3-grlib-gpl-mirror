@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@ use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
 
+library techmap;
+use techmap.gencomp.memtest_vlen;
 
 package axi is
 
@@ -340,7 +342,181 @@ package axi is
       aximo : out axi4_mosi_type
       );
   end component;
-  
+
+  component axi2ahb is
+    generic(
+      memtech     : integer               := 0;
+      hindex      : integer               := 0;
+      dbuffer     : integer range 4 to 256 := 4; -- Read data buffer depth
+      wordsize    : integer               := AHBDW;
+      axi_endian  : integer range 0 to 1  := 0; -- 0: BE, 1: LE
+      -- "Inverts" the addresses of accesses that are narrower than the bus width.
+      -- E.g. a 16-bit access on a 32-bit bus. The address provided via AXI is 0x0.
+      -- The resulting address would in this case become 0x2. This can be useful on big endian systems.
+      sub_bus_width_address_inversion : integer range 0 to 1 := 0;
+      mask        : integer               := 0;
+      vendorid    : integer               := VENDOR_GAISLER;
+      deviceid    : integer               := 0;
+      scantest    : integer               := 0;
+      memory_ft   : integer               := 0 -- Memory fault tolerance
+      );
+    port(
+      resetn  : in  std_ulogic;
+      clk     : in  std_ulogic;
+      axisi   : in  axi4_mosi_type;
+      axiso   : out axi_somi_type;
+      ahbmi   : in  ahb_mst_in_type;
+      ahbmo   : out ahb_mst_out_type
+    );
+  end component;
+
+  component axis_buffer is
+    generic (
+      wl : positive := 1
+    );
+    port (
+      clk : in  std_logic;
+      rst : in  std_logic;
+
+      s_axis_tdata  : in std_logic_vector(wl - 1 downto 0);
+      s_axis_tvalid : in std_logic;
+      s_axis_tready : out std_logic;
+
+      m_axis_tdata  : out std_logic_vector(wl - 1 downto 0);
+      m_axis_tvalid : out std_logic;
+      m_axis_tready : in std_logic
+    );
+  end component;
+
+  component axis_gearbox is
+    generic (
+      wl_in : positive := 1;
+      wl_out : positive := 1
+    );
+    port (
+      clk : in  std_logic;
+      rst : in  std_logic;
+
+      s_axis_tdata  : in std_logic_vector(wl_in - 1 downto 0);
+      s_axis_tlast  : in std_logic;
+      s_axis_tvalid : in std_logic;
+      s_axis_tready : out std_logic;
+
+      m_axis_tdata  : out std_logic_vector(wl_out - 1 downto 0);
+      m_axis_tlast  : out std_logic;
+      m_axis_tvalid : out std_logic;
+      m_axis_tready : in std_logic
+    );
+  end component;
+
+  component axi4_resize is
+    generic (
+      wl_s_data : positive := 128;
+      wl_m_data : positive := 32;
+      wl_user : natural := 0;
+      wl_id : natural := 0
+    );
+    port (
+      clk : in std_logic;
+      rst : in std_logic; -- Active low reset
+
+      -- Slave ports
+      s_axi4_awvalid : in std_logic;
+      s_axi4_awaddr : in std_logic_vector(31 downto 0);
+      s_axi4_awsize : in std_logic_vector(2 downto 0);
+      s_axi4_awburst : in std_logic_vector(1 downto 0);
+      s_axi4_awlen : in std_logic_vector(7 downto 0);
+      s_axi4_awcache : in std_logic_vector(3 downto 0);
+      s_axi4_awregion : in std_logic_vector(3 downto 0);
+      s_axi4_awqos : in std_logic_vector(3 downto 0);
+      s_axi4_awprot : in std_logic_vector(2 downto 0);
+      s_axi4_awlock : in std_logic_vector(1 downto 0);
+      s_axi4_awid : in std_logic_vector(wl_id - 1 downto 0);
+      s_axi4_awuser : in std_logic_vector(wl_user - 1 downto 0);
+      s_axi4_awready : out std_logic;
+
+      s_axi4_wdata : in std_logic_vector(wl_s_data - 1 downto 0);
+      s_axi4_wstrb : in std_logic_vector(wl_s_data/8 - 1 downto 0);
+      s_axi4_wlast : in std_logic;
+      s_axi4_wvalid : in std_logic;
+      s_axi4_wready : out std_logic;
+
+      s_axi4_bvalid : out std_logic;
+      s_axi4_bresp : out std_logic_vector(1 downto 0);
+      s_axi4_bid : out std_logic_vector(wl_id - 1 downto 0);
+      s_axi4_buser : out std_logic_vector(wl_user - 1 downto 0);
+      s_axi4_bready : in std_logic;
+
+      s_axi4_arvalid : in std_logic;
+      s_axi4_araddr : in std_logic_vector(31 downto 0);
+      s_axi4_arsize : in std_logic_vector(2 downto 0);
+      s_axi4_arburst : in std_logic_vector(1 downto 0);
+      s_axi4_arlen : in std_logic_vector(7 downto 0);
+      s_axi4_arcache : in std_logic_vector(3 downto 0);
+      s_axi4_arregion : in std_logic_vector(3 downto 0);
+      s_axi4_arqos : in std_logic_vector(3 downto 0);
+      s_axi4_arprot : in std_logic_vector(2 downto 0);
+      s_axi4_arlock : in std_logic_vector(1 downto 0);
+      s_axi4_arid : in std_logic_vector(wl_id - 1 downto 0);
+      s_axi4_aruser : in std_logic_vector(wl_user - 1 downto 0);
+      s_axi4_arready : out std_logic;
+
+      s_axi4_rdata : out std_logic_vector(wl_s_data - 1 downto 0);
+      s_axi4_rresp : out std_logic_vector(1 downto 0);
+      s_axi4_rid : out std_logic_vector(wl_id - 1 downto 0);
+      s_axi4_rlast : out std_logic;
+      s_axi4_rvalid : out std_logic;
+      s_axi4_rready : in std_logic;
+
+      -- Master ports
+      m_axi4_awvalid : out std_logic;
+      m_axi4_awaddr : out std_logic_vector(31 downto 0);
+      m_axi4_awsize : out std_logic_vector(2 downto 0);
+      m_axi4_awburst : out std_logic_vector(1 downto 0);
+      m_axi4_awlen : out std_logic_vector(7 downto 0);
+      m_axi4_awcache : out std_logic_vector(3 downto 0);
+      m_axi4_awregion : out std_logic_vector(3 downto 0);
+      m_axi4_awqos : out std_logic_vector(3 downto 0);
+      m_axi4_awprot : out std_logic_vector(2 downto 0);
+      m_axi4_awlock : out std_logic_vector(1 downto 0);
+      m_axi4_awid : out std_logic_vector(wl_id - 1 downto 0);
+      m_axi4_awuser : out std_logic_vector(wl_user - 1 downto 0);
+      m_axi4_awready : in std_logic;
+
+      m_axi4_wdata : out std_logic_vector(wl_m_data - 1 downto 0);
+      m_axi4_wstrb : out std_logic_vector(wl_m_data/8 - 1 downto 0);
+      m_axi4_wlast : out std_logic;
+      m_axi4_wvalid : out std_logic;
+      m_axi4_wready : in std_logic;
+
+      m_axi4_bvalid : in std_logic;
+      m_axi4_bresp : in std_logic_vector(1 downto 0);
+      m_axi4_bid : in std_logic_vector(wl_id - 1 downto 0);
+      m_axi4_buser : in std_logic_vector(wl_user - 1 downto 0);
+      m_axi4_bready : out std_logic;
+
+      m_axi4_arvalid : out std_logic;
+      m_axi4_araddr : out std_logic_vector(31 downto 0);
+      m_axi4_arsize : out std_logic_vector(2 downto 0);
+      m_axi4_arburst : out std_logic_vector(1 downto 0);
+      m_axi4_arlen : out std_logic_vector(7 downto 0);
+      m_axi4_arcache : out std_logic_vector(3 downto 0);
+      m_axi4_arregion : out std_logic_vector(3 downto 0);
+      m_axi4_arqos : out std_logic_vector(3 downto 0);
+      m_axi4_arprot : out std_logic_vector(2 downto 0);
+      m_axi4_arlock : out std_logic_vector(1 downto 0);
+      m_axi4_arid : out std_logic_vector(wl_id - 1 downto 0);
+      m_axi4_aruser : out std_logic_vector(wl_user - 1 downto 0);
+      m_axi4_arready : in std_logic;
+
+      m_axi4_rdata : in std_logic_vector(wl_m_data - 1 downto 0);
+      m_axi4_rresp : in std_logic_vector(1 downto 0);
+      m_axi4_rid : in std_logic_vector(wl_id - 1 downto 0);
+      m_axi4_rlast : in std_logic;
+      m_axi4_rvalid : in std_logic;
+      m_axi4_rready : out std_logic
+    );
+  end component;
 end package axi;
 
 

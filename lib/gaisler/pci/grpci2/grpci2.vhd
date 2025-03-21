@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -189,7 +189,7 @@ type pci_config_space_multi_type is array (0 to multifunc) of pci_config_space_t
 
 type pci_fifo_out_type is record
   data  : std_logic_vector(31 downto 0);
-  err   : std_logic_vector(4*(1-ft/4)+ft/4 downto 0);
+  err   : std_logic_vector(3 downto 0);
 end record;
 constant pci_fifo_out_none : pci_fifo_out_type := ((others => '0'), (others => '0'));
 type pci_fifo_in_type is record
@@ -6698,7 +6698,7 @@ target_fifo0 : if target /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_t_atp_ctrl_en, prin.t.atp.ctrl.addr, tm_fifoo_atp.data, 
                             clk, scan_ar_m_acc_fifo_wen, ar.m.acc.fifo_addr, ar.m.acc.fifo_wdata,
-                            tm_fifoo_atp.err, testin
+                            open, testin
                             );
     -- PCI target to AHB master FIFO                                                                                                 
     pta_fifo0 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -6706,7 +6706,7 @@ target_fifo0 : if target /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_m_acc_fifo_ren, arin.m.acc.fifo_addr, tm_fifoo_pta.data, 
                             pciclk, scan_pr_t_pta_ctrl_en, pr.t.pta.ctrl.addr, pr.t.pta.ctrl.data,
-                            tm_fifoo_pta.err, testin
+                            open, testin
                             );
     -- AHB master to PCI target FIFO
   end generate;
@@ -6742,7 +6742,7 @@ master_fifo0 : if master /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_ahb_fifo_ren, prin.m.fifo_addr, ms_fifoo_atp.data, 
                             clk, scan_ar_s_atp_ctrl_en, ar.s.atp.ctrl.addr, ar.s.atp.ctrl.data,
-                            ms_fifoo_atp.err, testin
+                            open, testin
                             );
     -- PCI master to AHB slave FIFO                                                                                                 
     pta_fifo1 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -6750,7 +6750,7 @@ master_fifo0 : if master /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_s_pta_ctrl_en, arin.s.pta.ctrl.addr, ms_fifoo_pta.data, 
                             pciclk, scan_pr_m_acc_acc_sel_ahb_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            ms_fifoo_pta.err, testin
+                            open, testin
                             );
   end generate;
   noft0 : if ft = 0 generate
@@ -6786,7 +6786,7 @@ dma_fifo0 : if dma /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (pciclk, scan_prin_m_acc_acc_sel_dma_fifo_ren, prin.m.fifo_addr, md_fifoo_dtp.data, 
                             clk, scan_ar_dma_dtp_ctrl_en, ar.dma.dtp.ctrl.addr, ar.dma.dtp.ctrl.data,
-                            md_fifoo_dtp.err, testin
+                            open, testin
                            );
     -- PCI master to DMA                                                                                                           
     ptd_fifo2 : syncram_2pft generic map (tech => memtech, abits => FIFO_DEPTH+log2(FIFO_COUNT), 
@@ -6794,7 +6794,7 @@ dma_fifo0 : if dma /= 0 generate
                                           testen => scantest, custombits => memtest_vlen)
                   port map (clk, scan_arin_dma_ptd_ctrl_en, arin.dma.ptd.ctrl.addr, md_fifoo_ptd.data, 
                             pciclk, scan_pr_m_acc_acc_sel_dma_fifo_wen, pr.m.fifo_addr, pr.m.fifo_wdata,
-                            md_fifoo_dtp.err, testin
+                            open, testin
                             );
   end generate;
   noft0 : if ft = 0 generate

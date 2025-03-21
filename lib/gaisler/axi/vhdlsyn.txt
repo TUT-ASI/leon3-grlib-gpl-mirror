@@ -8,3 +8,7 @@ ahb2axib.vhd
 ahb2axi3b.vhd
 ahb2axi4b.vhd
 ahb2axi_l.vhd
+axis_buffer.vhd
+axis_gearbox.vhd
+axi4_resize.vhd
+axi2ahb.vhd

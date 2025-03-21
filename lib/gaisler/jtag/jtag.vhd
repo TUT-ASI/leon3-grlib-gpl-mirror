@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -86,8 +86,37 @@ component ahbjtag
     tapo_ninst  : out std_logic_vector(7 downto 0);
     tapo_iupd   : out std_ulogic
     );
-end component;      
+end component;
 
+component ahbjtag_exttap
+  generic (
+    tech     : integer range 0 to NTECH := 0;
+    hindex   : integer                  := 0;
+    nsync    : integer range 1 to 2     := 1;
+    ainst    : integer range 0 to 255   := 2;
+    dinst    : integer range 0 to 255   := 3;
+    scantest : integer                  := 0;
+    versel   : integer range 0 to 1     := 1);
+  port (
+    rst       : in  std_ulogic;
+    clk       : in  std_ulogic;
+    ahbi      : in  ahb_mst_in_type;
+    ahbo      : out ahb_mst_out_type;
+    tap_tck   : in  std_ulogic;
+    tap_tckn  : in  std_ulogic;
+    tap_tdi   : in  std_ulogic;
+    tap_inst  : in  std_logic_vector(7 downto 0);
+    tap_asel  : in  std_ulogic;
+    tap_dsel  : in  std_ulogic;
+    tap_reset : in  std_ulogic;
+    tap_capt  : in  std_ulogic;
+    tap_shift : in  std_ulogic;
+    tap_upd   : in  std_ulogic;
+    tap_en    : out std_ulogic;
+    tap_tdo   : out std_ulogic;
+    trst      : in  std_ulogic := '1'
+    );
+end component;
 
 component ahbjtag_bsd 
   generic (

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2024, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2025, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -291,177 +291,177 @@ architecture rtl of cpucorenv is
   constant addr_bits    : integer := max_addr_bits;
   constant pcaddr_bits  : integer := cond(addr_bits = XLEN, addr_bits, addr_bits + 2);
 
-  function pnp_bar_ok(hconfig : amba_config_word) return boolean is
-  begin
-    case hconfig(3 downto 0) is
-    when "0010" | "0011" | "0001" => return true;
-    when others                   => return false;
-    end case;
-  end;
-
-  -- Convert PnP address/mask to PMA equivalent
-  -- Returns array with count as first element
-  function pnp_to_pma_addr(ahbso : ahb_slv_out_vector; entries : integer; top : std_logic_vector) return word64_arr is
-    -- Non-constant
-    variable index   : integer                  := 0;
-    variable pma     : word64_arr(0 to entries) := (others => zerow64);
-    variable hconfig : amba_config_word;
-    variable addr    : std_logic_vector(11 downto 0);
-    variable mask    : std_logic_vector(11 downto 0);
-    variable mask32  : word32;
-  begin
-    for i in 0 to NAHBSLV - 1 loop
-      for j in NAHBAMR to NAHBCFG - 1 loop
-        hconfig      := ahbso(i).hconfig(j);
-        mask         := hconfig(15 downto 4);
-        addr         := hconfig(31 downto 20) and mask;
-        if not all_0(mask) and pnp_bar_ok(hconfig) then
-          index      := index + 1;
-          assert index <= entries report "Too many PnP entries" severity failure;
-          mask32     := not (mask & x"00000");
-          pma(index) := uext(top & ((addr & x"00000") or ('0' & mask32(31 downto 1))), 64);
-        end if;
-      end loop;
-    end loop;
-
-    pma(0) := u2slv(index, 64);
-    return pma(0 to entries);
-  end;
-
-  -- Returns array with count as first element
-  -- PMA bits
-  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
-  function pnp_to_pma_data(ahbso : ahb_slv_out_vector; entries : integer) return word64_arr is
-    -- Non-constant
-    variable index : integer                          := 0;
-    variable pma   : word64_arr(0 to entries) := (others => zerow64);
-    variable hconfig : amba_config_word;
-    variable mask  : std_logic_vector(11 downto 0);
-  begin
-    for i in 0 to NAHBSLV - 1 loop
-      for j in NAHBAMR to NAHBCFG - 1 loop
-        hconfig := ahbso(i).hconfig(j);
-        mask    := hconfig(15 downto 4);
-        if not all_0(mask) and pnp_bar_ok(hconfig) then
-          index := index + 1;
-          assert index <= entries report "Too many PnP entries" severity failure;
-          case hconfig(3 downto 0) is
-          when "0010" =>  -- AHB memory
-            pma(index)    := uext(std_logic_vector'(x"fff"), 64);  -- Assume all
-            pma(index)(6) := hconfig(16);                          -- Cacheability
-            pma(index)(8) := hconfig(17);                          -- Interpret prefetchable as idempotency
-          when "0011" =>  -- AHB I/O
-            pma(index)    := uext(std_logic_vector'(x"207"), 64);
-          when others =>  -- APB I/O (0001)
-            pma(index)    := uext(std_logic_vector'(x"207"), 64);
-          end case;
-        end if;
-      end loop;
-    end loop;
-
-    pma(0) := u2slv(index, 64);
-    return pma(0 to entries);
-  end;
-
-  -- Increase the size of an array by extending with zeros.
-  function word64_arr_size(arr_in : word64_arr; length : integer) return word64_arr is
-    variable arr   : word64_arr(0 to arr_in'length - 1) := arr_in;
-    variable sized : word64_arr(0 to length - 1)        := (others => zerow64);
-  begin
-    if arr'length <= length then
-      sized(arr'range) := arr;
-    else
-      sized            := arr(sized'range);
-    end if;
-
-    return sized;
-  end;
-
-  -- Add an extra element at the end of an array
-  -- Returns array with count as first element
-  function word64_arr_extend(arr_in : word64_arr; data : word64) return word64_arr is
-    variable arr      : word64_arr(0 to arr_in'length - 1) := arr_in;
-    variable extended : word64_arr(0 to arr_in'length)     := word64_arr_size(arr_in, arr_in'length + 1);
-  begin
-    assert u2i(get_lo(arr(0), 8)) < arr'high report "No room in array" severity failure;
-      arr(u2i(get_lo(arr(0), 8)) + 1)      := data;
-      arr(0)                    := uadd(arr(0), 1);
-      return arr;
-  end;
-
-  -- Remove initial count and return the initial part of the array to the specified length.
-  function word64_arr_normal(arr_in : word64_arr; length : integer) return word64_arr is
-    variable arr : word64_arr(0 to arr_in'length - 1) := arr_in;
-  begin
-    assert arr'length > length report "Too small array" severity failure;
-
-
-    return arr(1 to length);
-  end;
-
-  -- Remove initial count and return the initial part of the array according to the count.
-  function word64_arr_normal(arr_in : word64_arr) return word64_arr is
-    variable arr    : word64_arr(0 to arr_in'length - 1) := arr_in;
-  begin
-    return word64_arr_normal(arr, arr'length - 1);
-  end;
-
-  -- Crop and return the array according to its initial count.
-  function word64_arr_crop(arr_in : word64_arr) return word64_arr is
-    variable arr    : word64_arr(0 to arr_in'length - 1) := arr_in;
-    variable length : integer                            := u2i(get_lo(arr(0), 8));
-  begin
-    assert arr'length > length report "Too small array" severity failure;
-
-    return arr(0 to length);
-  end;
-
-  -- PMA
-  --   RAM: all                                  1111 1111 1111
-  --   ROM: busw?   burst cache   XRvalid        .000 1100 1011
-  --   I/O: busw? amo   WRvalid                  .010 0000 0111
-
-  -- GR765
-  constant pma_addr_gr765 : word64_arr := (
-    uext(std_logic_vector'(x"09fffffff"), 64),   -- 0x080... - 0x0bf...
-    uext(std_logic_vector'(x"0c7ffffff"), 64),   -- 0x0c0... - 0x0cf...
-    uext(std_logic_vector'(x"0d7ffffff"), 64),   -- 0x0d0... - 0x0df...
-    uext(std_logic_vector'(x"0efffffff"), 64),   -- 0x0e0... - 0x0ff...
-    uext(std_logic_vector'(x"7ffffffff"), 64));  -- 0x000... - 0xfff...
-  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
-  constant pma_data_gr765 : word64_arr := (
---  uext(std_logic_vector'(x"1cb"), 64),   -- idem burst cache X R
-    uext(std_logic_vector'(x"1cf"), 64),   --  Temporarily allow W for UART in test
-    uext(std_logic_vector'(x"14b"), 64),   -- idem cache X R
-    uext(std_logic_vector'(x"207"), 64),   -- amo W R
-    uext(std_logic_vector'(x"207"), 64),
-    uext(std_logic_vector'(x"fff"), 64));  -- All
-
-  -- Small
-  constant pma_addr_arr : word64_arr := (
---    uext(std_logic_vector'(x"0007ffff"), 64),    -- 0x000... - 0x000fffff
-    uext(std_logic_vector'(x"0afffffff"), 64),  -- 0x0a0... - 0x0bf...???
-    uext(std_logic_vector'(x"0c00007ff"), 64),  -- 0x0c0... - 0x0c0...0fff
-    uext(std_logic_vector'(x"0efffffff"), 64),  -- 0x0e0... - 0x0ff...
-    uext(std_logic_vector'(x"07fffffff"), 64),  -- 0x000... - 0xfff...
-    uext(std_logic_vector'(x"0"), 64)          -- Dummy
-  );
-  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
-  constant pma_data_arr : word64_arr := (
-    uext(std_logic_vector'(x"a07"), 64),       -- wide amo W R
-    uext(std_logic_vector'(x"acb"), 64),       -- wide amo burst cache X R
-    uext(std_logic_vector'(x"207"), 64),       -- amo W R
-    uext(std_logic_vector'(x"fff"), 64),       -- all
---    uext(std_logic_vector'(x"9cb"), 64),     -- busw idem burst cache X R
---    uext(std_logic_vector'(x"207"), 64)      -- amo W R
-    uext(std_logic_vector'(x"0"), 64)          -- Dummy
-  );
+--  function pnp_bar_ok(hconfig : amba_config_word) return boolean is
+--  begin
+--    case hconfig(3 downto 0) is
+--    when "0010" | "0011" | "0001" => return true;
+--    when others                   => return false;
+--    end case;
+--  end;
+--
+--  -- Convert PnP address/mask to PMA equivalent
+--  -- Returns array with count as first element
+--  function pnp_to_pma_addr(ahbso : ahb_slv_out_vector; entries : integer; top : std_logic_vector) return word64_arr is
+--    -- Non-constant
+--    variable index   : integer                  := 0;
+--    variable pma     : word64_arr(0 to entries) := (others => zerow64);
+--    variable hconfig : amba_config_word;
+--    variable addr    : std_logic_vector(11 downto 0);
+--    variable mask    : std_logic_vector(11 downto 0);
+--    variable mask32  : word32;
+--  begin
+--    for i in 0 to NAHBSLV - 1 loop
+--      for j in NAHBAMR to NAHBCFG - 1 loop
+--        hconfig      := ahbso(i).hconfig(j);
+--        mask         := hconfig(15 downto 4);
+--        addr         := hconfig(31 downto 20) and mask;
+--        if not all_0(mask) and pnp_bar_ok(hconfig) then
+--          index      := index + 1;
+--          assert index <= entries report "Too many PnP entries" severity failure;
+--          mask32     := not (mask & x"00000");
+--          pma(index) := uext(top & ((addr & x"00000") or ('0' & mask32(31 downto 1))), 64);
+--        end if;
+--      end loop;
+--    end loop;
+--
+--    pma(0) := u2slv(index, 64);
+--    return pma(0 to entries);
+--  end;
+--
+--  -- Returns array with count as first element
+--  -- PMA bits
+--  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
+--  function pnp_to_pma_data(ahbso : ahb_slv_out_vector; entries : integer) return word64_arr is
+--    -- Non-constant
+--    variable index : integer                          := 0;
+--    variable pma   : word64_arr(0 to entries) := (others => zerow64);
+--    variable hconfig : amba_config_word;
+--    variable mask  : std_logic_vector(11 downto 0);
+--  begin
+--    for i in 0 to NAHBSLV - 1 loop
+--      for j in NAHBAMR to NAHBCFG - 1 loop
+--        hconfig := ahbso(i).hconfig(j);
+--        mask    := hconfig(15 downto 4);
+--        if not all_0(mask) and pnp_bar_ok(hconfig) then
+--          index := index + 1;
+--          assert index <= entries report "Too many PnP entries" severity failure;
+--          case hconfig(3 downto 0) is
+--          when "0010" =>  -- AHB memory
+--            pma(index)    := uext(std_logic_vector'(x"fff"), 64);  -- Assume all
+--            pma(index)(6) := hconfig(16);                          -- Cacheability
+--            pma(index)(8) := hconfig(17);                          -- Interpret prefetchable as idempotency
+--          when "0011" =>  -- AHB I/O
+--            pma(index)    := uext(std_logic_vector'(x"207"), 64);
+--          when others =>  -- APB I/O (0001)
+--            pma(index)    := uext(std_logic_vector'(x"207"), 64);
+--          end case;
+--        end if;
+--      end loop;
+--    end loop;
+--
+--    pma(0) := u2slv(index, 64);
+--    return pma(0 to entries);
+--  end;
+--
+--  -- Increase the size of an array by extending with zeros.
+--  function word64_arr_size(arr_in : word64_arr; length : integer) return word64_arr is
+--    variable arr   : word64_arr(0 to arr_in'length - 1) := arr_in;
+--    variable sized : word64_arr(0 to length - 1)        := (others => zerow64);
+--  begin
+--    if arr'length <= length then
+--      sized(arr'range) := arr;
+--    else
+--      sized            := arr(sized'range);
+--    end if;
+--
+--    return sized;
+--  end;
+--
+--  -- Add an extra element at the end of an array
+--  -- Returns array with count as first element
+--  function word64_arr_extend(arr_in : word64_arr; data : word64) return word64_arr is
+--    variable arr      : word64_arr(0 to arr_in'length - 1) := arr_in;
+--    variable extended : word64_arr(0 to arr_in'length)     := word64_arr_size(arr_in, arr_in'length + 1);
+--  begin
+--    assert u2i(get_lo(arr(0), 8)) < arr'high report "No room in array" severity failure;
+--      arr(u2i(get_lo(arr(0), 8)) + 1)      := data;
+--      arr(0)                    := uadd(arr(0), 1);
+--      return arr;
+--  end;
+--
+--  -- Remove initial count and return the initial part of the array to the specified length.
+--  function word64_arr_normal(arr_in : word64_arr; length : integer) return word64_arr is
+--    variable arr : word64_arr(0 to arr_in'length - 1) := arr_in;
+--  begin
+--    assert arr'length > length report "Too small array" severity failure;
+--
+--
+--    return arr(1 to length);
+--  end;
+--
+--  -- Remove initial count and return the initial part of the array according to the count.
+--  function word64_arr_normal(arr_in : word64_arr) return word64_arr is
+--    variable arr    : word64_arr(0 to arr_in'length - 1) := arr_in;
+--  begin
+--    return word64_arr_normal(arr, arr'length - 1);
+--  end;
+--
+--  -- Crop and return the array according to its initial count.
+--  function word64_arr_crop(arr_in : word64_arr) return word64_arr is
+--    variable arr    : word64_arr(0 to arr_in'length - 1) := arr_in;
+--    variable length : integer                            := u2i(get_lo(arr(0), 8));
+--  begin
+--    assert arr'length > length report "Too small array" severity failure;
+--
+--    return arr(0 to length);
+--  end;
+--
+--  -- PMA
+--  --   RAM: all                                  1111 1111 1111
+--  --   ROM: busw?   burst cache   XRvalid        .000 1100 1011
+--  --   I/O: busw? amo   WRvalid                  .010 0000 0111
+--
+--  -- GR765
+--  constant pma_addr_gr765 : word64_arr := (
+--    uext(std_logic_vector'(x"09fffffff"), 64),   -- 0x080... - 0x0bf...
+--    uext(std_logic_vector'(x"0c7ffffff"), 64),   -- 0x0c0... - 0x0cf...
+--    uext(std_logic_vector'(x"0d7ffffff"), 64),   -- 0x0d0... - 0x0df...
+--    uext(std_logic_vector'(x"0efffffff"), 64),   -- 0x0e0... - 0x0ff...
+--    uext(std_logic_vector'(x"7ffffffff"), 64));  -- 0x000... - 0xfff...
+--  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
+--  constant pma_data_gr765 : word64_arr := (
+----  uext(std_logic_vector'(x"1cb"), 64),   -- idem burst cache X R
+--    uext(std_logic_vector'(x"1cf"), 64),   --  Temporarily allow W for UART in test
+--    uext(std_logic_vector'(x"14b"), 64),   -- idem cache X R
+--    uext(std_logic_vector'(x"207"), 64),   -- amo W R
+--    uext(std_logic_vector'(x"207"), 64),
+--    uext(std_logic_vector'(x"fff"), 64));  -- All
+--
+--  -- Small
+--  constant pma_addr_arr : word64_arr := (
+----    uext(std_logic_vector'(x"0007ffff"), 64),    -- 0x000... - 0x000fffff
+--    uext(std_logic_vector'(x"0afffffff"), 64),  -- 0x0a0... - 0x0bf...???
+--    uext(std_logic_vector'(x"0c00007ff"), 64),  -- 0x0c0... - 0x0c0...0fff
+--    uext(std_logic_vector'(x"0efffffff"), 64),  -- 0x0e0... - 0x0ff...
+--    uext(std_logic_vector'(x"07fffffff"), 64),  -- 0x000... - 0xfff...
+--    uext(std_logic_vector'(x"0"), 64)          -- Dummy
+--  );
+--  --   busw lrsc amo idempotent   burst cache PT_W PT_R   X W R allocated
+--  constant pma_data_arr : word64_arr := (
+--    uext(std_logic_vector'(x"a07"), 64),       -- wide amo W R
+--    uext(std_logic_vector'(x"acb"), 64),       -- wide amo burst cache X R
+--    uext(std_logic_vector'(x"207"), 64),       -- amo W R
+--    uext(std_logic_vector'(x"fff"), 64),       -- all
+----    uext(std_logic_vector'(x"9cb"), 64),     -- busw idem burst cache X R
+----    uext(std_logic_vector'(x"207"), 64)      -- amo W R
+--    uext(std_logic_vector'(x"0"), 64)          -- Dummy
+--  );
 
   -- Word 0: High type   00        01  10  11
   -- Word 1: Low       unallocated I/O RAM ROM
   -- Word 2: Cacheable (if RAM/ROM)
   -- Word 3: Wide bus
-  constant pma_data_mask : word64_arr := (
+  constant pma_data_mask : word64_arr(0 to PMAENTRIES - 1) := (
 --    -- 0x00000000-0x7fffffff RAM cacheable wide
 --    -- 0x80000000-0xbfffffff ROM cacheable wide
 --    -- 0xc0000000-0xcfffffff ROM cacheable
@@ -484,11 +484,12 @@ architecture rtl of cpucorenv is
     uext(std_logic_vector'(x"10ff"), 64),      -- High type
     uext(std_logic_vector'(x"ff00"), 64),      -- Low
     uext(std_logic_vector'(x"10ff"), 64),      -- Cacheable
-    uext(std_logic_vector'(x"50ff"), 64)       -- Wide bus (as in various config_local)
+    uext(std_logic_vector'(x"50ff"), 64),       -- Wide bus (as in various config_local)
+    others => zerow64
   );
 
-  signal pma_addr : word64_arr(0 to pma_entries - 1);
-  signal pma_data : word64_arr(0 to pma_entries - 1);
+  signal pma_addr : word64_arr(0 to PMAENTRIES - 1);
+  signal pma_data : word64_arr(0 to PMAENTRIES - 1);
 
   -- Misc
   signal gnd            : std_ulogic;
@@ -605,7 +606,8 @@ begin
 --  pma_data <= word64_arr_size(pma_data_arr, pma_data'length);
 
   -- PMA via masks
-  pma_data <= word64_arr_size(pma_data_mask, pma_data'length);
+  --pma_data <= word64_arr_size(pma_data_mask, pma_data'length);
+  pma_data <= pma_data_mask;
 
 --  -- PMA equivalent to the PnP values from my KCU105 build.
 --  pma_addr <= (uext(std_logic_vector'(x"ff97ffff"), 64),

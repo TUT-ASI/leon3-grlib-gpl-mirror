@@ -1,3 +1,23 @@
+----------------------- Release 2025.1-b4296 ---------------------------
+
+2025-03-21	New AHBJTAG_EXTTAP IP. Modified version of AHBJTAG where
+		the TAP module is instantiated externally.
+		Especially suitable for technologies where the TAP cannot
+		be instantiated standalone, such as AMD Versal.
+
+2025-03-21	Added support for Versal memories, including ECC (FT = 5)
+
+2025-03-21	NOELV: Workaround for Cadence synthesis issues
+
+2025-03-13	LEON5: Fix issue when building with the global async reset
+		setting in the grlib config package.
+
+2025-01-16	AXI: Add new modules
+		- AXI4 to AHB2 bridge
+		- AXI4-Stream skidbuffer
+		- AXI4-Stream gearbox
+		- AXI4 transaction resizer
+
 ----------------------- Release 2024.4-b4295 ---------------------------
 
 2024-12-18	NOEL-V updates
