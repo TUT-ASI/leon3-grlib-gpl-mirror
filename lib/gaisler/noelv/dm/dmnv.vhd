@@ -38,6 +38,7 @@ use gaisler.noelv.nv_dm_out_type;
 use gaisler.noelv.nv_debug_in_vector;
 use gaisler.noelv.nv_debug_out_vector;
 use gaisler.dmnvint.all;
+use gaisler.l5nv_shared.all;
 
 entity dmnv is
   generic (
@@ -99,7 +100,7 @@ begin
   dbgmi <= dbgmiv(ndbgmst-1 downto 0);
   dbgmov(ndbgmst-1 downto 0) <= dbgmo;
 
-  intercnct : entity work.dmnv_ic
+  intercnct : dmnv_ic
     generic map (
       ndmamst   => ndbgmst+1,
       -- conv bus
@@ -126,7 +127,8 @@ begin
       cbsi    => cbsi,
       -- Debug-module AHB bus interface
       dmmi    => dmmi,
-      dmmo    => dmmo
+      dmmo    => dmmo,
+      dmpnp   => dmso.hconfig
     );
 
   con_dm : process(dmso, dmmo)
@@ -148,13 +150,13 @@ begin
     dmsi.hready   <= dmso.hready;
   end process;
 
-  ahbs_if : entity work.dmnv_ahbs
+  ahbs_if : dmnv_ahbs
     generic map(
-      hsindex   => dmslvidx,
-      hmindex   => ndbgmst,
-      haddr     => dmhaddr,
-      hmask     => dmhmask,
-      scantest  => scantest)
+      hindex   => dmslvidx,
+      hmindex  => ndbgmst,
+      haddr    => dmhaddr,
+      hmask    => dmhmask
+      )
     port map(
       clk     => clk,
       rstn    => rstn,
@@ -163,8 +165,8 @@ begin
       ahbmi   => dbgmiv(ndbgmst),
       ahbmo   => dbgmov(ndbgmst),
       -- DM interface
-      dmi     => dmi,
-      dmo     => dmo,
+      dmi2    => dmi,
+      dmo2    => dmo,
       -- Trace interface
       tri     => tri,
       tro     => tro);
@@ -189,11 +191,12 @@ begin
       dsuo   => dsuo 
     );
   
-  bus_trace : entity work.dmnv_trace
+  bus_trace : dmnv_trace
     generic map(
       fabtech   => fabtech,
       memtech   => memtech,
-      kbytes    => 4,
+      cbusw     => AHBDW,
+      addrbits  => 6,
       ahbwp     => 2,
       tbits     => tbits,
       scantest  => scantest)
@@ -204,6 +207,7 @@ begin
       tro         => tro,
       cbmi        => cbmi,
       cbsi        => cbsi,
+      rsten       => '0',
       timer       => dbgi(0).mcycle(tbits-1 downto 0)
     );
 end;

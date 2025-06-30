@@ -1,11 +1,9 @@
+#include <stddef.h>
+#include <bcc/bcc.h>
 #include "leon3.h"
 #include "testmod.h" 
 #include "mmu.h" 
-#ifdef LEON2
-#include "leon2.h"
-#endif
 
-#define NODO_CLEAR
 #define TLBNUM 8
 
 #ifndef RAMSTART
@@ -16,8 +14,35 @@
 #define ROMSTART 0x00000000
 #endif
 
-extern unsigned long ctx;
-extern unsigned long pg0,pm0,pt0,page0,page1,page2,pth_addr,pth_addr1;
+/* Symbols are defined in mmu_asm.S */
+extern unsigned long mmu_ctx_start;
+extern unsigned long mmu_pg0_start;
+extern unsigned long mmu_pm0_start;
+extern unsigned long mmu_pt0_start;
+extern unsigned long mmu_page0_start;
+extern unsigned long mmu_page1_start;
+extern unsigned long mmu_page2_start;
+extern unsigned long pth_addr;
+extern unsigned long pth_addr1;
+
+/* Trap handlers defined in mmu_asm.S */
+extern void systest_instruction_access_exception(void);
+extern void systest_data_access_exception(void);
+extern void systest_trap_set_supervisor(void);
+
+/* SPARC V8 TT values */
+#define MYTT_INSTRUCTION_ACCESS_EXCEPTION 1
+#define MYTT_DATA_ACCESS_EXCEPTION 9
+/* 0x8F is the software trap number for "set_supervisor" */
+#define MYTT_SET_SUPERVISOR 0x8F
+
+/*
+ * User functions for enter supervisor/user mode. ABI compatible and requires
+ * the SET_SUPERVISOR software trap to be installed before use.
+ */
+void systest_enter_supervisor(void);
+void systest_enter_user(void);
+
 typedef void (*functype)(void);
 
 /* return: value at location before the conditional swap */
@@ -27,21 +52,15 @@ unsigned int vxAtomic32Cas(
   unsigned int newval
 );
 
+extern void mmu_double(void);
+extern void srmmu_set_mmureg_aligned(unsigned int val);
+extern unsigned int rsysreg(unsigned int addr);
+
 #define fail(err) do { } while(1);
-#define report(test_case) 
-
-
 
 void leon_flush_cache_all (void)
 {
-
         __asm__ __volatile__(" flush ");
-	/*
-        __asm__ __volatile__("sta %%g0, [%%g0] %0\n\t": :
-                             "i" (0x11) : "memory");
-			     */
-
-
 }
 
 void leon_flush_tlb_all (void)
@@ -65,60 +84,28 @@ int pgsz = 0;
 unsigned int pgd_sh = 24, pgd_m = 0xff;
 unsigned int pmd_sh = 18, pmd_m = 0x3f;
 unsigned int pte_sh = 12, pte_m = 0x3f;
+
 void mmu_func1();
-mmu_test()
+
+int mmu_test(void)
 {
-  ctxd_t *c0 = (ctxd_t *)&ctx;
-  pgd_t *g0 = (pgd_t *)&pg0;
-  pmd_t *m0 = (pmd_t *)&pm0; 
-  pte_t *p0 = (pte_t *)&pt0; 
-  unsigned long pteval,j,k,v;
-  unsigned long paddr, vaddr, val;
+  ctxd_t *c0 = (ctxd_t *)&mmu_ctx_start;
+  pgd_t *g0 = (pgd_t *)&mmu_pg0_start;
+  pmd_t *m0 = (pmd_t *)&mmu_pm0_start;
+  pte_t *p0 = (pte_t *)&mmu_pt0_start;
+  unsigned long pteval,j,k;
+  unsigned long val;
   unsigned long *pthaddr = &pth_addr1;
   functype func = mmu_func1;
   int i=0;
-#ifdef LEON2
-  struct l2regs *lr = (struct l2regs *) 0x80000000;
-#endif
 
-#ifdef LEON2
-  if (!((lr->leonconf >> MMU_CONF_BIT) & 1)) return(0);
-#else
   if ((rsysreg(12) & 8) == 0) return(0);
-#endif
   report_subtest(MMU_TEST);
 
-  /*
-__asm__(
-  "set 0xf, %g2\n\t"
-  "sta    %g2,[%g0] 2\n\t"
-  "set 0x40000000 , %g1\n\t"
-  "ld [%g1],%g1\n\t"
-  );*/
+  bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, systest_instruction_access_exception);
+  bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, systest_data_access_exception);
+  bcc_set_trap(MYTT_SET_SUPERVISOR, systest_trap_set_supervisor);
 
-__asm__(
-	".section .data\n\t"
-	".align %0\n\t"
-	"ctx: .skip %1\n\t"
-	".align %1\n\t"
-	"pg0: .skip %1\n\t"
-	".align %2\n\t"
-	"pm0: .skip %2\n\t"
-	".align %3\n\t"
-	"pt0: .skip %3\n\t"
-	".align %0\n\t"
-	"page0: .skip %0\n\t"
-	"page1: .skip %0\n\t"
-	"page2: .skip %4\n\t"
-	".text\n"
-	: : "i" (PAGE_SIZE_MAX), 
-	"i"(SRMMU_PGD_TABLE_SIZE) , 
-	"i"(SRMMU_PMD_TABLE_SIZE) ,
-	"i"(SRMMU_PTE_TABLE_SIZE) ,
-      "i"((3)*PAGE_SIZE) );
-
-
- 
  pgsz = mmugetpagesize(srmmu_get_mmureg());
 
 #define PGD_IDX(v) (((v) >> pgd_sh) & pgd_m)
@@ -161,15 +148,7 @@ __asm__(
  leon_flush_tlb_all ();
 
  /* Prepare Page Table Hirarchy */
- #ifndef NODO_CLEAR
- /* use ram vhdl model that clear mem at startup to suppress this loop */ 
- for (i = 0;i<SRMMU_PTRS_PER_CTX;i++) {
-   srmmu_ctxd_set(c0+i,(pgd_t *)0);
- }
- #endif /*DO_CLEAR*/
- 
  /* one-on-one mapping for context 0 */
- paddr = 0;
  srmmu_ctxd_set(c0+0,(pgd_t *)g0); //ctx 0
  srmmu_ctxd_set(c0+1,(pgd_t *)g0); //ctx 1
  pteval = ((ROMSTART >> 4) | SRMMU_ET_PTE | SRMMU_EXEC);           /*ROMSTART - ROMSTART+1000000: ROM */
@@ -202,12 +181,12 @@ __asm__(
  srmmu_set_pte(m0+3, 0);
  srmmu_pmd_set(m0+1,p0);
  srmmu_set_pte(p0+2, 0);
- pteval = ((((unsigned long)&page0) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV_RDONLY); 
+ pteval = ((((unsigned long)&mmu_page0_start) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV_RDONLY);
  srmmu_set_pte(p0+1, pteval);
- ((unsigned long *)&page0)[0] = 0;
- ((unsigned long *)&page0)[1] = 0x12345678;
+ ((unsigned long *)&mmu_page0_start)[0] = 0;
+ ((unsigned long *)&mmu_page0_start)[1] = 0x12345678;
  for (i = 3;i<TLBNUM+3;i++) {
-       pteval = (((((unsigned long)&page2)+(((i-3)%3)*REAL_PAGE_SIZE)) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV); 
+       pteval = (((((unsigned long)&mmu_page2_start)+(((i-3)%3)*REAL_PAGE_SIZE)) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);
        srmmu_set_pte(p0+i, pteval);
  }
 
@@ -218,7 +197,7 @@ __asm__(
  pthaddr[2] = 31000000;
  /* repair info for write protection fault (0x3041000) */
  pthaddr[3] = (unsigned long) (p0+1);
- pthaddr[4] = ((((unsigned long)&page0) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);
+ pthaddr[4] = ((((unsigned long)&mmu_page0_start) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);
  pthaddr[5] = a_30041000;
  /* repair info for instruction page fault (0x3042000) */
  pthaddr[6] = (unsigned long) (p0+2);
@@ -226,7 +205,7 @@ __asm__(
  pthaddr[8] = a_30042000;
  /* repair info for priviledge protection fault (0x30041000) */
  pthaddr[9] = (unsigned long) (p0+1);
- pthaddr[10] = ((((unsigned long)&page0) >> 4) | SRMMU_ET_PTE | SRMMU_EXEC | SRMMU_WRITE);
+ pthaddr[10] = ((((unsigned long)&mmu_page0_start) >> 4) | SRMMU_ET_PTE | SRMMU_EXEC | SRMMU_WRITE);
  pthaddr[11] = a_30041000;
  
  srmmu_set_ctable_ptr((unsigned long)c0);
@@ -241,14 +220,8 @@ __asm__(
  /* close your eyes and pray ... */
  srmmu_set_mmureg(0x00000001);
  asm(" flush "); //iflush 
-// asm(" sta	%g0, [%g0] 0x11 "); //dflush
 
-
-
-#ifndef LEON2
   if (((rsysreg(0) >> ITE_BIT) & 3) == 0) mmu_double();
-#endif
-
 
  /* test reg access */
  k = srmmu_get_mmureg();
@@ -256,9 +229,9 @@ __asm__(
  k = srmmu_get_context();
 
  /* do tests*/
- if ( (*((unsigned long *)a_30041000)) != 0 ||
-      (*((unsigned long *)a_30041004)) != 0x12345678 ) { fail(1); }
- if ( (*((unsigned long *)a_30080000)) != (*((unsigned long *)RAMSTART))) { fail(2); }
+ if ( (*((volatile unsigned long *)a_30041000)) != 0 ||
+      (*((volatile unsigned long *)a_30041004)) != 0x12345678 ) { fail(1); }
+ if ( (*((volatile unsigned long *)a_30080000)) != (*((unsigned long *)RAMSTART))) { fail(2); }
  
  /* page faults tests*/
  val = * ((volatile unsigned long *) a_31000000 );
@@ -291,26 +264,17 @@ __asm__(
   
  for (j=a_30043000,i = 3;i<TLBNUM+3;i++,j+=REAL_PAGE_SIZE) {
        *((unsigned long *)j) = j;
-#ifdef LEON2
-       asm(" sta	%g0, [%g0] 0x6 "); //dflush
-#else
        asm(" sta	%g0, [%g0] 0x11 "); //dflush
-#endif
-       if ( *((unsigned long*) (((unsigned long)&page2)+(((i-3)%3)*REAL_PAGE_SIZE))) != j ) { fail(5); }
+       if ( *((unsigned long*) (((unsigned long)&mmu_page2_start)+(((i-3)%3)*REAL_PAGE_SIZE))) != j ) { fail(5); }
  }
-#ifdef LEON2
-       asm(" sta	%g0, [%g0] 0x6 "); //dflush
-#else
        asm(" sta	%g0, [%g0] 0x11 "); //dflush
-#endif
  for (j=0,i = 3;i<TLBNUM+3;i++) {
-       pteval = (((((unsigned long)&page2)+(((i-3)%3)*REAL_PAGE_SIZE)) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV); 
+       pteval = (((((unsigned long)&mmu_page2_start)+(((i-3)%3)*REAL_PAGE_SIZE)) >> 4) | SRMMU_ET_PTE | SRMMU_PRIV);
        if ((*(p0+i)) & (SRMMU_DIRTY | SRMMU_REF)) j++;
        if (((*(p0+i)) & ~(SRMMU_DIRTY | SRMMU_REF))  != (pteval& ~(SRMMU_DIRTY | SRMMU_REF))) { fail(6); }
  }
  //at least one entry has to have been flushed
  if (j == 0) { fail(7);}
- 
 
  /* instruction page fault */
  func = (functype)a_30042000;
@@ -318,11 +282,7 @@ __asm__(
  
  /* flush */
  srmmu_flush_whole_tlb();
-#ifdef LEON2
-       asm(" sta	%g0, [%g0] 0x6 "); //dflush
-#else
        asm(" sta	%g0, [%g0] 0x11 "); //dflush
-#endif
        
  for (j=0,i = 3;i<TLBNUM+3;i++) {
        if ((*(p0+i)) & (SRMMU_DIRTY | SRMMU_REF)) j++;
@@ -335,23 +295,14 @@ __asm__(
  if (!srmmu_pte_young(p0[2])) { fail(11); };
 
  /* check priviledge fault */
- __asm__ __volatile__("mov	%%psr, %%g1\n\t" \
-                      "andn	%%g1, 0x0080, %%g2\n\t"  \
-                      " wr      %%g2, 0x0, %%psr\n\t"\
-                      "nop\n\t"\
-                      "nop\n\t"\
-                      "nop\n\t" \
-                      : : :
-                      "g1");
+ systest_enter_user();
+
  // supervisor = 0 
  val = * ((volatile unsigned long *)a_30041004);
- __asm__ __volatile__("set 0x4,%o1\n\t" \
-		      "ta 0x2\n\t" \
-                      "nop\n\t" );
+
+ systest_enter_supervisor();
  
-#ifndef LEON2
  if (((rsysreg(0) >> ITE_BIT) & 3) == 0) mmu_double();
-#endif
  // supervisor = 1 
  {
    //check ctx field
@@ -385,16 +336,11 @@ __asm__(
  
  asm("flush");
 
+ /* Clean-up so that later tests do not fall into the trap. */
+ bcc_set_trap(MYTT_INSTRUCTION_ACCESS_EXCEPTION, NULL);
+ bcc_set_trap(MYTT_DATA_ACCESS_EXCEPTION, NULL);
+ bcc_set_trap(MYTT_SET_SUPERVISOR, NULL);
+
  return(0);
- {
-   int i = 0;
-   while (1) {
-     i++;
-   }
- };
- 
 }
-
-
-
 

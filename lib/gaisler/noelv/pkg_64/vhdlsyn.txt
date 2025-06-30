@@ -1,3 +1,4 @@
 ../pkg/noelv_cfg_64.vhd
 ../pkg/noelv.vhd
 ../pkg/noelv_cpu_cfg.vhd
+../pkg/nvnlconfig.vhd

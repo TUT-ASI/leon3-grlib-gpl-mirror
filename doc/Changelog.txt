@@ -1,3 +1,82 @@
+----------------------- Release 2025.2-b4298 ---------------------------
+
+2025-06-30	NOEL-V updates:
+		- Update interrupt port definition (new record type)
+		- Prevent H-extension to be enabled for RV32 (currently
+		  not supported)
+		- MC standard configuration has been updated to increase L1
+		  to 4-way and remove double-precision floating-point (only
+		  supporting F extension)
+		- The double-trap extension (smdbltr and ssdbltrp) have been
+		  updated version 1.0
+		- Update to CSR handling (illegal checks, and exceptions)
+		- Added shlcofideleg and smcdeleg extension
+		- Added SVADU extension
+		- PLIC now supports more then 31 interrupt sources
+		- Custom FEATURE CSR updated (bits has been redefined)
+		- Added support for Svnapot extension and Sv48
+		- Update illegal checks for CBO instructions
+		- APLIC: base_ppn field was not shifted 12 bits to the left
+		  to calculate the IMSIC base address.
+		- G-stage access fault was raised instead of page fault for
+		  some cases
+		- Fixed issue with PMA/PMP check during page-walk
+		- Fix to not update m/htinst on shadowstack push/pop
+		  exceptions
+		- Fixed incorrect fault for CFI landing pad faults
+		- Executing ssamoswap in machine mode was not handled
+		  correctly
+		- Update Smstateen extension to incorporate the bits
+		  p1p13 & C.
+		- Modify write behavior of bits in hstateen/sstateen, if
+		  mstateen.bit is 0 then hstateen.bit/sstateen.bit is no
+		  longer writeable and previous bits are preserved.
+		- Update envcfg to incorporate read-only behavior for bits
+		  not set in higher privilege mode envcfg. Example) if
+		  menvcfg.sse = 0 => RO (s/h)envcfg.sse. Previous bits
+		  preserved.
+		- Update CBO and ssamoswap exception behavior, these
+		  instructions could previously throw a virtual instruction
+		  exception even if its menvcfg bit was 0.
+
+2025-06-25	TECHMAP: Add UltraScale/UltraScale-Plus mapping for DDR_OREG
+
+2025-06-24	AHB2AXIB: new generic to support AMBA address widths of more
+		than 32 bits (not compatible yet with PnP scanning).
+
+2025-06-17	APBUART: Added break character support
+		- Increased APBUART revision to 2
+		- Updated the core to support transmission and detection
+		  of break characters within a configurable range of
+		  10-16 zeroes. Break operation is managed via the control
+		  register of the apb bus.
+		- Enabled break handling in loop-back operation
+		- Added a capability register that reports the values
+		  for certain RTL instantiation generics, including
+		  FIFO size and flow
+		- The debug bit in the control register is now read-only.
+		  Read/write access for debug functionality has been
+		  relocated to the FIFO debug control register.
+
+2025-06-16	GRGPIO: Added set and clear register support to facilitate
+		atomic accesses to selected registers.
+
+2025-06-10	BCC: BCC1 to BCC2 migration
+		- Affects systest in designs directory
+
+2025-06-09	LEON5: Fix issue on LDSTUB/LDSTUBA opcode check
+
+2025-05-23	LEON5: DTCM Fixes
+		- Fix an issue where ASI accesses where triggering unwanted
+		  dtcmhit.
+
+2025-04-16	AXI2AHB: fix simultaneous read and write accesses
+
+2025-04-03	GRDMAC2: Incorrect calculation of the burst_chop_mask generic 
+		value in generic_bm instantiation is fixed. generic_bm_ahb 
+		instantiation in the grdmac2 has the default value 1024 for
+		burst_chop_mask	generic. 
+
 ----------------------- Release 2025.1-b4296 ---------------------------
 
 2025-03-21	New AHBJTAG_EXTTAP IP. Modified version of AHBJTAG where
@@ -5,7 +84,7 @@
 		Especially suitable for technologies where the TAP cannot
 		be instantiated standalone, such as AMD Versal.
 
-2025-03-21	Added support for Versal memories, including ECC (FT = 5)
+2025-03-21	Added support for Versal memories
 
 2025-03-21	NOELV: Workaround for Cadence synthesis issues
 

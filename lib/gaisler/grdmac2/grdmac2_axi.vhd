@@ -105,9 +105,6 @@ architecture rtl of grdmac2_axi is
     0      => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, 0),
     others => zero32);
 
-  -- Bus master interface burst chop mask
-  constant burst_chop_mask : integer := (max_burst_length*(log_2(AHBDW)-1));
-
   constant axi4_aw_mosi_none : axi4_aw_mosi_type := ((others => '0'), (others => '0'), (others => '0'), (others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', (others => '0'));
   constant axi4_w_mosi_none  : axi4_w_mosi_type  := ((others => '0'), (others => '0'), '0', '0');
   constant axi_b_mosi_none   : axi_b_mosi_type   := (ready   => '0');
@@ -203,7 +200,6 @@ begin  -- rtl
       be_rd_pipe       => 0,
       max_size         => 1024,
       max_burst_length => max_burst_length,
-      burst_chop_mask  => burst_chop_mask,
       bm_info_print    => 1,
       lendian_en       => lendian_en,
       axi_bm_id_width  => AXI_ID_WIDTH)
@@ -286,7 +282,6 @@ begin  -- rtl
         be_rd_pipe       => 0,
         max_size         => 1024,
         max_burst_length => max_burst_length,
-        burst_chop_mask  => burst_chop_mask,
         bm_info_print    => 1,
         lendian_en       => lendian_en,
         axi_bm_id_width  => AXI_ID_WIDTH)

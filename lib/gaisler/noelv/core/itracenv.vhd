@@ -25,27 +25,7 @@
 ------------------------------------------------------------------------------
 
     -- trace.ctrl
-    -- 0      deactivate trace (in combination with bit 1, see below)
-    -- 1      set active according to bit 0 (1 - deactivate)
-    -- 2      stop trace at end of buffer
-    -- 3      restart write counter
-    -- 4      send halt request (early) when stopping trace at end of buffer
     -- 12:8   disable trace for mode VU/VS/U/S/M
-    -- 13     do not trace FPU result without instruction
-    -- 14     always trace FPU result immediately
-    -- 16     match ops
-    -- 17     match op
-    -- 18     match instruction address
-    -- 19     match access address
-    -- 22:20  match 000 - nothing, 001 - result, 010 - tval, 011 - FPU result,
-    --              100 - CSRW,    101 - store
-    -- 23     match exception
-    -- 24     match when matched for all masked of possible matches
-    -- 25     0 - activate on match, 1 - deactivate on match
-    -- 26     arm trigger (single shot)
-    -- 28:27  LD/ST, LD, ST, AMO for access match
-    -- 29     no log without any match
-    -- 30     For RV32, 0 - single precision, 1 - double precision (high part)
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -96,10 +76,10 @@ use gaisler.utilnv.cond;
 use gaisler.nvsupport.is_fpu_fsd;
 use gaisler.nvsupport.rd_gen;
 use gaisler.nvsupport.is_csr;
-use gaisler.nvsupport.to_cause;
-use gaisler.nvsupport.cause2int;
-use gaisler.nvsupport.IRQ_RAS_HIGH_PRIO;
-use gaisler.nvsupport.IRQ_RAS_LOW_PRIO;
+use gaisler.noelvtypes.to_cause;
+use gaisler.noelvtypes.cause2int;
+use gaisler.nvsupport.CAUSE_IRQ_RAS_HIGH_PRIO;
+use gaisler.nvsupport.CAUSE_IRQ_RAS_LOW_PRIO;
 -- pragma translate_off
 use gaisler.nvsupport.is_fpu_rd;
 use gaisler.fputilnv.fpreg2st;
@@ -108,7 +88,6 @@ use gaisler.fputilnv.tost_float;
 
 entity itracenv is
   generic (
-    hindex       : integer range 0 to 15;       -- Hart index
     fabtech      : integer range 0 to NTECH;    -- fabtech
     memtech      : integer range 0 to NTECH;    -- memtech
     single_issue : integer range 0 to 1;        -- 1 - only one pipeline
@@ -244,8 +223,8 @@ architecture rtl of itracenv is
     cause := u2vec(cause2int(cause_in), cause);
     -- Deal with known causes that do not fit.
     -- For IRQs, use numbers "Designated for custom use", from the top down.
-    if    cause_in = IRQ_RAS_HIGH_PRIO then cause := u2vec(31, cause);
-    elsif cause_in = IRQ_RAS_LOW_PRIO  then cause := u2vec(30, cause);
+    if    cause_in = CAUSE_IRQ_RAS_HIGH_PRIO then cause := u2vec(31, cause);
+    elsif cause_in = CAUSE_IRQ_RAS_LOW_PRIO  then cause := u2vec(30, cause);
     end if;
 
     return cause;
@@ -256,8 +235,8 @@ architecture rtl of itracenv is
     variable cause : cause_type := to_cause(u2i(cause_in), irq = '1');
   begin
     -- Deal with known causes that do not fit - see cause_pack().
-    if    cause = to_cause(31, true) then cause := IRQ_RAS_HIGH_PRIO;
-    elsif cause = to_cause(30, true) then cause := IRQ_RAS_LOW_PRIO;
+    if    cause = to_cause(31, true) then cause := CAUSE_IRQ_RAS_HIGH_PRIO;
+    elsif cause = to_cause(30, true) then cause := CAUSE_IRQ_RAS_LOW_PRIO;
     end if;
 
     return cause;
@@ -284,7 +263,7 @@ architecture rtl of itracenv is
   type word3_lanes_type     is array (lanes'low to lanes'high) of word3;
 
   -- Signals consumed by the disassembly units.
-  signal hart           : word4      := u2vec(hindex, 4);
+  signal hart           : word4;
   signal disas_en       : std_ulogic := '0';
   signal disas_iv       : lanes_type := (others => '0');
   signal dis_mcycle     : word64     := zerow64;
@@ -304,7 +283,7 @@ architecture rtl of itracenv is
   signal fsd_hi         : wordx_lanes_type;
   signal wcsr           : wordx_lanes_type;
   signal trap           : lanes_type;
-  signal cause          : cause_type;
+  signal cause          : wordx;
   signal tval           : wordx_lanes_type;
   signal wb_prv         : priv_lvl_type;
   signal wb_v           : std_ulogic;
@@ -315,6 +294,10 @@ begin
 
   arst <= testrst when (ASYNC_RESET and scantest /= 0 and testen /= '0')  else
           rstn when ASYNC_RESET else '1';
+  
+-- pragma translate_off
+  hart <= itracei.hartid(hart'range);
+-- pragma translate_on
 
   process (r, itracei, fpo) is
     -- Non-constant
@@ -415,6 +398,7 @@ begin
       v.itracei := itrace_in_none;
     else
       v.itracei := itracei;
+      v.itracei.hartid  := (others => '0'); -- No need ot register this
     end if;
     if pipeline_fpu = 0 then
       v.fpo     := fpu5_out_none;
@@ -563,13 +547,10 @@ begin
     -- FPU result to trace?
     -- Do so only if instruction is traced,
     -- new FPU result coming in (see above),
-    -- forced via trace.ctrl(14)
     -- or timeout.
-    -- (But trace.ctrl(13) can disable lone FPU result log.)
     if fp.valid = '1' and
-       (enable = '1' or trace.ctrl(14) /= '0' or
-        (fp.hold(fp.hold'right) = '0' and trace.ctrl(13) = '0')) then
---      report "enable " & tost(enable) & " ctrl(14) " & tost(trace.ctrl(14)) & " right " & tost(fp.hold(fp.hold'right)) & " ctrl(13) " & tost(trace.ctrl(13));
+       (enable = '1'
+       ) then
       if fptone = '1' then
         v.fptbuf.valid := '0';
       end if;
@@ -610,7 +591,7 @@ begin
     odata(trace_prv'range)        := info.prv;
     odata(trace_v)                := info.v;
     odata(trace_cause'range)      := cause_pack(info.cause);
-    odata(trace_irq)              := info.cause(info.cause'high);
+    odata(trace_irq)              := info.cause.irq;
     odata(trace_swap)             := info.swap;
     odata(trace_timestamp'range)  := info.timestamp;
     odata(trace_fpu_id'range)     := fpu.id;
@@ -747,7 +728,7 @@ begin
           end if;
 --          report "cause " & tost(cause(0)) & " " & tost(cause(1)) & " " & tost_bits(trap);
 
-          cause            <= cause_unpack(data(trace_cause'range), data(trace_irq));
+          cause            <= cause2wordx(cause_unpack(data(trace_cause'range), data(trace_irq)));
           wb_prv           <= data(trace_prv'range);
           wb_v             <= data(trace_v);
         end if;

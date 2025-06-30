@@ -1,10 +1,5 @@
 dmnvint.vhd
 progbuf.vhd
 dmnvx.vhd
-dmnv_ic.vhd
-tbufmemnv_mbus.vhd
-dmnv_ahbs.vhd
-dmnv_trace.vhd
-dmnv_trace_ahb.vhd
 dmnv.vhd
 

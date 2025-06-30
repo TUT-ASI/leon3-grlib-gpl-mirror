@@ -247,4 +247,32 @@ package canfd is
       );
   end component grcanfd_ahb;
 
+  component grcanfd_axi
+    generic (
+      tech      : integer := inferred;
+      pindex    : integer := 0;
+      paddr     : integer := 0;
+      pmask     : integer := 16#FFC#;
+      pirq      : integer := 1;
+      singleirq : integer := 0;
+      txbufsize : integer := 2;
+      rxbufsize : integer := 2;
+      ft        : integer := 0;
+      scantest  : integer := 0;
+      canopen   : integer := 0;
+      sepbus    : integer := 0;
+      lendian   : integer := 1);
+    port (
+      clk      : in  std_ulogic;
+      rstn     : in  std_ulogic;
+      aximi    : in  axi_somi_vector_type(canopen*sepbus downto 0);
+      aximo    : out axi4_mosi_vector_type(canopen*sepbus downto 0);
+      apbi     : in  apb_slv_in_type;
+      apbo     : out apb_slv_out_type;
+      cani     : in  canfd_in_type;
+      cano     : out canfd_out_type;
+      cfg      : in  grcanfd_defcfg_type
+      );
+  end component grcanfd_axi;
+
 end package canfd;

@@ -1,4 +1,0 @@
-riscv.vhd
-clint.vhd
-clint_ahb.vhd
-aclint_ahb.vhd

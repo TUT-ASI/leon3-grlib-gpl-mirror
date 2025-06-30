@@ -1081,11 +1081,9 @@ package body alunv is
 
    function clz_orig(op_in : std_logic_vector) return unsigned is
      variable op      : std_logic_vector(op_in'length - 1 downto 0) := op_in;
---     variable cnt_top : integer := log2(op'length);
-     constant cnt_top : integer := log2(op'length);
+     variable cnt_top : integer := log2(op'length);
      -- Non-constant
-     -- GHDL synth does not seem to like using cnt_top here. for some reason!
-     variable cnt     : unsigned(log2(op'length) downto 0);
+     variable cnt     : unsigned(cnt_top downto 0);
    begin
      if op'length = 1 then
        cnt(0) := not op(0);
@@ -1101,7 +1099,6 @@ package body alunv is
    end;
 
   -- Simple non-recursive count-leading-zeros
-  -- (A version of GHDL crashed on the recursive one.)
   function clz_simple(op_in : std_logic_vector) return unsigned is
     -- Non-constant
     variable lead : unsigned(log2(op_in'length) downto 0) := (others => '0');
@@ -1241,10 +1238,10 @@ package body alunv is
   function pop(op_in : std_logic_vector) return unsigned is
   begin
 --    return DWF_dp_count_ones(op_in);
---    return pop_add(op_in);       -- 153 LUT, 38 CARRY8, lots of levels
+    return pop_add(op_in);       -- 153 LUT, 38 CARRY8, lots of levels
 --    return pop_arr(op_in);     -- 88 LUT, probably 7 levels
 --    return pop_loop(op_in);    -- 299, lots and lots of levels
-    return pop_orig(op_in);  -- 84 LUT, probably 7 levels
+--    return pop_orig(op_in);  -- 84 LUT, probably 7 levels
   end;
 
   function clz(op_in : std_logic_vector) return unsigned is

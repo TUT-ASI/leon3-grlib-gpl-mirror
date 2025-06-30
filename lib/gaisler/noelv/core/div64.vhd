@@ -169,6 +169,8 @@ begin
   begin
     v := r;
 
+    neg := '0';  -- Ensure this is not considered a latch
+
     -- Latch input signals
     start          := '0';
     v.latch_in     := '0';

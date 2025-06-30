@@ -23,8 +23,6 @@ ahbbridge.vhd
 svgactrl.vhd        vhdlstd=93
 grfifo.vhd
 gradcdac.vhd
-spictrlx.vhd
-spictrl.vhd
 grsysmon.vhd
 gracectrl.vhd
 grgpreg.vhd
@@ -32,9 +30,6 @@ ahbmst2.vhd
 memscrub.vhd
 ahb_mst_iface.vhd
 grgprbank.vhd
-spi2ahbx.vhd
-spi2ahb.vhd
-spi2ahb_apb.vhd
 grclkgatex.vhd
 grclkgate.vhd
 grclkgate2x.vhd

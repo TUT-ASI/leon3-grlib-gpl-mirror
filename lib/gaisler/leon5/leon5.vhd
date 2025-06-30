@@ -37,8 +37,6 @@ use techmap.gencomp.all;
 package leon5 is
 
 
-  type ahb_config_array is array(NAHBSLV-1 downto 0) of ahb_config_type;
-
   type leon5_bretry_addrlist is array(0 to 7) of std_logic_vector(31 downto 0);
 
   type leon5_bretry_in_type is record
@@ -104,7 +102,7 @@ package leon5 is
       -- AHB bus interface for slaves (memory controllers, etc)
       ahbsi    : out ahb_slv_in_type;
       ahbso    : in  ahb_slv_out_vector_type(nextslv-1 downto 0);
-      ahbpnp   : out ahb_config_array;
+      ahbpnp   : out ahb_config_array(NAHBSLV-1 downto 0);
       -- AHB master interface for debug links
       dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
       dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);

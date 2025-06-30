@@ -1,6 +1,13 @@
+#include <report.h>
 
-main()
+/*
+ * Define a global variable named __bcc_cfg_skip_clear_bss to prevent
+ * initialize .bss section at BCC run-time initialization. The value of the
+ * variable does not matter.
+ */
+int __bcc_cfg_skip_clear_bss;
 
+int main(void)
 {
 	report_start();
 
@@ -15,4 +22,7 @@ main()
 */
 
 	report_end();
+
+	return 0;
 }
+

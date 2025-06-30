@@ -6477,12 +6477,14 @@ architecture rtl of iu5 is
   end;
 
   procedure gen_stdata(r : in registers; iustdata, fpstdata : in word64; stdataout : out word64) is
-    
+   
+    variable op     : std_logic_vector(1 downto 0);
     variable op3    : std_logic_vector(5 downto 0);
     variable stdata : word64;
   begin
 
     stdata := iustdata;
+    op     := r.m.ctrl.inst(0)(31 downto 30);
     op3    := r.m.ctrl.inst(0)(24 downto 19);
 
     if r.m.mem_data_alu1(0) = '1' then
@@ -6530,7 +6532,7 @@ architecture rtl of iu5 is
     if holdn = '0' or r.a.astate = ld_exc then
       stdata := r.x.storedata;
     end if;
-    if op3(3 downto 0) = "1101" then    -- LDSTUB
+    if op = "11" and op3(3 downto 0) = "1101" then    -- LDSTUB/LDSTUBA
       stdata := (others => '1');
     end if;
     if DBGUNIT and (r.m.dci.dsuen = '1') then

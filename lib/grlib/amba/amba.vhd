@@ -97,6 +97,7 @@ constant AHBENDIAN    : integer range 0 to 1 := GRLIB_CONFIG_ARRAY(grlib_little_
 subtype amba_config_word is std_logic_vector(31 downto 0);
 type ahb_config_type is array (0 to NAHBCFG-1) of amba_config_word;
 type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
+type ahb_config_array is array(natural range <>) of ahb_config_type;
 
 -- AHB master inputs
   type ahb_mst_in_type is record
@@ -273,7 +274,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
   type apb_slv_out_vector_type is array (natural range <>) of apb_slv_out_type;
   subtype apb_slv_out_vector is apb_slv_out_vector_type(0 to NAPBSLV-1);
   type apb_slv_out_bus_vector is array (natural range <>) of apb_slv_out_vector;
-  type apb3_slv_out_vector is array (0 to NAPBSLV-1) of apb3_slv_out_type;
+  type apb3_slv_out_vector_type is array (natural range <>) of apb3_slv_out_type;
+  subtype apb3_slv_out_vector is apb3_slv_out_vector_type(0 to NAPBSLV-1);
 
 -- AXI Write Address channel signals
   type axi_aw_mosi_type is record -- Master Output Slave Input
@@ -457,6 +459,8 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     ar  : axix_ar_mosi_type;
     r   : axi_r_mosi_type;
   end record;
+
+  type axi_mosi_vec is array(0 to 5) of axix_mosi_type;
 
 -- AXI interfaces (Dedicated AXI3)
   type axi3_mosi_type is record -- Master Output Slave Input
@@ -763,6 +767,7 @@ type apb_config_type is array (0 to NAPBCFG-1) of amba_config_word;
     msto    : in  ahb_mst_out_vector;
     slvi    : out ahb_slv_in_type;
     slvo    : in  ahb_slv_out_vector;
+    endian  : in  std_ulogic := '0';
     testen  : in  std_ulogic := '0';
     testrst : in  std_ulogic := '1';
     scanen  : in  std_ulogic := '0';
@@ -870,6 +875,31 @@ component ahbxb is
     ahbi    : in  ahb_slv_in_type;
     ahbo    : out ahb_slv_out_type;
     apbi    : out apb_slv_in_type;
+    apbo    : in  apb_slv_out_vector
+  );
+  end component;
+
+  component apbctrl_piped
+  generic (
+    hindex      : integer := 0;
+    haddr       : integer := 0;
+    hmask       : integer := 16#fff#;
+    nslaves     : integer range 1 to NAPBSLV := NAPBSLV;
+    debug       : integer range 0 to 2 := 2;   -- print config to console
+    icheck      : integer range 0 to 1 := 1;
+    enbusmon    : integer range 0 to 1 := 0;
+    asserterr   : integer range 0 to 1 := 0;
+    assertwarn  : integer range 0 to 1 := 0;
+    pslvdisable : integer := 0;
+    mcheck      : integer range 0 to 1 := 1;
+    ccheck      : integer range 0 to 1 := 1
+  );
+  port (
+    rst     : in  std_ulogic;
+    clk     : in  std_ulogic;
+    ahbi    : in  ahb_slv_in_type;
+    ahbo    : out ahb_slv_out_type;
+    apbi    : out apb_slv_in_vector_type(0 to nslaves-1);
     apbo    : in  apb_slv_out_vector
   );
   end component;

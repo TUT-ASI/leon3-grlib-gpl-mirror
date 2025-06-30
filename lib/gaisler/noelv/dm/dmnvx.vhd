@@ -24,7 +24,6 @@
 -- Description: NOEL-V debug module
 ------------------------------------------------------------------------------
 
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -42,12 +41,9 @@ use grlib.stdlib."+";
 use grlib.devices.all;
 use grlib.stdlib.tost;
 library gaisler;
-use gaisler.noelv.XLEN;
-use gaisler.noelv.nv_dm_in_type;
-use gaisler.noelv.nv_dm_out_type;
-use gaisler.noelv.nv_debug_in_vector;
-use gaisler.noelv.nv_debug_out_vector;
+use gaisler.noelv.all;
 use gaisler.dmnvint.all;
+use gaisler.l5nv_shared.all;
 library techmap;
 use techmap.gencomp.all;
 
@@ -1174,7 +1170,6 @@ begin
     dmo.sbwdata  <= std_logic_vector(shift_left(unsigned(r.sbdata), conv_integer(r.sbaddress(1 downto 0))*8)) ;
     dmo.sbaccess <= r.sbcontrol.sbaccess;
 
-
     ---------------------------------------------------------------------------------
     -- Reset
     ---------------------------------------------------------------------------------
@@ -1232,6 +1227,7 @@ begin
     dsuo.pwd            <= (others => '0');
 
     for i in 0 to NHARTS-1 loop
+      dbgo(i).hartid    <= std_logic_vector(to_unsigned(i, HARTIDLEN));
       dbgo(i).dsuen     <= r.en(i);             -- DSU Enable
       dbgo(i).halt      <= haltreq(i) or r.ghaltpend(i);     -- Halt Request
       dbgo(i).haltgroup <= r.ghaltpend(i);                   -- Halt Group Request

@@ -20,6 +20,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library grlib;
 use grlib.amba.all;
@@ -40,8 +41,12 @@ use gaisler.jtag.all;
 use gaisler.axi.all;
 use gaisler.plic.all;
 use gaisler.l2cache.all;
+use gaisler.l2c_lite.all;
 use gaisler.noelv.all;
 use gaisler.nandfctrl2_pkg.all;
+use gaisler.canfd.all;
+use gaisler.hssl.all;
+use gaisler.spacewire.all;
 
 --pragma translate_off
 use gaisler.sim.all;
@@ -61,10 +66,7 @@ entity noelvcore is
     cpu_freq                : integer := 10000;
     oepol                   : integer := padoen_polarity(CFG_PADTECH);
     devid                   : integer := NOELV_SOC;
-    disas                   : integer := CFG_LOCAL_DISAS;    -- Enable disassembly to console
-    tohost                  : std_logic_vector(63 downto 0) := (others => '1'); -- addr for tohost
-    fromhost                : std_logic_vector(63 downto 0) := (others => '1'); -- addr for fromhost
-    htif                    : integer := 0
+    disas                   : integer := CFG_LOCAL_DISAS    -- Enable disassembly to console
     );
   port (
     -- Clock & reset
@@ -109,6 +111,21 @@ entity noelvcore is
     -- Debug UART
     duart_rx      : in  std_ulogic;
     duart_tx      : out std_ulogic;
+    -- CANFD
+    can0_tx       : out   std_logic;
+    can0_rx       : in    std_logic := '0';
+    can1_tx       : out   std_logic;
+    can1_rx       : in    std_logic := '0';
+    -- HSSL
+    hssl_clk      : in std_ulogic := '0';
+    hssl_rstn     : in std_ulogic := '0';
+    hssli         : in grhssl_in_type_vector(1 downto 0) := (others => GRHSSL_IN_NULL);
+    hsslo         : out grhssl_out_type_vector(1 downto 0);
+    --SpaceWire
+    spw_txd          : out std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0);
+    spw_txs          : out std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0);
+    spw_rxd          : in std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0) := (others => '0');
+    spw_rxs          : in std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0) := (others => '0');
     -- Debug JTAG
     trst          : in std_ulogic           := '1';
     tck           : in std_ulogic;
@@ -129,18 +146,18 @@ architecture rtl of noelvcore is
 
   constant ncpu     : integer := CFG_LOCAL_NCPU;
 
-  constant nextmst  : integer := 2;
+  constant nextmst  : integer := ncpu + 6;
 
-  constant nextslv  : integer := 3
+  constant nextslv  : integer := 8
 -- pragma translate_off
   + 1
 -- pragma translate_on
   ;
 
-  constant ndbgmst  : integer := 3 + CFG_LOCAL_AHB_JTAG_RV
+  constant ndbgmst  : integer := 7
   ;
 
-  constant mig_hindex : integer := 2
+  constant mig_hindex : integer := 7
 -- pragma translate_off
   + 1
 -- pragma translate_on
@@ -152,6 +169,15 @@ architecture rtl of noelvcore is
     4 => ahb_membar(L2C_HADDR, '1', '1', L2C_HMASK),
     others => zero32);
 
+  -- SpaceWire TX CLK frequency in KHz
+  constant SPW_CLKFREQ : integer := 200000;
+  
+  -- SPW clock divisor value used during initialisation and as reset value
+  -- for for the clock divisor register. The tx clock frequency is:
+  -- (input spw clock) / (clock divisor value + 1)
+  constant SPW_CLKDIV10 : std_logic_vector(7 downto 0) :=
+    conv_std_logic_vector(SPW_CLKFREQ/10000 - 1, 8);
+  constant SPWINSTID : integer := 0;
   -- Signals --------------------------
 
   -- Misc
@@ -170,6 +196,7 @@ architecture rtl of noelvcore is
   signal ahbsi      : ahb_slv_in_type;
   signal ahbso      : ahb_slv_out_vector := (others => ahbs_none);
   signal ahbmi      : ahb_mst_in_type;
+  signal ahbmi_none : ahb_mst_in_type;
   signal ahbmo      : ahb_mst_out_vector := (others => ahbm_none);
   signal dbgmi      : ahb_mst_in_vector_type(ndbgmst-1 downto 0);
   signal dbgmo      : ahb_mst_out_vector_type(ndbgmst-1 downto 0);
@@ -178,6 +205,11 @@ architecture rtl of noelvcore is
   signal mem_ahbso  : ahb_slv_out_vector := (others => ahbs_none);
   signal mem_ahbmi  : ahb_mst_in_type;
   signal mem_ahbmo  : ahb_mst_out_vector := (others => ahbm_none);
+  -- APB buses
+  signal apb0i            : apb_slv_in_type;
+  signal apb0o            : apb_slv_out_vector;
+  signal apb1i            : apb_slv_in_type;
+  signal apb1o            : apb_slv_out_vector;
 
   -- Memory
   signal axi3_aximo : axi3_mosi_type;
@@ -192,6 +224,62 @@ architecture rtl of noelvcore is
   -- Ethernet
   signal ethi_int   : eth_in_type;
 
+  --GRCANFD
+  signal ahbmi_canfd0     : ahb_mst_in_vector_type  (1 downto 0);
+  signal ahbmo_canfd0     : ahb_mst_out_vector_type (1 downto 0);
+  signal ahbmi_canfd1     : ahb_mst_in_vector_type  (1 downto 0);
+  signal ahbmo_canfd1     : ahb_mst_out_vector_type (1 downto 0);
+  signal cani0            : canfd_in_type;
+  signal cano0            : canfd_out_type;
+  signal cani1            : canfd_in_type;
+  signal cano1            : canfd_out_type;
+  signal grcanfd0_cfg     : grcanfd_defcfg_type;
+  signal grcanfd1_cfg     : grcanfd_defcfg_type;
+
+  type grcanfd_bit_time_reg_type is record
+    nom_presc  : std_logic_vector(7 downto 0);  -- Prescaler
+    nom_ph1    : std_logic_vector(5 downto 0);  -- Prop + Ph1 segments
+    nom_ph2    : std_logic_vector(4 downto 0);  -- Ph2 segment
+    nom_sjw    : std_logic_vector(4 downto 0);  -- Synchronization Jump Width
+  end record;
+
+  type grcanfd_bit_time_arr_type is array (3 downto 0) of grcanfd_bit_time_reg_type;
+
+  constant GRCANFD_BIT_TIME_DEF : grcanfd_bit_time_arr_type := (("00000001","000001","00001","00001"),  -- bit rate 125kpbs ---TODO
+                                                              ("00000001","000001","00001","00001"),
+                                                              ("00000001","000001","00001","00001"),
+                                                              ("00000001","000001","00001","00001"));  -- bit rate 1Mbps ---TODO
+
+  signal bit_time_aux_index : std_logic_vector ( 1 downto 0);
+  signal grcanfd_inputcfg0, grcanfd_inputcfg1 : grcanfd_defcfg_type;
+  signal grcanfd_bit_time_aux: grcanfd_bit_time_reg_type;
+
+  -- HSSL
+  signal ahbmi_vct : ahb_mst_in_vector_type(0 downto 0);
+
+  -- SpaceWire clocks
+  signal spw_clkl        : std_ulogic;
+  signal spw_clkln       : std_ulogic;
+  
+  -- SpaceWire router
+  signal sahbmo           : spw_ahb_mst_out_vector(0 to CFG_SPWRTR_AMBAPORTS-CFG_SPWRTR_AMBAEN);
+  signal sahbmi           : spw_ahb_mst_in_vector(0 to CFG_SPWRTR_AMBAPORTS-CFG_SPWRTR_AMBAEN);
+  signal sapbo            : spw_apb_slv_out_vector(0 to CFG_SPWRTR_AMBAPORTS-CFG_SPWRTR_AMBAEN);
+  signal dtmp             : std_logic_vector(CFG_SPWRTR_SPWPORTS-CFG_SPWRTR_SPWEN downto 0);
+  signal stmp             : std_logic_vector(CFG_SPWRTR_SPWPORTS-CFG_SPWRTR_SPWEN downto 0);
+  signal di               : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal dvi              : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal dconnect         : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal dconnect2        : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal dconnect3        : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal do               : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal so               : std_logic_vector(CFG_SPWRTR_SPWPORTS*2-CFG_SPWRTR_SPWEN downto 0);
+  signal rxclko           : std_logic_vector(CFG_SPWRTR_SPWPORTS-CFG_SPWRTR_SPWEN downto 0);
+  signal txclk_array      : std_logic_vector(CFG_SPWRTR_SPWPORTS-CFG_SPWRTR_SPWEN downto 0);
+  signal txclkn_array     : std_logic_vector(CFG_SPWRTR_SPWPORTS-CFG_SPWRTR_SPWEN downto 0);
+  signal ri               : grspw_router_in_type;
+  signal ro               : grspw_router_out_type;
+  
 
   -- Attributes -----------------------
 
@@ -250,10 +338,7 @@ begin
       ahbtrace  => 0,
       cfg       => CFG_LOCAL_CFG,
       devid     => devid,
-      nodbus    => CFG_LOCAL_NODBUS,
-      tohost    => tohost,
-      fromhost  => fromhost,
-      htif      => htif
+      nodbus    => CFG_LOCAL_NODBUS
       )
     port map(
       clk       => clkm, -- : in  std_ulogic;
@@ -312,7 +397,7 @@ begin
   end generate;
 
   nouah : if CFG_AHB_UART = 0 generate
-    apbo(1)    <= apb_none;
+    apbo(AHBUART_PINDEX)    <= apb_none;
     duo.txd    <= '0';
     duo.rtsn   <= '0';
     dui.extclk <= '0';
@@ -347,11 +432,16 @@ begin
   ahbjtagrvgen0 : if CFG_LOCAL_AHB_JTAG_RV = 1 generate
     ahbjtag0 : ahbjtagrv
       generic map(
-        tech    => 0,
-        hindex  => JTAG_RV_DM_HMINDEX,
-        idcode  => 1,
-        ainst   => 16,
-        dinst   => 17)
+        tech      => fabtech,
+        dtm_sel   => 1,
+        tapopt    => 1,
+        hindex_gr => JTAGRV0_DM_HMINDEX,
+        hindex_rv => JTAGRV1_DM_HMINDEX,
+        idcode    => 9,
+        ainst_gr  => 2,
+        dinst_gr  => 3,
+        ainst_rv  => 16,
+        dinst_rv  => 17)
       port map(
         rst       => rstn,
         clk       => clkm,
@@ -359,8 +449,10 @@ begin
         tms       => jtag_rv_tms,
         tdi       => jtag_rv_tdi,
         tdo       => jtag_rv_tdo,
-        ahbi      => dbgmi(JTAG_RV_DM_HMINDEX),
-        ahbo      => dbgmo(JTAG_RV_DM_HMINDEX),
+        ahbi_gr   => dbgmi(JTAGRV0_DM_HMINDEX),
+        ahbo_gr   => dbgmo(JTAGRV0_DM_HMINDEX),
+        ahbi_rv   => dbgmi(JTAGRV1_DM_HMINDEX),
+        ahbo_rv   => dbgmo(JTAGRV1_DM_HMINDEX),
         tapo_tck  => open,
         tapo_tdi  => open,
         tapo_inst => open,
@@ -379,7 +471,8 @@ begin
   no_ahbjtagrvgen0 : if CFG_LOCAL_AHB_JTAG_RV = 0 generate
     jtag_rv_tdo <= '0';
     -- pragma translate_off
-    dbgmo(JTAG_RV_DM_HMINDEX) <= ahbm_none;
+    dbgmo(JTAGRV0_DM_HMINDEX) <= ahbm_none;
+    dbgmo(JTAGRV1_DM_HMINDEX) <= ahbm_none;
     -- pragma translate_on
   end generate;
 
@@ -394,33 +487,58 @@ begin
 
   axi_gen : if (CFG_L2_AXI = 1) generate
     gen_l2c : if CFG_L2_EN /= 0 generate
-      l2c0 : l2c_axi_be
-        generic map (
-          hslvidx   => L2C_HSINDEX,
-          axiid     => 0,
-          cen       => CFG_L2_PEN,
-          haddr     => L2C_HADDR,
-          hmask     => L2C_HMASK,
-          ioaddr    => L2C_IOADDR,
-          cached    => CFG_L2_MAP,
-          repl      => CFG_L2_RAN,
-          ways      => CFG_L2_WAYS,
-          linesize  => CFG_L2_LSZ,
-          waysize   => CFG_L2_SIZE,
-          memtech   => memtech,
-          sbus      => 0,
-          mbus      => 0,
-          arch      => CFG_L2_SHARE,
-          ft        => CFG_L2_EDAC,
-          stat      => 2)
+      l2_std : if CFG_L2_LITE = 0 generate
+        l2c0 : l2c_axi_be
+          generic map (
+            hslvidx   => L2C_HSINDEX,
+            axiid     => 0,
+            cen       => CFG_L2_PEN,
+            haddr     => L2C_HADDR,
+            hmask     => L2C_HMASK,
+            ioaddr    => L2C_IOADDR,
+            cached    => CFG_L2_MAP,
+            repl      => CFG_L2_RAN,
+            ways      => CFG_L2_WAYS,
+            linesize  => CFG_L2_LSZ,
+            waysize   => CFG_L2_SIZE,
+            memtech   => memtech,
+            sbus      => 0,
+            mbus      => 0,
+            arch      => CFG_L2_SHARE,
+            ft        => CFG_L2_EDAC,
+            stat      => 2)
+          port map(
+            rst   => rstn,
+            clk   => clkm,
+            ahbsi => ahbsi,
+            ahbso => ahbso(L2C_HSINDEX),
+            aximi => mem_aximi,
+            aximo => mem_aximo,
+            sto   => open);
+      end generate;
+      l2_lite : if CFG_L2_LITE = 1 generate
+        l2c_lite0 : l2c_lite_axi3
+        generic map(
+          tech     => memtech,
+          hmindex  => 0,
+          hsindex  => L2C_HSINDEX,
+          ways     => CFG_L2_WAYS,
+          waysize  => CFG_L2_SIZE,
+          linesize => CFG_L2_LSZ,
+          repl     => 0,
+          haddr    => L2C_HADDR,
+          hmask    => L2C_HMASK,
+          ioaddr   => L2C_IOADDR,
+          cached   => CFG_L2_MAP,
+          be_dw    => AHBDW)
         port map(
-          rst   => rstn,
-          clk   => clkm,
-          ahbsi => ahbsi,
-          ahbso => ahbso(L2C_HSINDEX),
-          aximi => mem_aximi,
-          aximo => mem_aximo,
-          sto   => open);
+          rstn     => rstn,
+          clk      => clkm,
+          ahbsi    => ahbsi,
+          ahbso    => ahbso(L2C_HSINDEX),
+          aximi    => mem_aximi,
+          aximo    => mem_aximo);
+      end generate;
     end generate;
     nogen_l2c : if CFG_L2_EN = 0 generate
       bridge: ahb2axi3b
@@ -473,35 +591,62 @@ begin
   end generate;
   noaxi_gen : if (CFG_L2_AXI = 0) generate
     gen_l2c : if CFG_L2_EN /= 0 generate
-      l2c0 : l2c
-        generic map (
-          hslvidx   => L2C_HSINDEX,
-          hmstidx   => 0,
-          cen       => CFG_L2_PEN,
-          haddr     => L2C_HADDR,
-          hmask     => L2C_HMASK,
-          ioaddr    => L2C_IOADDR,
-          cached    => CFG_L2_MAP,
-          repl      => CFG_L2_RAN,
-          ways      => CFG_L2_WAYS,
-          linesize  => CFG_L2_LSZ,
-          waysize   => CFG_L2_SIZE,
-          memtech   => memtech,
-          bbuswidth => CFG_LOCAL_L2C_BBWIDTH,
-          bioaddr   => 16#FFD#,
-          biomask   => 16#fff#,
-          sbus      => 0,
-          mbus      => 1,
-          arch      => CFG_L2_SHARE,
-          ft        => CFG_L2_EDAC)
-        port map(
-          rst     => rstn,
-          clk     => clkm,
-          ahbsi   => ahbsi,
-          ahbso   => ahbso(L2C_HSINDEX),
-          ahbmi   => mem_ahbmi,
-          ahbmo   => mem_ahbmo(0),
-          ahbsov  => mem_ahbso);
+      l2_std : if CFG_L2_LITE = 0 generate
+        l2c0 : l2c
+          generic map (
+            hslvidx   => L2C_HSINDEX,
+            hmstidx   => 0,
+            cen       => CFG_L2_PEN,
+            haddr     => L2C_HADDR,
+            hmask     => L2C_HMASK,
+            ioaddr    => L2C_IOADDR,
+            cached    => CFG_L2_MAP,
+            repl      => CFG_L2_RAN,
+            ways      => CFG_L2_WAYS,
+            linesize  => CFG_L2_LSZ,
+            waysize   => CFG_L2_SIZE,
+            memtech   => memtech,
+            bbuswidth => CFG_LOCAL_L2C_BBWIDTH,
+            bioaddr   => 16#FFD#,
+            biomask   => 16#fff#,
+            sbus      => 0,
+            mbus      => 1,
+            arch      => CFG_L2_SHARE,
+            ft        => CFG_L2_EDAC)
+          port map(
+            rst     => rstn,
+            clk     => clkm,
+            ahbsi   => ahbsi,
+            ahbso   => ahbso(L2C_HSINDEX),
+            ahbmi   => mem_ahbmi,
+            ahbmo   => mem_ahbmo(0),
+            ahbsov  => mem_ahbso);
+      end generate;
+      l2_lite : if CFG_L2_LITE = 1 generate
+        l2c_lite0 : l2c_lite_ahb
+          generic map(
+            tech     => memtech,
+            hmindex  => 0,
+            hsindex  => L2C_HSINDEX,
+            ways     => CFG_L2_WAYS,
+            waysize  => CFG_L2_SIZE,
+            linesize => CFG_L2_LSZ,
+            repl     => 0,
+            haddr    => L2C_HADDR,
+            hmask    => L2C_HMASK,
+            ioaddr   => L2C_IOADDR,
+            bioaddr  => 16#FFD#,
+            biomask  => 16#fff#,
+            cached   => CFG_L2_MAP,
+            be_dw    => AHBDW)
+          port map(
+            rstn     => rstn,
+            clk      => clkm,
+            ahbsi    => ahbsi,
+            ahbso    => ahbso(L2C_HSINDEX),
+            ahbmi    => mem_ahbmi,
+            ahbmo    => mem_ahbmo(0) );
+      end generate;
 
       ahb_men : ahbctrl                -- AHB arbiter/multiplexer
         generic map (
@@ -751,5 +896,467 @@ begin
       ahbsi,
       ahbso(AHBREP_HSINDEX));
 -- pragma translate_on
+
+
+  -----------------------------------------------------------------------
+  ---  APB/AHB Bridges  -------------------------------------------------
+  -----------------------------------------------------------------------
+  apb0 : apbctrl                       
+    generic map (
+      hindex      => APB0_HSINDEX,
+      haddr       => 16#FF4#,
+      hmask       => 16#fff#,
+      nslaves     => 2,
+      debug       => 2,
+      icheck      => 1,
+      enbusmon    => 0,
+      asserterr   => 0,
+      assertwarn  => 0,
+      pslvdisable => 0,
+      mcheck      => 1,
+      ccheck      => 1)
+    port map (
+      rst         => rstn,
+      clk         => clkm,
+      ahbi        => ahbsi,
+      ahbo        => ahbso(APB0_HSINDEX),
+      apbi        => apb0i,
+      apbo        => apb0o);
+
+  unused_apb0 : for i in CFG_LOCAL_GRCANFD0 + CFG_LOCAL_GRCANFD1  to NAPBSLV-1 generate
+    apb0o(i) <= apb_none;
+  end generate;
+
+  apb1 : apbctrl                        -- AHB/APB bridge 4
+    generic map (
+      hindex      => APB1_HSINDEX,
+      haddr       => 16#FF5#,
+      hmask       => 16#fff#,
+      nslaves     => 2,
+      debug       => 2,
+      icheck      => 1,
+      enbusmon    => 0,
+      asserterr   => 0,
+      assertwarn  => 0,
+      pslvdisable => 0,
+      mcheck      => 1,
+      ccheck      => 1)
+    port map (
+      rst         => rstn,
+      clk         => clkm,
+      ahbi        => ahbsi,
+      ahbo        => ahbso(APB1_HSINDEX),
+      apbi        => apb1i,
+      apbo        => apb1o);
+
+  unused_apb1 : for i in CFG_SPWRTR_AMBAPORTS*CFG_SPWRTR_AMBAEN  to NAPBSLV-1 generate
+    apb1o(i) <= apb_none;
+  end generate;
+
+  -----------------------------------------------------------------------
+  ---  GRCANFD ----------------------------------------------------------
+  -----------------------------------------------------------------------
+  can0: if CFG_LOCAL_GRCANFD0 = 1  generate
+
+    ahbmi_canfd0(0)      <= ahbmi;
+    ahbmo(CANFD0_HMINDEX)  <= ahbmo_canfd0(0);
+    ahbmi_canfd0(1)      <= dbgmi(CANFD0_DM_HMINDEX);
+    dbgmo(CANFD0_DM_HMINDEX)  <= ahbmo_canfd0(1);
+
+    grcanfd0_cfg <= GRCANFD_CFG_NULL;
+    
+    grcanfd0 : grcanfd_ahb
+      generic map(
+        hindex         => CANFD0_HMINDEX,
+        pindex         => 0,
+        paddr          => CANFD0_PADDR,
+        pmask          => CANFD0_PMASK,
+        canopen        => 1,
+        sepbus         => 1,
+        hindexcopen    => CANFD0_DM_HMINDEX,
+        pirq           => CANFD0_PIRQ,
+        singleirq      => 1,
+        txbufsize      => 2,
+        rxbufsize      => 2)
+      port map(
+        clk            => clkm,
+        rstn           => rstn,
+        ahbmi          => ahbmi_canfd0,
+        ahbmo          => ahbmo_canfd0,
+        apbi           => apb0i,
+        apbo           => apb0o(0),
+        cani           => cani0,
+        cano           => cano0,
+        cfg            => grcanfd_inputcfg0
+        );
+
+    can0_tx     <= cano0.tx(0) ;
+    cani0.rx    <= can0_rx & can0_rx;
+
+  end generate can0;
+
+  nocan0 : if CFG_LOCAL_GRCANFD0 = 0 generate
+    cano0 <= (tx => "11", en => "00");
+    can0_tx <= '1';
+    ahbmo(CANFD0_HMINDEX)     <= ahbm_none;
+    dbgmo(CANFD0_DM_HMINDEX)  <= ahbm_none;
+  end generate; 
+
+  can1: if CFG_LOCAL_GRCANFD1 = 1  generate
+
+    ahbmi_canfd1(0)      <= ahbmi;
+    ahbmo(CANFD1_HMINDEX)  <= ahbmo_canfd1(0) ;
+    ahbmi_canfd1(1)      <= dbgmi(CANFD1_DM_HMINDEX);
+    dbgmo(CANFD1_DM_HMINDEX)  <= ahbmo_canfd1(1);
+
+    grcanfd1_cfg <= GRCANFD_CFG_NULL;
+    
+    grcanfd1 : grcanfd_ahb
+      generic map(
+        hindex         => CANFD1_HMINDEX,
+        pindex         => 1,
+        paddr          => CANFD1_PADDR,
+        pmask          => CANFD1_PMASK,
+        pirq           => CANFD1_PIRQ,
+        canopen        => 1,
+        sepbus         => 1,
+        hindexcopen    => CANFD1_DM_HMINDEX,
+        singleirq      => 1,
+        txbufsize      => 2,
+        rxbufsize      => 2)
+      port map(
+        clk            => clkm,
+        rstn           => rstn,
+        ahbmi          => ahbmi_canfd1,
+        ahbmo          => ahbmo_canfd1,
+        apbi           => apb0i,
+        apbo           => apb0o(1),
+        cani           => cani1,
+        cano           => cano1,
+        cfg            => grcanfd_inputcfg1
+        );
+
+    can1_tx     <= cano1.tx(0) ;
+    cani1.rx    <= can1_rx & can1_rx;
+    
+  end generate can1;
+  
+  nocan1 : if CFG_LOCAL_GRCANFD1 = 0 generate
+    cano1 <= (tx => "11", en => "00");
+    can1_tx <= '1';
+    ahbmo(CANFD1_HMINDEX)     <= ahbm_none;
+    dbgmo(CANFD1_DM_HMINDEX)  <= ahbm_none;
+  end generate;
+
+    grcanfd_inputcfg0.en_codec   <=     '0';
+    grcanfd_inputcfg0.en_canopen <=     '1';
+    grcanfd_inputcfg0.node_id(6 downto 0)    <= "0000000";
+    grcanfd_inputcfg0.line_sel <= '0';
+    grcanfd_inputcfg0.en_out0  <= '1';
+    grcanfd_inputcfg0.en_out1  <= '1';
+
+    bit_time_aux_index <= "00";
+
+    grcanfd_bit_time_aux         <= GRCANFD_BIT_TIME_DEF(to_integer(unsigned(bit_time_aux_index)));
+
+    grcanfd_inputcfg0.nom_presc  <= grcanfd_bit_time_aux.nom_presc;
+    grcanfd_inputcfg0.nom_ph1    <= grcanfd_bit_time_aux.nom_ph1;
+    grcanfd_inputcfg0.nom_ph2    <= grcanfd_bit_time_aux.nom_ph2;
+    grcanfd_inputcfg0.nom_sjw    <= grcanfd_bit_time_aux.nom_sjw;
+
+    grcanfd_inputcfg1.en_codec   <=     '0';
+    grcanfd_inputcfg1.en_canopen <=     '1';
+    grcanfd_inputcfg1.node_id(6 downto 0)    <= "0000001";
+    grcanfd_inputcfg1.line_sel <= '0';
+    grcanfd_inputcfg1.en_out0  <= '1';
+    grcanfd_inputcfg1.en_out1  <= '1';
+
+    bit_time_aux_index <= "00";
+
+    grcanfd_bit_time_aux         <= GRCANFD_BIT_TIME_DEF(to_integer(unsigned(bit_time_aux_index)));
+
+    grcanfd_inputcfg1.nom_presc  <= grcanfd_bit_time_aux.nom_presc;
+    grcanfd_inputcfg1.nom_ph1    <= grcanfd_bit_time_aux.nom_ph1;
+    grcanfd_inputcfg1.nom_ph2    <= grcanfd_bit_time_aux.nom_ph2;
+    grcanfd_inputcfg1.nom_sjw    <= grcanfd_bit_time_aux.nom_sjw;
+
+  ----------------------------------------------------------------------
+  --- High Speed Serial Link -------------------------------------------
+  ----------------------------------------------------------------------
+
+  hssl0 : if CFG_HSSL_EN = 1 generate
+
+    gen_hssl_core : for i in 0 to 1 generate
+      
+
+      -- HSSL IP
+      hssl_core : grspfi_ahb
+        generic map (
+          tech               => memtech,
+          hmindex            => HSSL0_HMINDEX+i,
+          hsindex            => HSSL0_HSINDEX+i,
+          haddr              => HSSL_HADDR + i*16#010#,
+          hmask              => HSSL_HMASK,
+          hirq               => HSSL0_PIRQ + i,
+          use_8b10b          => 1,
+          use_sep_txclk      => 0,
+          sel_16_20_bit_mode => 0,
+          ticks_2us          => 125,
+          tx_skip_freq       => 5000,
+          prbs_init1         => 1,
+          depth_rbuf_data    => 8,
+          depth_rbuf_fct     => 4,
+          depth_rbuf_bc      => 4,
+          num_vc             => 2,
+          fct_multiplier     => 1,
+          depth_vc_rx_buf    => 10,
+          depth_vc_tx_buf    => 10,
+          remote_fct_cnt_max => 9,
+          width_bw_credit    => 20,
+          min_bw_credit      => 52428,
+          idle_time_limit    => 62500,
+          num_dmach          => 1,
+          num_txdesc         => 256,
+          num_rxdesc         => 512,
+          depth_dma_fifo     => 32,
+          depth_bc_fifo      => 4,
+          use_async_rxrst    => 1)
+        port map (
+          clk        => clkm,
+          rstn       => rstn,
+          spfi_clk   => hssl_clk,
+          spfi_rstn  => hssl_rstn,
+          spfi_txclk => '0', -- unused (40-bit SerDes interface)
+          -- AHB interface
+          ahbmi      => ahbmi_vct,
+          ahbmo      => ahbmo(HSSL0_HMINDEX+i downto HSSL0_HMINDEX+i),
+          ahbsi      => ahbsi,
+          ahbso      => ahbso(HSSL0_HSINDEX+i),
+          -- Serdes interface
+          spfii      => hssli(i),
+          spfio      => hsslo(i)
+          );
+
+    end generate;
+
+    ahbmi_vct(0) <= ahbmi;
+
+  end generate;
+
+
+  -----------------------------------------------------------------------------
+  -- SpaceWire Router ---------------------------------------------------------
+  -----------------------------------------------------------------------------
+
+  --Since the resets and clockgate are generated internally in the wrapper,
+  --the only element from TXCLK and TXCLKN to be used is the bit '0' (spw_clk).
+  --The others remain unconnected
+  
+  txclk_array(0)                            <= clkm;
+  spw_clkl                                  <= clkm;
+  txclkn_array(0)                           <= '0';
+  txclk_array(CFG_SPWRTR_SPWPORTS-1 downto 1)  <= (others => '0');
+  txclkn_array(CFG_SPWRTR_SPWPORTS-1 downto 1) <= (others => '0');
+
+  
+
+  spwrtr : if CFG_SPWRTR_ENABLE /= 0 generate
+    -- Physical layer
+    phy_loop : for i in 0 to CFG_SPWRTR_SPWPORTS-1 generate
+      spw_phy0 : grspw2_phy 
+        generic map(
+          scantest     => 0,
+          tech         => fabtech,
+          input_type   => CFG_SPWRTR_INPUT,
+          rxclkbuftype => 1)
+        port map(
+          rstn       => rstn,
+          rxclki     => spw_clkl,
+          rxclkin    => spw_clkln,
+          nrxclki    => spw_clkl,
+          di         => dtmp(i),
+          si         => stmp(i),
+          do         => di(2*i+1 downto 2*i),
+          dov        => dvi(2*i+1 downto 2*i),
+          dconnect   => dconnect(2*i+1 downto 2*i),
+          dconnect2  => dconnect2(2*i+1 downto 2*i),
+          dconnect3  => dconnect3(2*i+1 downto 2*i),
+          rxclko     => rxclko(i),
+          testrst    => '0',
+          testen     => '0');
+      noloopb : if CFG_LOCAL_SPWRTR_LOOP_BACK = 0 generate
+        dtmp(i)    <= spw_rxd(i);
+        stmp(i)    <= spw_rxs(i);
+        spw_txd(i) <= do(2*i);
+        spw_txs(i) <= so(2*i);
+      end generate noloopb;
+      loopb : if CFG_LOCAL_SPWRTR_LOOP_BACK /= 0 generate
+        dtmp(CFG_SPWRTR_SPWPORTS-1-i) <= do(2*i);
+        stmp(CFG_SPWRTR_SPWPORTS-1-i) <= so(2*i);
+        spw_txd(i) <= '0';
+        spw_txs(i) <= '0';
+      end generate loopb;
+      
+    end generate phy_loop;
+    
+    
+    router0 : grspwrouterm
+      generic map (
+        input_type   => CFG_SPWRTR_INPUT,
+        output_type  => CFG_SPWRTR_OUTPUT,
+        rxtx_sameclk => CFG_SPWRTR_RTSAME,
+        fifosize     => CFG_SPWRTR_RXFIFO,
+        tech         => memtech,
+        scantest     => 0,
+        techfifo     => CFG_SPWRTR_TECHFIFO,
+        ft           => CFG_SPWRTR_FT,
+        spwen        => 1,              -- Enable spacewire ports
+        ambaen       => 1,              -- Enable AMBA interfaces
+        fifoen       => 0,              -- Disable FIFO interfaces
+        spwports     => CFG_SPWRTR_SPWPORTS,
+        ambaports    => CFG_SPWRTR_AMBAPORTS,  -- Number of AMBA ports
+        fifoports    => 0,              -- Number of FIFO ports
+        arbitration  => CFG_SPWRTR_ARB,
+        rmap         => CFG_SPWRTR_RMAP,
+        rmapcrc      => CFG_SPWRTR_RMAPCRC,
+        fifosize2    => CFG_SPWRTR_FIFO2,
+        almostsize   => 1,              -- Only used for FIFO ports
+        rxunaligned  => CFG_SPWRTR_RXUNAL,
+        rmapbufs     => CFG_SPWRTR_RMAPBUF,
+        dmachan      => CFG_SPWRTR_DMACHAN,
+        hindex       => SPW_HMINDEX,              -- Starting index
+        pindex       => 0,             -- Starting index
+        paddr        => SPW_PADDR,-- Starting base address
+        pmask        => SPW_PMASK,
+        pirq         => SPW_PIRQ, -- Starting IRQ
+        ahbslven     => 1,              -- Disabled AMBA port
+        cfghindex    => SPW_HSINDEX,
+        cfghaddr     => SPW_HADDR,
+        cfghmask     => SPW_HMASK,
+        timerbits    => CFG_SPWRTR_TIMERBITS,
+        pnp          => CFG_SPWRTR_PNP,
+        autoscrub    => CFG_SPWRTR_AUTOSCRUB,
+        sim          => 0,              -- Simulation mode, not used
+        dualport     => 0,
+        charcntbits  => 0,              -- Character counters disabled
+        pktcntbits   => 0,              -- Packet counters disabled
+        prescalermin => 250,            -- Minimum value for writes to reload reg
+        spacewired   => 1,
+        interruptdist => 2,
+        apbctrl      => 0,
+        rmapmaxsize  => 4,
+        gpolbits     => 0,
+        gpopbits     => 0,
+        gpibits      => 0,
+        customport   => 0,
+        codecclkgate => 0,
+        inputtest    => 0,
+        spwpnpvendid => 3,
+        spwpnpprodid => 16#060#,
+        porttimerbits => CFG_SPWRTR_TIMERBITS,
+        irqtimerbits => CFG_SPWRTR_TIMERBITS,
+        auxtimeen    => 1,
+        num_txdesc   => 64,
+        num_rxdesc   => 128,
+        auxasync     => 0)
+      port map(
+        rst          => rstn,
+        clk          => clkm,
+        rst_codec    => (others => '0'), -- Resets generated internally
+        clk_codec    => (others => '0'), -- Clockgate generated internally
+        rxasyncrst   => (others => '0'), -- Resets generated internally
+        rxsyncrst    => (others => '0'), -- Resets generated internally
+        rxclk        => rxclko,
+        txsyncrst    => (others => '0'), -- Resets generated internally
+        txclk        => txclk_array,     -- Only the element 0 will be used (spw_clkl)
+        txclkn       => txclkn_array,    -- Only the element 0 will be used (spw_clkln)
+        testen       => '0',
+        testrst      => '0',
+        scanen       => '0',
+        testoen      => '0',
+        di           => di, 
+        dvi          => dvi,
+        dconnect     => dconnect,
+        dconnect2    => dconnect2,
+        dconnect3    => dconnect3,
+        do           => do,
+        so           => so,
+        ahbmi        => sahbmi,
+        ahbmo        => sahbmo,
+        apbi         => apb1i,
+        apbo         => sapbo,
+        ahbsi        => ahbsi,
+        ahbso        => ahbso(SPW_HSINDEX),
+        ri           => ri,
+        ro           => ro
+        );
+
+    sahbmi <= (others => ahbmi);
+
+    ahbspw: for i in 0 to CFG_SPWRTR_AMBAPORTS-CFG_SPWRTR_AMBAEN generate
+      ahbmo(SPW_HMINDEX+i)  <= sahbmo(i);
+      apb1o(i)    <= sapbo(i);
+    end generate;
+    
+    -- grspwrouter is configured at implementation time by the VHDL generic
+    -- settings above, some configuration is also made via signals:
+    -- RMAP is always enabled after reset:
+    ri.rmapen       <= (others => '1');
+    -- Initialization divisor value for the SpaceWire links:
+    ri.idivisor     <= SPW_CLKDIV10;
+    -- Drive FIFO interface signals:
+    ri.txwrite      <= (others => '0');
+    ri.txchar       <= (others => (others => '0'));
+    ri.rxread       <= (others => '0');
+    -- Per-port tick inputs are not used
+    ri.tickin       <= (others => '0');
+    ri.timein       <= (others => (others => '0'));
+    -- Prescaler default reload value, needs to
+    -- be initialized by external entity:
+    ri.reload       <= (others => '1');
+    -- Individual time default reload value:
+    ri.reloadn      <= (others => '1');
+    ri.timeren      <= '1';
+    -- Enable time-code functionality:
+    ri.timecodeen   <= '1';
+    -- Lock configuration port accesses from all ports except port 1:
+    ri.cfglock      <= '0';
+    -- Reset value for selfaddren register bit:
+    ri.selfaddren   <= '0';
+    -- Reset value for the linkstarteq register bit
+    ri.linkstartreq <= (others => '0');
+    -- Resetvalue for the autodconnect register bit
+    ri.autodconnect <= (others => '0');
+    -- Instance ID
+    ri.instanceid(7 downto 2) <= conv_std_logic_vector(SPWINSTID, 6);
+    ri.instanceid(1) <= '0';
+    ri.instanceid(0) <= '0';
+    --
+    ri.enbridge     <= (others => '0');
+    ri.enexttime    <= (others => '0');
+    ri.auxtickin        <= '0';
+    ri.auxtimeinen      <= '0';
+    ri.auxtimein        <= (others => '0');
+    ri.irqtimeoutreload <= (others => '1');
+    ri.ahbso            <= ahbs_none;
+    ri.interruptcodeen  <= '0';
+    ri.pnpen            <= '1';
+    ri.timecodefilt     <= '0';
+    ri.interruptfwd     <= '0';
+    ri.spillifnrdy      <= (others => '0');
+    ri.timecoderegen    <= '1';
+    ri.gpi              <= (others => '0');
+    ri.staticrouteen    <= '1';
+    ri.spwclklock       <= '1';
+    ri.irqgenreload     <= (others => '0');
+    ri.interruptmode    <= '0';
+    -- input timing testing
+    ri.testd            <= (others => '0');
+    ri.tests            <= (others => '0');
+    ri.testinput        <= '0';
+  end generate spwrtr;
+
+
+
 
 end rtl;

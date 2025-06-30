@@ -53,7 +53,7 @@ entity axi2ahb is
     sub_bus_width_address_inversion : integer range 0 to 1 := 0;
     mask        : integer               := 16#000#;
     vendorid    : integer               := VENDOR_GAISLER;
-    deviceid    : integer               := 0;
+    deviceid    : integer               := GAISLER_AXI2AHB;
     scantest    : integer               := 0;
     memory_ft   : integer               := 0 -- Memory fault tolerance
   );
@@ -372,8 +372,6 @@ architecture rtl of axi2ahb is
     burst       : std_logic_vector(1 downto 0);
     bresp       : std_logic_vector(1 downto 0);
     bvalid      : std_ulogic;
-    awready     : std_ulogic;
-    arready     : std_ulogic;
     -- AHB Master Interface Signals
     hwdata      : std_logic_vector(dw - 1 downto 0);
     hwdata_p1   : std_logic_vector(dw - 1 downto 0);
@@ -431,8 +429,6 @@ architecture rtl of axi2ahb is
     burst           => (others => '0'),
     bresp           => (others => '0'),
     bvalid          => '0',
-    awready         => '1',
-    arready         => '1',
     -- AHB Signals
     hwdata          => (others => '0'),
     hwdata_p1       => (others => '0'),
@@ -569,6 +565,8 @@ begin
     variable burst_length : unsigned(8 downto 0);
     variable wready_i : std_ulogic;
     variable dummy : std_logic_vector(dw/8 - 1 downto 0);
+    variable awready : std_ulogic;
+    variable arready : std_ulogic;
   begin
     v := r;
 
@@ -579,6 +577,8 @@ begin
     strobe_offset := 0;
     burst_length := (others => '0');
     wready_i := '0';
+    awready := '0';
+    arready := '0';
     -- Avoid reset glitches causing to_integer metavalue warnings in simulation with pragmas.
     -- pragma translate_off
     if r.state /= idle then
@@ -592,8 +592,8 @@ begin
     case r.state is
       when idle =>
         -- AXI4 signals
-        v.awready       := '1';
-        v.arready       := '1';
+        awready         := '1';
+        arready         := not axisi.aw.valid; -- Prioritize writes.
         v.bvalid        := '0';
         v.bresp         := (others => '0');
         -- Bridge control signals
@@ -609,8 +609,6 @@ begin
         -- Check for a read
         if axisi.ar.valid = '1' then
           -- AXI4 Signals
-          v.arready     := '0';
-          v.awready     := '0';
           v.id          := axisi.ar.id;
           v.len         := unsigned(axisi.ar.len) + to_unsigned(1, r.len'length);
           v.size        := axisi.ar.size;
@@ -631,8 +629,6 @@ begin
         -- Check for a write
         if axisi.aw.valid = '1' then
           -- AXI4 signals
-          v.awready     := '0';
-          v.arready     := '0';
           v.bresp       := XRESP_OKAY;
           -- Sample AXI control signals
           v.id          := axisi.aw.id;
@@ -897,8 +893,6 @@ begin
           v.bvalid := '0';
           v.wp0.wlast := '0';
           v.state := idle;
-          v.awready := '1';
-          v.arready := '1';
         end if;
 
       when read_start_burst =>
@@ -1065,8 +1059,6 @@ begin
               v.hvalid := '0';
 
               v.state := idle;
-              v.awready := '1';
-              v.arready := '1';
               v.hbusreq := '0';
             end if;
           -- Lost bus access
@@ -1103,8 +1095,6 @@ begin
         if r.bvalid = '1' and axisi.b.ready = '1' then
           v.bvalid := '0';
           v.state := idle;
-          v.awready := '1';
-          v.arready := '1';
         end if;
 
       when unsupported_read =>
@@ -1127,8 +1117,6 @@ begin
         if r.len = 0 then
           axiso.r.valid <= '0';
           v.state := idle;
-          v.awready := '1';
-          v.arready := '1';
         end if;
       when others => null;
     end case;
@@ -1159,8 +1147,8 @@ begin
       axiso.r.valid         <= not mem_empty;
       axiso.r.data(dw - 1 downto 0) <= mem_dout(dw - 1 downto 0);
     end if;
-    axiso.ar.ready        <= r.arready;
-    axiso.aw.ready        <= r.awready;
+    axiso.ar.ready        <= arready;
+    axiso.aw.ready        <= awready;
     axiso.b.resp          <= r.bresp;
     axiso.b.valid         <= r.bvalid;
     axiso.w.ready         <= wready;

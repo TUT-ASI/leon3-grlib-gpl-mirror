@@ -248,6 +248,7 @@ package nandfctrl2_pkg is
       NROFCH       : integer range 1 to MAX_CHANNELS := 8;
       NROFRB       : integer range 1 to MAX_RB       := 8;
       NROFSEFI     : integer range 0 to MAX_SEFI     := 1;
+      OEPOL        : integer range 0 to 1            := 0;
       SCANTEST     : integer range 0 to 1            := 0;
       SKEW_RX_MAX  : integer range 0 to 7            := 7;
       SKEW_TX_MAX  : integer range 0 to 7            := 7;
@@ -277,6 +278,7 @@ package nandfctrl2_pkg is
       NROFCH      : integer range 1 to MAX_CHANNELS := 8;
       NROFRB      : integer range 1 to MAX_RB       := 8;
       NROFSEFI    : integer range 0 to MAX_SEFI     := 1;
+      OEPOL       : integer range 0 to 1            := 0;
       SCANTEST    : integer range 0 to 1            := 0;
       SYNC_STAGES : integer range 0 to 3            := 0
       );

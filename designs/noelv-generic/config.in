@@ -69,6 +69,22 @@ comment 'Peripherals             '
 #    source lib/gaisler/spi/spictrl.in
 #  endmenu
 
+  mainmenu_option next_comment
+  comment 'SPW'
+    #source lib/gaisler/spacewire/spacewire.in
+    source lib/gaisler/spacewire/router.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'CANFD'
+    source lib/gaisler/canfd/grcanfd.in
+  endmenu
+
+  mainmenu_option next_comment
+  comment 'HSSL'
+    source lib/gaisler/hssl/hssl.in
+  endmenu
+
 endmenu
 
 mainmenu_option next_comment

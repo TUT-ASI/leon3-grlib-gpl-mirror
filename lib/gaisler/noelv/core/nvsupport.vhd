@@ -31,13 +31,16 @@ use ieee.numeric_std.all;
 library grlib;
 use grlib.riscv.all;
 use grlib.stdlib.log2;
+use grlib.stdlib.log2x;
 use grlib.stdlib.tost;
 use grlib.stdlib.tost_bits;
 use grlib.stdlib.orv;
 library gaisler;
+use gaisler.l5nv_shared.all;
 use gaisler.noelvtypes.all;
 use gaisler.noelv.XLEN;
 use gaisler.noelv.GEILEN;
+use gaisler.noelv.CAUSELEN;
 use gaisler.utilnv.to_bit;
 use gaisler.utilnv.cond;
 use gaisler.utilnv.get;
@@ -57,6 +60,7 @@ use gaisler.utilnv.all_1;
 use gaisler.utilnv.single_1;
 use gaisler.utilnv.minimum;
 use gaisler.utilnv.fit0ext;
+use gaisler.utilnv.hi_h;
 use gaisler.noelvint.nv_csr_in_type;
 use gaisler.noelvint.trace_type;
 use gaisler.noelvint.trace_rst;
@@ -65,6 +69,8 @@ use gaisler.noelvint.pmpaddr_vec_type;
 use gaisler.noelvint.pmp_precalc_type;
 use gaisler.noelvint.pmp_precalc_none;
 use gaisler.noelvint.pmp_precalc_vec;
+use gaisler.noelvint.atp_type;
+use gaisler.noelvint.atp_none;
 use gaisler.noelvint.csr_out_cctrl_type;
 use gaisler.noelvint.csr_out_cctrl_rst;
 use gaisler.noelvint.nv_bht_in_type;
@@ -80,7 +86,9 @@ package nvsupport is
   constant FUSELBITS   : integer := 14;
   subtype  fuseltype  is std_logic_vector(FUSELBITS - 1 downto 0);
 
-  subtype  category_t is std_logic_vector(10 downto 0);
+  subtype  hold_category_t is std_logic_vector(8 downto 0);
+  subtype  raw_category_t is std_logic_vector(5 downto 0);
+  subtype  waw_category_t is std_logic_vector(0 downto 0);
 
   type cfi_t is record
     lp : boolean;
@@ -294,7 +302,7 @@ package nvsupport is
   type csr_dfeaturesen_type is record
     tpbuf_en     : std_ulogic;   -- Include program buffer execution in trace/sim-disas
     nostream     : std_ulogic;   -- Do not make use of stream buffer for instruction fetch
-    mmu_adfault  : std_ulogic;   -- Take page fault on access/modify.
+    h_ade        : std_ulogic;   -- Take exception on hPT access/modify (disregarding menvcfg.adue).
     mmu_sptfault : std_ulogic;   -- Take page fault on any sPT walk.
     mmu_hptfault : std_ulogic;   -- Take page fault on any hPT walk.
     mmu_oldfence : std_ulogic;   -- Use old sfence/hfence implementation.
@@ -316,12 +324,16 @@ package nvsupport is
     b2bst_dis    : std_ulogic;
     fs_dirty     : std_ulogic;   -- Always mark FPU state as dirty, if FPU is enabled.
     dm_trace     : std_ulogic;   -- Force DM only access to trace buffer.
+    -- HPM Counters dependencies
+    hpmc_mode    : std_ulogic;   -- 0: Better performance; 1: Better accuracy
+    pma_fault_46    : std_ulogic; -- PMA Fault between 4 -> 6 GB
+    pma_fault_02    : std_ulogic; -- PMA Fault between 0 -> 2 GB
   end record;
 
   constant csr_dfeaturesen_rst : csr_dfeaturesen_type := (
     tpbuf_en     => '0',
     nostream     => '0',
-    mmu_adfault  => '0',
+    h_ade        => '0',
     mmu_sptfault => '0',
     mmu_hptfault => '0',
     mmu_oldfence => '0',
@@ -337,7 +349,10 @@ package nvsupport is
     lalu_dis     => '0',
     b2bst_dis    => '0',
     fs_dirty     => '0',
-    dm_trace     => '0'
+    dm_trace     => '0',
+    hpmc_mode    => '0',
+    pma_fault_46 => '0',
+    pma_fault_02 => '0'
     );
 
 
@@ -461,8 +476,13 @@ package nvsupport is
     aia      : std_ulogic;  -- 59
     imsic    : std_ulogic;  -- 58
     ctx      : std_ulogic;  -- 57
+    p1p13    : std_ulogic;  -- 56
+    p1p14    : std_ulogic;  -- 55
+    ctr      : std_ulogic;  -- 54
     -- Low 32 bits
-    -- no bits allocated so far
+    jvt      : std_ulogic;  -- 2
+    fcsr     : std_ulogic;  -- 1
+    c        : std_ulogic;  -- 0
   end record;
   constant csr_mstateen0_rst : csr_mstateen0_type := (
     stateen  => '0',
@@ -470,9 +490,42 @@ package nvsupport is
     iselect  => '0',
     aia      => '0',
     imsic    => '0',
-    ctx      => '0'
+    ctx      => '0',
+    p1p13    => '0',
+    p1p14    => '0',
+    ctr      => '0',
+    jvt      => '0',
+    fcsr     => '0',
+    c        => '0'
   );
 
+  type csr_hstateen0_type is record
+    -- High 32 bits
+    stateen  : std_ulogic;  -- 63
+    envcfg   : std_ulogic;  -- 62
+    iselect  : std_ulogic;  -- 60
+    aia      : std_ulogic;  -- 59
+    imsic    : std_ulogic;  -- 58
+    ctx      : std_ulogic;  -- 57
+    ctr      : std_ulogic;  -- 54
+    -- Low 32 bits
+    jvt      : std_ulogic;  -- 2
+    fcsr     : std_ulogic;  -- 1
+    c        : std_ulogic;  -- 0
+  end record;
+
+  constant csr_hstateen0_rst : csr_hstateen0_type := (
+    stateen  => '0',
+    envcfg   => '0',
+    iselect  => '0',
+    aia      => '0',
+    imsic    => '0',
+    ctx      => '0',
+    ctr      => '0',
+    jvt      => '0',
+    fcsr     => '0',
+    c        => '0'
+  );
   -- Type for mstateen/hstateen CSRs whose only writable bit is 63
   type csr_mstateen_void_type is record
     stateen  : std_ulogic;
@@ -483,37 +536,62 @@ package nvsupport is
 
   -- Unused: stateen0 has no writable bit in the NOEL-V so far
   type csr_sstateen0_type is record
-    fcsr  : std_ulogic;
+    jvt      : std_ulogic;  -- 2
+    fcsr     : std_ulogic;  -- 1
+    c        : std_ulogic;  -- 0
   end record;
+
   constant csr_sstateen0_rst : csr_sstateen0_type := (
-    fcsr => '0'
+    jvt      => '0',
+    fcsr     => '0',
+    c        => '0'
   );
 
+  type stateen_bits is record
+    m : std_logic;
+    s : std_logic;
+    h : std_logic;
+  end record;
 
-
+  constant stateen_bits_rst : stateen_bits := (
+    m => '0',
+    s => '0',
+    h => '0'
+  );
 
   type csr_envcfg_type is record
-    stce   : std_ulogic;
-    pbmte  : std_ulogic;
-    dte    : std_ulogic;
-    cbze   : std_ulogic;
-    cbcfe  : std_ulogic;
-    cbie   : word2;
-    fiom   : std_ulogic;
+    stce  : std_ulogic;
+    pbmte : std_ulogic;
+    dte   : std_ulogic;
+    cbze  : std_ulogic;
+    cbcfe : std_ulogic;
+    cbie  : word2;
+    fiom  : std_ulogic;
+    adue  : std_logic;
     sse   : std_ulogic;
     lpe   : std_ulogic;
+    cde   : std_ulogic;
   end record;
   constant csr_envcfg_rst : csr_envcfg_type := (
-    stce   => '0',
-    pbmte  => '0',
-    dte    => '0',
-    cbze   => '0',
-    cbcfe  => '0',
-    cbie   => (others => '0'),
-    fiom   => '0'
-    , sse => '0',
-    lpe   => '0'
+    stce  => '0',
+    pbmte => '0',
+    dte   => '0',
+    cbze  => '0',
+    cbcfe => '0',
+    cbie  => (others => '0'),
+    fiom  => '0',
+    adue  => '0',
+    sse   => '0',
+    lpe   => '0',
+    cde   => '0'
     );
+
+  subtype csr_menvcfg_const_type is csr_envcfg_type;
+  subtype csr_henvcfg_const_type is csr_envcfg_type;
+  subtype csr_senvcfg_const_type is csr_envcfg_type;
+  subtype csr_menvcfg_type is csr_envcfg_type;
+  subtype csr_henvcfg_type is csr_envcfg_type;
+  subtype csr_senvcfg_type is csr_envcfg_type;
 
   type csr_seccfg_type is record
     mml    : std_ulogic;
@@ -538,7 +616,7 @@ package nvsupport is
   end record;
   constant csr_hvictl_rst : csr_hvictl_type := (
     vti    => '0',
-    iid    => (others => '0'),
+    iid    =>  0,
     dpr    => '0',
     ipriom => '0',
     iprio  => (others => '0'));
@@ -562,7 +640,7 @@ package nvsupport is
     -- FPU enabled (pre-calculated)
     fpu_enabled : boolean;
     -- Envcfg (pre-calculated)
-    envcfg      : csr_envcfg_type;
+    envcfg      : csr_menvcfg_type;
     -- CFI state (pre-calculated)
     cfi_en      : cfi_t;
     -- Expecting landing pad
@@ -576,6 +654,8 @@ package nvsupport is
     hedeleg     : wordx;
     hideleg     : wordx;
     hvip        : wordx;
+    -- When hvien[i]='1' vsie[i] is a independent writable bit (vsie[i])
+    vsie       : wordx;
     hip         : wordx;
     hie         : wordx;
     hgeip       : wordx;
@@ -584,10 +664,10 @@ package nvsupport is
     htimedelta  : word64;
     htval       : wordx;
     htinst      : wordx;
-    hgatp       : wordx;
-    henvcfg     : csr_envcfg_type;
+    hgatp       : atp_type;
+    henvcfg     : csr_henvcfg_type;
     -- Hypervisor Smstateen
-    hstateen0   : csr_mstateen0_type;
+    hstateen0   : csr_hstateen0_type;
     hstateen1   : csr_mstateen_void_type;
     hstateen2   : csr_mstateen_void_type;
     hstateen3   : csr_mstateen_void_type;
@@ -599,7 +679,7 @@ package nvsupport is
     vscause     : cause_type;
     vstval      : wordx;
     vstimecmp   : word64;
-    vsatp       : wordx;
+    vsatp       : atp_type;
     -- VS Indirect CSR Access (Sscsrind)
     vsiselect   : select_t;
     vsireg      : wordx;
@@ -613,7 +693,7 @@ package nvsupport is
     -- Supervisor Trap Setup
     stvec       : wordx;
     scounteren  : word;
-    senvcfg     : csr_envcfg_type;
+    senvcfg     : csr_senvcfg_type;
     -- Supervisor Trap Handling
     sscratch    : wordx;
     sepc        : wordx;
@@ -626,9 +706,14 @@ package nvsupport is
     -- Supervisor AIA (Smaia or Ssaia)
     stopei      : wordx;
     stopi       : wordx;
-
+    -- Supervisor Ssstateen
+    sstateen0   : csr_sstateen0_type;
+    -- Fills no purpose right now
+    -- sstateen1   : csr_sstateen_void_type;
+    -- sstateen2   : csr_sstateen_void_type;
+    -- sstateen3   : csr_sstateen_void_type;
     -- Supervisor Protection and Translation
-    satp        : wordx;
+    satp        : atp_type;
     -- Machine Trap Setup
     mstatus     : csr_status_type;
     medeleg     : wordx;
@@ -660,11 +745,13 @@ package nvsupport is
     mtopi       : wordx;
     mvien       : wordx;
     mvip        : wordx;
+    -- When mvien[i]='1' sie[i] is a independent writable bit (sie[i])
+    sie       : wordx;
     -- Machine Trap Handling added by Hypervisor extension
     mtval2      : wordx;
     mtinst      : wordx;
     -- Machine Configuration
-    menvcfg     : csr_envcfg_type;
+    menvcfg     : csr_menvcfg_type;
     mseccfg     : csr_seccfg_type;
     -- Machine Protection and Translation
     pmpcfg      : pmpcfg_vec_type;
@@ -711,6 +798,7 @@ package nvsupport is
     hedeleg     => zerox,
     hideleg     => zerox,
     hvip        => zerox,
+    vsie       => zerox,
     hip         => zerox,
     hie         => zerox,
     hgeip       => zerox,
@@ -719,9 +807,9 @@ package nvsupport is
     htimedelta  => zerow64,
     htval       => zerox,
     htinst      => zerox,
-    hgatp       => zerox,
+    hgatp       => atp_none,
     henvcfg     => csr_envcfg_rst,
-    hstateen0   => csr_mstateen0_rst,
+    hstateen0   => csr_hstateen0_rst,
     hstateen1   => csr_mstateen_void_rst,
     hstateen2   => csr_mstateen_void_rst,
     hstateen3   => csr_mstateen_void_rst,
@@ -729,10 +817,10 @@ package nvsupport is
     vstvec      => zerox,
     vsscratch   => zerox,
     vsepc       => zerox,
-    vscause     => (others => '0'),
+    vscause     => cause_res,
     vstval      => zerox,
     vstimecmp   => zerow64,
-    vsatp       => zerox,
+    vsatp       => atp_none,
     vsiselect   => select_none,
     vsireg      => zerox,
     hvien       => zerox,
@@ -746,14 +834,15 @@ package nvsupport is
     senvcfg     => csr_envcfg_rst,
     sscratch    => zerox,
     sepc        => zerox,
-    scause      => (others => '0'),
+    scause      => cause_res,
     stval       => zerox,
     stimecmp    => zerow64,
     siselect    => select_none,
     sireg       => zerox,
     stopei      => zerox,
     stopi       => zerox,
-    satp        => zerox,
+    sstateen0   => csr_sstateen0_rst,
+    satp        => atp_none,
     mstatus     => csr_status_rst,
     medeleg     => zerox,
     mideleg     => zerox,
@@ -762,12 +851,12 @@ package nvsupport is
     mcounteren  => zerow,
     mscratch    => zerox,
     mepc        => zerox,
-    mcause      => (others => '0'),
+    mcause      => cause_res,
     mtval       => zerox,
     mip         => zerox,
     mnscratch   => zerox,
     mnepc       => zerox,
-    mncause     => (others => '0'),
+    mncause     => cause_res,
     mnstatus    => csr_mnstatus_rst,
     mstateen0   => csr_mstateen0_rst,
     mstateen1   => csr_mstateen_void_rst,
@@ -779,6 +868,7 @@ package nvsupport is
     mtopi       => zerox,
     mvien       => zerox,
     mvip        => zerox,
+    sie       => zerox,
     mtval2      => zerox,
     mtinst      => zerox,
     menvcfg     => csr_envcfg_rst,
@@ -841,7 +931,7 @@ package nvsupport is
   constant FPU          : fuseltype;  -- From FPU
   constant ALU_SPECIAL  : fuseltype;  -- Only for early ALU in lane 0!
   constant DIAG         : fuseltype;  -- Diagnostic cache load/store
-  constant CFI          : fuseltype;  -- Diagnostic cache load/store
+  constant CFI          : fuseltype;  -- CFI
   constant NOT_LATE     : fuseltype;  -- All except ALU and Branch Unit
 
 
@@ -856,8 +946,6 @@ package nvsupport is
   function to64(v : std_logic_vector) return word64;
   function to0x(v : std_logic_vector) return wordx;
   function to0x(v : unsigned) return wordx;
-
-  function valid_branch(inst_in : word64; pos : integer) return boolean;
 
   procedure rvc_aligner(active           : in  extension_type;
                         inst_in          : in  iword_tuple_type;
@@ -903,6 +991,8 @@ package nvsupport is
   procedure bjump_gen(active        : in  extension_type;
                       inst_in       : in  iword_tuple_type;
                       buffer_in     : in  iqueue_type;
+                      bjump_pre     : in  std_logic_vector;
+                      jump_pre      : in  std_logic_vector;
                       prediction    : in  prediction_array_type;
                       dvalid        : in  std_ulogic;
                       dpc_in        : in  std_logic_vector;
@@ -912,6 +1002,11 @@ package nvsupport is
                       btb_taken_buf : out std_ulogic;  --btb was taken for buffer
                       bjump_pos     : out word4;
                       bjump_addr    : out std_logic_vector);   --bjump addr
+
+  procedure bjump_pregen(inst_word : in  word64;
+                         buffer_in : in  iqueue_type;
+                         bjump_out : out std_logic_vector;
+                         jump_out  : out std_logic_vector);
 
   procedure buffer_ic(active         : in  extension_type;
                       r_d_buff_valid : in  std_ulogic;
@@ -931,11 +1026,18 @@ package nvsupport is
                     imm_out   : out wordx;
                     bj_imm    : out wordx);
 
-  function csr_category(addr : csratype) return category_t;
+  function csr_raw_category(addr : csratype) return raw_category_t;
+  function csr_waw_category(addr : csratype) return waw_category_t;
+  function csr_hold_category(addr : csratype; hpmc_mode : std_ulogic) return hold_category_t;
+
+  function hpmc_ind_hold_check(virt   : std_ulogic;
+                               csr    : csr_reg_type;
+                               hpmc_dep_cfg : std_ulogic) return boolean;
 
   procedure exception_check(active    : in  extension_type;
-                            envcfg    : in  csr_envcfg_type;
-                            ssamoswap_en : in boolean;
+                            menvcfg   : in  csr_menvcfg_type;
+                            henvcfg   : in  csr_henvcfg_type;
+                            senvcfg   : in  csr_senvcfg_type;
                             fpu_en    : in  boolean;
                             fpu_ok    : in  boolean;
                             alu_ok    : in  boolean;
@@ -977,6 +1079,7 @@ package nvsupport is
                              lbranch_dis : in  std_ulogic;
                              lalu_dis    : in  std_ulogic;
                              dual_dis    : in  std_ulogic;
+                             hpmc_mode   : in  std_ulogic;
                              step_in     : in  std_ulogic;
                              lalu_in     : in  std_logic_vector;
                              xc          : in  std_logic_vector;
@@ -996,8 +1099,8 @@ package nvsupport is
                             swap_out : out std_ulogic);
 
   function fusel_gen(active : extension_type;
-                     inst   : word
-                     ; cfi_en : cfi_t := cfi_both
+                     inst   : word;
+                     cfi_en : cfi_t := cfi_both
                     ) return fuseltype;
 
   function v_fusel_eq(fusel1 : fuseltype; fusel2 : fuseltype) return boolean;
@@ -1006,9 +1109,56 @@ package nvsupport is
   function csr_access_read(inst : word) return boolean;
   function csr_access_read_only(inst : word) return boolean;
   function csr_addr(active : extension_type; inst : word) return csratype;
+  function require_envcfg(mode_s : boolean;
+                          prv    : priv_lvl_type;
+                          virt   : boolean;
+                          m      : boolean;
+                          h      : boolean;
+                          s      : boolean )
+                          return xc_type;
+  function require_envcfg(mode_s : boolean;
+                          prv    : priv_lvl_type;
+                          virt   : std_logic;
+                          m      : std_logic;
+                          h      : std_logic;
+                          s      : std_logic )
+                          return xc_type;
+  function is_csr_high_half(csra : csratype) return boolean;
   function csr_read_only(active  : extension_type; inst : word) return boolean;
   function csr_write_only(active : extension_type; inst : word) return boolean;
-
+  function csr_xc_check(csra_in     : csratype;
+                        is_write    : boolean;
+                        active      : extension_type;
+                        csr_file    : csr_reg_type;
+                        rstate_in   : core_state;
+                        imsic       : boolean;
+                        pmp_entries : integer;
+                        perf_cnts   : integer;
+                        trigger     : integer
+                    ) return xc_type;
+  function zicfiss_csr_xc(csra        : csratype;
+                          csr         : csr_reg_type;
+                          ext_zicfiss : boolean;
+                          mode_s      : boolean)
+                          return xc_type;
+  function smcsrind_reg_xc(csr_file   : csr_reg_type;
+                           csra       : csratype;
+                           active     : extension_type;
+                           imsic      : boolean) return xc_type;
+  function check_stateen_xc(bits          : stateen_bits;
+                            priv          : priv_lvl_type;
+                            v_mode        : boolean;
+                            ext_smstateen : boolean;
+                            mode_s        : boolean) return xc_type;
+  function csrind_check_stateen_xc(csra          : csratype;
+                                   csr_file      : csr_reg_type;
+                                   ext_smstateen : boolean;
+                                   mode_s        : boolean) return xc_type;
+  procedure csr_write_flush(csra_in       : in  csratype;
+                            active        : in  extension_type;
+                            pipeflush_out : out std_ulogic;
+                            addrflush_out : out std_ulogic);
+  function get_stateen_bits(csra : csratype; csr_file : csr_reg_type) return stateen_bits;
   function is_sfence_vma(active : extension_type; inst : word) return boolean;
   function is_hfence_vvma(active : extension_type; inst : word) return boolean;
   function is_hfence_gvma(active : extension_type; inst : word) return boolean;
@@ -1017,6 +1167,7 @@ package nvsupport is
   function is_hlv(inst : word) return boolean;
   function is_hsv(inst : word) return boolean;
   function is_hlsv(inst : word) return boolean;
+  function is_hlvx(inst : word) return boolean;
   function is_fence_i(inst : word) return boolean;
   function is_fence(inst : word) return boolean;
   function is_diag(active : extension_type; inst : word) return boolean;
@@ -1046,6 +1197,18 @@ package nvsupport is
   function is_fpu_rd(inst : word) return boolean;
   function is_fpu_modify(inst : word) return boolean;
 
+
+  function tie_status(active : extension_type;
+                      status : csr_status_type;
+                      misa   : wordx      := (others => '1')) return csr_status_type;
+  procedure tie_csrs(active      : extension_type;
+                     pmp_entries : integer range 0 to PMPENTRIES - 1;
+                     pma_entries : integer range 0 to PMAENTRIES - 1;
+                     pma_masked  : integer range 0 to 1;
+                     perf_cnts   : integer range 0 to 29;
+                     perf_bits   : integer range 0 to 64;
+                     mmuen       : integer range 0 to 1;
+                     csr         : inout csr_reg_type);
 
   function data_addr_misaligned(addr : std_logic_vector;
                                 size : word2) return boolean;
@@ -1104,20 +1267,34 @@ package nvsupport is
                       laddr  : word3;
                       signed : std_ulogic) return word64;
 
---  function csr_read_addr_xc(active : extension_type; TRIGGER : integer;
---                            csra   : csratype;
---                            misa   : wordx) return std_logic;
   function stimecmp_xc(csr_file : csr_reg_type;
                        h_en     : boolean;
                        is_rv64  : boolean;
                        csra     : csratype;
-                       v_mode   : std_logic) return xc_type;
+                       v_mode   : boolean) return xc_type;
+  function smcdeleg_indirect_xc(csr_file      : csr_reg_type;
+                                ext_smcdeleg  : boolean;
+                                ext_sscofpmf  : boolean;
+                                ext_zicntr    : boolean;
+                                ext_zihpm     : boolean;
+                                ext_smcntrpmf : boolean;
+                                is_rv64       : boolean;
+                                csra          : csratype;
+                                v_mode        : boolean) return xc_type;
+  function ssaia_indirect_xc(csr_file   : csr_reg_type;
+                             sel        : select_t;
+                             active     : extension_type;
+                             imsic      : boolean) return xc_type;
+  function  smcdeleg_indirect_read(csr_file  : csr_reg_type; csra : csratype) return wordx;
+  procedure smcdeleg_indirect_write(csra         : in csratype;
+                                    wcsr_in      : in wordx;
+                                    csr_file     : inout csr_reg_type;
+                                    upd_mcycle   : inout std_logic;
+                                    upd_minstret : inout std_logic;
+                                    upd_counter  : inout std_logic_vector);
 
 
   -- Exception Codes
-
-  function to_cause(code : integer; irq : boolean := false) return cause_type;
-  function cause2int(cause : cause_type) return integer;
 
   constant XC_INST_ADDR_MISALIGNED      : cause_type;
   constant XC_INST_ACCESS_FAULT         : cause_type;
@@ -1140,26 +1317,51 @@ package nvsupport is
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type;
   constant XC_INST_VIRTUAL_INST         : cause_type;
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type;
+  constant XC_INST_NV_INST_SPT_FAULT    : cause_type;
+  constant XC_INST_NV_LOAD_SPT_FAULT    : cause_type;
+  constant XC_INST_NV_STORE_SPT_FAULT   : cause_type;
+  constant XC_INST_NV_INST_HPT_FAULT    : cause_type;
+  constant XC_INST_NV_LOAD_HPT_FAULT    : cause_type;
+  constant XC_INST_NV_STORE_HPT_FAULT   : cause_type;
   constant XC_INST_RFFT                 : cause_type;
 
+  constant cause_none                   : cause_type;
+
   -- Interrupt Codes
---  constant IRQ_U_SOFTWARE               : cause_type;
-  constant IRQ_S_SOFTWARE               : cause_type;
-  constant IRQ_VS_SOFTWARE              : cause_type;
-  constant IRQ_M_SOFTWARE               : cause_type;
---  constant IRQ_U_TIMER                  : cause_type;
-  constant IRQ_S_TIMER                  : cause_type;
-  constant IRQ_VS_TIMER                 : cause_type;
-  constant IRQ_M_TIMER                  : cause_type;
---  constant IRQ_U_EXTERNAL               : cause_type;
-  constant IRQ_S_EXTERNAL               : cause_type;
-  constant IRQ_VS_EXTERNAL              : cause_type;
-  constant IRQ_M_EXTERNAL               : cause_type;
-  constant IRQ_SG_EXTERNAL              : cause_type;
-  constant IRQ_LCOF                     : cause_type;
-  constant IRQ_NMI                      : cause_type;
-  constant IRQ_RAS_LOW_PRIO             : cause_type;
-  constant IRQ_RAS_HIGH_PRIO            : cause_type;
+ -- constant IRQ_U_SOFTWARE               : integer;
+ -- constant CAUSE_IRQ_U_SOFTWARE          : cause_type;
+  constant IRQ_S_SOFTWARE               : integer;
+  constant CAUSE_IRQ_S_SOFTWARE         : cause_type;
+  constant IRQ_VS_SOFTWARE              : integer;
+  constant CAUSE_IRQ_VS_SOFTWARE        : cause_type;
+  constant IRQ_M_SOFTWARE               : integer;
+  constant CAUSE_IRQ_M_SOFTWARE         : cause_type;
+--  constant IRQ_U_TIMER                  : integer;
+--  constant CAUSE_IRQ_U_TIMER            : cause_type;
+  constant IRQ_S_TIMER                  : integer;
+  constant CAUSE_IRQ_S_TIMER            : cause_type;
+  constant IRQ_VS_TIMER                 : integer;
+  constant CAUSE_IRQ_VS_TIMER           : cause_type;
+  constant IRQ_M_TIMER                  : integer;
+  constant CAUSE_IRQ_M_TIMER            : cause_type;
+--  constant IRQ_U_EXTERNAL               : integer;
+--  constant CAUSE_IRQ_U_EXTERNAL         : cause_type;
+  constant IRQ_S_EXTERNAL               : integer;
+  constant CAUSE_IRQ_S_EXTERNAL         : cause_type;
+  constant IRQ_VS_EXTERNAL              : integer;
+  constant CAUSE_IRQ_VS_EXTERNAL        : cause_type;
+  constant IRQ_M_EXTERNAL               : integer;
+  constant CAUSE_IRQ_M_EXTERNAL         : cause_type;
+  constant IRQ_SG_EXTERNAL              : integer;
+  constant CAUSE_IRQ_SG_EXTERNAL        : cause_type;
+  constant IRQ_LCOF                     : integer;
+  constant CAUSE_IRQ_LCOF               : cause_type;
+  constant IRQ_NMI                      : integer;
+  constant CAUSE_IRQ_NMI                : cause_type;
+  constant IRQ_RAS_LOW_PRIO             : integer;
+  constant CAUSE_IRQ_RAS_LOW_PRIO       : cause_type;
+  constant IRQ_RAS_HIGH_PRIO            : integer;
+  constant CAUSE_IRQ_RAS_HIGH_PRIO      : cause_type;
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type;
@@ -1175,15 +1377,23 @@ package nvsupport is
   constant cause_prio_v                 : cause_arr(0 to 7);
   constant int_cause2prio               : int_cause_arr(0 to 63);
 
+  function check_cause_update(new_cause  : cause_type;
+                              prev_cause : cause_type;
+                              tval       : wordx := zerox) return cause_type;
 
   -- Indirect CSR Access
   function selector2wordx(v : select_t) return wordx;
   function wordx2selector(v : wordx) return select_t;
   function is_custom(v : select_t) return boolean;
+  function is_imsic(v : select_t) return boolean;
+  function is_smcdeleg(v : select_t) return boolean;
+  function is_aia_iprio(v : select_t) return boolean;
+  function is_vsireg(csra : csratype) return boolean;
+  function is_sireg(csra : csratype) return boolean;
 
   -- AIA interrupt files exception calculation
   function intFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic;
-  function GintFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic;
+  function vgein_legal(vgein : integer) return boolean;
 
   constant CSR_VENDORID                 : wordx := zerox(zerox'high downto 12) & x"324"; -- Gaisler JEDEC ID (0xA4, bank 7)
   constant CSR_ARCHID                   : wordx := (others => '0');
@@ -1199,8 +1409,6 @@ package nvsupport is
   constant CSR_HIDELEG_MASK             : wordx;
   constant CSR_HIE_MASK                 : wordx;
   constant CSR_HIP_MASK                 : wordx;
-
-  constant CSR_IRQ_RSV_MASK             : wordx;
 
   constant TINST_LOAD_MASK              : word := "00000000000000000111111111111111";
   constant TINST_H_MASK                 : word := "11111111111100000111111111111111";
@@ -1274,13 +1482,6 @@ package nvsupport is
   constant PMP_ACCESS_X : pmpcfg_access_type := "00"; -- Execute
   constant PMP_ACCESS_R : pmpcfg_access_type := "01"; -- Read
   constant PMP_ACCESS_W : pmpcfg_access_type := "11"; -- Write
-
-  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic;
-  function is_irq(cause : cause_type) return boolean;
-  function u2cause(cause : unsigned; irq : std_ulogic) return cause_type;
-  function cause2wordx(cause : cause_type) return wordx;
-  function wordx2cause(v : wordx) return cause_type;
-  function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector;
 
   function to_floating(fpulen : integer;  set : integer) return integer;
 
@@ -1435,11 +1636,6 @@ package nvsupport is
       );
 
   function extend_wordx(v : std_logic_vector) return wordx;
-  function supports_impl_mmu_sv32(riscv_mmu : integer) return boolean;
-  function supports_impl_mmu_sv39(riscv_mmu : integer) return boolean;
-  function supports_impl_mmu_sv48(riscv_mmu : integer) return boolean;
-  function satp_mask(id : integer; physaddr : integer) return wordx;
-  function vsatp_mask(id : integer; riscv_mmu : integer range 0 to 3) return wordx;
   function medeleg_mask(h_en : boolean) return wordx;
   function to_mideleg(
     wcsr         : wordx;
@@ -1452,42 +1648,52 @@ package nvsupport is
   function mie_mask(mode_s : boolean; h_en : boolean;
                     ext_sscofpmf : boolean) return wordx;
   function sip_sie_mask(ext_sscofpmf : boolean) return wordx;
+  function hideleg_mask(ext_shlcofideleg : integer) return wordx;
   function etrigger_mask(h_en : boolean) return wordx;
 
   function to_hstatus(status : csr_hstatus_type) return wordx;
   function to_hstatus(wdata : wordx) return csr_hstatus_type;
 
-  function to_vsstatus(status : csr_status_type
-                       ; bcfi_en : std_ulogic
-                       ; fcfi_en : std_ulogic
+  -- Note that the to_*status* functions do not deal with
+  -- static clearing due to active extensions!
+  -- This is rather handled by tie_csrs().
+
+  function to_vsstatus(status      : csr_status_type;
+                       ssdbltrp_en : std_ulogic;
+                       bcfi_en     : std_ulogic;
+                       fcfi_en     : std_ulogic
                       ) return wordx;
   function to_vsstatus(wdata       : wordx;
-                       ssdbltrp_en : std_ulogic
-                       ; bcfi_en : std_ulogic
-                       ; fcfi_en : std_ulogic
+                       vsstatus_in : csr_status_type;
+                       ssdbltrp_en : std_ulogic;
+                       bcfi_en     : std_ulogic;
+                       fcfi_en     : std_ulogic
                       ) return csr_status_type;
 
   function to_mstatus(status : csr_status_type) return wordx;
-  function to_mstatus(wdata : wordx; mstatus_in : csr_status_type;
+  function to_mstatus(wdata       : wordx;
+                      mstatus_in  : csr_status_type;
                       smdbltrp_en : std_ulogic;
                       ssdbltrp_en : std_ulogic) return csr_status_type;
 
   function to_mstatush(status : csr_status_type) return wordx;
-  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type; h_en : boolean;
-                       smdbltrp_en  : std_ulogic) return csr_status_type;
+  function to_mstatush(wdata       : wordx;
+                       mstatus_in  : csr_status_type;
+                       h_en        : boolean;
+                       smdbltrp_en : std_ulogic) return csr_status_type;
 
-  function to_sstatus(status : csr_status_type
-                      ; bcfi_en : std_ulogic
-                      ; fcfi_en : std_ulogic
+  function to_sstatus(status  : csr_status_type;
+                      bcfi_en : std_ulogic;
+                      fcfi_en : std_ulogic;
+                      dte     : std_ulogic
                      ) return wordx;
-  function to_sstatus(wdata : wordx; mstatus : csr_status_type;
-                      ssdbltrp_en : std_ulogic
-                      ; bcfi_en : std_ulogic
-                      ; fcfi_en : std_ulogic
+  function to_sstatus(wdata       : wordx;
+                      mstatus     : csr_status_type;
+                      ssdbltrp_en : std_ulogic;
+                      bcfi_en     : std_ulogic;
+                      fcfi_en     : std_ulogic
                      ) return csr_status_type;
 
-  function to_hvictl(hvictl : csr_hvictl_type) return wordx;
-  function to_hvictl(wdata : wordx) return csr_hvictl_type;
 
   function to_mnstatus(mnstatus : csr_mnstatus_type) return wordx;
   function to_mnstatus(wdata    : wordx;
@@ -1495,15 +1701,61 @@ package nvsupport is
                        active   : extension_type;
                        misa     : wordx) return csr_mnstatus_type;
 
-  function mstateen0_mask(mstateen0 : csr_mstateen0_type; mask : csr_mstateen0_type) return csr_mstateen0_type;
-  function sstateen0_mask(sstateen0 : csr_sstateen0_type; mask : csr_mstateen0_type) return csr_sstateen0_type;
+  function to_hvictl(hvictl : csr_hvictl_type) return wordx;
+  function to_hvictl(wdata : wordx) return csr_hvictl_type;
+
+  function mvien_mask(ext_sscofpmf  : integer; 
+                      ext_smcdeleg  : integer) return wordx;
+  function hvien_mask(ext_sscofpmf  : integer; 
+                      ext_smcdeleg  : integer) return wordx;
+  function to_mvip(mip : wordx; mvip : wordx;
+                   mvien : wordx; ext_sstc : integer;
+                   menvcfg_stce : std_ulogic) return wordx;
+  function "and" (L : csr_mstateen0_type; R : csr_mstateen0_type) return csr_mstateen0_type;
+  function "and" (L : csr_hstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type;
+  function "and" (L : csr_hstateen0_type; R : csr_mstateen0_type) return csr_hstateen0_type;
+  function "and" (L : csr_mstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type;
+  function "and" (L : csr_sstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type;
+  function "and" (L : csr_sstateen0_type; R : csr_hstateen0_type) return csr_sstateen0_type;
+  function "and" (L : csr_hstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type;
+
+  function "not" (I : csr_mstateen0_type) return csr_mstateen0_type;
+  function "not" (I : csr_hstateen0_type) return csr_hstateen0_type;
+
+  function "or"  (L : csr_mstateen0_type; R : csr_mstateen0_type) return csr_mstateen0_type;
+  function "or"  (L : csr_hstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type;
+  function "or"  (L : csr_sstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type;
+  function stateen_wpri_write(wcsr_in   : wordx;
+                              prev      : csr_hstateen0_type;
+                              mask      : csr_mstateen0_type;
+                              high_half : boolean) return csr_hstateen0_type;
+  function stateen_wpri_write(wcsr_in   : wordx;
+                              prev      : csr_sstateen0_type;
+                              mask      : csr_hstateen0_type;
+                              high_half : boolean) return csr_sstateen0_type;
+  function stateen_wpri_write(wcsr_in   : std_logic;
+                              prev      : std_logic;
+                              mask      : std_logic) return std_logic;
+  -- function mstateen0_mask(mstateen0 : csr_mstateen0_type; mask : csr_mstateen0_type) return csr_mstateen0_type;
+  -- function hstateen0_mask(hstateen0 : csr_hstateen0_type; mask : csr_mstateen0_type) return csr_hstateen0_type;
+  -- function sstateen0_mask(sstateen0 : csr_sstateen0_type;
+  --                         mask_m    : csr_mstateen0_type;
+  --                         mask_h    : csr_hstateen0_type) return csr_sstateen0_type;
   function gen_mstateen0_mask(active : extension_type) return csr_mstateen0_type;
   function to_mstateen0(mstateen0 : csr_mstateen0_type) return wordx;
   function to_mstateen0(wdata  : wordx;
                         mstateen0 : csr_mstateen0_type) return csr_mstateen0_type;
+  function to_hstateen0(hstateen0 : csr_hstateen0_type) return wordx;
+  function to_hstateen0(wdata  : wordx;
+                        hstateen0 : csr_hstateen0_type) return csr_hstateen0_type;
+  function to_sstateen0(sstateen0 : csr_sstateen0_type) return wordx;
+  function to_sstateen0(sstateen0 : wordx) return csr_sstateen0_type;
   function to_mstateen0h(mstateen0 : csr_mstateen0_type) return wordx;
+  function to_hstateen0h(hstateen0 : csr_hstateen0_type) return wordx;
   function to_mstateen0h(wdata     : wordx;
                          mstateen0 : csr_mstateen0_type) return csr_mstateen0_type;
+  function to_hstateen0h(wdata     : wordx;
+                         hstateen0 : csr_hstateen0_type) return csr_hstateen0_type;
 
   function to_mhcontext(wdata : wordx; h_en : boolean) return csr_mhcontext_type;
   function to_scontext(wdata : wordx) return csr_scontext_type;
@@ -1519,15 +1771,31 @@ package nvsupport is
                       envcfg  : csr_envcfg_type;
                       mask    : csr_envcfg_type) return csr_envcfg_type;
   function envcfg_mask(envcfg : csr_envcfg_type; mask : csr_envcfg_type) return csr_envcfg_type;
-  function gen_envcfg_mmask(active : extension_type) return csr_envcfg_type;
-  function gen_envcfg_smask(active : extension_type) return csr_envcfg_type;
+  function gen_envcfg_const_mmask(active : extension_type) return csr_menvcfg_const_type;
+  function gen_envcfg_const_hmask(menvcfg_mask : csr_menvcfg_const_type) return csr_henvcfg_const_type;
+  function gen_envcfg_const_smask(menvcfg_mask : csr_menvcfg_const_type) return csr_senvcfg_const_type;
+  function calc_henvcfg_write_val(wcsr_in       : wordx;
+                                 active_henvcfg : csr_henvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                 return csr_henvcfg_type;
+  function calc_henvcfg_read_val(active_henvcfg : csr_henvcfg_const_type;
+                                csr_file        : csr_reg_type)
+                                return csr_henvcfg_type;
+  function calc_senvcfg_write_val(wcsr_in       : wordx;
+                                 active_henvcfg : csr_henvcfg_const_type;
+                                 active_senvcfg : csr_senvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                 return csr_senvcfg_type;
+  function calc_senvcfg_read_val(active_henvcfg : csr_henvcfg_const_type;
+                                 active_senvcfg : csr_senvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                return csr_senvcfg_type;
 
   function to_mseccfg(data   : wordx;
                       seccfg : csr_seccfg_type) return csr_seccfg_type;
   function to_mseccfgh(data   : wordx;
                        seccfg : csr_seccfg_type) return csr_seccfg_type;
   function to_mseccfg(seccfg : csr_seccfg_type) return word64;
-
 
 
   function to_capabilityh(fpuconf : word2; cconfig : word64) return word;
@@ -1538,6 +1806,7 @@ package nvsupport is
 
   function to_hpmevent(hpmevent : hpmevent_type) return wordx;
   function to_hpmeventh(hpmevent : hpmevent_type) return wordx;
+  function to_scountinhibit(mcountinhibit_in : word; mcounteren : word; wcsr : wordx) return word;
 
   function pmp_precalc(pmpaddr    : pmpaddr_type;
                        pmpaddr_m1 : pmpaddr_type;
@@ -1558,6 +1827,7 @@ package nvsupport is
                        );
 
   function smepmp_ok_r(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
@@ -1565,6 +1835,7 @@ package nvsupport is
                        rwx_in : word3) return boolean;
 
   function smepmp_ok_w(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
@@ -1572,30 +1843,30 @@ package nvsupport is
                        rwx_in : word3) return boolean;
 
   function smepmp_ok_x(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
                        l      : std_logic;
                        rwx    : word3) return boolean;
 
-  procedure pmp_unit(prv_in     : in  priv_lvl_type;
-                     precalc    : in  pmp_precalc_vec;
-                     pmpcfg_in  : in  pmpcfg_vec_type;
-                     mmwp       : in  std_ulogic;
-                     mml        : in  std_ulogic;
-                     mprv_in    : in  std_ulogic;
-                     mpp_in     : in  priv_lvl_type;
-                     addr_in    : in  std_logic_vector;
-                     access_in  : in  pmpcfg_access_type;
-                     valid_in   : in  std_ulogic;
-                     xc_out     : out std_ulogic;
-                     hit_out    : out std_logic_vector;
-                     entries    : in  integer := 16;
-                     no_tor     : in  integer := 1;
-                     pmp_g      : in  integer range 1 to 32 := 1;
-                     msb        : in  integer := 31;
-                     smepmp     : in  integer := 0
-                     );
+  function smepmp_rwx(pmpcfg  : pmpcfg_vec_type;
+                      mmwp    : std_logic;
+                      mml     : std_logic;
+                      prv     : priv_lvl_type;
+                      hit     : std_logic_vector;
+                      entries : integer := 16;
+                      smepmp  : integer := 0
+                     ) return word3;
+
+  function pmp_match(precalc : pmp_precalc_vec;
+                     addr    : std_logic_vector;
+                     entries : integer := 16;
+                     no_tor  : integer := 1;
+                     pmp_g   : integer range 1 to 32 := 1;
+                     msb     : integer := 31
+                    ) return std_logic_vector;
+
 
   -- Currently no reason to support
   -- unaligned access         never possible
@@ -1897,7 +2168,7 @@ package body nvsupport is
   constant ALU_SPECIAL  : fuseltype := fusel(9);     -- Only for early ALU in lane 0!
   constant DIAG         : fuseltype := fusel(10);    -- Diagnostic cache load/store
   constant UNKNOWN      : fuseltype := fusel(11);    -- Unknown (regarding fusel) instruction
-  constant CFI          : fuseltype := fusel(12);    -- Diagnostic cache load/store
+  constant CFI          : fuseltype := fusel(12);    -- CFI
   constant NOT_LATE     : fuseltype := not (ALU or BRANCH);  -- All except ALU and Branch Unit
 
   -- Shortens addresses to the size that is actually needed (see addr_type).
@@ -1923,8 +2194,7 @@ package body nvsupport is
     subtype  addr_type  is std_logic_vector(length - 1 downto 0);
     variable addr_bits   : integer                                               := length - 2;
     variable addr_normal : std_logic_vector(addr_in'length - 1 downto 0)         := addr_in;
-    -- GHDL synth does not seem to like using addr_bits here. for some reason!
-    variable high_bits   : std_logic_vector(addr_in'length - 1 downto length - 2) := (others => '0');
+    variable high_bits   : std_logic_vector(addr_in'length - 1 downto addr_bits) := (others => '0');
     -- Non-constant
     variable addr        : addr_type;  -- Manipulated from _in for efficiency.
   begin
@@ -1955,38 +2225,6 @@ package body nvsupport is
     return to_addr(npc, pc'length);
   end;
 
-  function to_cause(code : integer; irq : boolean := false) return cause_type is
-    -- Non-constant
-  variable v : cause_type := u2vec(code, cause_type'length);
-  begin
-    if irq then
-      v(v'high) := '1';
-    end if;
-
-    return v;
-  end;
-
-  function int2mask(n : integer range 0 to 31) return wordx is
-    -- Non-constant
-    variable v : wordx := zerox;
-  begin
-    v(n) := '1';
-
-    return v;
-  end;
-
-  function cause2mask(cause : cause_type) return wordx is
-    variable n : integer range 0 to 31 := u2i(cause(cause'high - 1 downto 0));
-  begin
-    return int2mask(n);
-  end;
-
-  function cause2int(cause : cause_type) return integer is
-    variable n : integer range 0 to 63 := u2i(cause(cause'high - 1 downto 0));
-  begin
-    return n;
-  end;
-
   function extend_wordx(v : std_logic_vector) return wordx is
      -- Non-constant
     variable result : wordx := (others => v(v'left));
@@ -2015,67 +2253,97 @@ package body nvsupport is
   constant XC_INST_ENV_CALL_MMODE       : cause_type := to_cause(11);
   constant XC_INST_INST_PAGE_FAULT      : cause_type := to_cause(12);
   constant XC_INST_LOAD_PAGE_FAULT      : cause_type := to_cause(13);
+  -- 14    Reserved by Privileged Architecture
   constant XC_INST_STORE_PAGE_FAULT     : cause_type := to_cause(15);
   constant XC_INST_DOUBLE_TRAP          : cause_type := to_cause(16);
+  -- 17    Reserved by Privileged Architecture
   constant XC_INST_SOFTWARE_CHECK       : cause_type := to_cause(18);
+  -- 19    Hardware error - should probably be used for non-correctable data corruption
   constant XC_INST_INST_G_PAGE_FAULT    : cause_type := to_cause(20);
   constant XC_INST_LOAD_G_PAGE_FAULT    : cause_type := to_cause(21);
   constant XC_INST_VIRTUAL_INST         : cause_type := to_cause(22);
   constant XC_INST_STORE_G_PAGE_FAULT   : cause_type := to_cause(23);
+  -- 24-31 Designated for custom use
+  constant XC_INST_NV_INST_SPT_FAULT    : cause_type := to_cause(24);
+  constant XC_INST_NV_LOAD_SPT_FAULT    : cause_type := to_cause(25);
+  constant XC_INST_NV_STORE_SPT_FAULT   : cause_type := to_cause(26);
+  constant XC_INST_NV_INST_HPT_FAULT    : cause_type := to_cause(27);
+  constant XC_INST_NV_LOAD_HPT_FAULT    : cause_type := to_cause(28);
+  constant XC_INST_NV_STORE_HPT_FAULT   : cause_type := to_cause(29);
   constant XC_INST_RFFT                 : cause_type := to_cause(31);
+  -- 32-47 Reserved by Privileged Architecture
+  -- 48-63 Designated for custom use
+  constant XC_UNUSED                    : cause_type := to_cause(30);
+  -- >=64  Reserved by Privileged Architecture
 
+  constant cause_none                   : cause_type := XC_UNUSED;
 
 
   -- Interrupt Codes
   -- 0     Reserved by Privileged Architecture
-  constant IRQ_S_SOFTWARE               : cause_type := to_cause(1, true);
-  constant IRQ_VS_SOFTWARE              : cause_type := to_cause(2, true);
-  constant IRQ_M_SOFTWARE               : cause_type := to_cause(3, true);
+  constant IRQ_S_SOFTWARE               : integer    := 1;
+  constant CAUSE_IRQ_S_SOFTWARE         : cause_type := to_cause(IRQ_S_SOFTWARE, true);
+  constant IRQ_VS_SOFTWARE              : integer    := 2;
+  constant CAUSE_IRQ_VS_SOFTWARE        : cause_type := to_cause(IRQ_VS_SOFTWARE, true);
+  constant IRQ_M_SOFTWARE               : integer    := 3;
+  constant CAUSE_IRQ_M_SOFTWARE         : cause_type := to_cause(IRQ_M_SOFTWARE, true);
   -- 4     Reserved by Privileged Architecture
-  constant IRQ_S_TIMER                  : cause_type := to_cause(5, true);
-  constant IRQ_VS_TIMER                 : cause_type := to_cause(6, true);
-  constant IRQ_M_TIMER                  : cause_type := to_cause(7, true);
+  constant IRQ_S_TIMER                  : integer    := 5;
+  constant CAUSE_IRQ_S_TIMER            : cause_type := to_cause(IRQ_S_TIMER, true);
+  constant IRQ_VS_TIMER                 : integer    := 6;
+  constant CAUSE_IRQ_VS_TIMER           : cause_type := to_cause(IRQ_VS_TIMER, true);
+  constant IRQ_M_TIMER                  : integer    := 7;
+  constant CAUSE_IRQ_M_TIMER            : cause_type := to_cause(IRQ_M_TIMER, true);
   -- 8     Reserved by Privileged Architecture
-  constant IRQ_S_EXTERNAL               : cause_type := to_cause(9, true);
-  constant IRQ_VS_EXTERNAL              : cause_type := to_cause(10, true);
-  constant IRQ_M_EXTERNAL               : cause_type := to_cause(11, true);
-  constant IRQ_SG_EXTERNAL              : cause_type := to_cause(12, true);
-  constant IRQ_LCOF                     : cause_type := to_cause(13, true);
+  constant IRQ_S_EXTERNAL               : integer    := 9;
+  constant CAUSE_IRQ_S_EXTERNAL         : cause_type := to_cause(IRQ_S_EXTERNAL, true);
+  constant IRQ_VS_EXTERNAL              : integer    := 10;
+  constant CAUSE_IRQ_VS_EXTERNAL        : cause_type := to_cause(IRQ_VS_EXTERNAL, true);
+  constant IRQ_M_EXTERNAL               : integer    := 11;
+  constant CAUSE_IRQ_M_EXTERNAL         : cause_type := to_cause(IRQ_M_EXTERNAL, true);
+  constant IRQ_SG_EXTERNAL              : integer    := 12;
+  constant CAUSE_IRQ_SG_EXTERNAL        : cause_type := to_cause(IRQ_SG_EXTERNAL, true);
+  constant IRQ_LCOF                     : integer    := 13;
+  constant CAUSE_IRQ_LCOF               : cause_type := to_cause(IRQ_LCOF, true);
   -- 14-15 Reserved by Privileged Architecture
-  constant IRQ_NMI                      : cause_type := to_cause(16, true);
+  constant IRQ_NMI                      : integer    := 16;
+  constant CAUSE_IRQ_NMI                : cause_type := to_cause(IRQ_NMI, true);
   -- 16-23 Reserved for standard local interrupts
   -- 24-31 Designated for custom use
   -- 32-34 Reserved for standard local interrupts
-  constant IRQ_RAS_LOW_PRIO             : cause_type := to_cause(35, true);
+  constant IRQ_RAS_LOW_PRIO             : integer    := 35;
+  constant CAUSE_IRQ_RAS_LOW_PRIO       : cause_type := to_cause(IRQ_RAS_LOW_PRIO, true);
   -- 36-42 Reserved for standard local interrupts
-  constant IRQ_RAS_HIGH_PRIO            : cause_type := to_cause(43, true);
+  constant IRQ_RAS_HIGH_PRIO            : integer    := 43;
+  constant CAUSE_IRQ_RAS_HIGH_PRIO      : cause_type := to_cause(IRQ_RAS_HIGH_PRIO, true);
   -- 44-47 Reserved for standard local interrupts
   -- 48-   Designated for custom use
-  constant IRQ_UNUSED                   : cause_type := to_cause(63, true);
+  constant IRQ_UNUSED                   : integer    := 63;
+  constant CAUSE_IRQ_UNUSED             : cause_type := to_cause(IRQ_UNUSED, true);
 
   -- Reset Codes
   constant RST_HARD_ALL                 : cause_type := to_cause(0);
   constant RST_ASYNC                    : cause_type := to_cause(1);
 
   -- Interrupts
-  constant I_none : wordx := zerox;                        -- No bits set
-  constant I_SS   : wordx := cause2mask(IRQ_S_SOFTWARE);   --
-  constant I_VSS  : wordx := cause2mask(IRQ_VS_SOFTWARE);  -- H
-  constant I_MS   : wordx := cause2mask(IRQ_M_SOFTWARE);   -- External register only
-  constant I_ST   : wordx := cause2mask(IRQ_S_TIMER);      --
-  constant I_VST  : wordx := cause2mask(IRQ_VS_TIMER);     -- H
-  constant I_MT   : wordx := cause2mask(IRQ_M_TIMER);      -- mtimecmp only
-  constant I_SE   : wordx := cause2mask(IRQ_S_EXTERNAL);   --
-  constant I_VSE  : wordx := cause2mask(IRQ_VS_EXTERNAL);  -- H
-  constant I_ME   : wordx := cause2mask(IRQ_M_EXTERNAL);   -- external interrupt only
-  constant I_SGE  : wordx := cause2mask(IRQ_SG_EXTERNAL);  -- H
-  constant I_LCOF : wordx := cause2mask(IRQ_LCOF);         -- Sscofpmf
-  constant I_NMI  : wordx := cause2mask(IRQ_NMI);          -- NMI
-  constant I_RSV0 : wordx := int2mask(0);                  -- Reserved - formerly N extension
-  constant I_RSV4 : wordx := int2mask(4);                  -- Reserved - formerly N extension
-  constant I_RSV8 : wordx := int2mask(8);                  -- Reserved - formerly N extension
-  constant I_RSVE : wordx := int2mask(14);                 -- Reserved
-  constant I_RSVF : wordx := int2mask(15);                 -- Reserved
+  constant I_none : wordx := zerox;                              -- No bits set
+  constant I_SS   : wordx := cause2mask(CAUSE_IRQ_S_SOFTWARE);   --
+  constant I_VSS  : wordx := cause2mask(CAUSE_IRQ_VS_SOFTWARE);  -- H
+  constant I_MS   : wordx := cause2mask(CAUSE_IRQ_M_SOFTWARE);   -- External register only
+  constant I_ST   : wordx := cause2mask(CAUSE_IRQ_S_TIMER);      --
+  constant I_VST  : wordx := cause2mask(CAUSE_IRQ_VS_TIMER);     -- H
+  constant I_MT   : wordx := cause2mask(CAUSE_IRQ_M_TIMER);      -- mtimecmp only
+  constant I_SE   : wordx := cause2mask(CAUSE_IRQ_S_EXTERNAL);   --
+  constant I_VSE  : wordx := cause2mask(CAUSE_IRQ_VS_EXTERNAL);  -- H
+  constant I_ME   : wordx := cause2mask(CAUSE_IRQ_M_EXTERNAL);   -- external interrupt only
+  constant I_SGE  : wordx := cause2mask(CAUSE_IRQ_SG_EXTERNAL);  -- H
+  constant I_LCOF : wordx := cause2mask(CAUSE_IRQ_LCOF);         -- Sscofpmf
+  constant I_NMI  : wordx := cause2mask(CAUSE_IRQ_NMI);          -- NMI
+  constant I_RSV0 : wordx := int2mask(0);                        -- Reserved - formerly N extension
+  constant I_RSV4 : wordx := int2mask(4);                        -- Reserved - formerly N extension
+  constant I_RSV8 : wordx := int2mask(8);                        -- Reserved - formerly N extension
+  constant I_RSVE : wordx := int2mask(14);                       -- Reserved
+  constant I_RSVF : wordx := int2mask(15);                       -- Reserved
 
   constant CSR_MIE_MASK     : wordx := I_MS or I_MT or I_ME;              -- Valid
   constant CSR_MIP_MASK     : wordx := I_none;                            -- Writable
@@ -2088,6 +2356,8 @@ package body nvsupport is
   constant CSR_SIE_MASK     : wordx := I_SS or I_ST or I_SE;              -- Valid
   constant CSR_SIP_MASK     : wordx := I_SS or I_ST or I_SE;              -- Writable
 
+  constant CSR_MVIEN_MASK   : wordx := I_SS or I_SE;                      -- Writable
+
 
   constant CSR_IRQ_RSV_MASK : wordx := I_RSV0 or I_RSV4 or I_RSV8 or I_RSVE or I_RSVF;
 
@@ -2096,6 +2366,46 @@ package body nvsupport is
   constant CSR_MEDELEG_MASK : wordx := extend_wordx(x"000cb3ff");
   constant CSR_HEDELEG_MASK : wordx := extend_wordx(x"000cb1ff");
 
+
+  type xint_arr is array (integer range <>) of integer range 0 to 7;
+  constant xc_prio : xint_arr(0 to 63) := (
+    2, 4, 2, 2, 1, 0, 1, 0,
+    2, 2, 2, 2, 4, 0, 7, 0,
+    5, 7, 3, 7, 4, 0, 2, 0,
+    7, 7, 7, 7, 7, 7, 0, 6,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 0  -- Unused can be the same as lowest priority
+  );
+
+  function get_sync_xc_prio(cause : cause_type;
+                            tval  : wordx) return integer is
+    variable cause_i : integer := cause2int(cause);
+    variable prio : integer;
+  begin
+    assert not is_irq(cause) report "Should not be called with IRQ type" severity failure;
+    assert cause_i >= 0 and cause_i <= 63 report "Bad cause " & tost(cause_i) severity failure;
+
+    prio := xc_prio(cause_i);
+    assert prio /= 7 report "Unknown cause " & tost(cause_i);
+
+    return prio;
+  end function;
+
+  function check_cause_update(new_cause  : cause_type;
+                              prev_cause : cause_type;
+                              tval       : wordx := zerox) return cause_type is
+    variable intCause      : natural := new_cause.code;
+    variable priority_new  : integer := get_sync_xc_prio(new_cause, tval);
+    variable priority_prev : integer := get_sync_xc_prio(prev_cause, tval);
+  begin
+    assert priority_new >= priority_prev
+      report "Overriding higher priority exception (" & tost(cause2int(prev_cause)) & ")" &
+             " with lower priority (" & tost(cause2int(new_cause)) & ")" severity failure;
+
+    return new_cause;
+  end function;
 
 
   -- Return GPR name from register number (e.g. x1 -> ra).
@@ -2183,6 +2493,8 @@ package body nvsupport is
   procedure bjump_gen(active        : in  extension_type;
                       inst_in       : in  iword_tuple_type;
                       buffer_in     : in  iqueue_type;
+                      bjump_pre     : in  std_logic_vector;
+                      jump_pre      : in  std_logic_vector;
                       prediction    : in  prediction_array_type;
                       dvalid        : in  std_ulogic;
                       dpc_in        : in  std_logic_vector;  -- pctype
@@ -2478,6 +2790,22 @@ package body nvsupport is
         jump7 := '1';
       end if;
     end if;
+
+    -- Replace the above with precalculated versions
+    bjump1 := bjump_pre(1);
+    bjump2 := bjump_pre(2);
+    bjump3 := bjump_pre(3);
+    bjump4 := bjump_pre(4);
+    bjump5 := bjump_pre(5);
+    bjump6 := bjump_pre(6);
+    bjump7 := bjump_pre(7);
+    jump1  := jump_pre(1);
+    jump2  := jump_pre(2);
+    jump3  := jump_pre(3);
+    jump4  := jump_pre(4);
+    jump5  := jump_pre(5);
+    jump6  := jump_pre(6);
+    jump7  := jump_pre(7);
 
 
     addlsbf         := addlsb0;
@@ -2798,6 +3126,204 @@ package body nvsupport is
     bjump_addr    := addrmsbt(high_part'range) & addlsbf(11 downto 0);
     bjump_out     := bj_taken;
     bjump_buf_out := bjump_buf_out_v;
+  end;
+
+  -- Branch and jump generation
+  procedure bjump_pregen(inst_word : in  word64;
+                         buffer_in : in  iqueue_type;
+                         bjump_out : out std_logic_vector;
+                         jump_out  : out std_logic_vector) is
+    -- Non-constant
+    variable br_imm          : wordx_arr(0 to 7);
+    variable j_imm           : wordx_arr(0 to 7);
+    variable mux_imm         : wordx_arr(0 to 7);
+    variable xbjump           : std_logic_vector(1 to 7);
+    variable xjump            : std_logic_vector(1 to 7);
+
+    -- 11+1 bit
+    function br_imm0567(inst : word64; start : integer) return wordx is
+      -- Non-constant
+      variable imm : wordx := (others => inst(start + 31));
+    begin
+      imm(11 downto 11) := get(inst, start +  7, 1);
+      imm(10 downto  5) := get(inst, start + 25, 6);
+      imm( 4 downto  1) := get(inst, start +  8, 4);
+      imm( 0)           := '0';
+
+      return imm;
+    end;
+
+    -- 7+1 bit
+    function br_imm1234(inst : word64; start : integer) return wordx is
+      -- Non-constant
+      variable imm : wordx := (others => inst(start + 12));
+    begin
+      imm(7 downto 6) := get(inst, start +  5, 2);
+      imm(5 downto 5) := get(inst, start +  2, 1);
+      imm(4 downto 3) := get(inst, start + 10, 2);
+      imm(2 downto 1) := get(inst, start +  3, 2);
+      imm(0)          := '0';
+
+      return imm;
+    end;
+
+    -- 19+1 bit
+    function j_imm0567(inst : word64; start : integer) return wordx is
+      -- Non-constant
+      variable imm : wordx := (others => inst(start + 31));
+    begin
+      imm(19 downto 12) := get(inst, start + 12,  8);
+      imm(11 downto 11) := get(inst, start + 20,  1);
+      imm(10 downto  1) := get(inst, start + 21, 10);
+      imm( 0)           := '0';
+
+      return imm;
+    end;
+
+    -- 10+1 bit
+    function j_imm1234(inst : word64; start : integer) return wordx is
+      -- Non-constant
+      variable imm : wordx := (others => inst(start + 12));
+    begin
+      imm(10 downto 10) := get(inst, start +  8, 1);
+      imm( 9 downto  8) := get(inst, start +  9, 2);
+      imm( 7 downto  7) := get(inst, start +  6, 1);
+      imm( 6 downto  6) := get(inst, start +  7, 1);
+      imm( 5 downto  5) := get(inst, start +  2, 1);
+      imm( 4 downto  4) := get(inst, start + 11, 1);
+      imm( 3 downto  1) := get(inst, start +  3, 3);
+      imm( 0)           := '0';
+
+      return imm;
+    end;
+
+    -- Is it a compressed unconditional jump?
+    -- Assumes that other code checks C and op (see below)!
+    -- C op=01 funct3=001 RV32 -> c.jal        jal x1,imm  (ret)
+    -- C op=01 funct3=101      -> c.j          jal x0,imm  (jmp)
+    function cjump(inst : word64; start : integer) return std_logic is
+    begin
+      if (inst(start + 15 downto start + 13) = "001" and XLEN = 32) or
+         inst(start + 15 downto start + 13) = "101" then
+        return '1';
+      end if;
+
+      return '0';
+    end;
+    -- Is it a compressed conditional or unconditional jump?
+    -- See above.
+    -- C op=01 funct3=11x      -> c.beqz/bnez  beq/bne rs1',x0,imm
+    function cbjump(inst : word64; start : integer) return std_logic is
+    begin
+      if cjump(inst, start) = '1' or
+         inst(start + 15 downto start + 13) = "110" or
+         inst(start + 15 downto start + 13) = "111" then
+        if inst(start + 0) = '1' then
+          return '1';
+        end if;
+      end if;
+
+      return '0';
+    end;
+    -- Is it a (not compressed) conditional or unconditional jump?
+    -- Assumes other code checks for non-compressed!
+    function bjump(inst : word64; start : integer) return std_logic is
+    begin
+      if inst(start + 6 downto start + 5) = "11" and
+         (inst(start + 4 downto start + 2) = "000" or     -- OP_BRANCH
+          inst(start + 4 downto start + 2) = "011") then  -- OP_JAL
+        return '1';
+      end if;
+
+      return '0';
+    end;
+    -- Is it an (not compressed) unconditional jump (OP_JAL)?
+    function jump(inst : word64; start : integer) return std_logic is
+    begin
+      if bjump(inst, start) = '1' and inst(start + 3) = '1' then
+        return '1';
+      end if;
+
+      return '0';
+    end;
+  begin
+--    inst_word := inst_in(1).d & inst_in(0).d;
+
+    br_imm(0) := br_imm0567(to64(buffer_in.inst.d), 0);
+    br_imm(1) := br_imm1234(inst_word,  0);
+    br_imm(2) := br_imm1234(inst_word, 16);
+    br_imm(3) := br_imm1234(inst_word, 32);
+    br_imm(4) := br_imm1234(inst_word, 48);
+    br_imm(5) := br_imm0567(inst_word,  0);
+    br_imm(6) := br_imm0567(inst_word, 16);
+    br_imm(7) := br_imm0567(inst_word, 32);
+
+    j_imm(0)  := j_imm0567(to64(buffer_in.inst.d), 0);
+    j_imm(1)  := j_imm1234(inst_word,  0);
+    j_imm(2)  := j_imm1234(inst_word, 16);
+    j_imm(3)  := j_imm1234(inst_word, 32);
+    j_imm(4)  := j_imm1234(inst_word, 48);
+    j_imm(5)  := j_imm0567(inst_word,  0);
+    j_imm(6)  := j_imm0567(inst_word, 16);
+    j_imm(7)  := j_imm0567(inst_word, 32);
+
+    mux_imm(0)   := br_imm(0);
+    if buffer_in.inst.d(2) = '1' then
+      mux_imm(0) := j_imm(0);
+    end if;
+
+    mux_imm(1)   := br_imm(1);
+    if inst_word(14) = '0' then
+      mux_imm(1) := j_imm(1);
+    end if;
+
+    mux_imm(2)   := br_imm(2);
+    if inst_word(30) = '0' then
+      mux_imm(2) := j_imm(2);
+    end if;
+
+    mux_imm(3)   := br_imm(3);
+    if inst_word(46) = '0' then
+      mux_imm(3) := j_imm(3);
+    end if;
+
+    mux_imm(4)   := br_imm(4);
+    if inst_word(62) = '0' then
+      mux_imm(4) := j_imm(4);
+    end if;
+
+    mux_imm(5)   := br_imm(5);
+    if inst_word(2) = '1' then
+      mux_imm(5) := j_imm(5);
+    end if;
+
+    mux_imm(6)   := br_imm(6);
+    if inst_word(18) = '1' then
+      mux_imm(6) := j_imm(6);
+    end if;
+
+    mux_imm(7)   := br_imm(7);
+    if inst_word(34) = '1' then
+      mux_imm(7) := j_imm(7);
+    end if;
+
+    xbjump(1) := cbjump(inst_word,  0);
+    xjump(1)  := cjump(inst_word,   0);
+    xbjump(2) := cbjump(inst_word, 16);
+    xjump(2)  := cjump(inst_word,  16);
+    xbjump(3) := cbjump(inst_word, 32);
+    xjump(3)  := cjump(inst_word,  32);
+    xbjump(4) := cbjump(inst_word, 48);
+    xjump(4)  := cjump(inst_word,  48);
+    xbjump(5) := bjump(inst_word,   0);
+    xjump(5)  := jump(inst_word,    0);
+    xbjump(6) := bjump(inst_word,  16);
+    xjump(6)  := jump(inst_word,   16);
+    xbjump(7) := bjump(inst_word,  32);
+    xjump(7)  := jump(inst_word,   32);
+
+    bjump_out := xbjump;
+    jump_out  := xjump; 
   end;
 
   procedure rvc_expander(active   : in  extension_type;
@@ -3648,71 +4174,6 @@ package body nvsupport is
     return false;
   end;
 
-  function valid_branch(inst_in : word64;
-                        pos : integer) return boolean is
-    variable valid : boolean := false;
-  begin
-    case pos is
-      when 0 =>
-        if inst_in(1 downto 0) = "11" then
-          -- Non-compressed
-          if inst_in(6 downto 4) = "110" and (inst_in(5) xor inst_in(2)) = '0' then
-            -- It is jal or B-type instruction
-            valid := true;
-          end if;
-        else
-          -- Compressed
-          if inst_in(1 downto 0) = "01" and inst_in(15) = '1' and inst_in(14 downto 13) /= "00" then
-            valid := true;
-          end if;
-        end if;
-      when 1 =>
-        if inst_in(17 downto 16) = "11" then
-          -- Non-compressed
-          if inst_in(22 downto 20) = "110" and (inst_in(19) xor inst_in(18)) = '0' then
-            -- It is jal or B-type instruction
-            valid := true;
-          end if;
-        else
-          -- Compressed
-          if inst_in(17 downto 16) = "01" and inst_in(31) = '1' and inst_in(30 downto 29) /= "00" then
-            valid := true;
-          end if;
-        end if;
-      when 2 =>
-        if inst_in(33 downto 32) = "11" then
-          -- Non-compressed
-          if inst_in(38 downto 36) = "110" and (inst_in(35) xor inst_in(34)) = '0' then
-            -- It is jal or B-type instruction
-            valid := true;
-          end if;
-        else
-          -- Compressed
-          if inst_in(33 downto 32) = "01" and inst_in(47) = '1' and inst_in(46 downto 45) /= "00" then
-            valid := true;
-          end if;
-        end if;
-      when 3 =>
-        if inst_in(49 downto 48) /= "11" then
-          -- Non-compressed
-          if inst_in(54 downto 52) = "110" and (inst_in(51) xor inst_in(50)) = '0' then
-            -- It is jal or B-type instruction
-            valid := true;
-          end if;
-        else
-          -- Compressed
-          if inst_in(49 downto 48) = "01" and inst_in(63) = '1' and inst_in(62 downto 61) /= "00" then
-            valid := true;
-          end if;
-        end if;
-      when others =>
-      end case;
-
-      return valid;
-
-  end;
-
-
   -- Align compressed instruction
   procedure rvc_aligner(active           : in  extension_type;
                         inst_in          : in  iword_tuple_type;
@@ -4411,8 +4872,7 @@ package body nvsupport is
   begin
     return is_csr_access(inst)
            or is_sspopchk(active, cfi_both, inst) or is_sspush(active, cfi_both, inst) or
-              is_ssrdp(active, cfi_both, inst)
-           ;
+              is_ssrdp(active, cfi_both, inst);
   end;
 -- pragma translate_on
 
@@ -4425,8 +4885,7 @@ package body nvsupport is
     -- CSRR[S/C] and rs1=x0, or CSRR[S/C]I and imm=0, ie read-only?
     -- Do not care about whether it really is an lps/lpc instruction.
     return csr_access_read_only(inst)
-           or is_ssrdp(active, cfi_both, inst)
-           ;
+           or is_ssrdp(active, cfi_both, inst);
   end;
 
   -- Assumes it is already known that inst is a CSR instruction.
@@ -4497,6 +4956,7 @@ package body nvsupport is
     end case;
   end;
 
+  -- Assumes that it is not necessary to check the rs2 field.
   function is_hlv(inst : word) return boolean is
     variable funct7 : funct7_type := funct7(inst);
   begin
@@ -4509,6 +4969,14 @@ package body nvsupport is
     return is_hlsv(inst) and funct7(0) = '1';
   end;
 
+  -- Assumes that it is not necessary to completely check the rs2 field.
+  function is_hlvx(inst : word) return boolean is
+    variable funct7 : funct7_type := funct7(inst);
+    variable rfa2   : reg_t       := rs2(inst);
+  begin
+    return is_hlsv(inst) and funct7(0) = '0' and rfa2(1) = '1';
+  end;
+  
   function is_fence_i(inst : word) return boolean is
     variable opcode : opcode_type := opcode(inst);
     variable funct3 : funct3_type := funct3(inst);
@@ -4617,8 +5085,7 @@ package body nvsupport is
     variable funct12     : funct12_type := funct12(inst);
   begin
     if not ext_zimop or not is_system1(inst)
-       or not ext_zicfiss or not cfi_en.ss
-       then
+       or not ext_zicfiss or not cfi_en.ss then
       return false;
     end if;
 
@@ -4640,8 +5107,7 @@ package body nvsupport is
     variable funct7      : funct7_type := funct7(inst);
   begin
     if not ext_zimop or not is_system1(inst)
-       or not ext_zicfiss or not cfi_en.ss
-       then
+       or not ext_zicfiss or not cfi_en.ss then
       return false;
     end if;
 
@@ -4896,9 +5362,7 @@ package body nvsupport is
       when OP_SYSTEM =>
         -- Among SYSTEM instructions, rd use is limited to
         -- CSR, hlv, Zimop (of which some Zicfiss).
-        if is_used_mop_rd(active,
-                          cfi_en,
-                          inst) then
+        if is_used_mop_rd(active, cfi_en, inst) then
           null;
         elsif not (is_csr_access(inst) or is_hlv(inst)) then
           wreg := '0';
@@ -4967,9 +5431,7 @@ package body nvsupport is
         if is_csr_access(inst) and funct3(2) = '1' then  -- I_CSRRWI, I_CSRRSI, I_CSRRCI?
           vreg  := '0';
         end if;
-        if is_used_mop_rs1(active,
-                           cfi_en,
-                           inst) then
+        if is_used_mop_rs1(active, cfi_en, inst) then
           null;
         elsif not (is_csr_access(inst) or
                    is_sfence_vma(active, inst)  or
@@ -5035,9 +5497,7 @@ package body nvsupport is
         -- Among SYSTEM instructions, rs2 use is limited to
         -- sfence.vma, sfence.vma, hfence.v/gvma, hsv,
         -- and some Zicfiss.
-        if is_used_mop_rs2(active,
-                           cfi_en,
-                           inst) then
+        if is_used_mop_rs2(active, cfi_en, inst) then
           null;
         elsif not (is_sfence_vma(active, inst)  or
                    is_hfence_vvma(active, inst) or is_hfence_gvma(active, inst) or
@@ -5130,9 +5590,7 @@ package body nvsupport is
      -- this also ensures that all CSR accesses are in the proper lane
      -- This covers all of Zicfiss!
 
-    if is_csr(active,
-              cfi_en,
-              inst) then
+    if is_csr(active, cfi_en, inst) then
       return true;
     end if;
 
@@ -5172,14 +5630,20 @@ package body nvsupport is
     return false;
   end;
 
-  -- Categories of dependent/similar CSRs
+  -- Some CSR accesses has some side effects. This function sets a vecotr
+  -- with flags for each acction:
   -- Bits  Meaning
-  -- 0-3   category number, each category counted as "same" CSR for RaW
-  -- 5     do not dual-issue write to CSR
-  -- 6     memory access following write to CSR must be delayed
-  -- 7     pipeline flush may be required by write to CSR, so hold issue
-  -- 8     no FPU instructions under way together with this
-  -- 9     no new FPU instructions until this completes
+  -- 0     do not dual-issue write to CSR
+  -- 1     memory access following write to CSR must be delayed
+  -- 2     pipeline flush may be required by write to CSR,or CSR write could
+  --       affect upcoming instructions, so hold issue
+  -- 3     no FPU instructions under way together with this
+  -- 4     no new FPU instructions until this completes
+  -- 5     CSR write completes before a new interrupt is taken
+  -- 6     CSR read/write need to be hold until previous instructions are committed
+  -- 7     hold issue when accesing hpmcounters trhough sireg/sireg4 for an 
+  --       accurate reading
+  -- 8     hold the pipeline one extra cycle if there is a raw or waw dependency
   --
   -- Note that PMPCFG gets "overlapping" things set here. This is mainly to
   -- clarify for any future improvements to the code.
@@ -5188,24 +5652,317 @@ package body nvsupport is
   -- do not, since they cannot affect anything in the same CPU privilege mode.
   -- Any changes to such CSRs will require a privilege change to do anything,
   -- and thus there will be a pipeline flush anyway.
-  function csr_category(addr : csratype) return category_t is
+  function csr_hold_category(addr : csratype; hpmc_mode : std_ulogic) return hold_category_t is
     -- Non-constant
-    variable category : category_t := (others => '0');
+    variable category : hold_category_t := (others => '0');
+  begin
+    -- Some CSR writes need to issue alone. This is achieved setting category(0) to 1
+
+
+    -- For some CSR writes, nothing more should leave the issue stage
+    -- until the writes are completed.
+    -- DCSR would be one such, but can only be used from the DSU.
+    case addr is
+      -- Changes to these may force pipeline flush since the next instruction
+      -- fetch may be required to behave differently.
+      -- Writes to PMPCFG lock bits may change execute protection.
+      when CSR_PMPCFG0 | CSR_PMPCFG1 | CSR_PMPCFG2 | CSR_PMPCFG3 |
+           CSR_SATP    |         -- Changes memory mapping.
+           CSR_VSATP   |         -- Changes memory mapping.
+           CSR_HGATP   |         -- Changes memory mapping.
+           CSR_MISA     |         -- May turn on/off extensions and change MXL.
+           CSR_MSTATUS  |         -- May turn on/off FPU and extensions.
+           CSR_MSTATUSH |         -- May toggle MPV, currently not possible to pair LD/SD
+                                  -- with CSR write but it is better to be consistent with the RV64 behavior.
+           CSR_SSTATUS  |
+           -- VSSTATUS
+           --   Should not be included here since writes to it are only done in
+           --   modes that are not affected by it!
+           -- HSTATUS
+           --   Should not be included here since writes to it cannot affect
+           --   the immediately following instructions.
+           -- May cause illegal on subsequent FPU instruction
+           CSR_FRM        | CSR_FCSR       |
+           CSR_MENVCFG    | CSR_HENVCFG    | CSR_SENVCFG |
+           CSR_MENVCFGH   | CSR_HENVCFGH   |
+           CSR_MSECCFG    | CSR_MSECCFGH   |
+           -- Changes trap jump behavior, VSTVEC not a concern since a mode change must occur.
+           CSR_MTVEC      | CSR_STVEC      |
+           -- May affect if an IRQ is taken or not
+           CSR_MIDELEG    | CSR_HIDELEG    |
+           -- Stateen affects the available extensions, similarly to envcfg
+           CSR_MSTATEEN0  | CSR_MSTATEEN1  | CSR_MSTATEEN2  | CSR_MSTATEEN3  |
+           CSR_MSTATEEN0H | CSR_MSTATEEN1H | CSR_MSTATEEN2H | CSR_MSTATEEN3H |
+           CSR_SSTATEEN0  | CSR_SSTATEEN1  | CSR_SSTATEEN2  | CSR_SSTATEEN3  |
+           CSR_HSTATEEN0  | CSR_HSTATEEN1  | CSR_HSTATEEN2  | CSR_HSTATEEN3  |
+           CSR_HSTATEEN0H | CSR_HSTATEEN1H | CSR_HSTATEEN2H | CSR_HSTATEEN3H |
+           CSR_FEATURES   | CSR_FEATURESH  | CSR_CCTRL      | CSR_FT         |
+           -- Triggers CSRs affect firing/not firing in the following instructions
+           CSR_TDATA1     | CSR_MCONTEXT   | CSR_SCONTEXT   | CSR_HCONTEXT =>
+        category(2) := '1';
+        -- To simplify PC logic, ensure that CSR writes that may require pipeline flush
+        -- always issue alone (and put them always in the same pipe).
+        category(0) := '1';
+      when others => null;
+    end case;
+
+    -- Some CSR writes may not pair if issued in lane 0, since the behaviour
+    -- may change for the very next instruction.
+    -- Known examples are mret, sret and uret.
+    -- Currently those are handled directly in dual_issue_check(), but
+    -- perhaps they should be here instead?
+
+    -- Some CSR writes affect following memory accesses.
+    -- The following access must be delayed!
+    --
+    -- In the case of the FS/XS, FPU and/or other extension instructions may
+    -- be enabled/disabled. Affects whether the next instruction is illegal!
+    case addr is
+      -- MSTATUS
+      --   MBE     - switch endianness of following load/store
+      --   MXR     - affects following load (allow/disable read from executable space)
+      --   SUM     - affects following load/store (allow/disable access to user mode pages)
+      --   MPRV    - affects following load/store (physical or virtual addressing in M-mode)
+      --   FS/XS   - turning off FPU/ext could cause next instruction to fault
+      -- SSTATUS
+      --   MXR     - affects following load (allow/disable read from executable space)
+      --   SUM     - affects following load/store (allow/disable access to user mode pages)
+      --   FS/XS   - turning off FPU/ext which could cause next instruction to fault
+      -- HSTATUS
+      --   VSBE    - switch endianness of following hypervisor load/store
+      --   SPVP    - affects privilege level of following hypervisor load/store
+      --   HU      - affects following hypervisor load/store (allow/disable such in user mode)
+      -- VSSTATUS
+      --   Should not be included here since writes to it are only done in
+      --   modes that are not affected by it!
+      when CSR_MSTATUS   | CSR_MSTATUSH  | CSR_SSTATUS   | CSR_HSTATUS   |
+           -- PMPCFG/PMPADDR affect memory protection.
+           CSR_PMPCFG0   | CSR_PMPCFG1   | CSR_PMPCFG2   | CSR_PMPCFG3   |
+           CSR_PMPADDR0  | CSR_PMPADDR1  | CSR_PMPADDR2  | CSR_PMPADDR3  |
+           CSR_PMPADDR4  | CSR_PMPADDR5  | CSR_PMPADDR6  | CSR_PMPADDR7  |
+           CSR_PMPADDR8  | CSR_PMPADDR9  | CSR_PMPADDR10 | CSR_PMPADDR11 |
+           CSR_PMPADDR12 | CSR_PMPADDR13 | CSR_PMPADDR14 | CSR_PMPADDR15 |
+           -- Special case!
+           -- MIE/SIE/UIE can disable interrupts and the interrupt code relies on
+           -- there being no load/store directly following that.
+           CSR_MIE       | CSR_SIE       | CSR_UIE        | CSR_HIE      |
+           CSR_HGEIE     |
+           -- Changing delegation can also enable/disable an interrupt.
+           CSR_MIDELEG | CSR_SIDELEG | CSR_HIDELEG =>
+        category(1) := '1';
+      when others => null;
+    end case;
+
+    -- FPU instructions in the pipeline must complete before the FPU flags
+    -- can be read or written. Then the write needs to happen before any other
+    -- FPU instructions may complete and modify them.
+    -- For now, no FPU instructions are allowed in the pipeline together with
+    -- any accesses to the FPU related CSRs.
+    case addr is
+      when CSR_FFLAGS | CSR_FCSR =>
+        category(3) := '1';
+      when others => null;
+    end case;
+
+    -- Writes to some CSR:s must take effect before a new FPU instruction is allowed.
+    -- (FPU rounding mode can be read at any time.)
+    case addr is
+      when CSR_FFLAGS | CSR_FCSR | CSR_FRM =>
+        category(4) := '1';
+      when others => null;
+    end case;
+
+    -- Changes to interrupt enable must not dual-issue, to prevent interrupt
+    --  traps from being taken in a pair with such a CSR write.
+    -- Changing delegation can also enable/disable an interrupt.
+    -- A paired instruction faulting would get the wrong exception vector.
+    -- Setting of interrupt pending should normally not cause an interrupt
+    --  in the current mode, but add those here to avoid any potential issue.
+    -- Hold issue if there is a valid instruction in access stage and there
+    -- is a CSR write instruction to interrupt related registers in execute.
+    -- This way interrupt does not need to be checked in two different stages
+    case addr is
+      -- VSSTATUS, VSIE, VSIP, VSTVEC
+      --   Should perhaps not be included here since writes to them are only
+      --   done in modes that are not affected by them!
+      when CSR_MSTATUS  | CSR_MIE  | CSR_MIP  | CSR_MIDELEG  | CSR_MTVEC  |
+           CSR_HSTATUS  | CSR_HIE  | CSR_HIP  | CSR_HIDELEG  |
+           CSR_SSTATUS  | CSR_SIE  | CSR_SIP  |                CSR_STVEC  |
+           CSR_VSSTATUS | CSR_VSIE | CSR_VSIP |                CSR_VSTVEC |
+           -- HGEIP is read-only
+           CSR_HGEIE    | CSR_HVIP =>
+
+        category(0) := '1';
+        category(5) := '1';
+      when others => null;
+    end case;
+
+    -- When reading MINSTRET/INSTRET we need to wait for all the previous instructions 
+    -- that still in the pipeline to execute. Otherwise we would be reading a smaller 
+    -- value.
+    -- This logic can be applied with every counter. However, other counters are not
+    -- strict as instret. For that reason a custom configuration bit has been added to
+    -- decide if the pipeline should execute all pending instructions before reading any
+    -- counter with a possible performance penalty or it should read the value stored 
+    -- in the CSR in RA stage in order to be completely accurate.
+    case addr is
+      when CSR_MINSTRET  | CSR_MINSTRETH  |
+           CSR_INSTRET   | CSR_INSTRETH   =>
+        category(6) := '1'; -- Not dual issue when reading and enforce holding the pipeline
+        category(0) := '1'; -- Not dual issue when writing
+      when others => null;
+    end case;
+    if hpmc_mode = '0' then
+      case addr is
+        when CSR_MHPMCOUNTER3   |
+             CSR_MHPMCOUNTER4   | CSR_MHPMCOUNTER5   | CSR_MHPMCOUNTER6   | CSR_MHPMCOUNTER7   |
+             CSR_MHPMCOUNTER8   | CSR_MHPMCOUNTER9   | CSR_MHPMCOUNTER10  | CSR_MHPMCOUNTER11  |
+             CSR_MHPMCOUNTER12  | CSR_MHPMCOUNTER13  | CSR_MHPMCOUNTER14  | CSR_MHPMCOUNTER15  |
+             CSR_MHPMCOUNTER16  | CSR_MHPMCOUNTER17  | CSR_MHPMCOUNTER18  | CSR_MHPMCOUNTER19  |
+             CSR_MHPMCOUNTER20  | CSR_MHPMCOUNTER21  | CSR_MHPMCOUNTER22  | CSR_MHPMCOUNTER23  |
+             CSR_MHPMCOUNTER24  | CSR_MHPMCOUNTER25  | CSR_MHPMCOUNTER26  | CSR_MHPMCOUNTER27  |
+             CSR_MHPMCOUNTER28  | CSR_MHPMCOUNTER29  | CSR_MHPMCOUNTER30  | CSR_MHPMCOUNTER31  |
+             CSR_MHPMCOUNTER3H  |
+             CSR_MHPMCOUNTER4H  | CSR_MHPMCOUNTER5H  | CSR_MHPMCOUNTER6H  | CSR_MHPMCOUNTER7H  |
+             CSR_MHPMCOUNTER8H  | CSR_MHPMCOUNTER9H  | CSR_MHPMCOUNTER10H | CSR_MHPMCOUNTER11H |
+             CSR_MHPMCOUNTER12H | CSR_MHPMCOUNTER13H | CSR_MHPMCOUNTER14H | CSR_MHPMCOUNTER15H |
+             CSR_MHPMCOUNTER16H | CSR_MHPMCOUNTER17H | CSR_MHPMCOUNTER18H | CSR_MHPMCOUNTER19H |
+             CSR_MHPMCOUNTER20H | CSR_MHPMCOUNTER21H | CSR_MHPMCOUNTER22H | CSR_MHPMCOUNTER23H |
+             CSR_MHPMCOUNTER24H | CSR_MHPMCOUNTER25H | CSR_MHPMCOUNTER26H | CSR_MHPMCOUNTER27H |
+             CSR_MHPMCOUNTER28H | CSR_MHPMCOUNTER29H | CSR_MHPMCOUNTER30H | CSR_MHPMCOUNTER31H |
+
+             CSR_HPMCOUNTER3    |
+             CSR_HPMCOUNTER4    | CSR_HPMCOUNTER5    | CSR_HPMCOUNTER6    | CSR_HPMCOUNTER7    |
+             CSR_HPMCOUNTER8    | CSR_HPMCOUNTER9    | CSR_HPMCOUNTER10   | CSR_HPMCOUNTER11   |
+             CSR_HPMCOUNTER12   | CSR_HPMCOUNTER13   | CSR_HPMCOUNTER14   | CSR_HPMCOUNTER15   |
+             CSR_HPMCOUNTER16   | CSR_HPMCOUNTER17   | CSR_HPMCOUNTER18   | CSR_HPMCOUNTER19   |
+             CSR_HPMCOUNTER20   | CSR_HPMCOUNTER21   | CSR_HPMCOUNTER22   | CSR_HPMCOUNTER23   |
+             CSR_HPMCOUNTER24   | CSR_HPMCOUNTER25   | CSR_HPMCOUNTER26   | CSR_HPMCOUNTER27   |
+             CSR_HPMCOUNTER28   | CSR_HPMCOUNTER29   | CSR_HPMCOUNTER30   | CSR_HPMCOUNTER31   |
+             CSR_HPMCOUNTER3H   |
+             CSR_HPMCOUNTER4H   | CSR_HPMCOUNTER5H   | CSR_HPMCOUNTER6H   | CSR_HPMCOUNTER7H   |
+             CSR_HPMCOUNTER8H   | CSR_HPMCOUNTER9H   | CSR_HPMCOUNTER10H  | CSR_HPMCOUNTER11H  |
+             CSR_HPMCOUNTER12H  | CSR_HPMCOUNTER13H  | CSR_HPMCOUNTER14H  | CSR_HPMCOUNTER15H  |
+             CSR_HPMCOUNTER16H  | CSR_HPMCOUNTER17H  | CSR_HPMCOUNTER18H  | CSR_HPMCOUNTER19H  |
+             CSR_HPMCOUNTER20H  | CSR_HPMCOUNTER21H  | CSR_HPMCOUNTER22H  | CSR_HPMCOUNTER23H  |
+             CSR_HPMCOUNTER24H  | CSR_HPMCOUNTER25H  | CSR_HPMCOUNTER26H  | CSR_HPMCOUNTER27H  |
+             CSR_HPMCOUNTER28H  | CSR_HPMCOUNTER29H  | CSR_HPMCOUNTER30H  | CSR_HPMCOUNTER31H  =>
+            category(6) := '1'; -- Not dual issue when reading and enforce holding the pipeline
+            category(0) := '1'; -- Not dual issue when writing
+          when others => null;
+        end case;
+      end if;
+
+      -- SIREG/SIREG4 can be employed to read performance counters and in that case, 
+      -- previous instructions must be commited before reading the CSR.
+      -- Writes and reads to this instructions must be single-issue for the same reason.
+      case addr is
+        when CSR_SIREG  =>
+          category(7) := '1'; -- Not dual issue when reading and enforce holding the pipeline
+          category(0) := '1'; -- Not dual issue when writing
+        when CSR_SIREG4 =>
+          if XLEN = 32 then
+            category(7) := '1'; -- Not dual issue when reading and enforce holding the pipeline
+            category(0) := '1'; -- Not dual issue when writing
+          end if;
+        when others => null;
+      end case;
+
+      -- Some CSR dependencies need to be extended by one/two extra cycle even
+      -- if the instruction has already left WB stage.
+      -- For instance: reading MTOPI after writing MTOPEI 
+      -- Writing MTOPEI clears the IMSIC interrupt but there are 2 cycles of
+      -- latency. When MIP.MEIP bit is set to 0 another extra cycle is needed
+      -- to update MTOPI.
+      case addr is
+        when CSR_MTOPEI  | CSR_STOPEI   | CSR_VSTOPEI =>
+          category(8) := '1';
+        when others => null;
+      end case;
+
+    return category;
+  end;
+
+
+  function hpmc_ind_hold_check(virt : std_ulogic;
+                               csr  : csr_reg_type;
+                               hpmc_dep_cfg : std_ulogic) return boolean is
+    -- Non-constant
+    variable hold : boolean := false;
+  begin
+    -- SIREG/SIREG4 (VSIREG/VSIREG4) CSRs can access performance counters.
+    -- Thus, we need to check in RA stage which address contains
+    -- SISELECT/VSISELECT to decide if we should hold the pipeline until all previous 
+    -- instructions have committed.
+    -- When reading INSTRET CSR, all the previous instructions in the pipeline must
+    -- be committed before reading the INSTRET value.
+    -- For other CSRs, there is a configuration bits to select between accurate results
+    -- waiting for all remaining instructions to commit before reading any HPMCounter and
+    -- performance where the pipeline is only hold for INSTRET reads.
+    if virt = '0' then
+      -- Suervisor CSRs
+      if hpmc_dep_cfg = '1' then
+        if csr.siselect.sel = x"042" then
+          hold := true;
+        end if;
+      else
+        if csr.siselect.sel(7 downto 4) = x"4" or csr.siselect.sel(7 downto 4) = x"5" then
+          hold := true;
+        end if;
+      end if;
+    else
+      -- Virtual Suervisor CSRs
+      -- HPMCOUNTERS can be accessed through indirect accessed registers only
+      -- in VS mode (through sireg* CSRs).
+      if hpmc_dep_cfg = '1' then
+        if csr.vsiselect.sel = x"042" then
+          hold := true;
+        end if;
+      else
+        if csr.vsiselect.sel(7 downto 4) = x"4" or csr.vsiselect.sel(7 downto 4) = x"5" then
+          hold := true;
+        end if;
+      end if;
+    end if;
+
+    return hold;
+  end;
+
+  function csr_raw_category(addr : csratype) return raw_category_t is
+    -- Non-constant
+    variable category : raw_category_t := (others => '0');
   begin
     -- RaW category dependencies
-    case addr is
       -- Writes to any in the numbered category affect all.
-
+    case addr is
       when CSR_MSTATUS | CSR_MSTATUSH | CSR_SSTATUS | CSR_USTATUS =>
-        category(3 downto 0) := x"1";
-      when CSR_MIE     | CSR_SIE      | CSR_UIE     | CSR_HIE     |
-           CSR_MIDELEG | CSR_SIDELEG  | CSR_HIDELEG | -- =>
-           CSR_MIP     | CSR_SIP      | CSR_UIP     | CSR_HIP     |
-           CSR_HVIP    | CSR_VSIP     | CSR_VSIE =>
-        category(3 downto 0) := x"2";
+        category(0) := '1';
+      when others =>
+    end case;
+    case addr is
+      -- Category 0, among others, signals dependencies between *TOPEI, *IP, *IE 
+      -- and *TOPI registers. This dependencies appear only when AIA is implemented.
+      -- For instance, MTOPI depends on MIE and MIP. Or MIP depends on MTOPEI, since
+      -- writes to MTOPEI can clear MIP.MEIP. For this reason, MTOPI depends also
+      -- on MTOPEI, and wrting to MTOPEI could affect a read to MTOPI. A buble must be
+      -- inserted for reads that come after a write.
+      when CSR_MIE     | CSR_SIE      | CSR_VSIE    | CSR_HIE  | CSR_UIE  |
+           CSR_MIDELEG | CSR_SIDELEG  | CSR_HIDELEG | 
+           CSR_MIP     | CSR_SIP      | CSR_VSIP    | CSR_HIP  | CSR_UIP  |
+           CSR_MVIEN   | CSR_HVIEN    |
+           CSR_MVIP    | CSR_HVIP     |
+           CSR_MTOPEI  | CSR_STOPEI   | CSR_VSTOPEI |
+           CSR_MTOPI   | CSR_STOPI    | CSR_VSTOPI   =>
+        category(1) := '1';
+      when others =>
+    end case;
+    case addr is
       when CSR_FFLAGS  | CSR_FRM | CSR_FCSR =>
-        category(3 downto 0) := x"4";
-
+        category(2) := '1';
+      when others =>
+    end case;
+    
+    case addr is
       -- Writes to the first in the numbered category affect the rest.
       -- But putting them all in a single category should not matter for performance.
 
@@ -5213,7 +5970,9 @@ package body nvsupport is
       -- if two immediately following reads of that timer give different results.
       -- Changes to these can be handled by holding the pipeline, since it should not
       -- matter if the writes are somewhat slow.
-      when CSR_MCOUNTINHIBIT  | CSR_MHPMEVENT3     |
+      -- With the introduction of smcdeleg counters can also be affected through indirect
+      -- CSR accesses.
+      when CSR_MCOUNTINHIBIT  | CSR_SCOUNTINHIBIT  | CSR_SCOUNTOVF      | CSR_MHPMEVENT3     |
            CSR_MHPMEVENT4     | CSR_MHPMEVENT5     | CSR_MHPMEVENT6     | CSR_MHPMEVENT7     |
            CSR_MHPMEVENT8     | CSR_MHPMEVENT9     | CSR_MHPMEVENT10    | CSR_MHPMEVENT11    |
            CSR_MHPMEVENT12    | CSR_MHPMEVENT13    | CSR_MHPMEVENT14    | CSR_MHPMEVENT15    |
@@ -5263,16 +6022,30 @@ package body nvsupport is
            CSR_HPMCOUNTER16H  | CSR_HPMCOUNTER17H  | CSR_HPMCOUNTER18H  | CSR_HPMCOUNTER19H  |
            CSR_HPMCOUNTER20H  | CSR_HPMCOUNTER21H  | CSR_HPMCOUNTER22H  | CSR_HPMCOUNTER23H  |
            CSR_HPMCOUNTER24H  | CSR_HPMCOUNTER25H  | CSR_HPMCOUNTER26H  | CSR_HPMCOUNTER27H  |
-           CSR_HPMCOUNTER28H  | CSR_HPMCOUNTER29H  | CSR_HPMCOUNTER30H  | CSR_HPMCOUNTER31H =>
-        category(3 downto 0) := x"5";
+           CSR_HPMCOUNTER28H  | CSR_HPMCOUNTER29H  | CSR_HPMCOUNTER30H  | CSR_HPMCOUNTER31H  |
+           CSR_MIREG          | CSR_MIREG2         | CSR_MIREG3         | CSR_MIREG4         |
+           CSR_MIREG5         | CSR_MIREG6         | CSR_MISELECT       | CSR_MTOPEI         |
+           CSR_SIREG          | CSR_SIREG2         | CSR_SIREG3         | CSR_SIREG4         |
+           CSR_SIREG5         | CSR_SIREG6         | CSR_SISELECT       | CSR_STOPEI         |
+           CSR_VSIREG         | CSR_VSIREG2        | CSR_VSIREG3        | CSR_VSIREG4        |
+           CSR_VSIREG5        | CSR_VSIREG6        | CSR_VSISELECT      | CSR_VSTOPEI        |
+           CSR_HGEIP          | CSR_HSTATUS        | CSR_MTOPI          | CSR_STOPI          |
+           CSR_MENVCFG        | CSR_SENVCFG        | CSR_HENVCFG =>
+             category(3) :='1';
+      when others =>
+    end case;
 
 
+    case addr is
       -- Changes to TSELECT will cause TDATAn to return different things.
       when CSR_TSELECT   |
            -- Affects
            CSR_TDATA1    | CSR_TDATA2    | CSR_TDATA3 | CSR_TINFO =>
-        category(3 downto 0) := x"6";
+        category(4) := '1';
+      when others =>
+    end case;
 
+    case addr is
       -- The setting in PMPCFG affects values read from PMPADDR.
       when CSR_PMPCFG0   | CSR_PMPCFG1   | CSR_PMPCFG2   | CSR_PMPCFG3   |
            -- Affect
@@ -5280,169 +6053,39 @@ package body nvsupport is
            CSR_PMPADDR4  | CSR_PMPADDR5  | CSR_PMPADDR6  | CSR_PMPADDR7  |
            CSR_PMPADDR8  | CSR_PMPADDR9  | CSR_PMPADDR10 | CSR_PMPADDR11 |
            CSR_PMPADDR12 | CSR_PMPADDR13 | CSR_PMPADDR14 | CSR_PMPADDR15 =>
-        category(3 downto 0) := x"7";
-
-      when CSR_MIREG     | CSR_MIREG2  | CSR_MIREG3  | CSR_MIREG4  | CSR_MIREG5  | CSR_MIREG6 |
-           CSR_MISELECT  | CSR_MTOPEI  |
-           CSR_SIREG     | CSR_SIREG2  | CSR_SIREG3  | CSR_SIREG4  | CSR_SIREG5  | CSR_SIREG6 |
-           CSR_SISELECT  | CSR_STOPEI  |
-           CSR_VSIREG    | CSR_VSIREG2 | CSR_VSIREG3 | CSR_VSIREG4 | CSR_VSIREG5 | CSR_VSIREG6 |
-           CSR_VSISELECT | CSR_VSTOPEI |
-           CSR_HGEIP     | CSR_HSTATUS =>
-        category(3 downto 0) := x"8";
-
-      when CSR_MENVCFG | CSR_SENVCFG | CSR_HENVCFG =>
-        category(3 downto 0) := x"9";
-
-      when others => null;
-        -- No category if low nybble is 0.
-    end case;
-
-    -- Some CSR writes need to issue alone.
-    -- Changes to interrupt enable must not dual-issue, to prevent interrupt
-    --  traps from being taken in a pair with such a CSR write.
-    -- Changing delegation can also enable/disable an interrupt.
-    -- A paired instruction faulting would get the wrong exception vector.
-    -- Setting of interrupt pending should normally not cause an interrupt
-    --  in the current mode, but add those here to avoid any potential issue.
-    case addr is
-      -- VSSTATUS, VSIE, VSIP, VSTVEC
-      --   Should perhaps not be included here since writes to them are only
-      --   done in modes that are not affected by them!
-      when CSR_MSTATUS  | CSR_MIE  | CSR_MIP  | CSR_MIDELEG  | CSR_MTVEC  |
-           CSR_HSTATUS  | CSR_HIE  | CSR_HIP  | CSR_HIDELEG  |
-           CSR_SSTATUS  | CSR_SIE  | CSR_SIP  |                CSR_STVEC  |
-           CSR_VSSTATUS | CSR_VSIE | CSR_VSIP |                CSR_VSTVEC |
-           -- HGEIP is read-only
-           CSR_HGEIE    | CSR_HVIP =>
-
         category(5) := '1';
-      when others => null;
-    end case;
-
-    -- For some CSR writes, nothing more should leave the issue stage
-    -- until the writes are completed.
-    -- DCSR would be one such, but can only be used from the DSU.
-    case addr is
-      -- Changes to these may force pipeline flush since the next instruction
-      -- fetch may be required to behave differently.
-      -- Writes to PMPCFG lock bits may change execute protection.
-      when CSR_PMPCFG0 | CSR_PMPCFG1 | CSR_PMPCFG2 | CSR_PMPCFG3 |
-           CSR_SATP    |         -- Changes memory mapping.
-           CSR_VSATP   |         -- Changes memory mapping.
-           CSR_HGATP   |         -- Changes memory mapping.
-           CSR_MISA     |         -- May turn on/off extensions and change MXL.
-           CSR_MSTATUS  |         -- May turn on/off FPU and extensions.
-           CSR_MSTATUSH |         -- May toggle MPV, currently not possible to pair LD/SD
-                                  -- with CSR write but it is better to be consistent with the RV64 behavior.
-           CSR_SSTATUS  |
-           -- VSSTATUS
-           --   Should not be included here since writes to it are only done in
-           --   modes that are not affected by it!
-           -- HSTATUS
-           --   Should not be included here since writes to it cannot affect
-           --   the immediately following instructions.
-           -- May cause illegal on subsequent FPU instruction
-           CSR_FRM        | CSR_FCSR       |
-           CSR_MENVCFG    | CSR_HENVCFG    | CSR_SENVCFG |
-           CSR_MENVCFGH   | CSR_HENVCFGH   |
-           CSR_MSECCFG    | CSR_MSECCFGH   |
-           -- Changes trap jump behavior, VSTVEC not a concern since a mode change must occur.
-           CSR_MTVEC      | CSR_STVEC      |
-           -- May affect if an IRQ is taken or not
-           CSR_MIDELEG    | CSR_HIDELEG    |
-           -- Stateen affects the available extensions, similarly to envcfg
-           CSR_MSTATEEN0  | CSR_MSTATEEN1  | CSR_MSTATEEN2  | CSR_MSTATEEN3  |
-           CSR_MSTATEEN0H | CSR_MSTATEEN1H | CSR_MSTATEEN2H | CSR_MSTATEEN3H |
-           CSR_SSTATEEN0  | CSR_SSTATEEN1  | CSR_SSTATEEN2  | CSR_SSTATEEN3  |
-           CSR_HSTATEEN0  | CSR_HSTATEEN1  | CSR_HSTATEEN2  | CSR_HSTATEEN3  |
-           CSR_HSTATEEN0H | CSR_HSTATEEN1H | CSR_HSTATEEN2H | CSR_HSTATEEN3H |
-           CSR_FEATURES   | CSR_FEATURESH  | CSR_CCTRL      | CSR_FT => -- Can do just about anything.
-        category(7) := '1';
-        -- To simplify PC logic, ensure that CSR writes that may require pipeline flush
-        -- always issue alone (and put them always in the same pipe).
-        category(5) := '1';
-      when others => null;
-    end case;
-
-    -- Some CSR writes may not pair if issued in lane 0, since the behaviour
-    -- may change for the very next instruction.
-    -- Known examples are mret, sret and uret.
-    -- Currently those are handled directly in dual_issue_check(), but
-    -- perhaps they should be here instead?
-
-    -- Some CSR writes affect following memory accesses.
-    -- The following access must be delayed!
-    --
-    -- In the case of the FS/XS, FPU and/or other extension instructions may
-    -- be enabled/disabled. Affects whether the next instruction is illegal!
-    case addr is
-      -- MSTATUS
-      --   MBE     - switch endianness of following load/store
-      --   MXR     - affects following load (allow/disable read from executable space)
-      --   SUM     - affects following load/store (allow/disable access to user mode pages)
-      --   MPRV    - affects following load/store (physical or virtual addressing in M-mode)
-      --   FS/XS   - turning off FPU/ext could cause next instruction to fault
-      -- SSTATUS
-      --   MXR     - affects following load (allow/disable read from executable space)
-      --   SUM     - affects following load/store (allow/disable access to user mode pages)
-      --   FS/XS   - turning off FPU/ext which could cause next instruction to fault
-      -- HSTATUS
-      --   VSBE    - switch endianness of following hypervisor load/store
-      --   SPVP    - affects privilege level of following hypervisor load/store
-      --   HU      - affects following hypervisor load/store (allow/disable such in user mode)
-      -- VSSTATUS
-      --   Should not be included here since writes to it are only done in
-      --   modes that are not affected by it!
-      when CSR_MSTATUS   | CSR_MSTATUSH  | CSR_SSTATUS   | CSR_HSTATUS   |
-           -- PMPCFG/PMPADDR affect memory protection.
-           CSR_PMPCFG0   | CSR_PMPCFG1   | CSR_PMPCFG2   | CSR_PMPCFG3   |
-           CSR_PMPADDR0  | CSR_PMPADDR1  | CSR_PMPADDR2  | CSR_PMPADDR3  |
-           CSR_PMPADDR4  | CSR_PMPADDR5  | CSR_PMPADDR6  | CSR_PMPADDR7  |
-           CSR_PMPADDR8  | CSR_PMPADDR9  | CSR_PMPADDR10 | CSR_PMPADDR11 |
-           CSR_PMPADDR12 | CSR_PMPADDR13 | CSR_PMPADDR14 | CSR_PMPADDR15 |
-           -- Special case!
-           -- MIE/SIE/UIE can disable interrupts and the interrupt code relies on
-           -- there being no load/store directly following that.
-           CSR_MIE       | CSR_SIE       | CSR_UIE        | CSR_HIE      |
-           CSR_HGEIE     |
-           -- Changing delegation can also enable/disable an interrupt.
-           CSR_MIDELEG | CSR_SIDELEG | CSR_HIDELEG =>
-        category(6) := '1';
-      when others => null;
-    end case;
-
-    -- FPU instructions in the pipeline must complete before the FPU flags
-    -- can be read or written. Then the write needs to happen before any other
-    -- FPU instructions may complete and modify them.
-    -- For now, no FPU instructions are allowed in the pipeline together with
-    -- any accesses to the FPU related CSRs.
-    case addr is
-      when CSR_FFLAGS | CSR_FCSR =>
-        category(8) := '1';
-      when others => null;
-    end case;
-
-    -- Writes to some CSR:s must take effect before a new FPU instruction is allowed.
-    -- (FPU rounding mode can be read at any time.)
-    case addr is
-      when CSR_FFLAGS | CSR_FCSR | CSR_FRM =>
-        category(9) := '1';
-      when others => null;
-    end case;
-
-
-    -- These CSRs should be updated before more instructions to through the execute
-    -- stage to prevent triggers from incorrectly match/not match these instructions
-    case addr is
-      when CSR_TDATA1   |
-           CSR_MCONTEXT | CSR_SCONTEXT | CSR_HCONTEXT =>
-        category(10) := '1';
-      when others => null;
+      when others =>
     end case;
 
     return category;
   end;
+
+
+  function csr_waw_category(addr : csratype) return waw_category_t is
+    -- Non-constant
+    variable category : waw_category_t := (others => '0');
+  begin
+     case addr is
+      -- This set of CSRs have a Write after Write (WaW) dependency.
+      -- For instance: 
+      -- A write to *IREG* CSR depends on a previous pending *ISELECT*
+      -- CSR write.
+      -- A write to the HSTATUS.VGEIN field modifies the behavior of a 
+      -- subsequent write to the VSIREG register
+      when CSR_MIREG    | CSR_MIREG2   | CSR_MIREG3     | CSR_MIREG4   |
+           CSR_MIREG5   | CSR_MIREG6   | CSR_MISELECT   | CSR_MTOPEI   |
+           CSR_SIREG    | CSR_SIREG2   | CSR_SIREG3     | CSR_SIREG4   |
+           CSR_SIREG5   | CSR_SIREG6   | CSR_SISELECT   | CSR_STOPEI   |
+           CSR_VSIREG   | CSR_VSIREG2  | CSR_VSIREG3    | CSR_VSIREG4  |
+           CSR_VSIREG5  | CSR_VSIREG6  | CSR_VSISELECT  | CSR_VSTOPEI  =>
+             category(0) := '1';
+      when others =>
+    end case;
+
+    return category;
+  end;
+
+
 
   function csr_access_addr(inst : word) return csratype is
     variable addr : csratype := funct12(inst);
@@ -5463,6 +6106,970 @@ package body nvsupport is
     end if;
   end;
 
+  function require_envcfg(mode_s : boolean;
+                          prv    : priv_lvl_type;
+                          virt   : boolean;
+                          m      : boolean;
+                          h      : boolean;
+                          s      : boolean )
+                          return xc_type is
+  begin
+    -- HS/U/VS/VU
+    -- menvcfg = '0' => illegal
+    -- U mode with S_mode implemented
+    if (prv /= PRIV_LVL_M and not m) or (mode_s and (prv = PRIV_LVL_U and not virt) and not s) then
+      return XC_ILLEGAL;
+    -- VS/VU
+    -- henvcfg = '0' => virtual
+    -- VU
+    -- senvcfg = '0' => virtual
+    elsif virt and (not h or (prv = PRIV_LVL_U and not s)) then
+      return XC_VIRT;
+    end if;
+    return XC_NONE;
+  end;
+
+  function require_envcfg(mode_s : boolean;
+                          prv    : priv_lvl_type;
+                          virt   : std_logic;
+                          m      : std_logic;
+                          h      : std_logic;
+                          s      : std_logic )
+                          return xc_type is
+  begin
+    return require_envcfg(mode_s, prv, virt = '1', m = '1', h = '1', s = '1');
+  end;
+
+  function is_csr_high_half(csra : csratype) return boolean is
+  begin
+    case csra is
+      when CSR_USCRATCH       | CSR_CYCLEH         |
+           CSR_TIMEH          | CSR_INSTRETH       | CSR_HPMCOUNTER3H   |
+           CSR_HPMCOUNTER4H   | CSR_HPMCOUNTER5H   | CSR_HPMCOUNTER6H   |
+           CSR_HPMCOUNTER7H   | CSR_HPMCOUNTER8H   | CSR_HPMCOUNTER9H   |
+           CSR_HPMCOUNTER10H  | CSR_HPMCOUNTER11H  | CSR_HPMCOUNTER12H  |
+           CSR_HPMCOUNTER13H  | CSR_HPMCOUNTER14H  | CSR_HPMCOUNTER15H  |
+           CSR_HPMCOUNTER16H  | CSR_HPMCOUNTER17H  | CSR_HPMCOUNTER18H  |
+           CSR_HPMCOUNTER19H  | CSR_HPMCOUNTER20H  | CSR_HPMCOUNTER21H  |
+           CSR_HPMCOUNTER22H  | CSR_HPMCOUNTER23H  | CSR_HPMCOUNTER24H  |
+           CSR_HPMCOUNTER25H  | CSR_HPMCOUNTER26H  | CSR_HPMCOUNTER27H  |
+           CSR_HPMCOUNTER28H  | CSR_HPMCOUNTER29H  | CSR_HPMCOUNTER30H  |
+           CSR_HPMCOUNTER31H  | CSR_SIEH           | CSR_SIPH           |
+           CSR_STIMECMPH      | CSR_HENVCFGH       | CSR_HTIMEDELTAH    |
+           CSR_VSTIMECMPH     | CSR_HIDELEGH       | CSR_HVIENH         |
+           CSR_HVIPH          | CSR_HVIPRIO1H      | CSR_HVIPRIO2H      |
+           CSR_VSIEH          | CSR_VSIPH          | CSR_HSTATEEN0H     |
+           CSR_HSTATEEN1H     | CSR_HSTATEEN2H     | CSR_HSTATEEN3H     |
+           CSR_MSTATUSH       | CSR_MIDELEGH       | CSR_MIEH           |
+           CSR_MVIENH         | CSR_MVIPH          | CSR_MIPH           |
+           CSR_MSTATEEN0H     | CSR_MSTATEEN1H     | CSR_MSTATEEN2H     |
+           CSR_MSTATEEN3H     | CSR_MENVCFGH       | CSR_MSECCFGH       |
+           CSR_MCYCLEH        | CSR_MINSTRETH      | CSR_MHPMCOUNTER3H  |
+           CSR_MHPMCOUNTER4H  | CSR_MHPMCOUNTER5H  | CSR_MHPMCOUNTER6H  |
+           CSR_MHPMCOUNTER7H  | CSR_MHPMCOUNTER8H  | CSR_MHPMCOUNTER9H  |
+           CSR_MHPMCOUNTER10H | CSR_MHPMCOUNTER11H | CSR_MHPMCOUNTER12H |
+           CSR_MHPMCOUNTER13H | CSR_MHPMCOUNTER14H | CSR_MHPMCOUNTER15H |
+           CSR_MHPMCOUNTER16H | CSR_MHPMCOUNTER17H | CSR_MHPMCOUNTER18H |
+           CSR_MHPMCOUNTER19H | CSR_MHPMCOUNTER20H | CSR_MHPMCOUNTER21H |
+           CSR_MHPMCOUNTER22H | CSR_MHPMCOUNTER23H | CSR_MHPMCOUNTER24H |
+           CSR_MHPMCOUNTER25H | CSR_MHPMCOUNTER26H | CSR_MHPMCOUNTER27H |
+           CSR_MHPMCOUNTER28H | CSR_MHPMCOUNTER29H | CSR_MHPMCOUNTER30H |
+           CSR_MHPMCOUNTER31H | CSR_MHPMEVENT3H    | CSR_MHPMEVENT4H    |
+           CSR_MHPMEVENT5H    | CSR_MHPMEVENT6H    | CSR_MHPMEVENT7H    |
+           CSR_MHPMEVENT8H    | CSR_MHPMEVENT9H    | CSR_MHPMEVENT10H   |
+           CSR_MHPMEVENT11H   | CSR_MHPMEVENT12H   | CSR_MHPMEVENT13H   |
+           CSR_MHPMEVENT14H   | CSR_MHPMEVENT15H   | CSR_MHPMEVENT16H   |
+           CSR_MHPMEVENT17H   | CSR_MHPMEVENT18H   | CSR_MHPMEVENT19H   |
+           CSR_MHPMEVENT20H   | CSR_MHPMEVENT21H   | CSR_MHPMEVENT22H   |
+           CSR_MHPMEVENT23H   | CSR_MHPMEVENT24H   | CSR_MHPMEVENT25H   |
+           CSR_MHPMEVENT26H   | CSR_MHPMEVENT27H   | CSR_MHPMEVENT28H   |
+           CSR_MHPMEVENT29H   | CSR_MHPMEVENT30H   | CSR_MHPMEVENT31H   |
+           CSR_FEATURESH      | CSR_CCTRLH         | CSR_TCMICTRLH      |
+           CSR_TCMDCTRLH      | CSR_FTH            | CSR_EINJECTH       |
+           CSR_DFEATURESH     | CSR_CAPABILITYH    | CSR_PMPCFG1        |
+           CSR_PMPCFG3        | CSR_HEDELEGH =>
+        return true;
+      when others =>
+        return false;
+    end case;
+end function;
+
+  -- Zicfiss CSR accessibility
+  function zicfiss_csr_xc(csra        : csratype;
+                          csr         : csr_reg_type;
+                          ext_zicfiss : boolean;
+                          mode_s      : boolean)
+                          return xc_type is
+    variable mSSE : std_ulogic := csr.menvcfg.sse;
+    variable sSSE : std_ulogic := csr.senvcfg.sse;
+    variable hSSE : std_ulogic := csr.henvcfg.sse;
+    variable v    : std_ulogic := csr.v;
+    variable prv  : priv_lvl_type := csr.prv;
+  begin
+    assert csra = CSR_SSP report "Called for incorrect CSR " & tost(csra) severity failure;
+	  if not ext_zicfiss then
+	    return XC_ILLEGAL;
+	  end if;
+	  return require_envcfg(mode_s, prv, v, mSSE, hSSE, sSSE);
+  end;
+
+  function smcsrind_reg_xc(csr_file   : csr_reg_type;
+                           csra       : csratype;
+                           active     : extension_type;
+                           imsic      : boolean) return xc_type is
+    variable ext_smcsrind  : boolean := is_enabled(active, x_smcsrind);
+    variable ext_smaia     : boolean := is_enabled(active, x_smaia);
+    variable ext_noelv     : boolean := is_enabled(active, x_noelv);
+    variable is_rv64       : boolean := is_enabled(active, x_rv64);
+    variable x_en          : boolean := csr_file.misa(x_ctrl) = '1';
+  begin
+    -- Only mireg has implemented indirect CSRs. The spec recomends raising illegal
+    -- if miselect points to a range which is not implemented, mireg[2-6] can thus
+    -- not have a legal select value and we can return early.
+    if csra /= CSR_MIREG then
+      return XC_ILLEGAL;
+    end if;
+    if ext_smcsrind then
+      if not is_custom(csr_file.miselect) then
+        if is_imsic(csr_file.miselect) then
+          if not ext_smaia or intFile_addrExcp(csr_file.miselect, u2i(imsic), is_rv64) = '1' then
+            return XC_ILLEGAL;
+          end if;
+        elsif is_aia_iprio(csr_file.miselect) then
+          if is_rv64 and csr_file.miselect.sel(0) = '1' then
+            -- only even values are allowed
+            return XC_ILLEGAL;
+          end if;
+        else
+          return XC_ILLEGAL;
+        end if;
+      else -- custom
+          return XC_ILLEGAL;
+      end if;
+    else
+      return XC_ILLEGAL;
+    end if;
+
+    return XC_NONE;
+  end function;
+
+  function sscsrind_reg_xc(stateen_xc : xc_type;
+                         csr_file   : csr_reg_type;
+                         csra       : csratype;
+                         active     : extension_type;
+                         perf_cnts  : integer;
+                         imsic      : boolean)
+                         return xc_type is
+    variable ext_smstateen     : boolean := is_enabled(active, x_smstateen);
+    variable ext_sscsrind      : boolean := is_enabled(active, x_sscsrind);
+    variable mode_s            : boolean := is_enabled(active, x_mode_s);
+    variable is_rv64           : boolean := is_enabled(active, x_rv64);
+    variable ext_smcdeleg      : boolean := is_enabled(active, x_smcdeleg);
+    variable ext_sscofpmf      : boolean := is_enabled(active, x_sscofpmf);
+    variable h_en              : boolean := csr_file.misa(h_ctrl) = '1';
+    variable v_mode            : boolean := h_en and csr_file.v = '1';
+    variable ext_zicntr        : boolean := true;  -- No bit for this
+    variable ext_smcntrpmf     : boolean := false; -- No bit for this
+    variable ext_zihpm         : boolean := perf_cnts > 0;
+    variable csrind_stateen_xc : xc_type := csrind_check_stateen_xc(csra, csr_file, ext_smstateen, mode_s);
+    variable is_vsi            : boolean := is_vsireg(csra);
+    -- Non-constant
+    variable sel               : select_t;
+  begin
+    if not ext_sscsrind then
+      -- Illegal if csrind isn't implemented
+      return XC_ILLEGAL;
+    end if;
+
+    -- Choose the correct select value
+    -- Implicitly vsiselect if v_mode or explicitly if the access was to vsireg*
+    if is_vsi or v_mode then
+      sel := csr_file.vsiselect;
+    else
+      assert is_sireg(csra);
+      sel := csr_file.siselect;
+    end if;
+
+    -- Stateen prevents access to sireg/vsireg, pre-calculated from call site
+    assert not(stateen_xc.xc and not ext_smstateen)
+    report "stateen can't throw illegal without ext_stateen" severity failure;
+    if stateen_xc.xc then
+      return stateen_xc;
+    end if;
+
+    -- We need to apply a second stateen check to the proxy csr pointed to by (v)siselect.
+    assert not(csrind_stateen_xc.xc and not ext_smstateen)
+    report "proxy stateen can't throw illegal without ext_stateen" severity failure;
+    if csrind_stateen_xc.xc then
+      return csrind_stateen_xc;
+    end if;
+
+    -- A virtual instruction exception is raised for attempts from VS-mode or VU-mode to directly access
+    -- vsireg*, or attempts from VU-mode to access siselect or sireg*.
+    if v_mode then
+      if is_vsi then
+        return XC_VIRT;
+      else -- CSR_SIREG*
+        if csr_file.prv = PRIV_LVL_U then
+          return XC_VIRT;
+        end if;
+      end if;
+      assert csr_file.prv = PRIV_LVL_S report "Only VS mode can pass through this check";
+    end if;
+
+    if not is_custom(sel) then
+      -- Call specific exception logic based on select
+      if is_aia_iprio(sel) and csra = CSR_VSIREG then
+        return XC_ILLEGAL;
+      elsif (is_imsic(sel) or is_aia_iprio(sel)) and (csra = CSR_SIREG or csra = CSR_VSIREG) then
+        return ssaia_indirect_xc(csr_file, sel, active, imsic);
+      elsif is_smcdeleg(sel) then
+        return smcdeleg_indirect_xc(csr_file, ext_smcdeleg, ext_sscofpmf, ext_zicntr,
+                                    ext_zihpm, ext_smcntrpmf, is_rv64, csra, v_mode);
+      else
+        -- Address is not defined => illegal
+        return XC_ILLEGAL;
+      end if;
+    else -- Custom CSRs goes here
+      return XC_ILLEGAL;
+    end if;
+
+    return XC_NONE;
+
+  end function;
+
+  function basic_csr_xc_check(csra     : csratype;
+                              csr_file : csr_reg_type;
+                              h_en     : boolean;
+                              mode_s   : boolean) return xc_type is
+    constant CSR_PRV_HS     : priv_lvl_type := "10";
+    variable csr_priv       : priv_lvl_type := csra(9 downto 8);
+    -- Non-constant
+    variable effective_priv : priv_lvl_type := csr_file.prv;
+  begin
+    -- Determine effective CSR privilege, if not virtualized and in S mode we have access to H CSRs.
+    if csr_file.prv = PRIV_LVL_S and csr_file.v = '0' then
+      effective_priv := CSR_PRV_HS;
+    end if;
+
+    -- Access to S register without the priv mode implemented
+    if csr_priv = PRIV_LVL_S and not mode_s  then
+      return XC_ILLEGAL;
+    end if;
+
+    -- Access to HS register without the priv mode implemented/enabled
+    if csr_priv = CSR_PRV_HS and not h_en then
+      return XC_ILLEGAL;
+    end if;
+
+    -- Never okay to access a more privileged CSR!
+    if effective_priv < csr_priv then
+      -- HS Qualified?
+      if csr_priv <= CSR_PRV_HS and csr_file.v = '1' then
+        -- Only CSRs accessible to the Hypervisor should end up here.
+        return XC_VIRT;
+      end if;
+      return XC_ILLEGAL;
+    end if;
+    return XC_NONE;
+
+  end function;
+
+  function csr_xc_check(csra_in     : csratype;
+                        is_write    : boolean;
+                        active      : extension_type;
+                        csr_file    : csr_reg_type;
+                        rstate_in   : core_state;
+                        imsic       : boolean;
+                        pmp_entries : integer;
+                        perf_cnts   : integer;
+                        trigger     : integer
+                       ) return xc_type is
+    variable ext_zicfiss   : boolean    := is_enabled(active, x_zicfiss);
+    variable ext_zicfilp   : boolean    := is_enabled(active, x_zicfilp);
+    variable ext_f         : boolean    := is_enabled(active, x_f);
+    variable ext_smaia     : boolean    := is_enabled(active, x_smaia);
+    variable ext_ssaia     : boolean    := is_enabled(active, x_ssaia);
+    variable ext_smstateen : boolean    := is_enabled(active, x_smstateen);
+    variable ext_smcsrind  : boolean    := is_enabled(active, x_smcsrind);
+    variable ext_sscsrind  : boolean    := is_enabled(active, x_sscsrind);
+    variable ext_smcdeleg  : boolean    := is_enabled(active, x_smcdeleg);
+    variable ext_ssdbltrp  : boolean    := is_enabled(active, x_ssdbltrp);
+    variable ext_sscofpmf  : boolean    := is_enabled(active, x_sscofpmf);
+    variable ext_smrnmi    : boolean    := is_enabled(active, x_smrnmi);
+    variable ext_smepmp    : boolean    := is_enabled(active, x_smepmp);
+    variable ext_sstc      : boolean    := is_enabled(active, x_sstc);
+    variable mode_u        : boolean    := is_enabled(active, x_mode_u);
+    variable mode_s        : boolean    := is_enabled(active, x_mode_s);
+    variable is_rv64       : boolean    := is_enabled(active, x_rv64);
+    variable time_en       : boolean    := ext_sstc;
+    variable h_en          : boolean    := csr_file.misa(h_ctrl) = '1';
+    variable x_en          : boolean    := csr_file.misa(x_ctrl) = '1';
+    variable v_mode        : boolean    := h_en and csr_file.v = '1';
+    variable vu_mode       : boolean    := v_mode and csr_file.prv = PRIV_LVL_U;
+    variable csra_high     : csratype   := csra_in(csra_in'high downto 4) & "0000";
+    variable csra_low      : integer    := u2i(csra_in(3 downto 0));
+    variable counter_idx   : integer    := u2i(csra_in(4 downto 0));
+    variable is_high_half  : boolean    := is_csr_high_half(csra_in);
+    variable read_only     : boolean    := csra_in(11 downto 10) = "11";
+    variable stateen_xc    : xc_type    := check_stateen_xc(
+                                             get_stateen_bits(csra_in, csr_file),
+                                             csr_file.prv,
+                                             v_mode,
+                                             ext_smstateen,
+                                             mode_s);
+    -- Non-constant
+    variable timecmp_xc    : xc_type    := XC_NONE;
+    variable ireg_xc       : xc_type    := XC_NONE;
+    variable base_xc       : xc_type    := XC_NONE;
+  begin
+
+    -- Never ok to access high-half when RV64
+    if is_rv64 and is_high_half then
+      return XC_ILLEGAL;
+    end if;
+
+    -- Always illegal to write RO CSR.
+    if is_write and read_only then
+      return XC_ILLEGAL;
+    end if;
+
+    -- Check basic csr address properties, raise virtual for HS-qualified CSR
+    -- We can't return immediately since for example stateen triumphs the rules
+    -- for HS-qualified.
+    base_xc := basic_csr_xc_check(csra_in, csr_file, h_en, mode_s);
+
+    -- Sanity check
+    assert not(v_mode and not h_en)
+    report "Impossible to be virtualized without misa.h" severity failure;
+
+    assert not(stateen_xc /= XC_NONE and not ext_smstateen)
+    report "stateen can't throw without ext_stateen" severity failure;
+
+    assert not(csra_in(9 downto 8) = PRIV_LVL_U and base_xc.xc)
+    report "U mode csr can't throw" severity failure;
+
+    -- It should not be possible for stateen to raise a virtual instruction if base_xc reports illegal!
+    -- base_xc reports illegal if mode_s or h_en is disabled or if permission is not sufficient for the access.
+    assert not(stateen_xc = XC_VIRT and base_xc = XC_ILLEGAL) severity error;
+    -- Stateen only applies to modes lower than M
+    assert not(stateen_xc /= XC_NONE and csr_file.prv = PRIV_LVL_M) severity error;
+
+    -- For most CSRs the base_xc check is what should be checked first.
+    -- Howevever the spec lists a few cases where the normal HS qualified rule is overriden.
+    -- These cases must first check the overriding rule and then base_xc.
+    -- The "when" statements follow the following structure,
+    -- 1) is extension implemented, if not return illegal (H and S included in base_xc).
+    -- 2) has base_xc thrown an exception (not always applicable)
+    -- 3) Check stateen if applicable
+    -- 4) Check any other requirements such as envcfg
+    -- 5) Return base_xc
+
+    case csra_in is
+      when CSR_DCSR | CSR_DPC | CSR_DSCRATCH0 | CSR_DSCRATCH1 =>
+        -- Only accessible in debug mode
+        return xc_type'(xc => rstate_in = run, xc_v => false);
+      -- User Floating-Point CSRs
+      when CSR_FFLAGS | CSR_FRM | CSR_FCSR =>
+        if not ext_f then
+          return XC_ILLEGAL;
+        end if;
+        -- FPU not enabled
+        if csr_file.mstatus.fs = "00" or (v_mode and csr_file.vsstatus.fs = "00") then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_HSTATUS    | CSR_HEDELEG    | CSR_HIDELEG     | CSR_HIE |
+           CSR_HCOUNTEREN | CSR_HGEIE      | CSR_HTVAL       | CSR_HIP |
+           CSR_HVIP       | CSR_HTINST     | CSR_HGEIP       |
+           CSR_HTIMEDELTA | CSR_HTIMEDELTAH =>
+        return base_xc;
+      -- Hypervisor Protection and Translation
+      when CSR_HGATP          =>
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        if csr_file.prv = PRIV_LVL_S and csr_file.mstatus.tvm = '1' then
+          assert not v_mode report "VS/VU should already have trapped";
+          return XC_ILLEGAL;
+        end if;
+      -- Virtual Supervisor Registers
+      when CSR_VSSTATUS  | CSR_VSIE   | CSR_VSTVEC | CSR_VSSCRATCH | CSR_VSEPC |
+           CSR_VSCAUSE   | CSR_VSTVAL | CSR_VSIP   | CSR_VSATP =>
+        return base_xc;
+      -- CSRs which needs stateen checks
+      when CSR_HENVCFGH | CSR_HENVCFG  | CSR_SENVCFG |
+           CSR_SCONTEXT | CSR_HCONTEXT | CSR_HEDELEGH =>
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        return base_xc;
+      -- AIA registers
+      when CSR_STOPI     | CSR_HIDELEGH  | CSR_HVIEN    | CSR_HVIENH    |
+           CSR_HVIPH     | CSR_HVICTL    | CSR_HVIPRIO1 | CSR_HVIPRIO1H |
+           CSR_HVIPRIO2  | CSR_HVIPRIO2H | CSR_VSIPH    | CSR_VSIEH     |
+           CSR_VSTOPI =>
+        -- SIEH and SIPH also need to check hvictl.vti and are thus not included
+        if not ext_ssaia then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        return base_xc;
+      -- Hypervisor/Supervisor Sstateen extension CSRs
+      when CSR_HSTATEEN0  | CSR_HSTATEEN1  | CSR_HSTATEEN2  | CSR_HSTATEEN3 |
+           CSR_SSTATEEN0  | CSR_SSTATEEN1  | CSR_SSTATEEN2  | CSR_SSTATEEN3 |
+           CSR_HSTATEEN0H | CSR_HSTATEEN1H | CSR_HSTATEEN2H | CSR_HSTATEEN3H =>
+        if not ext_smstateen then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        return base_xc;
+      -- Csrind registers
+      when CSR_VSISELECT | CSR_SISELECT     =>
+        if not ext_sscsrind then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        return base_xc;
+      when CSR_SIREG  | CSR_VSIREG  | CSR_SIREG2 | CSR_VSIREG2 |
+           CSR_SIREG3 | CSR_VSIREG3 | CSR_SIREG4 | CSR_VSIREG4 |
+           CSR_SIREG5 | CSR_VSIREG5 | CSR_SIREG6 | CSR_VSIREG6 =>
+        ireg_xc := sscsrind_reg_xc(stateen_xc, csr_file, csra_in, active, perf_cnts, imsic);
+        if ireg_xc.xc then
+          return ireg_xc;
+        end if;
+        return base_xc;
+      -- Imsic CSRs
+      when CSR_VSTOPEI | CSR_STOPEI        =>
+        if not imsic then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        if csra_in = CSR_STOPEI then
+          -- If the hart has an IMSIC, then when bit 9 of mvien is one, attempts from S-mode to explicitly
+          -- access the supervisor-level interrupt file raise an illegal instruction exception. The exception
+          -- is raised for attempts to access CSR stopei,
+          if csr_file.mvien(IRQ_S_EXTERNAL) = '1' and csr_file.prv = PRIV_LVL_S then
+            return XC_ILLEGAL;
+          end if;
+        else -- csra_in = CSR_VSTOPEI
+          if not vgein_legal(u2i(csr_file.hstatus.vgein)) then
+            return XC_ILLEGAL;
+          end if;
+        end if;
+
+        return base_xc;
+
+      when CSR_SIE | CSR_SIP    =>
+        if base_xc = XC_NONE and v_mode and csr_file.prv = PRIV_LVL_S and csr_file.hvictl.vti = '1' then
+          if csr_file.hvictl.vti = '1' then
+            return XC_VIRT;
+          end if;
+        end if;
+        return base_xc;
+      -- TODO: What about vsieh/siph?
+      when CSR_SIEH | CSR_SIPH  =>
+        if not ext_ssaia then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
+        end if;
+        if base_xc = XC_NONE and v_mode and csr_file.prv = PRIV_LVL_S and csr_file.hvictl.vti = '1' then
+          if csr_file.hvictl.vti = '1' then
+            return XC_VIRT;
+          end if;
+        end if;
+        return base_xc;
+      when CSR_SSTATUS | CSR_STVEC  | CSR_SCOUNTEREN | CSR_SSCRATCH |
+           CSR_SEPC    | CSR_SCAUSE | CSR_STVAL =>
+        return base_xc;
+      when CSR_SCOUNTINHIBIT =>
+        if not ext_smcdeleg or csr_file.menvcfg.cde = '0' then
+          return XC_ILLEGAL;
+        end if;
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        if v_mode then
+          return XC_VIRT;
+        end if;
+      when CSR_SCOUNTOVF      =>
+        if not ext_sscofpmf then
+          return XC_ILLEGAL;
+        end if;
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        if v_mode and ext_smcdeleg and csr_file.menvcfg.cde = '1' then
+          return XC_VIRT;
+        end if;
+      when CSR_SSP =>
+        -- Zicfiss CSR accessibility (CSR_SSP)
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        return zicfiss_csr_xc(csra_in, csr_file, ext_zicfiss, mode_s);
+      -- Supervisor Protection and Translation
+      when CSR_SATP           =>
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+
+        if csr_file.prv = PRIV_LVL_S and v_mode then
+          if csr_file.hstatus.vtvm = '1' then
+            return XC_VIRT;
+          end if;
+        end if;
+        if csr_file.prv = PRIV_LVL_S and csr_file.mstatus.tvm = '1' then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_STIMECMP | CSR_STIMECMPH | CSR_VSTIMECMP | CSR_VSTIMECMPH  =>
+        if not ext_sstc then
+          return XC_ILLEGAL;
+        end if;
+        timecmp_xc := stimecmp_xc(csr_file, h_en, is_rv64, csra_in, v_mode);
+        if timecmp_xc.xc then
+          return timecmp_xc;
+        end if;
+        return base_xc;
+
+      -- Machine mode CSRs
+      -- Must be listed to not always throw fault.
+      when CSR_MVENDORID | CSR_MARCHID    | CSR_MIMPID     | CSR_MIP      |
+           CSR_MHARTID   | CSR_MCONFIGPTR | CSR_MSTATUS    | CSR_MISA     |
+           CSR_MIE       | CSR_MTVEC      | CSR_MSCRATCH   | CSR_MEPC     |
+           CSR_MCAUSE    | CSR_MTVAL      | CSR_MCONTEXT   | CSR_MSTATUSH =>
+        return base_xc;
+      when CSR_MEDELEG | CSR_MIDELEG =>
+        if not mode_s
+          then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MIDELEGH       =>
+        if not ext_smaia or(not mode_s
+           )
+          then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MIEH | CSR_MIPH =>
+        if not ext_smaia then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MNSCRATCH | CSR_MNEPC | CSR_MNCAUSE | CSR_MNSTATUS =>
+        if not ext_smrnmi then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MISELECT       =>
+        if not ext_smcsrind then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MIREG | CSR_MIREG2 | CSR_MIREG3 | CSR_MIREG4 | CSR_MIREG5 | CSR_MIREG6 =>
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        return smcsrind_reg_xc(csr_file,  csra_in, active, imsic);
+      when CSR_MTOPEI         =>
+        if not imsic then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MTOPI          =>
+        if not ext_smaia then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MVIEN  | CSR_MVIP |
+           CSR_MVIENH | CSR_MVIPH =>
+        -- Minimal implementation
+        if not(ext_smaia and mode_s) then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MSTATEEN0  | CSR_MSTATEEN1  | CSR_MSTATEEN2  | CSR_MSTATEEN3  |
+           CSR_MSTATEEN0H | CSR_MSTATEEN1H | CSR_MSTATEEN2H | CSR_MSTATEEN3H =>
+        if not ext_smstateen then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MTINST         =>
+        if not h_en then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MTVAL2         =>
+        if not (h_en or ext_ssdbltrp) then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MENVCFG | CSR_MCOUNTEREN | CSR_MENVCFGH =>
+        if not mode_u then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MSECCFG        =>
+        if not (ext_smepmp
+           or ext_zicfilp) then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_MSECCFGH       =>
+        if not (ext_zicfilp or ext_smepmp) then
+          return XC_ILLEGAL;
+        end if;
+      -- Machine Protection and Translation
+      when CSR_PMPCFG0 | CSR_PMPCFG2 | CSR_PMPCFG1 | CSR_PMPCFG3 =>
+        if pmp_entries = 0 then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_CYCLEH | CSR_MCYCLEH  =>
+      when CSR_TIME   | CSR_TIMEH    =>
+        if not time_en then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_INSTRET  | CSR_MINSTRET  |
+           CSR_INSTRETH | CSR_MINSTRETH =>
+        -- xc := not ext_zicntr;
+      when CSR_TSELECT | CSR_TDATA1  | CSR_TDATA2  | CSR_TDATA3  | CSR_TINFO =>
+        if trigger = 0 then
+          return XC_ILLEGAL;
+        end if;
+      --when CSR_MSCONTEXT      =>
+      -- Custom Registers
+      when CSR_FEATURES  | CSR_CCTRL  | CSR_CAPABILITY |
+           CSR_FEATURESH | CSR_CCTRLH | CSR_CAPABILITYH
+           =>
+        -- Just to detect if a CSR address changes
+        assert (csra_in(9 downto 8) = PRIV_LVL_M) report "Stateen needs to be checked" severity failure;
+        if not x_en then
+          return XC_ILLEGAL;
+        end if;
+      when CSR_TCMICTRL | CSR_TCMDCTRL | CSR_TCMDCTRLH | CSR_TCMICTRLH =>
+        return XC_ILLEGAL;
+        if stateen_xc /= XC_NONE then
+          return stateen_xc;
+        end if;
+      when others =>
+        case csra_high is
+          -- Machine|User Hardware Performance Monitoring
+          when CSR_CYCLE  | CSR_MCYCLE |
+               CSR_CYCLEH | CSR_MCYCLEH =>
+            if csra_low = 1 then -- There is no CSR MTIME
+              return XC_ILLEGAL;
+            end if;
+          when CSR_HPMCOUNTER16 | CSR_MHPMCOUNTER16 | -- All the higher counters.
+               CSR_HPMCOUNTER16H | CSR_MHPMCOUNTER16H =>
+          when CSR_PMPADDR0 =>
+            assert (pmp_entries < 16) report "Code can't handle more than 16 entries";
+            if pmp_entries = 0 then
+              return XC_ILLEGAL;
+            end if;
+          when CSR_MCOUNTINHIBIT => -- MCOUNTINHIBIT/MHPMEVENT3-15
+            if csra_low = 1 or csra_low = 2 or not ext_sscofpmf then
+              return XC_ILLEGAL;
+            end if;
+          when CSR_MHPMEVENT16 =>  -- MHPMEVENT16-31
+            if not ext_sscofpmf then
+              return XC_ILLEGAL;
+            end if;
+          when CSR_MHPMEVENT0H =>  -- MHPMEVENT3-15H
+            if csra_low < 3 or not ext_sscofpmf then
+              return XC_ILLEGAL;
+            end if;
+          when CSR_MHPMEVENT16H =>  -- MHPMEVENT16-31H
+            if not ext_sscofpmf then
+              return XC_ILLEGAL;
+            end if;
+          when others =>
+            return XC_ILLEGAL;
+        end case;
+    end case;
+
+    -- Performance Features
+    -- Hardware Performance Features
+    -- (CYCLE, TIME, INSTRET, HPMCOUNTERn)
+    -- Bit 7 is high for the ...H CSR variants.
+    if csra_in(11 downto 8) = x"c" and csra_in(6 downto 5) = "00" then
+      if csr_file.mcounteren(counter_idx) = '0' then
+        if csr_file.prv /= PRIV_LVL_M then
+          return XC_ILLEGAL;
+        end if;
+      elsif v_mode and csr_file.hcounteren(counter_idx) = '0' then
+        if base_xc /= XC_NONE then
+          return base_xc;
+        end if;
+        return XC_VIRT;
+      elsif mode_u and csr_file.prv = PRIV_LVL_U and
+            csr_file.scounteren(counter_idx) = '0' then
+        return xc_type'(xc => true, xc_v => vu_mode);
+      end if;
+    end if;
+
+    return base_xc;
+  end;
+
+  function get_stateen_bits(csra : csratype; csr_file : csr_reg_type) return stateen_bits is
+    variable mstateen0 : csr_mstateen0_type     := csr_file.mstateen0;
+    variable mstateen1 : csr_mstateen_void_type := csr_file.mstateen1;
+    variable mstateen2 : csr_mstateen_void_type := csr_file.mstateen2;
+    variable mstateen3 : csr_mstateen_void_type := csr_file.mstateen3;
+    variable sstateen0 : csr_sstateen0_type     := csr_file.sstateen0;
+    variable hstateen0 : csr_hstateen0_type     := csr_file.hstateen0;
+    variable hstateen1 : csr_mstateen_void_type := csr_file.hstateen1;
+    variable hstateen2 : csr_mstateen_void_type := csr_file.hstateen2;
+    variable hstateen3 : csr_mstateen_void_type := csr_file.hstateen3;
+
+  begin
+    -- Set '1' to bits where checks are by default okay, for example hcontext does not need to consider hstateen.ctx
+    case csra is
+      -- Stateen
+      when CSR_HSTATEEN0 | CSR_HSTATEEN0H =>
+        return stateen_bits'(mstateen0.stateen, '1', '1');
+      when CSR_SSTATEEN0 =>
+        return stateen_bits'(mstateen0.stateen, '1', hstateen0.stateen);
+
+      when CSR_HSTATEEN1 | CSR_HSTATEEN1H =>
+        return stateen_bits'(mstateen1.stateen, '1', '1');
+      when CSR_SSTATEEN1 =>
+        return stateen_bits'(mstateen1.stateen, '1', hstateen1.stateen);
+
+      when CSR_HSTATEEN2 | CSR_HSTATEEN2H =>
+        return stateen_bits'(mstateen2.stateen, '1', '1');
+      when CSR_SSTATEEN2 =>
+        return stateen_bits'(mstateen2.stateen, '1', hstateen2.stateen);
+
+      when CSR_HSTATEEN3 | CSR_HSTATEEN3H =>
+        return stateen_bits'(mstateen3.stateen, '1', '1');
+      when CSR_SSTATEEN3 =>
+        return stateen_bits'(mstateen3.stateen, '1', hstateen3.stateen);
+
+      -- Envcfg
+      when CSR_HENVCFG   | CSR_HENVCFGH  =>
+        return stateen_bits'(mstateen0.envcfg, '1', '1');
+      when CSR_SENVCFG =>
+        return stateen_bits'(mstateen0.envcfg, '1', hstateen0.envcfg);
+
+      -- Smcsrind
+      when CSR_VSISELECT | CSR_SISELECT  |
+           CSR_SIREG     | CSR_VSIREG    | CSR_SIREG2 | CSR_VSIREG2 |
+           CSR_SIREG3    | CSR_VSIREG3   | CSR_SIREG4 | CSR_VSIREG4 |
+           CSR_SIREG5    | CSR_VSIREG5   | CSR_SIREG6 | CSR_VSIREG6 =>
+        return stateen_bits'(mstateen0.iselect, '1', hstateen0.iselect);
+
+      -- AIA
+      when CSR_HVIEN     | CSR_HVIENH    | CSR_HVICTL   | CSR_HVIPRIO1 | CSR_HVIPRIO1H |
+           CSR_HVIPRIO2  | CSR_HVIPRIO2H | CSR_HIDELEGH | CSR_HVIPH    =>
+        return stateen_bits'(mstateen0.aia, '1', '1');
+      when CSR_VSIEH | CSR_VSIPH | CSR_SIEH | CSR_SIPH | CSR_VSTOPI | CSR_STOPI =>
+        return stateen_bits'(mstateen0.aia, '1', hstateen0.aia);
+
+      -- Imsic
+      when CSR_VSTOPEI   | CSR_STOPEI =>
+        return stateen_bits'(mstateen0.imsic, '1', hstateen0.imsic);
+
+      -- Context
+      when CSR_HCONTEXT  =>
+        return stateen_bits'(mstateen0.ctx, '1', '1');
+      when CSR_SCONTEXT =>
+        return stateen_bits'(mstateen0.ctx, '1', hstateen0.ctx);
+
+      -- Priv 1.13
+      when CSR_HEDELEGH =>
+        return stateen_bits'(mstateen0.p1p13, '1', '1');
+      -- when CSR_SRMCFG =>
+      --   return stateen_bits'(mstateen0.p1p14, '1', '1');
+      when others =>
+        return stateen_bits'('1','1','1');
+    end case;
+  end function;
+
+  function get_stateen_bits(csrindsel : select_t ; csr_file : csr_reg_type) return stateen_bits is
+    variable mstateen0 : csr_mstateen0_type := csr_file.mstateen0;
+    variable hstateen0 : csr_hstateen0_type := csr_file.hstateen0;
+  begin
+    if is_aia_iprio(csrindsel) then
+      return stateen_bits'(mstateen0.aia, '1', hstateen0.aia);
+    elsif is_imsic(csrindsel) then
+      return stateen_bits'(mstateen0.imsic, '1', hstateen0.imsic);
+    else
+      return stateen_bits'('1', '1', '1');
+    end if;
+
+  end function;
+
+  function is_vsireg(csra : csratype) return boolean is
+  begin
+    return csra >= CSR_VSIREG and csra <= CSR_VSIREG6 and csra /= CSR_VSIPH;
+  end function;
+
+  function is_sireg(csra : csratype) return boolean is
+  begin
+    return csra >= CSR_SIREG and csra <= CSR_SIREG6 and csra /= CSR_SIPH;
+  end function;
+
+  function check_stateen_xc(bits          : stateen_bits;
+                            priv          : priv_lvl_type;
+                            v_mode        : boolean;
+                            ext_smstateen : boolean;
+                            mode_s        : boolean) return xc_type is
+    -- Non-constant
+  begin
+    -- M mode not affected by stateen
+    if priv = PRIV_LVL_M or not ext_smstateen then
+      return XC_NONE;
+    end if;
+
+    -- Less than M mode and mstateen not set -> illegal
+    if bits.m = '0' then
+      return XC_ILLEGAL;
+    end if;
+
+    if v_mode then
+      -- VS/VU with mstateen set but without hstateen bit set, virtual exception.
+      if bits.h = '0' then
+        return XC_VIRT;
+      end if;
+
+      -- VU with mstateen and hstateen set but without sstateen bit set, potentially a virtual exception.
+      if (priv = PRIV_LVL_U and bits.s = '0') then
+        return XC_VIRT;
+      end if;
+    end if;
+
+    -- U with mstateen set but without sstateen bit set, illegal
+    if priv = PRIV_LVL_U and mode_s then
+      if bits.s = '0' then
+        return XC_ILLEGAL;
+      end if;
+    end if;
+
+    -- Stateen permits
+    return XC_NONE;
+
+  end function;
+
+  -- When accessing a CSR through (v)sireg* further stateen checks may have to be done (eg, imsic, aia).
+  -- Always returns (zero, zero) if stateen is not enabled.
+  function csrind_check_stateen_xc(csra          : csratype;
+                                   csr_file      : csr_reg_type;
+                                   ext_smstateen : boolean;
+                                   mode_s        : boolean) return xc_type is
+  begin
+    if csra = CSR_VSIREG then
+      return check_stateen_xc(
+        get_stateen_bits(csr_file.vsiselect, csr_file), csr_file.prv, csr_file.v = '1', ext_smstateen, mode_s
+      );
+    elsif csra = CSR_SIREG then
+      return check_stateen_xc(
+        get_stateen_bits(csr_file.siselect, csr_file), csr_file.prv, csr_file.v = '1', ext_smstateen, mode_s
+      );
+    else
+      -- assert false report "Called with wrong arguments" severity failure;
+      return XC_NONE;
+    end if;
+  end function;
+
+  -- CSR Write
+  procedure csr_write_flush(csra_in       : in  csratype;
+                            active        : in  extension_type;
+                            pipeflush_out : out std_ulogic;
+                            addrflush_out : out std_ulogic
+                            ) is
+    variable is_rv32     : boolean := not is_enabled(active, x_rv64);
+    variable ext_smepmp  : boolean := is_enabled(active, x_smepmp);
+    variable mode_u      : boolean := is_enabled(active, x_mode_u);
+    variable ext_noelv   : boolean := is_enabled(active, x_noelv);
+    variable ext_zicfilp : boolean := is_enabled(active, x_zicfilp);
+    -- Non-constant
+    variable pipeflush : std_ulogic := '0';
+    variable addrflush : std_ulogic := '0';
+  begin
+    case csra_in is
+      when CSR_HGATP =>
+        pipeflush := '1';
+        addrflush := '1';
+
+      when CSR_HENVCFG =>
+        pipeflush := '1';
+        addrflush := '1';
+
+      when CSR_HENVCFGH =>
+        if is_rv32 then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_VSATP =>
+        pipeflush := '1';
+        addrflush := '1';
+
+      when CSR_SENVCFG =>
+        if mode_u then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_SATP =>
+        pipeflush := '1';
+        addrflush := '1';
+
+      when CSR_MENVCFG =>
+        pipeflush := '1';
+        addrflush := '1';
+
+      when CSR_MENVCFGH =>
+        if is_rv32 then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_MSECCFG =>
+        if ext_smepmp
+           or ext_zicfilp
+           then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_MSECCFGH =>
+        if is_rv32 and (
+           ext_zicfilp or ext_smepmp) then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_FEATURES =>
+        if ext_noelv then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_FEATURESH =>
+        if is_rv32 and ext_noelv then
+        end if;
+
+      when CSR_CCTRL =>
+        if ext_noelv then
+          pipeflush := '1';
+          addrflush := '1';
+        end if;
+
+      when CSR_TCMICTRL =>
+        if ext_noelv then
+        end if;
+
+      when CSR_TCMDCTRL =>
+        if ext_noelv then
+        end if;
+
+
+      when others =>
+    end case;
+
+    pipeflush_out := pipeflush;
+    addrflush_out := addrflush;
+  end;
+
+
   -- Dual issue check logic
   -- Check if instructions can be issued in the same clock cycle on both lanes.
   procedure dual_issue_check(active      : in  extension_type;
@@ -5473,6 +7080,7 @@ package body nvsupport is
                              lbranch_dis : in  std_ulogic;
                              lalu_dis    : in  std_ulogic;
                              dual_dis    : in  std_ulogic;
+                             hpmc_mode   : in  std_ulogic;
                              step_in     : in  std_ulogic;
                              lalu_in     : in  std_logic_vector;
                              xc          : in  std_logic_vector;
@@ -5514,8 +7122,8 @@ package body nvsupport is
     variable opcode_0  : opcode_type;  -- These are needed to have
     variable opcode_1  : opcode_type;  --  locally static object
     variable funct7_1  : funct7_type;  --  subtypes for case statements.
-    variable cat_0     : category_t;
-    variable cat_1     : category_t;
+    variable hold_cat_0: hold_category_t;
+    variable hold_cat_1: hold_category_t;
   begin
 -- pragma translate_off
     assert valid_in'left  >= valid_in'right and
@@ -5529,25 +7137,19 @@ package body nvsupport is
       opcode(i)   := get_opcode(inst_in(i));
       funct3(i)   := get_funct3(inst_in(i));
       funct7(i)   := get_funct7(inst_in(i));
-      rfa1(i)     := rs1_gen(active,
-                             cfi_en,
-                             inst_in(i));
-      rfa2(i)     := rs2_gen(active,
-                             cfi_en,
-                             inst_in(i));
-      rd_valid(i) := rd_gen(active,
-                            cfi_en,
-                            inst_in(i));
+      rfa1(i)     := rs1_gen(active, cfi_en, inst_in(i));
+      rfa2(i)     := rs2_gen(active, cfi_en, inst_in(i));
+      rd_valid(i) := rd_gen(active,  cfi_en, inst_in(i));
       rd(i)       := get_rd(inst_in(i));
     end loop;
 
     -- Create locally static objects
-    opcode_0 := opcode(0);
-    opcode_1 := opcode(one);
-    funct7_1 := funct7(one);
+    opcode_0   := opcode(0);
+    opcode_1   := opcode(one);
+    funct7_1   := funct7(one);
 
-    cat_0    := csr_category(csr_access_addr(inst_in(0)));
-    cat_1    := csr_category(csr_access_addr(inst_in(one)));
+    hold_cat_0 := csr_hold_category(csr_access_addr(inst_in(0)), hpmc_mode);
+    hold_cat_1 := csr_hold_category(csr_access_addr(inst_in(one)), hpmc_mode);
 
 
     -- If both instructions are valid, inst(0) is always the older instruction,
@@ -5556,18 +7158,14 @@ package body nvsupport is
     case opcode_0 is
       when OP_LOAD    | OP_STORE | OP_AMO |
            OP_LOAD_FP | OP_STORE_FP =>
-        if for_lane0(active,
-                     cfi_en,
-                     lane, inst_in(one)) then
+        if for_lane0(active, cfi_en, lane, inst_in(one)) then
           conflict := '1';
         end if;
 
       when OP_CUSTOM0 =>
         -- Diagnostic load/store?
         if is_diag(active, inst_in(0)) then
-          if for_lane0(active,
-                       cfi_en,
-                       lane, inst_in(one)) then
+          if for_lane0(active, cfi_en, lane, inst_in(one)) then
             conflict := '1';
           end if;
         end if;
@@ -5633,33 +7231,27 @@ package body nvsupport is
           -- There may at some later point be other instructions with funct3=100.
           -- Then further checks will be needed here!
           if (ext_h and is_hlsv(inst_in(0))) or
-             maybe_csr(active,
-                       cfi_en,
-                       inst_in(0)) then
+             maybe_csr(active, cfi_en, inst_in(0)) then
             -- Raise conflict when the other instruction wants lane 0 as well.
-            if for_lane0(active,
-                         cfi_en,
-                         lane, inst_in(one)) then
+            if for_lane0(active, cfi_en, lane, inst_in(one)) then
               conflict := '1';
             end if;
           end if;
         when others =>  -- CSR
           -- For some CSR writes, raise conflict since the execution of the
           -- next instruction may depend on it.
-          if not csr_access_read_only(inst_in(0)) and cat_0(5) = '1' then
+          if not csr_access_read_only(inst_in(0)) and hold_cat_0(0) = '1' then
             conflict := '1';
           end if;
           -- Do not allow CSR writes to FPU flags or rounding mode to
           -- pair with an FPU instruction.
           if lane.csr /= lane.fpu and is_fpu(inst_in(one)) and
-             is_csr_access(inst_in(0)) and cat_0(8) = '1' then
+             is_csr_access(inst_in(0)) and hold_cat_0(3) = '1' then
             conflict := '1';
           end if;
           -- CSR accesses use the same pipeline as some other things.
           -- (These checks include other CSR accesses.)
-          if for_lane0(active,
-                       cfi_en,
-                       lane, inst_in(one)) then
+          if for_lane0(active, cfi_en, lane, inst_in(one)) then
             -- Raise conflict since they use the same lane.
             conflict := '1';
           end if;
@@ -5710,20 +7302,16 @@ package body nvsupport is
         -- Do not allow CSR accesses to FPU flags to
         -- pair with an FPU instruction.
         if lane.csr /= lane.fpu and
-           is_csr_access(inst_in(one)) and cat_1(8) = '1' then
+           is_csr_access(inst_in(one)) and hold_cat_1(3) = '1' then
           conflict := '1';
         end if;
         -- FPU operations use the same pipeline as some other things.
         -- (These checks include other FPU operations.)
-        if lane.fpu = 0 and for_lane0(active,
-                                      cfi_en,
-                                      lane, inst_in(one)) then
+        if lane.fpu = 0 and for_lane0(active, cfi_en, lane, inst_in(one)) then
           -- Raise conflict since they use the same lane.
           conflict := '1';
         end if;
-        if lane.fpu = 1 and for_lane1(active,
-                                      cfi_en,
-                                      lane, inst_in(one)) then
+        if lane.fpu = 1 and for_lane1(active, cfi_en, lane, inst_in(one)) then
           -- Raise conflict since they use the same lane.
           conflict := '1';
         end if;
@@ -5774,34 +7362,16 @@ package body nvsupport is
     -- ensure that such CSR writes always issue alone.
     -- There are also other reasons for enforcing single-issue of CSR writes.
     if is_csr_access(inst_in(one)) and not csr_access_read_only(inst_in(one)) and
-       cat_1(5) = '1' then
+       hold_cat_1(0) = '1' then
       conflict := '1';
     end if;
-
-
     -- If we are issuing a CSR read that reads a performance counter this cannot be
     -- issued together with a instruction that comes first in program order.
     if is_csr_access(inst_in(one)) and not csr_access_write_only(inst_in(one)) and
-       unsigned(cat_1(3 downto 0)) = 5  then
-      conflict := '1';
-    end if;
-    -- If we are issuing a CSR write that writes a performance counter this cannot be
-    -- issued together with a instruction that comes later in program order or it won't
-    -- update the counter.
-    if is_csr_access(inst_in(0)) and not csr_access_read_only(inst_in(0)) and
-       unsigned(cat_0(3 downto 0)) = 5  then
+       (hold_cat_1(6) or hold_cat_1(7)) = '1'  then
       conflict := '1';
     end if;
 
-
-    -- ICOUNT trigger match is calculated in the execution stage. It matches when the instruction count in TDATA1 minus the
-    -- valid instructions in the memory and exception stages is 1 or 0. Therefore, if the instruction that writes
-    -- TDATA1 is in the lane 0, and instruction that goes after the CSR write is in the lane one, the last instruction is not
-    -- taken into account to evaluate if the icount trigger matches in case it is set to 1.
-    if (is_csr_access(inst_in(0)) and not csr_access_read_only(inst_in(0)) and csr_access_addr(inst_in(0)) = CSR_TDATA1) or
-       (is_csr_access(inst_in(one)) and not csr_access_read_only(inst_in(one)) and csr_access_addr(inst_in(one)) = CSR_TDATA1) then
-      conflict := '1';
-    end if;
 
     -- We want to annull next instructions and it is
     -- easier if wfi is issued alone.
@@ -5974,18 +7544,12 @@ package body nvsupport is
     -- Non-constant
     variable swap : std_logic := '0';
   begin
-    if for_lane1(active,
-                 cfi_en,
-                 lane, inst_in(0).d) and valid_in(0) = '1' then
+    if for_lane1(active, cfi_en, lane, inst_in(0).d) and valid_in(0) = '1' then
       swap := '1';
     end if;
 
-    if for_lane0(active,
-                 cfi_en,
-                 lane, inst_in(1).d) and
-       (valid_in(0) = '0' or not for_lane0(active,
-                                           cfi_en,
-                                           lane, inst_in(0).d)) then
+    if for_lane0(active, cfi_en, lane, inst_in(1).d) and
+       (valid_in(0) = '0' or not for_lane0(active, cfi_en, lane, inst_in(0).d)) then
       swap := '1';
     end if;
 
@@ -6194,17 +7758,22 @@ package body nvsupport is
 
   -- Hardwire status CSR bits
   function tie_status(active : extension_type;
-                      status : csr_status_type; misa : wordx) return csr_status_type is
-    variable h_en    : boolean         := misa(h_ctrl) = '1';
-    variable ext_f   : boolean         := is_enabled(active, x_f);
-    variable mode_u  : boolean         := is_enabled(active, x_mode_u);
-    variable mode_s  : boolean         := is_enabled(active, x_mode_s);
+                      status : csr_status_type;
+                      misa   : wordx      := (others => '1')) return csr_status_type is
+    variable h_en         : boolean    := is_enabled(active, x_h) and misa(h_ctrl) = '1';
+    variable ext_n        : boolean    := is_enabled(active, x_n);
+    variable ext_f        : boolean    := is_enabled(active, x_f);
+    variable mode_u       : boolean    := is_enabled(active, x_mode_u);
+    variable mode_s       : boolean    := is_enabled(active, x_mode_s);
+    variable ext_smdbltrp : boolean    := is_enabled(active, x_smdbltrp);
+    variable ext_ssdbltrp : boolean    := is_enabled(active, x_ssdbltrp);
+    variable ext_zicfilp  : boolean    := is_enabled(active, x_zicfilp);
     -- Non-constant
     variable mstatus : csr_status_type := status;
   begin
     -- Big-endian not supported
-    mstatus.sbe  := '0';
-    mstatus.ube  := '0';
+    mstatus.sbe := '0';
+    mstatus.ube := '0';
 
     if not mode_s then
       mstatus.sxl  := "00";
@@ -6216,58 +7785,239 @@ package body nvsupport is
       mstatus.sie  := '0';
       mstatus.spie := '0';
     end if;
+
     if not mode_u then
       mstatus.uxl  := "00";
       mstatus.mprv := '0';
       mstatus.tw   := '0';
     end if;
-    if not h_en then
-      mstatus.mpv  := '0';
-      mstatus.gva  := '0';
+
+    if not mode_u or not ext_n then
+      mstatus.uie  := '0';
+      mstatus.upie := '0';
     end if;
+
+    if not h_en then
+      mstatus.mpv := '0';
+      mstatus.gva := '0';
+    end if;
+
     if not ext_f then
-      mstatus.fs   := "00";
+      mstatus.fs := "00";
     end if;
 
     -- Unsupported privilege mode - default to user-mode.
     if status.mpp = "10" or (not mode_s and status.mpp = "01") or (not mode_u and status.mpp = "00") then
       if mode_u then
-        mstatus.mpp  := "00";
+        mstatus.mpp := "00";
       else
-        mstatus.mpp  := "11";
+        mstatus.mpp := "11";
       end if;
+    end if;
+
+    if not ext_smdbltrp then
+      mstatus.mdt := '0';
+    end if;
+
+    if not ext_ssdbltrp then
+      mstatus.sdt := '0';
+    end if;
+
+    if not ext_zicfilp then
+      mstatus.mpelp := '0';
+      mstatus.spelp := '0';
     end if;
 
     return mstatus;
   end;
 
-  -- Hardwire hpmevent CSR bits
-  function tie_hpmevent(active      : extension_type;
-                        hpmevent_in : hpmevent_type; misa : wordx) return hpmevent_type is
-    variable h_en         : boolean       := misa(h_ctrl) = '1';
-    variable ext_sscofpmf : boolean       := is_enabled(active, x_sscofpmf);
-    variable mode_u       : boolean       := is_enabled(active, x_mode_u);
-    variable mode_s       : boolean       := is_enabled(active, x_mode_s);
-    -- Non-constant
-    variable hpmevent     : hpmevent_type := hpmevent_in;
+  -- Hardwire CSR bits
+  procedure tie_csrs(active      : extension_type;
+                     pmp_entries : integer range 0 to PMPENTRIES - 1;
+                     pma_entries : integer range 0 to PMAENTRIES - 1;
+                     pma_masked  : integer range 0 to 1;
+                     perf_cnts   : integer range 0 to 29;
+                     perf_bits   : integer range 0 to 64;
+                     mmuen       : integer range 0 to 1;
+                     csr         : inout csr_reg_type) is
+    variable ext_noelv    : boolean := is_enabled(active, x_noelv);
+    variable ext_noelvalu : boolean := is_enabled(active, x_noelvalu);
+    variable ext_h        : boolean := is_enabled(active, x_h);
+    variable mode_s       : boolean := is_enabled(active, x_mode_s);
+    variable mode_u       : boolean := is_enabled(active, x_mode_u);
+    variable ext_f        : boolean := is_enabled(active, x_f);
+    variable ext_zicfilp  : boolean := is_enabled(active, x_zicfilp);
+    variable ext_sscofpmf : boolean := is_enabled(active, x_sscofpmf);
+    variable ext_sstc     : boolean := is_enabled(active, x_sstc);
+    variable ext_smepmp   : boolean := is_enabled(active, x_smepmp);
+    variable ext_smrnmi   : boolean := is_enabled(active, x_smrnmi);
   begin
+    csr.mstatus := tie_status(active, csr.mstatus);
+
+    -- Reserved interrupts
+    csr.mip     := csr.mip     and not CSR_IRQ_RSV_MASK;
+    csr.mie     := csr.mie     and not CSR_IRQ_RSV_MASK;
+    csr.mideleg := csr.mideleg and not CSR_IRQ_RSV_MASK;
+
+    -- H-extension not implemented?
+    if not ext_h then
+      csr.v           := '0';
+      csr.dcsr.v      := '0';
+      csr.hstatus     := csr_hstatus_rst;
+      csr.hideleg     := (others => '0');
+      csr.hedeleg     := (others => '0');
+      csr.hgatp       := atp_none;
+      csr.hvip        := (others => '0');
+      csr.vsie        := (others => '0');
+      csr.hip         := (others => '0');
+      csr.hie         := (others => '0');
+      csr.hgeip       := (others => '0');
+      csr.hgeie       := (others => '0');
+      csr.hcounteren  := (others => '0');
+      csr.htimedelta  := (others => '0');
+      csr.htval       := (others => '0');
+      csr.htinst      := (others => '0');
+      csr.vsstatus    := csr_status_rst;
+      csr.vsepc       := (others => '0');
+      csr.vsatp       := atp_none;
+      csr.vsscratch   := (others => '0');
+      csr.vscause     := cause_res;
+      csr.vstval      := (others => '0');
+      csr.vstimecmp   := (others => '0');
+      csr.mtval2      := (others => '0');
+      csr.mtinst      := (others => '0');
+      csr.mip         := csr.mip     and not CSR_HIE_MASK;
+      csr.mie         := csr.mie     and not CSR_HIE_MASK;
+      csr.mideleg     := csr.mideleg and not CSR_HIE_MASK;
+    end if;
+
+    -- S-mode not implemented?
+    if not mode_s then
+      csr.satp        := atp_none;
+      csr.stvec       := (others => '0');
+      csr.sepc        := (others => '0');
+      csr.stval       := (others => '0');
+      csr.stimecmp    := (others => '0');
+      csr.scause      := cause_res;
+      csr.sscratch    := (others => '0');
+      csr.mip         := csr.mip     and not CSR_SIE_MASK;
+      csr.mie         := csr.mie     and not CSR_SIE_MASK;
+      csr.mideleg     := csr.mideleg and not CSR_SIE_MASK;
+    end if;
+
+    -- U-mode not implemented?
+    if not mode_u then
+      csr.scounteren  := (others => '0');
+    end if;
+
+    -- S-mode or N-extension not implemented?
+    if not mode_s
+      then
+      csr.mideleg     := (others => '0');
+      csr.medeleg     := (others => '0');
+    end if;
+
+    -- No Sscofpmf?
     if not ext_sscofpmf then
-      hpmevent.minh := '0';
+      csr.mip(IRQ_LCOF)     := '0';
+      csr.mie(IRQ_LCOF)     := '0';
+      csr.mideleg(IRQ_LCOF) := '0';
     end if;
-    if not ext_sscofpmf or not mode_s then
-      hpmevent.sinh := '0';
+
+    -- No floating point?
+    if not ext_f then
+      csr.vsstatus.fs := "00";
     end if;
-    if not ext_sscofpmf or not mode_u then
-      hpmevent.uinh := '0';
+
+    -- No Sstc extension?
+    if not ext_sstc then
+      csr.stimecmp  := (others => '0');
+      csr.vstimecmp := (others => '0');
     end if;
-    if not ext_sscofpmf or not h_en then
-      hpmevent.vsinh := '0';
-      hpmevent.vuinh := '0';
+
+    -- No Zicfilp extension?
+    if not ext_zicfilp then
+      csr.elp             := '0';
+      csr.vsstatus.spelp  := '0';
+      csr.mnstatus.mnpelp := '0';
+      csr.dcsr.pelp       := '0';
+      csr.mseccfg.mlpe    := '0';
+      csr.menvcfg.lpe     := '0';
+      csr.henvcfg.lpe     := '0';
+      csr.senvcfg.lpe     := '0';
+    end if;
+
+    -- PMP not implemented?
+    if pmp_entries = 0 then
+      csr.mseccfg.rlb  := '0';
+      csr.mseccfg.mml  := '0';
+      csr.mseccfg.mmwp := '0';
+    end if;
+
+    -- Clear unused PMP entries
+    if pmp_entries < PMPENTRIES then
+      csr.pmpcfg(pmp_entries to PMPENTRIES - 1)      := (others => (others => '0'));
+      csr.pmpaddr(pmp_entries to PMPENTRIES - 1)     := (others => pmpaddrzero);
+      csr.pmp_precalc(pmp_entries to PMPENTRIES - 1) := (others => pmp_precalc_none);
+    end if;
+    -- Clear unused PMA entries
+    if pma_entries < PMAENTRIES then
+      csr.pma_addr(pma_entries to PMAENTRIES - 1)     := (others => (others => '0'));
+      csr.pma_data(pma_entries to PMAENTRIES - 1)     := (others => (others => '0'));
+      csr.pma_precalc(pma_entries to PMAENTRIES - 1)  := (others => pmp_precalc_none);
+    end if;
+    if pma_masked /= 0 then
+      csr.pma_addr(0 to PMAENTRIES - 1)               := (others => (others => '0'));
+      csr.pma_precalc(0 to PMAENTRIES - 1)            := (others => pmp_precalc_none);
+    end if;
+
+    -- No extended PMP?
+    if not ext_smepmp then
+      csr.mseccfg.mml   := '0';
+      csr.mseccfg.mmwp  := '0';
+        csr.mseccfg.rlb := '0';
+    end if;
+
+    -- No Smrnmi?
+    if not ext_smrnmi then
+      csr.mnscratch := (others => '0');
+      csr.mnepc     := (others => '0');
+      csr.mncause   := cause_res;
+      csr.mnstatus  := csr_mnstatus_rst;
+    end if;
+
+    -- Clear non-existing performance counters
+    -- Should not be needed, but makes things clearer.
+    for i in 0 to 2 loop
+      csr.hpmcounter(i)    := (others => '0');
+      csr.hpmevent(i)      := hpmevent_none;
+    end loop;
+
+    -- Clear unimplemented performance counters
+    for i in perf_cnts + 3 to csr.hpmcounter'high loop
+      csr.hpmcounter(i)    := (others => '0');
+      csr.hpmevent(i)      := hpmevent_none;
+      csr.mcountinhibit(i) := '0';
+      csr.mcounteren(i)    := '0';
+      csr.hcounteren(i)    := '0';
+      csr.scounteren(i)    := '0';
+    end loop;
+
+    -- Clear unimplemented MSB:s of performance counters
+    for i in csr.hpmcounter'range loop
+      csr.hpmcounter(i)(csr.hpmcounter(0)'high downto perf_bits) := (others => '0');
+    end loop;
+
+    -- No MMU, no values writeable to address translation CSRs
+    if mmuen = 0 then
+      csr.satp  := atp_none;
+      csr.vsatp := atp_none;
+      csr.hgatp := atp_none;
     end if;
 
 
-    return hpmevent;
   end;
+  
 
   -- Generate data address misaligned flag
   function data_addr_misaligned(addr : std_logic_vector;
@@ -6297,8 +8047,8 @@ package body nvsupport is
 
   -- Functional unit select
   function fusel_gen(active : extension_type;
-                     inst   : word
-                     ; cfi_en : cfi_t := cfi_both
+                     inst   : word;
+                     cfi_en : cfi_t := cfi_both
                     ) return fuseltype is
     variable ext_noelv   : boolean      := is_enabled(active, x_noelv);
     variable ext_a       : boolean      := is_enabled(active, x_a);
@@ -6488,7 +8238,7 @@ package body nvsupport is
     variable size        : word2       := funct3(1 downto 0);
     -- Non-constant
     variable xc     : std_ulogic  := '0';
-    variable cause  : cause_type  := (others => '0');
+    variable cause  : cause_type  := cause_none;
     variable op1    : wordx       := op1_in;
     variable op2    : wordx       := op2_in;
     variable add    : wordx1;
@@ -6525,6 +8275,8 @@ package body nvsupport is
     -- Do not check for sfence.vma here, since it does not actually access anything.
     if v_fusel_eq(fusel_in, LD or ST or AMO) and data_addr_misaligned(add, size) then
       xc        := '1';
+      -- Normally, address misaligned access is higher priority than
+      -- access fault, but this reversal for AMO is allowed (see below).
       cause     := XC_INST_LOAD_ADDR_MISALIGNED;
       if v_fusel_eq(fusel_in, ST) then
         cause   := XC_INST_STORE_ADDR_MISALIGNED;
@@ -6546,87 +8298,52 @@ package body nvsupport is
   end;
 
   -- Load aligner for 64-bit word
+
   function ld_align64(data   : word64;
                       size   : word2;
                       laddr  : word3;
                       signed : std_ulogic) return word64 is
     -- Non-constant
-    variable rdata   : word64 := (others => '0');
-    variable rdata64 : word64 := data;
+    variable rdata : word64    := data;
+    variable high  : std_logic := data(63);
   begin
-    if true then
-      case size is
-      when SZBYTE => -- byte read
-        case laddr(2 downto 0) is
-          when "000"  => rdata(7 downto 0) := data( 7 downto  0);
-          when "001"  => rdata(7 downto 0) := data(15 downto  8);
-          when "010"  => rdata(7 downto 0) := data(23 downto 16);
-          when "011"  => rdata(7 downto 0) := data(31 downto 24);
-          when "100"  => rdata(7 downto 0) := data(39 downto 32);
-          when "101"  => rdata(7 downto 0) := data(47 downto 40);
-          when "110"  => rdata(7 downto 0) := data(55 downto 48);
-          when others => rdata(7 downto 0) := data(63 downto 56);
-        end case;
-        if signed = '1' then rdata(63 downto 8) := (others => rdata(7)); end if;
-        rdata64 := rdata;
-
-      when SZHALF => -- half-word read
-        case laddr(2 downto 1) is
-          when "00"   => rdata(15 downto 0) := data(15 downto  0);
-          when "01"   => rdata(15 downto 0) := data(31 downto 16);
-          when "10"   => rdata(15 downto 0) := data(47 downto 32);
-          when others => rdata(15 downto 0) := data(63 downto 48);
-        end case;
-        if signed = '1' then rdata(63 downto 16) := (others => rdata(15)); end if;
-        rdata64 := rdata;
-
-      when SZWORD => -- single word read
-        if laddr(2) = '0' then rdata(31 downto 0) := data(31 downto  0);
-        else                   rdata(31 downto 0) := data(63 downto 32);
-        end if;
-        if signed = '1' then rdata(63 downto 32) := (others => rdata(31)); end if;
-        rdata64 := rdata;
-
-      when others => -- double word read
-      end case;
-    else
-      case size is
-      when SZBYTE => -- byte read
-        case laddr(2 downto 0) is
-          when "000"  => rdata(7 downto 0) := data(63 downto 56);
-          when "001"  => rdata(7 downto 0) := data(55 downto 48);
-          when "010"  => rdata(7 downto 0) := data(47 downto 40);
-          when "011"  => rdata(7 downto 0) := data(39 downto 32);
-          when "100"  => rdata(7 downto 0) := data(31 downto 24);
-          when "101"  => rdata(7 downto 0) := data(23 downto 16);
-          when "110"  => rdata(7 downto 0) := data(15 downto  8);
-          when others => rdata(7 downto 0) := data( 7 downto  0);
-        end case;
-        if signed = '1' then rdata(63 downto 8) := (others => rdata(7)); end if;
-        rdata64 := rdata;
-
-      when SZHALF => -- half-word read
-        case laddr(2 downto 1) is
-          when "00"   => rdata(15 downto 0) := data(63 downto 48);
-          when "01"   => rdata(15 downto 0) := data(47 downto 32);
-          when "10"   => rdata(15 downto 0) := data(31 downto 16);
-          when others => rdata(15 downto 0) := data(15 downto  0);
-        end case;
-        if signed = '1' then rdata(63 downto 16) := (others => rdata(15)); end if;
-        rdata64 := rdata;
-
-      when SZWORD => -- single word read
-        if laddr(2) = '0' then rdata(31 downto 0) := data(63 downto 32);
-        else                   rdata(31 downto 0) := data(31 downto 0);
-        end if;
-        if signed = '1' then rdata(63 downto 32) := (others => rdata(31)); end if;
-        rdata64 := rdata;
-
-      when others => -- double word read
-      end case;
+    if size = SZWORD or size = SZHALF or size = SZBYTE then
+      if laddr(2) = '1' then
+        rdata(31 downto 0) := rdata(63 downto 32);
+      else
+        high               := rdata(31);
+      end if;
     end if;
 
-    return rdata64;
+    if  size = SZHALF or size = SZBYTE then
+      if laddr(1) = '1' then
+        rdata(15 downto 0) := rdata(31 downto 16);
+      else
+        high               := rdata(15);
+      end if;
+    end if;
+
+    if size = SZBYTE then
+      if laddr(0) = '1' then
+        rdata(7 downto 0) := rdata(15 downto 8);
+      else
+        high              := rdata(7);
+      end if;
+    end if;
+
+    high := high and signed;
+
+    if size = SZWORD or size = SZHALF or size = SZBYTE then
+      rdata(63 downto 32) := (others => high);
+    end if;
+    if size = SZHALF or size = SZBYTE then
+      rdata(31 downto 16) := (others => high);
+    end if;
+    if size = SZBYTE then
+      rdata(15 downto  8) := (others => high);
+    end if;
+
+    return rdata;
   end;
 
   -- Return xc_v in lsb and xc in msb
@@ -6634,34 +8351,33 @@ package body nvsupport is
                        h_en     : boolean;
                        is_rv64  : boolean;
                        csra     : csratype;
-                       v_mode   : std_logic) return xc_type is
+                       v_mode   : boolean) return xc_type is
     variable is_s_csr     : boolean := csra = CSR_STIMECMP  or csra = CSR_STIMECMPH ;
     variable is_high_half : boolean := csra = CSR_STIMECMPH or csra = CSR_VSTIMECMPH;
     -- Non-constant
-    variable xc   : std_logic := '0';
-    variable xc_v : std_logic := '0';
-    variable ret  : xc_type := (others => '0');
+    variable ret  : xc_type := XC_NONE;
   begin
-    assert (csra = CSR_STIMECMP or csra = CSR_STIMECMPH or csra = CSR_VSTIMECMP or csra = CSR_VSTIMECMPH)
-      report "Invalid call to sstc_xc, unknown CSR used " & tost(csra) severity failure;
+    if not(csra = CSR_STIMECMP or csra = CSR_STIMECMPH or csra = CSR_VSTIMECMP or csra = CSR_VSTIMECMPH) then
+      return XC_NONE;
+    end if;
 
-    assert (not(v_mode = '1' and not h_en)) report "Illegal input value" severity failure;
+    assert (not(v_mode and not h_en)) report "Illegal input value" severity failure;
 
     -- Always illegal on rv64
     if is_high_half and is_rv64 then
-      xc := '1';
+      return XC_ILLEGAL;
     end if;
 
     -- Always illegal if virtualized when misa.h is 0
     -- Maybe a redundant check, csr_file.v should not be able to become 1 if h_en = 0
     if not h_en and csr_file.v = '1' and is_s_csr then
-      xc := '1';
       assert false report "This should be unreachable" severity failure;
+      return XC_ILLEGAL;
     end if;
 
     -- VS csr is never available when misa.h isn't set independent of the privilege mode.
     if not is_s_csr and not h_en then
-      xc := '1';
+      return XC_ILLEGAL;
     end if;
 
     -- We don't need to check for if we are virtualized or not, that is done by the address range check.
@@ -6669,55 +8385,327 @@ package body nvsupport is
       -- mcounteren.tm = 0 raises illegal insn if prv /= prv_m
       -- menvcfg.stce  = 0 raises illegal insn if prv /= prv_m
       if csr_file.mcounteren(1) = '0' or csr_file.menvcfg.stce = '0' then
-        xc := '1';
+        return XC_ILLEGAL;
       end if;
     end if;
 
-    -- Only raise virtual if illegal hasn't already been raised
-    if xc = '0' then
-      -- No need to check M mode since v_mode is always zero if in M mode
-      -- Raise virtual if mcounteren is set but not hcounteren.
-      -- Raise virtual if menvcfg is set but not henvcfg
-      if (csr_file.mcounteren(1) = '1' and csr_file.hcounteren(1) = '0') or
-         (csr_file.menvcfg.stce  = '1' and csr_file.henvcfg.stce  = '0') then
-        xc_v := v_mode;
-        -- In S or M mode we shouldn't raise an exception no matter henvcfg/hcounterern
-        -- In VS/VU we should raise an exception and in that case v_mode will be set.
-        xc   := v_mode;
-      end if;
+    -- No need to check M mode since v_mode is always zero if in M mode
+    -- Raise virtual if mcounteren is set but not hcounteren.
+    -- Raise virtual if menvcfg is set but not henvcfg
+    if (csr_file.mcounteren(1) = '1' and csr_file.hcounteren(1) = '0') or
+       (csr_file.menvcfg.stce  = '1' and csr_file.henvcfg.stce  = '0') then
+      -- xc_v := v_mode;
+      -- In S or M mode we shouldn't raise an exception no matter henvcfg/hcounterern
+      -- In VS/VU we should raise an exception and in that case v_mode will be set.
+      -- xc   := v_mode;
+      return xc_type'(xc => v_mode, xc_v => v_mode);
     end if;
 
     if csr_file.prv = PRIV_LVL_U then
       -- Only raise virtual if the mcounteren and menvcfg check didn't raise an illegal xc.
-      if xc = '0' then
-        xc_v := v_mode;
-        xc   := '1';
-      end if;
-      -- Always raise exception when in user mode.
-      xc   := '1';
+      return xc_type'(xc => true, xc_v => v_mode);
+    end if;
+
+
+    -- Always rise virtual when virtualized and hvictl.vti is set
+    if csr_file.v = '1' and csr_file.hvictl.vti = '1' then
+      return XC_VIRT;
     end if;
 
     -- VS CSRs are always illegal when virtualized
     if csr_file.v = '1' and not is_s_csr then
-      xc   := '1';
-      xc_v := '1';
-
-      if is_rv64 and is_high_half then
-        xc_v := '0';
-      end if;
+      return XC_VIRT;
     end if;
 
-    ret.xc   := xc;
-    ret.xc_v := xc_v;
     return ret;
   end function;
+
+  function ssaia_indirect_xc(csr_file   : csr_reg_type;
+                             sel        : select_t;
+                             active     : extension_type;
+                             imsic      : boolean) return xc_type is
+    variable ext_ssaia  : boolean := is_enabled(active, x_ssaia);
+    variable is_rv64    : boolean := is_enabled(active, x_rv64);
+    variable h_en       : boolean := csr_file.misa(h_ctrl) = '1';
+    variable v_mode     : boolean := h_en and csr_file.v = '1';
+    variable vu_mode    : boolean := v_mode and csr_file.prv = PRIV_LVL_U;
+  begin
+    assert (is_imsic(sel) or is_aia_iprio(sel));
+    if ext_ssaia then -- This check is probably not needed, since imsic implies ssaia?
+      if sel.sel(0) = '1' and is_rv64 then
+        -- for 64-bits architecture accesing IPRIO or IMSIC odd indirect registers
+        -- produce an exception
+        return XC_ILLEGAL;
+      end if;
+      if v_mode then
+        if is_aia_iprio(sel) then
+          -- IPRIO is inaccessible in V mode but can be virtualized
+          return XC_VIRT;
+        else --is_imsic(sel)=ture
+          if not imsic or
+            not vgein_legal(u2i(csr_file.hstatus.vgein)) then
+            return XC_VIRT;
+          end if;
+        end if;
+      else -- Not V mode
+        if not imsic or
+        (csr_file.mvien(IRQ_S_EXTERNAL) = '1' and csr_file.prv = PRIV_LVL_S) then
+          return xc_type'(xc => true, xc_v => vu_mode);
+        end if;
+      end if;
+    else -- Ssaia not implemented
+      return XC_ILLEGAL;
+    end if;
+    return XC_NONE;
+  end function;
+
+  -- Function assumes that genernal csr address, stateen and smcsrind checks are done elsewhere.
+  function smcdeleg_indirect_xc(csr_file      : csr_reg_type;
+                                ext_smcdeleg  : boolean;
+                                ext_sscofpmf  : boolean;
+                                ext_zicntr    : boolean;
+                                ext_zihpm     : boolean;
+                                ext_smcntrpmf : boolean;
+                                is_rv64       : boolean;
+                                csra          : csratype;
+                                v_mode        : boolean) return xc_type is
+    constant reserved_select    : integer := 16#41#;
+    -- HS
+    variable siselect           : integer := u2i(csr_file.siselect.sel);
+    variable siselect_in_range  : boolean := is_smcdeleg(csr_file.siselect);
+    variable s_cnt_sel          : integer := siselect  -  CSRIND_SMCDELEG_LOW;
+    -- VS
+    variable vsiselect_in_range : boolean := is_smcdeleg(csr_file.vsiselect);
+    -- Non-constant
+  begin
+    assert is_sireg(csra) or is_vsireg(csra);
+    if ext_smcdeleg then
+      -- Sireg*
+      if is_sireg(csra) then
+        -- While the privilege mode is M or S
+        if not v_mode then
+          -- NOTE: U-mode gets here too but, worst case an illegal is thrown which is what we wanted anyway
+          -- Furthermore, PRV_U does not need to be checked explicitly since that will be done by the csr address check later.
+
+          -- ... and siselect holds a value in the range 0x40-0x5F, illegal
+          -- instruction exceptions are raised for the following cases:
+          if siselect_in_range then
+            assert siselect_in_range;
+            -- * attempts to access any sireg* when menvcfg.CDE = 0;
+            -- Any sireg* is implicit here!
+            if csr_file.menvcfg.cde = '0' then
+              return XC_ILLEGAL;
+            end if;
+
+            -- * attempts to access sireg3 or sireg6;
+            if csra = CSR_SIREG3 or csra = CSR_SIREG6 then
+              return XC_ILLEGAL;
+            end if;
+
+            -- * attempts to access sireg4 or sireg5 when XLEN = 64;
+            if (csra = CSR_SIREG4 or csra = CSR_SIREG5) and is_rv64 then
+              return XC_ILLEGAL;
+            end if;
+
+            -- * attempts to access sireg* when siselect = 0x41, or when the counter selected by siselect is not
+            -- delegated to S-mode (the corresponding bit in mcounteren = 0)
+            if siselect = reserved_select or csr_file.mcounteren(s_cnt_sel) = '0' then
+              return XC_ILLEGAL;
+            end if;
+
+            -- For each siselect and sireg* combination defined in Table 20 (Indirect HPM State mappings),
+            -- the table further indicates the extensions upon which the underlying counter state depends.
+            -- If any extension upon which the underlying state depends is not implemented,
+            -- an attempt from M or S mode to access the given state through sireg* raises an illegal instruction exception
+            if siselect = 16#40# or siselect = 16#42# then
+              -- Zicntr needed by sireg*
+              if not ext_zicntr then
+                return XC_ILLEGAL;
+              end if;
+              if (csra = CSR_SIREG2 or csra = CSR_SIREG5) and not ext_smcntrpmf then
+                return XC_ILLEGAL;
+              end if;
+            -- elsif siselect = 16#41# already handled by reserved_select
+            -- NOTE: Upper bound already checked by siselect_in_range
+            elsif siselect >= 16#43# then
+              -- Zihpm needed by sireg*
+              if not ext_zihpm then
+                return XC_ILLEGAL;
+              end if;
+              if csra = CSR_SIREG5 and not ext_sscofpmf then
+                return XC_ILLEGAL;
+              end if;
+            else
+              assert false report "This should not happen" severity failure;
+            end if;
+
+          end if;
+        else -- V mode
+          -- If the hypervisor (H) extension is also implemented, then as specified by extension Smcsrind/Sscsrind,
+          -- a virtual instruction exception is raised for attempts from VS-mode or VU-mode to directly access
+          -- vsiselect or vsireg*, or attempts from VU-mode to access siselect or sireg*.
+          -- NOTE: Handled by csrind_reg_xc (nvsupport.vhd)
+
+          -- Furthermore, while vsiselect holds a value in the range 0x40-0x5F
+          -- * An attempt from VS-mode to access any sireg* (really vsireg*) raises an illegal instruction
+          -- exception if menvcfg.CDE = 0, or a virtual instruction exception if menvcfg.CDE = 1
+          if csr_file.prv = PRIV_LVL_S then
+            assert vsiselect_in_range;
+            -- VS mode always traps
+            return xc_type'(xc => true, xc_v => csr_file.menvcfg.cde = '1');
+          end if;
+        end if;
+
+      else -- VSIREG* (caller and assert makes sure this means VSIREG*)
+      -- Furthermore, while vsiselect holds a value in the range 0x40-0x5F:
+        assert vsiselect_in_range;
+        -- * An attempt to access any vsireg* from M or S mode raises an illegal instruction exception.
+        if not v_mode and csr_file.prv /= PRIV_LVL_U then
+          return XC_ILLEGAL;
+        end if;
+
+      end if;
+
+    else -- Extension not implemented throw exception if (v)siselct points to a range reserved by smcdeleg.
+      assert siselect_in_range or vsiselect_in_range;
+      return XC_ILLEGAL;
+    end if;
+
+    return XC_NONE;
+  end function;
+
+  function smcdeleg_indirect_read(csr_file : csr_reg_type; csra : csratype) return wordx is
+    variable siselect  : integer := u2i(csr_file.siselect.sel);
+    variable s_cnt_sel : integer := siselect  -  CSRIND_SMCDELEG_LOW;
+    -- Non-constant
+    -- Specifically, event selector bit 62 (MINH) is read-only 0 when accessed through sireg*.
+    variable hpme_msk  : hpmevent_type;
+  begin
+
+    assert siselect >= CSRIND_SMCDELEG_LOW and siselect <= CSRIND_SMCDELEG_HIGH
+    report "Called in wrong context!" severity failure;
+
+    case csra is
+      when CSR_SIREG =>
+        if siselect = 16#40# then
+          return csr_file.mcycle(wordx'range);
+        elsif siselect = 16#42# then
+          return csr_file.minstret(wordx'range);
+        elsif siselect >= 16#43# then
+          return csr_file.hpmcounter(s_cnt_sel)(wordx'range);
+        end if;
+      when CSR_SIREG4 => -- High-half only 32-bits
+        if siselect = 16#40# then
+          return to0x(hi_h(csr_file.mcycle));
+        elsif siselect = 16#42# then
+          return to0x(hi_h(csr_file.minstret));
+        elsif siselect >= 16#43# then
+          return to0x(hi_h(csr_file.hpmcounter(s_cnt_sel)));
+        end if;
+      when CSR_SIREG2 =>
+        if siselect = 16#40# then
+          -- return (csr_file.mcyclecfg and min_mask)(wordx'range);
+          return zerox;
+        elsif siselect = 16#42# then
+          -- return (csr_file.minstretcfg and min_mask)(wordx'range);
+          return zerox;
+        elsif siselect >= 16#43# then
+          hpme_msk      := csr_file.hpmevent(s_cnt_sel);
+          hpme_msk.minh := '0';
+          return to_hpmevent(hpme_msk);
+          -- Don't allow minh to be written
+        end if;
+      when CSR_SIREG5 => -- High-half only 32-bits
+        if siselect = 16#40# then
+          -- return to0x(hi_h(csr_file.mcyclecfg and min_mask));
+          return zerox;
+        elsif siselect = 16#42# then
+          -- return to0x(hi_h(csr_file.minstretcfg and min_mask));
+          return zerox;
+        elsif siselect >= 16#43# then
+          hpme_msk      := csr_file.hpmevent(s_cnt_sel);
+          hpme_msk.minh := '0';
+          return to_hpmeventh(hpme_msk);
+        end if;
+      when others => return zerox;
+    end case;
+    return zerox;
+  end function;
+
+  procedure smcdeleg_indirect_write(csra         : in csratype;
+                                    wcsr_in      : in wordx;
+                                    csr_file     : inout csr_reg_type;
+                                    upd_mcycle   : inout std_logic;
+                                    upd_minstret : inout std_logic;
+                                    upd_counter  : inout std_logic_vector) is
+    subtype high_range is natural range 63 downto 32;
+    subtype low_range  is natural range 31 downto 0;
+    variable siselect  : integer := u2i(csr_file.siselect.sel);
+    variable s_cnt_sel : integer := siselect - CSRIND_SMCDELEG_LOW;
+    -- Non-constant
+    -- Specifically, event selector bit 62 (MINH) is read-only 0 when accessed through sireg*.
+    variable hpme_msk  : hpmevent_type;
+  begin
+    assert siselect >= CSRIND_SMCDELEG_LOW and siselect <= CSRIND_SMCDELEG_HIGH
+    report "Called in wrong context!" severity failure;
+
+    case csra is
+      when CSR_SIREG =>
+        if siselect = 16#40# then
+          csr_file.mcycle(wordx'range)                := wcsr_in;
+          upd_mcycle                                  := '1';
+        elsif siselect = 16#42# then
+          csr_file.minstret(wordx'range)              := wcsr_in;
+          upd_minstret                                := '1';
+        elsif siselect >= 16#43# then
+          csr_file.hpmcounter(s_cnt_sel)(wordx'range) := wcsr_in;
+          upd_counter(s_cnt_sel)                      := '1';
+        end if;
+      when CSR_SIREG4 => -- High-half only 32-bits
+        if siselect = 16#40# then
+          csr_file.mcycle(high_range)                := wcsr_in(low_range);
+          upd_mcycle                                  := '1';
+        elsif siselect = 16#42# then
+          csr_file.minstret(high_range)              := wcsr_in(low_range);
+          upd_minstret                                := '1';
+        elsif siselect >= 16#43# then
+          csr_file.hpmcounter(s_cnt_sel)(high_range) := wcsr_in(low_range);
+          upd_counter(s_cnt_sel)                      := '1';
+        end if;
+      when CSR_SIREG2 =>
+        if siselect = 16#40# then
+          -- csr_file.mcyclecfg(high_range)  := wcsr_in and min_mask;
+        elsif siselect = 16#42# then
+          -- csr_file.minstrecfg(high_range) := wcsr_in and min_mask;
+        elsif siselect >= 16#43# then
+          -- Don't allow minh to be written
+          hpme_msk      := to_hpmevent(wcsr_in, csr_file.hpmevent(s_cnt_sel));
+          hpme_msk.minh := csr_file.hpmevent(s_cnt_sel).minh;
+          csr_file.hpmevent(s_cnt_sel) := hpme_msk;
+        end if;
+      when CSR_SIREG5 => -- High-half only 32-bits
+        if siselect = 16#40# then
+          -- csr_file.mcyclecfg   := wcsr_in and min_mask;
+        elsif siselect = 16#42# then
+          -- csr_file.minstretcfg := wcsr_in and min_mask));
+        elsif siselect >= 16#43# then
+          -- Don't allow minh to be written
+          hpme_msk      := to_hpmeventh(wcsr_in, csr_file.hpmevent(s_cnt_sel));
+          hpme_msk.minh := csr_file.hpmevent(s_cnt_sel).minh;
+          csr_file.hpmevent(s_cnt_sel) := hpme_msk;
+        end if;
+      when others =>
+    end case;
+  end procedure;
+
 
   -- Exception Check
   -- Exception check unit located in Decode stage.
   -- Searches for illegal instructions, breakpoints and environmental calls.
   procedure exception_check(active    : in  extension_type;
-                            envcfg    : in  csr_envcfg_type;
-                            ssamoswap_en : in boolean;
+                            menvcfg   : in  csr_menvcfg_type;
+                            henvcfg   : in  csr_henvcfg_type;
+                            senvcfg   : in  csr_senvcfg_type;
                             fpu_en    : in  boolean;
                             fpu_ok    : in  boolean;
                             alu_ok    : in  boolean;
@@ -6749,6 +8737,8 @@ package body nvsupport is
     variable ext_m       : boolean       := is_enabled(active, x_m);
     variable ext_smrnmi  : boolean       := is_enabled(active, x_smrnmi);
     variable ext_zimop   : boolean       := is_enabled(active, x_zimop);
+    variable ext_zicbom  : boolean       := is_enabled(active, x_zicbom);
+    variable ext_zicboz  : boolean       := is_enabled(active, x_zicboz);
     variable ext_zicfiss : boolean       := is_enabled(active, x_zicfiss);
     variable ext_svinval : boolean       := is_enabled(active, x_svinval);
     variable h_en        : boolean       := misa_in(h_ctrl) = '1';
@@ -6761,6 +8751,7 @@ package body nvsupport is
     variable funct7      : funct7_type   := funct7(inst_in);
     variable funct12     : funct12_type  := funct12(inst_in);
     variable funct5      : funct5_type   := funct5(inst_in);
+    variable diag_legal  : word16        := "0011001011001111";
     -- Non-constant
     variable xc_v        : std_ulogic    := '0'; -- Virtual instruction exception
     variable hv_op       : std_ulogic    := '0';
@@ -6771,9 +8762,10 @@ package body nvsupport is
     variable prv         : priv_lvl_type := prv_in;
     variable ecall       : std_ulogic    := '0';
     variable ebreak      : std_ulogic    := '0';
-    variable cause       : cause_type;
+    variable cause       : cause_type    := cause_none;
     variable tval        : wordx;
     variable diag_inst   : word4;
+    variable xc_tmp      : xc_type := XC_NONE;
   begin
     case opcode is
       when LUI | OP_JAL =>
@@ -6861,17 +8853,25 @@ package body nvsupport is
           when I_FENCE_I =>
 
           when I_CBO =>
-            if inst_in(31 downto 23) /= zerow(31 downto 23) or
-               (inst_in(22) = '1' and (envcfg.cbze = '0' or inst_in(21 downto 20) /= "00") ) or -- cbo.zero
-               (inst_in(22) = '0' and
-                ((envcfg.cbcfe = '0' and not all_0(inst_in(21 downto 20))) or
-                 (envcfg.cbie = "00" and all_0(inst_in(21 downto 20))) or
-                 (inst_in(21 downto 20) = "11"))) or -- cbo.inval/clean/flush
-               not all_0(rd) then
-              illegal := '1';
-              if h_en and v_in = '1' then
-                xc_v := '1';
+            -- RD is zero for all cbo instructions.
+            if u2i(rd) = 0 then
+              if    ext_zicbom and (u2i(funct12) = 1 or u2i(funct12) = 2) then -- cbo.clean/flush
+                xc_tmp := require_envcfg(mode_s, prv_in, v_in, menvcfg.cbcfe, henvcfg.cbcfe, senvcfg.cbcfe);
+              elsif ext_zicbom and u2i(funct12) = 0 then -- cbo.inval
+                xc_tmp := require_envcfg(mode_s, prv_in, v_in, menvcfg.cbie(0), henvcfg.cbie(0), senvcfg.cbie(0));
+              elsif ext_zicboz and u2i(funct12) = 4 then -- cbo.zero
+                xc_tmp := require_envcfg(mode_s, prv_in, v_in, menvcfg.cbze, henvcfg.cbze, senvcfg.cbze);
+              else
+                illegal := '1';
               end if;
+              if xc_tmp = XC_ILLEGAL then
+                illegal := '1';
+              elsif xc_tmp = XC_VIRT then
+                illegal := '1';
+                xc_v    := '1';
+              end if;
+            else
+              illegal := '1';
             end if;
 
           when others =>
@@ -6900,6 +8900,9 @@ package body nvsupport is
                   if rfa1 = "00000" then
                     case rfa2 is
                       when "00010" => -- SRET
+                        if not mode_s then
+                          illegal := '1';
+                        end if;
                         -- The TSR (Trap SRET) bit supports intercepting the supervisor exception
                         -- return instruction, SRET. When TSR=1, attempts to execute SRET while
                         -- executing in S-mode will raise an illegal instruction exception.
@@ -7141,18 +9144,20 @@ package body nvsupport is
         if ext_a then
           if funct3 = R_WORD or funct3 = R_DOUBLE then
             case funct5 is
-              when R_LR     | R_SC     | R_AMOSWAP | R_AMOADD |
+              when R_LR =>
+                if not all_0(rfa2) then
+                  illegal := '1';
+                end if;
+              when R_SC     | R_AMOSWAP | R_AMOADD |
                    R_AMOXOR | R_AMOAND | R_AMOOR   |
                    R_AMOMIN | R_AMOMAX | R_AMOMINU | R_AMOMAXU => null;
               when R_SSAMOSWAP =>
-                if not ext_zicfiss then
+                xc_tmp := require_envcfg(mode_s, prv_in, v_in, menvcfg.sse, henvcfg.sse, senvcfg.sse);
+                if not ext_zicfiss or xc_tmp = XC_ILLEGAL then
                   illegal := '1';
-                end if;
-                if not ssamoswap_en then
+                elsif xc_tmp = XC_VIRT then
                   illegal := '1';
-                end if;
-                if v_in = '1' then
-                  xc_v := '1';
+                  xc_v    := '1';
                 end if;
               when others =>
                 illegal := '1';
@@ -7184,14 +9189,28 @@ package body nvsupport is
             if not ext_noelv or not x_en then
               illegal := '1';
             end if;
-            diag_inst   := inst_in(23 downto 20);  -- Diagnostic load (rs2)
-            if get_hi(funct3) = '1' then           --   or store      (rd)
-              diag_inst := inst_in(10 downto 7);
+            if get_hi(funct3) = '0' then
+              diag_inst := inst_in(23 downto 20);  -- Diagnostic load (rs2)
+              if inst_in(24) = '1' then
+                illegal := '1';
+              end if;
+            else
+              diag_inst := inst_in(10 downto 7);   --   or store      (rd)
+              if inst_in(11) = '1' then
+                illegal := '1';
+              end if;
+            end if;
+            -- Check legality of specific diagnostic possibilities
+            if diag_legal(u2i(diag_inst)) = '0' then
+              illegal := '1';
+            end if;
+            -- All diagnostic instructions have zeroed high bits
+            if not all_0(inst_in(31 downto 25)) then
+              illegal := '1';
             end if;
             -- Possibly allow diagnostic load/store pmp/xtnd from S mode.
             if prv_in = PRIV_LVL_U or
-               (diag_s and prv_in = PRIV_LVL_S and
-                not (diag_inst = x"c" or diag_inst = x"d")) then
+               (prv_in = PRIV_LVL_S and not (diag_s and (diag_inst = x"c" or diag_inst = x"d"))) then
               illegal := '1';
             end if;
           when F7_BASE_RV64 => -- Custom ALU instructions
@@ -7204,14 +9223,11 @@ package body nvsupport is
         illegal := '1';
     end case; -- opcode
 
+    -- All the possible faults here (ILLEGAL/VIRTUAL/EBREAK/ECALL)
+    -- have the same priority (and only one is possible, anyway).
+
     -- Exception generation
     xc        := '0';
-    if xc_v = '1' then
-      cause   := XC_INST_VIRTUAL_INST;
-    else
-      cause   := XC_INST_ILLEGAL_INST;
-    end if;
-
     tval      := to0x(inst_in);
 
     if comp_ill = '1' or (illegal = '1' and comp = '1') then
@@ -7224,16 +9240,23 @@ package body nvsupport is
       tval    := zerox;
     end if;
 
-    if illegal = '1' or ecall = '1' or ebreak = '1' then
+    if illegal = '1' then
       xc      := '1';
+      cause   := XC_INST_ILLEGAL_INST;
+    end if;
+
+    if xc_v = '1' then
+      cause   := XC_INST_VIRTUAL_INST;
     end if;
 
     if ebreak = '1' then
+      xc      := '1';
       tval    := pc2xlen(pc_in);
       cause   := XC_INST_BREAKPOINT;
     end if;
 
     if ecall = '1' then
+      xc      := '1';
       tval    := (others => '0');
       case prv is
         when PRIV_LVL_M => cause := XC_INST_ENV_CALL_MMODE;
@@ -7286,56 +9309,6 @@ package body nvsupport is
     return res;
   end;
 
-  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic is
-    variable n : integer := u2i(cause(cause'high - 1 downto 0));
-  begin
-    return bits(n);
-  end;
-
-  function is_irq(cause : cause_type) return boolean is
-  begin
-    return get_hi(cause) = '1';
-  end;
-
-  function u2cause(cause : unsigned; irq : std_ulogic) return cause_type is
-    variable xcause : cause_type := (others => '0');
-  begin
-    xcause(cause'range) := std_logic_vector(cause);
-    xcause(xcause'high) := irq;
-
-    return xcause;
-  end;
-
-  function cause2wordx(cause : cause_type) return wordx is
-    -- Non-constant
-    variable v : wordx := zerox;
-  begin
-    v(cause'high - 1 downto 0) := cause(cause'high - 1 downto 0);
-    v(v'high)                  := cause(cause'high);
-
-    return v;
-  end;
-
-  function wordx2cause(v : wordx) return cause_type is
-    -- Non-constant
-    variable cause : cause_type;
-  begin
-    cause             := v(cause'range);
-    cause(cause'high) := get_hi(v);
-
-    return cause;
-  end;
-
-  function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector is
-    -- Non-constant
-    variable vec : std_logic_vector(vec_in'length - 1 downto 0) := vec_in;
-  begin
-    vec(0) := '0';
-    vec(cause'high + 1 downto 2) := cause(cause'high - 1 downto 0);
-
-    return vec;
-  end;
-
 
   -- Interrupt code priority
 
@@ -7351,55 +9324,57 @@ package body nvsupport is
     to_cause(47, true),                     to_cause(23, true),  -- Current plan, according to AIA
     to_cause(46, true), to_cause(45, true), to_cause(22, true),  -- Current plan, according to AIA
     to_cause(44, true),                                          -- Current plan, according to AIA
-    IRQ_RAS_HIGH_PRIO,
+    CAUSE_IRQ_RAS_HIGH_PRIO,
                                             to_cause(21, true),  -- Current plan, according to AIA
     to_cause(42, true), to_cause(41, true), to_cause(20, true),  -- Current plan, according to AIA
     to_cause(40, true),                                          -- Current plan, according to AIA
-    IRQ_M_EXTERNAL,  IRQ_M_SOFTWARE,  IRQ_M_TIMER,
-    IRQ_S_EXTERNAL,  IRQ_S_SOFTWARE,  IRQ_S_TIMER,
-    IRQ_SG_EXTERNAL,
-    IRQ_VS_EXTERNAL, IRQ_VS_SOFTWARE, IRQ_VS_TIMER,
-    IRQ_LCOF,
+    CAUSE_IRQ_M_EXTERNAL,  CAUSE_IRQ_M_SOFTWARE,  CAUSE_IRQ_M_TIMER,
+    CAUSE_IRQ_S_EXTERNAL,  CAUSE_IRQ_S_SOFTWARE,  CAUSE_IRQ_S_TIMER,
+    CAUSE_IRQ_SG_EXTERNAL,
+    CAUSE_IRQ_VS_EXTERNAL, CAUSE_IRQ_VS_SOFTWARE, CAUSE_IRQ_VS_TIMER,
+    CAUSE_IRQ_LCOF,
     to_cause(39, true),                     to_cause(19, true),  -- Current plan, according to AIA
     to_cause(38, true), to_cause(37, true), to_cause(18, true),  -- Current plan, according to AIA
     to_cause(36, true),                                          -- Current plan, according to AIA
-    IRQ_RAS_LOW_PRIO,
+    CAUSE_IRQ_RAS_LOW_PRIO,
                                             to_cause(17, true),  -- Current plan, according to AIA
     to_cause(34, true), to_cause(33, true), to_cause(16, true),  -- Current plan, according to AIA
-    to_cause(32, true)                                          -- Current plan, according to AIA
+    to_cause(32, true)                                           -- Current plan, according to AIA
   );
 
   -- According to the standard
   constant cause_prio_m : cause_arr(0 to 7) := (
-    IRQ_M_EXTERNAL,  IRQ_M_SOFTWARE,  IRQ_M_TIMER,
-    IRQ_S_EXTERNAL,  IRQ_S_SOFTWARE,  IRQ_S_TIMER,
-    IRQ_LCOF,
-    IRQ_UNUSED
+    CAUSE_IRQ_M_EXTERNAL,  CAUSE_IRQ_M_SOFTWARE,  CAUSE_IRQ_M_TIMER,
+    CAUSE_IRQ_S_EXTERNAL,  CAUSE_IRQ_S_SOFTWARE,  CAUSE_IRQ_S_TIMER,
+    CAUSE_IRQ_LCOF,
+    CAUSE_IRQ_UNUSED
   );
   -- According to the standard, except that it does not say anything about IRQ_LCOF.
   -- It seems reasonable to have it before IRQ_SG_EXTERNAL, but as can be see in
   -- cause_prio above, that is perhaps not correct.
   constant cause_prio_s : cause_arr(0 to 7) := (
-    IRQ_S_EXTERNAL,  IRQ_S_SOFTWARE,  IRQ_S_TIMER,
-    IRQ_SG_EXTERNAL,
-    IRQ_VS_EXTERNAL, IRQ_VS_SOFTWARE, IRQ_VS_TIMER,
-    IRQ_LCOF
+    CAUSE_IRQ_S_EXTERNAL,  CAUSE_IRQ_S_SOFTWARE,  CAUSE_IRQ_S_TIMER,
+    CAUSE_IRQ_SG_EXTERNAL,
+    CAUSE_IRQ_VS_EXTERNAL, CAUSE_IRQ_VS_SOFTWARE, CAUSE_IRQ_VS_TIMER,
+    CAUSE_IRQ_LCOF
   );
   -- According to the standard
   constant cause_prio_v : cause_arr(0 to 7) := (
-    IRQ_VS_EXTERNAL, IRQ_VS_SOFTWARE, IRQ_VS_TIMER,
-    IRQ_UNUSED, IRQ_UNUSED, IRQ_UNUSED, IRQ_UNUSED, IRQ_UNUSED
+    CAUSE_IRQ_VS_EXTERNAL, CAUSE_IRQ_VS_SOFTWARE, CAUSE_IRQ_VS_TIMER,
+    CAUSE_IRQ_LCOF,
+    CAUSE_IRQ_UNUSED, CAUSE_IRQ_UNUSED, CAUSE_IRQ_UNUSED, CAUSE_IRQ_UNUSED
   );
 
   -- Initializes a vector where the index represents the interrupt cause
   -- and its value the default priority.
   function set_cause2prio(length : integer) return int_cause_arr is
     -- Non-constant
-    variable vec : int_cause_arr(0 to length - 1) := (others => (others => '1'));
+    variable reset_val : int_cause_type := int_cause_type'high;
+    variable vec : int_cause_arr(0 to length - 1) := (others => reset_val);
   begin
     for i in vec'range loop
       if i < cause_prio'length then
-        vec(cause2int(cause_prio(i))) := u2vec(i, vec(0));
+        vec(cause2int(cause_prio(i))) := i;
       end if;
     end loop;
 
@@ -7436,39 +9411,39 @@ package body nvsupport is
     return v.custom = '1';
   end;
 
-  -- Determines when the accessed address of the guest interrupt file is illegal and an exception must be rised
-  -- Assumes sel.custom is '0'.
-  function GintFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic is
+  function is_imsic(v : select_t) return boolean is
+    variable sel : integer := u2i(v.sel);
   begin
-    -- Raise virtual instruction exception when:
-    -- * Trying to access inaccessible registers (0x00-0x6F, bigger than 0xFF)
-    -- * XLEN=64 and trying to access IMSIC odd registers
-    -- * IMSIC is not implemented and trying to access IMSIC registers
-    if u2i(sel.sel) > 16#FF#          or  -- Access inaccessible registers
-       u2i(sel.sel(7 downto 4)) < 7   or  -- Access inaccessible registers
-       (is_rv64 and sel.sel(0) = '1') or  -- XLEN = 64 and access odd register
-       (imsic = 0 and                     -- IMSIC not implemented and access IMSIC regisers
-        u2i(sel.sel(7 downto 4)) > 6) then
-      return '1';
-    else
-      return '0';
-    end if;
+    return not is_custom(v) and sel >= CSRIND_IMSIC_LOW and sel <= CSRIND_IMSIC_HIGH;
   end;
 
-  -- Determines when the accessed address of the interrupt file is illegal and an exception must be rised
+  function is_smcdeleg(v : select_t) return boolean is
+    variable sel : integer := u2i(v.sel);
+  begin
+    return not is_custom(v) and sel >= CSRIND_SMCDELEG_LOW and sel <= CSRIND_SMCDELEG_HIGH;
+  end;
+
+  function is_aia_iprio(v : select_t) return boolean is
+    variable sel : integer := u2i(v.sel);
+  begin
+    return not is_custom(v) and sel >= CSRIND_SMAIA_IPRIO_LOW and sel <= CSRIND_SMAIA_IPRIO_HIGH;
+  end;
+
+
+  function vgein_legal(vgein : integer) return boolean is
+  begin
+    return not (vgein = 0 or vgein > GEILEN);
+  end function;
+
+  -- Determines when the accessed address of the interrupt file is illegal and an exception must be raised
   -- Assumes sel.custom is '0'.
   function intFile_addrExcp(sel : select_t; imsic : integer; is_rv64 : boolean) return std_logic is
   begin
     -- Raise illegal instruction exception when:
-    -- * Trying to access reserved registers (0x00-0x2F, 0x40-0x6F)
     -- * XLEN=64 and trying to access IMSIC odd registers
     -- * XLEN=64 and trying to access major interrupt priorities odd registers
     -- * IMSIC is not implemented and trying to access IMSIC registers
-    if u2i(sel.sel) > 16#FF#           or    -- Access reserved registers
-       u2i(sel.sel(7 downto 4)) < 3    or    -- Access reserved registers
-       (u2i(sel.sel(7 downto 4)) > 3 and     -- Access reserved registers
-        u2i(sel.sel(7 downto 4)) < 7)  or
-       (is_rv64 and sel.sel(0) = '1')  or    -- XLEN = 64 and access odd register
+    if (is_rv64 and sel.sel(0) = '1')  or    -- XLEN = 64 and access odd register
        (imsic = 0 and                        -- IMSIC not implemented and access IMSIC regisers
         u2i(sel.sel(7 downto 4)) > 6) then
       return '1';
@@ -7491,82 +9466,6 @@ package body nvsupport is
 
 
 
-
-
-  function supports_impl_mmu_sv32(riscv_mmu : integer) return boolean is
-  begin
-    return riscv_mmu = 1;
-  end;
-  function supports_impl_mmu_sv39(riscv_mmu : integer) return boolean is
-  begin
-    return riscv_mmu >= 2;
-  end;
-  function supports_impl_mmu_sv48(riscv_mmu : integer) return boolean is
-  begin
-    return riscv_mmu >= 3;
-  end;
-
-
-  function satp_mask(id : integer; physaddr : integer) return wordx is
-    -- Non-constant
-    variable id_mask_64   : std_logic_vector(15 downto 0) := (others => '0');
-    variable id_mask_32   : std_logic_vector( 8 downto 0) := (others => '0');
-    variable addr_mask_64 : std_logic_vector(43 downto 0) := (others => '0');
-    variable addr_mask_32 : std_logic_vector(21 downto 0) := (others => '0');
-    variable result       : word64 := zerow64;
-  begin
-    if XLEN = 64 then
-      if id /= 0 then
-        id_mask_64(id - 1 downto 0)            := (others => '1');
-      end if;
-      addr_mask_64(physaddr - 1 - 12 downto 0) := (others => '1');
-      result                                   := "1111" & id_mask_64 & addr_mask_64;
-    else
-      if id /= 0 then
-        id_mask_32(id - 1 downto 0)            := (others => '1');
-      end if;
-      addr_mask_32(physaddr - 1 - 12 downto 0) := (others => '1');
-      result(word'range)                       := "1" & id_mask_32 & addr_mask_32;
-    end if;
-
-    return result(wordx'range);
-  end;
-
-  function vsatp_mask(id : integer; riscv_mmu : integer range 0 to 3) return wordx is
-    -- Non-constant
-    variable id_mask_64   : std_logic_vector(15 downto 0) := (others => '0');
-    variable id_mask_32   : std_logic_vector( 8 downto 0) := (others => '0');
-    variable addr_mask_64 : std_logic_vector(43 downto 0) := (others => '0');
-    variable addr_mask_32 : std_logic_vector(21 downto 0) := (others => '0');
-    variable result       : word64 := zerow64;
-    variable PPN_BITS     : integer := 0;
-  begin
-
-    -- Two additional bits due to svDDx4
-    if supports_impl_mmu_sv32(riscv_mmu) then
-      PPN_BITS := 32 + 2;
-    elsif supports_impl_mmu_sv39(riscv_mmu) then
-      PPN_BITS := 39 + 2;
-    elsif supports_impl_mmu_sv48(riscv_mmu) then
-      PPN_BITS := 48 + 2;
-    end if;
-
-    if XLEN = 64 then
-      if id /= 0 then
-        id_mask_64(id - 1 downto 0)            := (others => '1');
-      end if;
-      addr_mask_64(PPN_BITS - 1 - 12 downto 0) := (others => '1');
-      result                                   := "1111" & id_mask_64 & addr_mask_64;
-    else
-      if id /= 0 then
-        id_mask_32(id - 1 downto 0)            := (others => '1');
-      end if;
-      addr_mask_32(PPN_BITS - 1 - 12 downto 0) := (others => '1');
-      result(word'range)                       := "1" & id_mask_32 & addr_mask_32;
-    end if;
-
-    return result(wordx'range);
-  end;
 
   -- These two only occurs together with mtval2/htval!
   function tinst_vs_pt_read return word is
@@ -7615,7 +9514,7 @@ package body nvsupport is
   begin
     if mode_s then
       if ext_sscofpmf then
-        mask(cause2int(IRQ_LCOF)) := '1';
+        mask(IRQ_LCOF) := '1';
       end if;
       mask := mask or CSR_MIDELEG_MASK;
     end if;
@@ -7638,7 +9537,7 @@ package body nvsupport is
     variable mask : wordx := CSR_MIP_MASK;
   begin
     if ext_sscofpmf then
-      mask(cause2int(IRQ_LCOF)) := '1';
+      mask(IRQ_LCOF) := '1';
     end if;
     if mode_s then
       mask := mask or CSR_SIP_MASK;
@@ -7662,7 +9561,7 @@ package body nvsupport is
     variable mask : wordx := CSR_MIE_MASK;
   begin
     if ext_sscofpmf then
-      mask(cause2int(IRQ_LCOF)) := '1';
+      mask(IRQ_LCOF) := '1';
     end if;
     if mode_s then
       mask := mask or CSR_SIE_MASK;
@@ -7681,7 +9580,18 @@ package body nvsupport is
   begin
     assert CSR_SIP_MASK = CSR_SIE_MASK report "Bad mask assumption" severity failure;
     if ext_sscofpmf then
-      mask(cause2int(IRQ_LCOF)) := '1';
+      mask(IRQ_LCOF) := '1';
+    end if;
+    return mask;
+  end;
+
+  -- Return mask for hideleg
+  function hideleg_mask(ext_shlcofideleg : integer) return wordx is
+    -- Non-constant
+    variable mask : wordx := CSR_HIDELEG_MASK;
+  begin
+    if ext_shlcofideleg = 1 then
+      mask(IRQ_LCOF) := '1';
     end if;
     return mask;
   end;
@@ -7736,9 +9646,10 @@ package body nvsupport is
   end;
 
   -- Return vsstatus as a XLEN bit data from the record type
-  function to_vsstatus(status : csr_status_type
-                       ; bcfi_en : std_ulogic
-                       ; fcfi_en : std_ulogic
+  function to_vsstatus(status      : csr_status_type;
+                       ssdbltrp_en : std_ulogic;
+                       bcfi_en     : std_ulogic;
+                       fcfi_en     : std_ulogic
                        ) return wordx is
     -- Non-constant
     variable vsstatus : word64 := zerow64;
@@ -7750,7 +9661,9 @@ package body nvsupport is
     if fcfi_en = '1' then
       vsstatus(23)           := status.spelp;
     end if;
-    vsstatus(24)             := status.sdt;
+    if ssdbltrp_en = '1' then
+      vsstatus(24)             := status.sdt;
+    end if;
     vsstatus(19 downto 18)   := status.mxr & status.sum;
     vsstatus(16 downto 13)   := "00" & status.fs;
     vsstatus(           8)   := status.spp;
@@ -7761,13 +9674,14 @@ package body nvsupport is
   end;
 
   -- Return vsstatus as a record type from an XLEN bit data
-  function to_vsstatus(wdata         : wordx;
-                       ssdbltrp_en   : std_ulogic
-                       ; bcfi_en : std_ulogic
-                       ; fcfi_en : std_ulogic
+  function to_vsstatus(wdata       : wordx;
+                       vsstatus_in : csr_status_type;
+                       ssdbltrp_en : std_ulogic;
+                       bcfi_en     : std_ulogic;
+                       fcfi_en     : std_ulogic
                       ) return csr_status_type is
     -- Non-constant
-    variable vsstatus : csr_status_type;
+    variable vsstatus : csr_status_type := vsstatus_in;
   begin
 
     vsstatus.uxl    := "10";
@@ -7842,9 +9756,7 @@ package body nvsupport is
   begin
 
     if XLEN = 64 then
-      if smdbltrp_en = '1' then
-        mstatus.mdt   := wdata(42 * (XLEN / 64));
-      end if;
+      mstatus.mdt   := wdata(42 * (XLEN / 64));
       mstatus.mpv  := wdata(39 * (XLEN / 64));
       mstatus.gva  := wdata(38 * (XLEN / 64));
     end if;
@@ -7900,14 +9812,17 @@ package body nvsupport is
     variable mstatus : word64 := zerow64;
   begin
     mstatus(10)         := status.mdt;
+    mstatus(9)          := status.mpelp;
     mstatus(7 downto 6) := status.mpv & status.gva;
 
     return mstatus(wordx'range);
   end;
 
   -- Return mstatush as a record type from an XLEN bit data
-  function to_mstatush(wdata : wordx; mstatus_in : csr_status_type; h_en : boolean;
-                       smdbltrp_en  : std_ulogic) return csr_status_type is
+  function to_mstatush(wdata       : wordx;
+                       mstatus_in  : csr_status_type;
+                       h_en        : boolean;
+                       smdbltrp_en : std_ulogic) return csr_status_type is
     -- Non-constant
     variable mstatus : csr_status_type := mstatus_in;
   begin
@@ -7915,6 +9830,8 @@ package body nvsupport is
     if smdbltrp_en = '1' then
       mstatus.mdt := wdata(10);
     end if;
+
+    mstatus.mpelp := wdata(9);
 
     if h_en then
       mstatus.mpv := wdata(7);
@@ -7933,9 +9850,10 @@ package body nvsupport is
   end;
 
   -- Return sstatus as an XLEN bit data from the record type
-  function to_sstatus(status : csr_status_type
-                      ; bcfi_en : std_ulogic
-                      ; fcfi_en : std_ulogic
+  function to_sstatus(status  : csr_status_type;
+                      bcfi_en : std_ulogic;
+                      fcfi_en : std_ulogic;
+                      dte     : std_ulogic
                      ) return wordx is
     -- Non-constant
     variable sstatus : word64 := zerow64;
@@ -7944,7 +9862,7 @@ package body nvsupport is
     if XLEN = 64 then
       sstatus(33 downto 32) := status.uxl;
     end if;
-    sstatus(24)             := status.sdt;
+    sstatus(24)             := status.sdt and dte;
     if fcfi_en = '1' then
       sstatus(23)           := status.spelp;
     end if;
@@ -7958,10 +9876,11 @@ package body nvsupport is
   end;
 
   -- Return sstatus as a record type from an XLEN bit data
-  function to_sstatus(wdata       : wordx; mstatus : csr_status_type;
-                      ssdbltrp_en : std_ulogic
-                      ; bcfi_en : std_ulogic
-                      ; fcfi_en : std_ulogic
+  function to_sstatus(wdata       : wordx;
+                      mstatus     : csr_status_type;
+                      ssdbltrp_en : std_ulogic;
+                      bcfi_en     : std_ulogic;
+                      fcfi_en     : std_ulogic
                      ) return csr_status_type is
     -- Non-constant
     variable sstatus : csr_status_type;
@@ -8012,7 +9931,8 @@ package body nvsupport is
   end;
 
   -- Return ustatus as a record type from an XLEN bit data
-  function to_ustatus(wdata : wordx; mstatus : csr_status_type) return csr_status_type is
+  function to_ustatus(wdata   : wordx;
+                      mstatus : csr_status_type) return csr_status_type is
     -- Non-constant
     variable ustatus : csr_status_type;
   begin
@@ -8024,33 +9944,6 @@ package body nvsupport is
     ustatus.uie  := wdata(0);
 
     return ustatus;
-  end;
-
-  -- Convert XLEN bit data into hvictl csr type
-  function to_hvictl(wdata : wordx) return csr_hvictl_type is
-    variable xhvictl : csr_hvictl_type;
-  begin
-    xhvictl.vti    := wdata(30);
-    -- AIA RC2 changed so that .iid shall support any number (of its length).
-    xhvictl.iid    := get_lo(wdata(27 downto 16), xhvictl.iid'length);
-    xhvictl.dpr    := wdata(9);
-    xhvictl.ipriom := wdata(8);
-    xhvictl.iprio  := wdata(7 downto 0);
-
-    return xhvictl;
-  end;
-
-  -- Return hvictl as an XLEN bit data from the record type
-  function to_hvictl(hvictl : csr_hvictl_type) return wordx is
-    variable xhvictl : wordx;
-  begin
-    xhvictl := (others => '0');
-    xhvictl(30)           := hvictl.vti;
-    xhvictl(27 downto 16) := uext(hvictl.iid, 12);
-    xhvictl(8)            := hvictl.ipriom;
-    xhvictl(7 downto 0)   := hvictl.iprio;
-
-    return xhvictl;
   end;
 
   function to_mnstatus(mnstatus : csr_mnstatus_type) return wordx is
@@ -8096,44 +9989,352 @@ package body nvsupport is
     return xmnstatus;
   end;
 
-  function mstateen0_mask(mstateen0 : csr_mstateen0_type; mask : csr_mstateen0_type) return csr_mstateen0_type is
-    variable xmstateen0 : csr_mstateen0_type;
+  -- Convert XLEN bit data into hvictl csr type
+  function to_hvictl(wdata : wordx) return csr_hvictl_type is
+    variable xhvictl : csr_hvictl_type;
   begin
-    xmstateen0.stateen  := mstateen0.stateen  and mask.stateen;
-    xmstateen0.envcfg   := mstateen0.envcfg   and mask.envcfg;
-    xmstateen0.iselect  := mstateen0.iselect  and mask.iselect;
-    xmstateen0.aia      := mstateen0.aia      and mask.aia;
-    xmstateen0.imsic    := mstateen0.imsic    and mask.imsic;
-    xmstateen0.ctx      := mstateen0.ctx      and mask.ctx;
+    xhvictl.vti    := wdata(30);
+    -- AIA RC2 changed so that .iid shall support any number (of its length).
+    xhvictl.iid    := u2i(get_lo(wdata(27 downto 16), CAUSELEN));
+    xhvictl.dpr    := wdata(9);
+    xhvictl.ipriom := wdata(8);
+    xhvictl.iprio  := wdata(7 downto 0);
 
-    return xmstateen0;
+    return xhvictl;
   end;
 
-  -- Unused: no stateen0 bits allocated for this extension so far
-  function sstateen0_mask(sstateen0 : csr_sstateen0_type; mask : csr_mstateen0_type) return csr_sstateen0_type is
-    variable xsstateen0 : csr_sstateen0_type := csr_sstateen0_rst;
+  -- Return hvictl as an XLEN bit data from the record type
+  function to_hvictl(hvictl : csr_hvictl_type) return wordx is
+    variable xhvictl : wordx;
   begin
-    return xsstateen0;
+    xhvictl := (others => '0');
+    xhvictl(30)           := hvictl.vti;
+    xhvictl(27 downto 16) := u2vec(hvictl.iid, 12);
+    xhvictl(8)            := hvictl.ipriom;
+    xhvictl(7 downto 0)   := hvictl.iprio;
+
+    return xhvictl;
+  end function;
+
+  -- Return mvien mask
+  function mvien_mask(ext_sscofpmf  : integer; 
+                      ext_smcdeleg  : integer) return wordx is
+    variable mask : wordx := CSR_MVIEN_MASK;
+  begin
+    if ext_sscofpmf /= 0 and ext_smcdeleg /= 0 then
+      mask(IRQ_LCOF) := '1';
+    end if;
+    return mask;
   end;
 
+  function hvien_mask(ext_sscofpmf  : integer; 
+                      ext_smcdeleg  : integer) return wordx is
+    variable mask : wordx := (others => '0');
+  begin
+    if ext_sscofpmf /= 0 and ext_smcdeleg /= 0 then
+      mask(IRQ_LCOF) := '1';
+    end if;
+    return mask;
+  end;
+
+  function to_mvip(mip : wordx; mvip : wordx;
+                   mvien : wordx; ext_sstc : integer;
+                   menvcfg_stce : std_ulogic) return wordx is
+    variable xmvip : wordx := zerox;
+  begin
+    -- When bit 1 of mvien is zero, bit 1 of mvip is an alias of the
+    -- same bit (SSIP) of mip. But when bit 1 of mvien is one, bit 1
+    -- of mvip is a separate writable bit independent of mip.SSIP.
+    if mvien(IRQ_S_SOFTWARE) = '1' then
+      xmvip(IRQ_S_SOFTWARE) := mvip(IRQ_S_SOFTWARE);
+    else
+      xmvip(IRQ_S_SOFTWARE) := mip(IRQ_S_SOFTWARE);
+    end if;
+    -- Bit 5 of mvip is an alias of the same bit (STIP) in mip when
+    -- that bit is writable in mip. When STIP is not writable in
+    -- mip(such as when menvcfg.STCE = 1), bit 5 of mvip is read-only zero.
+    if ext_sstc /= 0 and menvcfg_stce = '1' then
+      xmvip(IRQ_S_TIMER) := '0';
+    else
+      xmvip(IRQ_S_TIMER) := mip(IRQ_S_TIMER);
+    end if;
+    -- When bit 9 of mvien is zero, bit 9 of mvip is an alias of the
+    -- software-writable bit 9 of mip (SEIP). But when bit 9 of mvien
+    -- is one, bit 9 of mvip is a writable bit independent of mip.SEIP.
+    if mvien(IRQ_S_EXTERNAL) = '1' then
+      xmvip(IRQ_S_EXTERNAL) := mvip(IRQ_S_EXTERNAL);
+    else
+      xmvip(IRQ_S_EXTERNAL) := mip(IRQ_S_EXTERNAL);
+    end if;
+
+    -- So far only LCOF interrupt is defined in interrupts from 13 to 63. To add new interrupt
+    -- inside this range, mvien_mask has to be modified
+    xmvip(XLEN-1 downto 13) := mvip(XLEN-1 downto 13);
+    return xmvip;
+  end;
+
+  function "and" (L : csr_mstateen0_type; R : csr_mstateen0_type) return csr_mstateen0_type is
+  begin
+    -- Do this type of return to be able to detect if a type has changed and not the overload
+    return csr_mstateen0_type'(
+      stateen  => L.stateen and R.stateen,
+      envcfg   => L.envcfg  and R.envcfg,
+      iselect  => L.iselect and R.iselect,
+      aia      => L.aia     and R.aia,
+      imsic    => L.imsic   and R.imsic,
+      ctx      => L.ctx     and R.ctx,
+      p1p13    => L.p1p13   and R.p1p13,
+      p1p14    => L.p1p14   and R.p1p14,
+      ctr      => L.ctr     and R.ctr,
+      jvt      => L.jvt     and R.jvt,
+      fcsr     => L.fcsr    and R.fcsr,
+      c        => L.c       and R.c
+    );
+  end function;
+
+  function "and" (L : csr_hstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type is
+  begin
+    return csr_hstateen0_type'(
+      stateen  => L.stateen and R.stateen,
+      envcfg   => L.envcfg  and R.envcfg,
+      iselect  => L.iselect and R.iselect,
+      aia      => L.aia     and R.aia,
+      imsic    => L.imsic   and R.imsic,
+      ctx      => L.ctx     and R.ctx,
+      ctr      => L.ctr     and R.ctr,
+      jvt      => L.jvt     and R.jvt,
+      fcsr     => L.fcsr    and R.fcsr,
+      c        => L.c       and R.c
+    );
+  end function;
+
+  function "and" (L : csr_hstateen0_type; R : csr_mstateen0_type) return csr_hstateen0_type is
+  begin
+    return csr_hstateen0_type'(
+      stateen  => L.stateen and R.stateen,
+      envcfg   => L.envcfg  and R.envcfg,
+      iselect  => L.iselect and R.iselect,
+      aia      => L.aia     and R.aia,
+      imsic    => L.imsic   and R.imsic,
+      ctx      => L.ctx     and R.ctx,
+      ctr      => L.ctr     and R.ctr,
+      jvt      => L.jvt     and R.jvt,
+      fcsr     => L.fcsr    and R.fcsr,
+      c        => L.c       and R.c
+    );
+  end function;
+
+  function "and" (L : csr_mstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type is
+  begin
+    return R and L;
+  end function;
+
+  function "and" (L : csr_sstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type is
+  begin
+    return csr_sstateen0_type'(
+      jvt  => L.jvt  and R.jvt,
+      fcsr => L.fcsr and R.fcsr,
+      c    => L.c    and R.c
+    );
+  end function;
+
+  function "and" (L : csr_sstateen0_type; R : csr_hstateen0_type) return csr_sstateen0_type is
+  begin
+    return csr_sstateen0_type'(
+      jvt  => L.jvt  and R.jvt,
+      fcsr => L.fcsr and R.fcsr,
+      c    => L.c    and R.c
+    );
+  end function;
+
+  function "and" (L : csr_hstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type is
+  begin
+    return R and L;
+  end function;
+
+
+  function "not" (I : csr_mstateen0_type) return csr_mstateen0_type is
+  begin
+    return csr_mstateen0_type'(
+      stateen  => not I.stateen,
+      envcfg   => not I.envcfg,
+      iselect  => not I.iselect,
+      aia      => not I.aia,
+      imsic    => not I.imsic,
+      ctx      => not I.ctx,
+      p1p13    => not I.p1p13,
+      p1p14    => not I.p1p14,
+      ctr      => not I.ctr,
+      jvt      => not I.jvt,
+      fcsr     => not I.fcsr,
+      c        => not I.c
+    );
+  end function;
+
+  function "not" (I : csr_hstateen0_type) return csr_hstateen0_type is
+  begin
+    return csr_hstateen0_type'(
+      stateen  => not I.stateen,
+      envcfg   => not I.envcfg,
+      iselect  => not I.iselect,
+      aia      => not I.aia,
+      imsic    => not I.imsic,
+      ctx      => not I.ctx,
+      ctr      => not I.ctr,
+      jvt      => not I.jvt,
+      fcsr     => not I.fcsr,
+      c        => not I.c
+    );
+  end function;
+
+  function "or"  (L : csr_mstateen0_type; R : csr_mstateen0_type) return csr_mstateen0_type is
+    begin
+      return csr_mstateen0_type'(
+        stateen  => L.stateen or R.stateen,
+        envcfg   => L.envcfg  or R.envcfg,
+        iselect  => L.iselect or R.iselect,
+        aia      => L.aia     or R.aia,
+        imsic    => L.imsic   or R.imsic,
+        ctx      => L.ctx     or R.ctx,
+        p1p13    => L.p1p13   or R.p1p13,
+        p1p14    => L.p1p14   or R.p1p14,
+        ctr      => L.ctr     or R.ctr,
+        jvt      => L.jvt     or R.jvt,
+        fcsr     => L.fcsr    or R.fcsr,
+        c        => L.c       or R.c
+      );
+  end function;
+
+  function "or"  (L : csr_hstateen0_type; R : csr_hstateen0_type) return csr_hstateen0_type is
+    begin
+      return csr_hstateen0_type'(
+        stateen => L.stateen or R.stateen,
+        envcfg  => L.envcfg  or R.envcfg,
+        iselect => L.iselect or R.iselect,
+        aia     => L.aia     or R.aia,
+        imsic   => L.imsic   or R.imsic,
+        ctx     => L.ctx     or R.ctx,
+        ctr     => L.ctr     or R.ctr,
+        jvt     => L.jvt     or R.jvt,
+        fcsr    => L.fcsr    or R.fcsr,
+        c       => L.c       or R.c
+      );
+  end function;
+
+  function "or"  (L : csr_sstateen0_type; R : csr_sstateen0_type) return csr_sstateen0_type is
+    begin
+    return csr_sstateen0_type'(
+      jvt  => L.jvt  or R.jvt,
+      fcsr => L.fcsr or R.fcsr,
+      c    => L.c    or R.c
+    );
+  end function;
+
+  -- For every bit in an mstateen CSR that is zero (whether read-only zero or set to zero), the same bit
+  -- appears as READ-ONLY zero in the matching hstateen and sstateen CSRs.
+  function stateen_wpri_write(wcsr_in   : wordx;
+                              prev      : csr_hstateen0_type;
+                              mask      : csr_mstateen0_type;
+                              high_half : boolean) return csr_hstateen0_type is
+  begin
+    if high_half then
+      return (prev and not mask) or (to_hstateen0h(wcsr_in, prev) and mask);
+    else
+      return (prev and not mask) or (to_hstateen0(wcsr_in, prev) and mask);
+    end if;
+  end function;
+
+  function stateen_wpri_write(wcsr_in   : wordx;
+                              prev      : csr_sstateen0_type;
+                              mask      : csr_hstateen0_type;
+                              high_half : boolean) return csr_sstateen0_type is
+  begin
+    assert not high_half report "Function assumes that no high_half exists for sstateen0";
+    return (prev and not mask) or (to_sstateen0(wcsr_in) and mask);
+  end function;
+
+  function stateen_wpri_write(wcsr_in   : std_logic;
+                              prev      : std_logic;
+                              mask      : std_logic) return std_logic is
+  begin
+    return (prev and not mask) or (wcsr_in and mask);
+  end function;
+
+  -- function mstateen0_mask(mstateen0 : csr_mstateen0_type; mask : csr_mstateen0_type) return csr_mstateen0_type is
+  --   variable xmstateen0 : csr_mstateen0_type;
+  -- begin
+  --   xmstateen0.stateen  := mstateen0.stateen  and mask.stateen;
+  --   xmstateen0.envcfg   := mstateen0.envcfg   and mask.envcfg;
+  --   xmstateen0.iselect  := mstateen0.iselect  and mask.iselect;
+  --   xmstateen0.aia      := mstateen0.aia      and mask.aia;
+  --   xmstateen0.imsic    := mstateen0.imsic    and mask.imsic;
+  --   xmstateen0.ctx      := mstateen0.ctx      and mask.ctx;
+  --   xmstateen0.p1p13    := mstateen0.p1p13    and mask.p1p13;
+  --   xmstateen0.p1p14    := mstateen0.p1p14    and mask.p1p14;
+  --   xmstateen0.ctr      := mstateen0.ctr      and mask.ctr;
+  --   xmstateen0.jvt      := mstateen0.jvt      and mask.jvt;
+  --   xmstateen0.fcsr     := mstateen0.fcsr     and mask.fcsr;
+  --   xmstateen0.c        := mstateen0.c        and mask.c;
+  --
+  --   return xmstateen0;
+  -- end;
+  --
+  -- -- hstateen0 needs its own function since p1p13/p1p14 is not present in hstateen0
+  -- function hstateen0_mask(hstateen0 : csr_hstateen0_type; mask : csr_mstateen0_type) return csr_hstateen0_type is
+  --   variable xmstateen0 : csr_hstateen0_type;
+  -- begin
+  --   xmstateen0.stateen  := hstateen0.stateen  and mask.stateen;
+  --   xmstateen0.envcfg   := hstateen0.envcfg   and mask.envcfg;
+  --   xmstateen0.iselect  := hstateen0.iselect  and mask.iselect;
+  --   xmstateen0.aia      := hstateen0.aia      and mask.aia;
+  --   xmstateen0.imsic    := hstateen0.imsic    and mask.imsic;
+  --   xmstateen0.ctx      := hstateen0.ctx      and mask.ctx;
+  --   xmstateen0.ctr      := hstateen0.ctr      and mask.ctr;
+  --   xmstateen0.jvt      := hstateen0.jvt      and mask.jvt;
+  --   xmstateen0.fcsr     := hstateen0.fcsr     and mask.fcsr;
+  --   xmstateen0.c        := hstateen0.c        and mask.c;
+  --
+  --   return xmstateen0;
+  -- end;
+  --
+  --
+  -- function sstateen0_mask(sstateen0 : csr_sstateen0_type;
+  --                         mask_m    : csr_mstateen0_type;
+  --                         mask_h    : csr_hstateen0_type) return csr_sstateen0_type is
+  --   variable xsstateen0 : csr_sstateen0_type := csr_sstateen0_rst;
+  -- begin
+  --     xsstateen0.c := sstateen0.c and mask_m.c and mask_h.c;
+  --   return xsstateen0;
+  -- end;
+  --
   function gen_mstateen0_mask(active : extension_type) return csr_mstateen0_type is
-    variable imsic : boolean := is_enabled(active, x_imsic);
-    variable ssaia : boolean := is_enabled(active, x_ssaia);
-    variable smaia : boolean := is_enabled(active, x_smaia);
-    -- Non-constant
-    variable xmstateen0 : csr_mstateen0_type := csr_mstateen0_rst;
+    variable imsic    : boolean := is_enabled(active, x_imsic);
+    variable ssaia    : boolean := is_enabled(active, x_ssaia);
+    variable smaia    : boolean := is_enabled(active, x_smaia);
+    variable smcsrind : boolean := is_enabled(active, x_smcsrind);
+    variable sdtrig   : boolean := is_enabled(active, x_sdtrig);
   begin
-    xmstateen0.stateen  := '1';
-    xmstateen0.envcfg   := '1';
-    xmstateen0.iselect  := to_bit(ssaia) or to_bit(smaia);
-    xmstateen0.aia      := to_bit(ssaia) or to_bit(smaia);
-    xmstateen0.imsic    := to_bit(imsic);
-    xmstateen0.ctx      := '1';
+    assert not(smaia and not smcsrind);
+    assert not(imsic and not smcsrind);
+    return csr_mstateen0_type'(
+      stateen  => '1',
+      envcfg   => '1',
+      iselect  => to_bit(smcsrind),
+      aia      => to_bit(ssaia) or to_bit(smaia),
+      imsic    => to_bit(imsic),
+      ctx      => to_bit(sdtrig),
+      p1p13    => '1',
+      c        => '1',
+      -- Not implemented
+      p1p14    => '0',
+      ctr      => '0',
+      jvt      => '0',
+      fcsr     => '0'
+      );
 
-    return xmstateen0;
   end;
 
-  -- Return mstateen0/hstateen0 as an XLEN bit data from the record type
+  -- Return mstateen0 as an XLEN bit data from the record type
   function to_mstateen0(mstateen0 : csr_mstateen0_type) return wordx is
     -- Non-constant
     variable xmstateen0 : word64 := zerow64;
@@ -8144,15 +10345,63 @@ package body nvsupport is
     xmstateen0(59) := mstateen0.aia;
     xmstateen0(58) := mstateen0.imsic;
     xmstateen0(57) := mstateen0.ctx;
+    xmstateen0(56) := mstateen0.p1p13;
+    xmstateen0(55) := mstateen0.p1p14;
+    xmstateen0(54) := mstateen0.ctr;
+    xmstateen0(2)  := mstateen0.jvt;
+    xmstateen0(1)  := mstateen0.fcsr;
+    xmstateen0(0)  := mstateen0.c;
 
     return xmstateen0(wordx'range);
   end;
 
-  -- Return mstateen0/hstateen0 as a record type from an XLEN bit data
+  -- Return hstateen0 as an XLEN bit data from the record type
+  function to_hstateen0(hstateen0 : csr_hstateen0_type) return wordx is
+    -- Non-constant
+    variable xmstateen0 : word64 := zerow64;
+  begin
+    xmstateen0(63) := hstateen0.stateen;
+    xmstateen0(62) := hstateen0.envcfg;
+    xmstateen0(60) := hstateen0.iselect;
+    xmstateen0(59) := hstateen0.aia;
+    xmstateen0(58) := hstateen0.imsic;
+    xmstateen0(57) := hstateen0.ctx;
+    xmstateen0(54) := hstateen0.ctr;
+    xmstateen0(2)  := hstateen0.jvt;
+    xmstateen0(1)  := hstateen0.fcsr;
+    xmstateen0(0)  := hstateen0.c;
+    return xmstateen0(wordx'range);
+  end;
+
+  -- Return sstateen0 as an XLEN bit data from the record type
+  function to_sstateen0(sstateen0 : csr_sstateen0_type) return wordx is
+    -- Non-constant
+    variable xmstateen0 : word64 := zerow64;
+    -- Check that type hasn't changed without this function being updated.
+    constant dummy : csr_sstateen0_type := ('0','0','0');
+  begin
+    xmstateen0(0)  := sstateen0.c;
+    xmstateen0(1)  := sstateen0.fcsr;
+    xmstateen0(2)  := sstateen0.jvt;
+    return xmstateen0(wordx'range);
+  end;
+
+  function to_sstateen0(sstateen0 : wordx) return csr_sstateen0_type is
+  begin
+    return csr_sstateen0_type'(
+      c    => sstateen0(0),
+      fcsr => sstateen0(1),
+      jvt  => sstateen0(2)
+    );
+  end function;
+
+  -- Return mstateen0 as a record type from an XLEN bit data
   function to_mstateen0(wdata  : wordx;
                         mstateen0 : csr_mstateen0_type) return csr_mstateen0_type is
     -- Non-constant
     variable xmstateen0 : csr_mstateen0_type := mstateen0;
+    -- Check that type hasn't changed without this function being updated.
+    constant dummy : csr_mstateen0_type := ('0','0','0','0','0','0','0','0','0','0','0', '0');
   begin
     if XLEN = 64 then
       xmstateen0.stateen := wdata(63 * (XLEN / 64));
@@ -8161,13 +10410,41 @@ package body nvsupport is
       xmstateen0.aia     := wdata(59 * (XLEN / 64));
       xmstateen0.imsic   := wdata(58 * (XLEN / 64));
       xmstateen0.ctx     := wdata(57 * (XLEN / 64));
+      xmstateen0.p1p13   := wdata(56 * (XLEN / 64));
+      xmstateen0.p1p14   := wdata(55 * (XLEN / 64));
+      xmstateen0.ctr     := wdata(54 * (XLEN / 64));
     end if;
-    -- No bits in the low part are employed yet by the extension
+      xmstateen0.jvt     := wdata(2);
+      xmstateen0.fcsr    := wdata(1);
+      xmstateen0.c       := wdata(0);
 
     return xmstateen0;
   end;
 
-  -- Return mstateen0h/hstateen0h as an XLEN bit data from the record type
+  -- Return hstateen0 as a record type from an XLEN bit data
+  function to_hstateen0(wdata  : wordx;
+                        hstateen0 : csr_hstateen0_type) return csr_hstateen0_type is
+    -- Non-constant
+    variable xmstateen0 : csr_hstateen0_type := hstateen0;
+    -- Check that type hasn't changed without this function being updated.
+    constant dummy : csr_hstateen0_type := ('0','0','0','0','0','0','0','0','0', '0');
+  begin
+    if XLEN = 64 then
+      xmstateen0.stateen := wdata(63 * (XLEN / 64));
+      xmstateen0.envcfg  := wdata(62 * (XLEN / 64));
+      xmstateen0.iselect := wdata(60 * (XLEN / 64));
+      xmstateen0.aia     := wdata(59 * (XLEN / 64));
+      xmstateen0.imsic   := wdata(58 * (XLEN / 64));
+      xmstateen0.ctx     := wdata(57 * (XLEN / 64));
+      xmstateen0.ctr     := wdata(54 * (XLEN / 64));
+    end if;
+      xmstateen0.jvt     := wdata(2) ;
+      xmstateen0.fcsr    := wdata(1) ;
+      xmstateen0.c       := wdata(0) ;
+    return xmstateen0;
+  end;
+
+  -- Return hstateen0h as an XLEN bit data from the record type
   function to_mstateen0h(mstateen0 : csr_mstateen0_type) return wordx is
     -- Non-constant
     variable xmstateen0h : word64 := zerow64;
@@ -8178,6 +10455,25 @@ package body nvsupport is
     xmstateen0h(27) := mstateen0.aia;
     xmstateen0h(26) := mstateen0.imsic;
     xmstateen0h(25) := mstateen0.ctx;
+    xmstateen0h(24) := mstateen0.p1p13;
+    xmstateen0h(23) := mstateen0.p1p14;
+    xmstateen0h(22) := mstateen0.ctr;
+
+    return xmstateen0h(wordx'range);
+  end;
+
+  -- Return hstateen0h as an XLEN bit data from the record type
+  function to_hstateen0h(hstateen0 : csr_hstateen0_type) return wordx is
+    -- Non-constant
+    variable xmstateen0h : word64 := zerow64;
+  begin
+    xmstateen0h(31) := hstateen0.stateen;
+    xmstateen0h(30) := hstateen0.envcfg;
+    xmstateen0h(28) := hstateen0.iselect;
+    xmstateen0h(27) := hstateen0.aia;
+    xmstateen0h(26) := hstateen0.imsic;
+    xmstateen0h(25) := hstateen0.ctx;
+    xmstateen0h(22) := hstateen0.ctr;
 
     return xmstateen0h(wordx'range);
   end;
@@ -8194,10 +10490,29 @@ package body nvsupport is
     xmstateen0.aia     := wdata(27);
     xmstateen0.imsic   := wdata(26);
     xmstateen0.ctx     := wdata(25);
+    xmstateen0.p1p13   := wdata(24);
+    xmstateen0.p1p14   := wdata(23);
+    xmstateen0.ctr     := wdata(22);
 
     return xmstateen0;
   end;
 
+  -- Return mstateen0h/hstateen0h as a record type from an XLEN bit data
+  function to_hstateen0h(wdata     : wordx;
+                         hstateen0 : csr_hstateen0_type) return csr_hstateen0_type is
+    -- Non-constant
+    variable xmstateen0 : csr_hstateen0_type := hstateen0;
+  begin
+    xmstateen0.stateen := wdata(31);
+    xmstateen0.envcfg  := wdata(30);
+    xmstateen0.iselect := wdata(28);
+    xmstateen0.aia     := wdata(27);
+    xmstateen0.imsic   := wdata(26);
+    xmstateen0.ctx     := wdata(25);
+    xmstateen0.ctr     := wdata(22);
+
+    return xmstateen0;
+  end;
 
   -- Return the proper number of hcontext bits depending on the XLEN
   function to_mhcontext(wdata : wordx; h_en : boolean) return csr_mhcontext_type is
@@ -8233,21 +10548,39 @@ package body nvsupport is
   end;
 
   function envcfg_mask(envcfg : csr_envcfg_type; mask : csr_envcfg_type) return csr_envcfg_type is
-    -- Non-constant
-    variable xenvcfg : csr_envcfg_type;
   begin
-    xenvcfg.stce   := envcfg.stce   and mask.stce;
-    xenvcfg.pbmte  := envcfg.pbmte  and mask.pbmte;
-    xenvcfg.dte    := envcfg.dte    and mask.dte;
-    xenvcfg.cbze   := envcfg.cbze   and mask.cbze;
-    xenvcfg.cbcfe  := envcfg.cbcfe  and mask.cbcfe;
-    xenvcfg.cbie   := envcfg.cbie   and (mask.cbie'range => orv(mask.cbie));
-    xenvcfg.fiom   := envcfg.fiom   and mask.fiom;
-    xenvcfg.sse   := envcfg.sse    and mask.sse;
-    -- LPE should _not_ be masked by higher mode settings!
-    xenvcfg.lpe   := envcfg.lpe;
+    return csr_envcfg_type'(
+      stce   => envcfg.stce   and mask.stce,
+      pbmte  => envcfg.pbmte  and mask.pbmte,
+      dte    => envcfg.dte    and mask.dte,
+      cbze   => envcfg.cbze   and mask.cbze,
+      cbcfe  => envcfg.cbcfe  and mask.cbcfe,
+      cbie   => envcfg.cbie   and (mask.cbie'range => orv(mask.cbie)),
+      fiom   => envcfg.fiom   and mask.fiom,
+      adue   => envcfg.adue   and mask.adue,
+      sse    => envcfg.sse    and mask.sse,
+      lpe    => envcfg.lpe    and mask.lpe,
+      cde    => envcfg.cde    and mask.cde
+    );
 
-    return xenvcfg;
+  end;
+
+  function "and"(L : csr_envcfg_type; R : csr_envcfg_type) return csr_envcfg_type is
+  begin
+    return csr_envcfg_type'(
+      stce   => L.stce   and R.stce,
+      pbmte  => L.pbmte  and R.pbmte,
+      dte    => L.dte    and R.dte,
+      cbze   => L.cbze   and R.cbze,
+      cbcfe  => L.cbcfe  and R.cbcfe,
+      cbie   => L.cbie   and R.cbie,
+      fiom   => L.fiom   and R.fiom,
+      adue   => L.adue   and R.adue,
+      sse    => L.sse    and R.sse,
+      lpe    => L.lpe    and R.lpe,
+      cde    => L.cde    and R.cde
+    );
+
   end;
 
   -- Return envcfg as an XLEN bit data from the record type
@@ -8257,6 +10590,8 @@ package body nvsupport is
   begin
     xenvcfg(63)         := envcfg.stce;
     xenvcfg(62)         := envcfg.pbmte;
+    xenvcfg(61)         := envcfg.adue;
+    xenvcfg(60)         := envcfg.cde;
     xenvcfg(59)         := envcfg.dte;
     xenvcfg(7)          := envcfg.cbze;
     xenvcfg(6)          := envcfg.cbcfe;
@@ -8286,11 +10621,18 @@ package body nvsupport is
     if XLEN = 64 then
       xenvcfg.stce   := wdata(63 * (XLEN / 64)) and mask.stce;
       xenvcfg.pbmte  := wdata(62 * (XLEN / 64)) and mask.pbmte;
+      xenvcfg.adue   := wdata(61 * (XLEN / 64)) and mask.adue;
+      xenvcfg.cde    := wdata(60 * (XLEN / 64)) and mask.cde;
       xenvcfg.dte    := wdata(59 * (XLEN / 64)) and mask.dte;
     end if;
     xenvcfg.cbze    := wdata(7) and mask.cbze;
     xenvcfg.cbcfe   := wdata(6) and mask.cbcfe;
-    xenvcfg.cbie    := wdata(5 downto 4) and mask.cbie;
+    -- "10 - reserved" ignore write
+    if wdata(5 downto 4) /= "10" then
+      xenvcfg.cbie  := wdata(5 downto 4) and mask.cbie;
+    else
+      xenvcfg.cbie  := "00";
+    end if;
     xenvcfg.sse     := wdata(3) and mask.sse;
     -- LPE should _not_ be masked by higher mode settings!
     -- If the ZICFILP extension is disabled then IU will pull envcfg.lpe low
@@ -8328,54 +10670,197 @@ package body nvsupport is
   begin
     xenvcfg.stce   := wdata(31) and mask.stce;
     xenvcfg.pbmte  := wdata(30) and mask.pbmte;
+    xenvcfg.adue   := wdata(29) and mask.adue;
+    xenvcfg.cde    := wdata(28) and mask.cde;
     xenvcfg.dte    := wdata(27) and mask.dte;
 
     return xenvcfg;
   end;
 
-  function gen_envcfg_mmask(active : extension_type) return csr_envcfg_type is
-    variable sstc    : boolean := is_enabled(active, x_sstc);
-    variable pbmte   : boolean := false; --is_enabled(active, x_svpbmt);
-    variable dte     : boolean := is_enabled(active, x_ssdbltrp);
-    variable zicboz  : boolean := false; --is_enabled(active, x_zicboz);
-    variable zicbom  : boolean := is_enabled(active, x_zicbom);
-    variable fiom    : boolean := false; --is_enabled(active, x_fiom);
-    variable zicfiss : boolean := is_enabled(active, x_zicfiss);
-    variable zicfilp : boolean := is_enabled(active, x_zicfilp);
-    -- Non-constant
+  function gen_envcfg_const_mmask(active : extension_type) return csr_menvcfg_const_type is
+    variable sstc     : boolean := is_enabled(active, x_sstc);
+    variable pbmte    : boolean := false; --is_enabled(active, x_svpbmt);
+    variable dte      : boolean := is_enabled(active, x_ssdbltrp);
+    variable zicboz   : boolean := is_enabled(active, x_zicboz);
+    variable zicbom   : boolean := is_enabled(active, x_zicbom);
+    variable fiom     : boolean := is_enabled(active, x_mode_s);
+    variable svadu    : boolean := is_enabled(active, x_svadu);
+    variable zicfiss  : boolean := is_enabled(active, x_zicfiss);
+    variable zicfilp  : boolean := is_enabled(active, x_zicfilp);
+    variable smcdeleg : boolean := is_enabled(active, x_smcdeleg);
+
+  begin
+    return csr_menvcfg_type'(
+      stce   => to_bit(sstc),
+      pbmte  => to_bit(pbmte),
+      dte    => to_bit(dte),
+      cbze   => to_bit(zicboz),
+      cbcfe  => to_bit(zicbom),
+      adue   => to_bit(svadu),
+      cde    => to_bit(smcdeleg),
+      cbie   => (others => to_bit(zicbom)),
+      fiom   => to_bit(fiom),
+      sse    => to_bit(zicfiss),
+      lpe    => to_bit(zicfilp)
+    );
+
+  end;
+
+  -- Takes constant M mode mask with enabled extensions
+  function gen_envcfg_const_hmask(menvcfg_mask : csr_menvcfg_const_type) return csr_henvcfg_const_type is
     variable xenvcfg : csr_envcfg_type := csr_envcfg_rst;
   begin
-    xenvcfg.stce   := to_bit(sstc);
-    xenvcfg.pbmte  := to_bit(pbmte);
-    xenvcfg.dte    := to_bit(dte);
-    xenvcfg.cbze   := to_bit(zicboz);
-    xenvcfg.cbcfe  := to_bit(zicbom);
-    xenvcfg.cbie   := (others => to_bit(zicbom));
-    xenvcfg.fiom   := to_bit(fiom);
-    xenvcfg.sse   := to_bit(zicfiss);
-    xenvcfg.lpe   := to_bit(zicfilp);
+    -- Only cde is different
+    xenvcfg.stce   := menvcfg_mask.stce;
+    xenvcfg.pbmte  := menvcfg_mask.pbmte;
+    xenvcfg.dte    := menvcfg_mask.dte;
+    xenvcfg.cbze   := menvcfg_mask.cbze;
+    xenvcfg.cbcfe  := menvcfg_mask.cbcfe;
+    xenvcfg.adue   := menvcfg_mask.adue;
+    xenvcfg.cbie   := menvcfg_mask.cbie;
+    xenvcfg.fiom   := menvcfg_mask.fiom;
+    xenvcfg.sse    := menvcfg_mask.sse;
+    xenvcfg.lpe    := menvcfg_mask.lpe;
 
     return xenvcfg;
   end;
 
-  function gen_envcfg_smask(active : extension_type) return csr_envcfg_type is
-    variable zicboz  : boolean := false; --is_enabled(active, x_zicboz);
-    variable zicbom  : boolean := is_enabled(active, x_zicbom);
-    variable fiom    : boolean := false; --is_enabled(active, x_fiom);
-    variable zicfiss : boolean := is_enabled(active, x_zicfiss);
-    variable zicfilp : boolean := is_enabled(active, x_zicfilp);
-    -- Non-constant
+  -- Takes constant M mode mask with enabled extensions
+  function gen_envcfg_const_smask(menvcfg_mask : csr_menvcfg_const_type) return csr_senvcfg_const_type is
     variable xenvcfg : csr_envcfg_type := csr_envcfg_rst;
   begin
-    xenvcfg.cbze  := to_bit(zicboz);
-    xenvcfg.cbcfe := to_bit(zicbom);
-    xenvcfg.cbie  := (others => to_bit(zicbom));
-    xenvcfg.fiom  := to_bit(fiom);
-    xenvcfg.sse   := to_bit(zicfiss);
-    xenvcfg.lpe   := to_bit(zicfilp);
+    xenvcfg.cbze  := menvcfg_mask.cbze;
+    xenvcfg.cbcfe := menvcfg_mask.cbcfe;
+    xenvcfg.cbie  := menvcfg_mask.cbie;
+    xenvcfg.sse   := menvcfg_mask.sse;
+    xenvcfg.lpe   := menvcfg_mask.lpe;
+    xenvcfg.fiom  := menvcfg_mask.fiom;
 
     return xenvcfg;
   end;
+
+  function calc_henvcfg_write_val(wcsr_in       : wordx;
+                                 active_henvcfg : csr_henvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                 return csr_henvcfg_type is
+    variable menvcfg  : csr_menvcfg_type := csr_file.menvcfg and active_henvcfg;
+    variable wdata    : csr_henvcfg_type := to_envcfg(wcsr_in, csr_file.henvcfg, active_henvcfg);
+    -- Some fields might be read-only zero, keep old value as a start.
+    variable ret      : csr_henvcfg_type := csr_file.henvcfg;
+  begin
+    -- For implementations with the hypervisor extension, henvcfg.PBMTE is read-only zero if
+    -- menvcfg.PBMTE is zero. This also applies to stce, dte, sse, adue
+
+    -- Allow the writes if not read-only zero from the level above.
+    if menvcfg.pbmte = '1' then
+      ret.pbmte := wdata.pbmte;
+    end if;
+    if menvcfg.stce = '1' then
+      ret.stce := wdata.stce;
+    end if;
+    if menvcfg.adue = '1' then
+      ret.adue := wdata.adue;
+    end if;
+    if menvcfg.dte = '1' then
+      ret.dte := wdata.dte;
+    end if;
+    if menvcfg.sse = '1' then
+      ret.sse := wdata.sse;
+    end if;
+
+    -- These can be written independent of what menvcfg thinks
+    ret.cbze   := wdata.cbze;
+    ret.cbcfe  := wdata.cbcfe;
+    ret.cbie   := wdata.cbie;
+    ret.fiom   := wdata.fiom;
+    ret.lpe    := wdata.lpe;
+
+    return ret;
+  end function;
+
+  function calc_henvcfg_read_val(active_henvcfg : csr_henvcfg_const_type;
+                                csr_file        : csr_reg_type)
+                                return csr_henvcfg_type is
+    variable menvcfg  : csr_menvcfg_type := csr_file.menvcfg and active_henvcfg;
+    variable ret      : csr_henvcfg_type := csr_file.henvcfg;
+
+  begin
+    -- Allow the read if not read-only zero from the level above.
+    if menvcfg.pbmte = '0' then
+      ret.pbmte := '0';
+    end if;
+    if menvcfg.stce = '0' then
+      ret.stce := '0';
+    end if;
+    if menvcfg.adue = '0' then
+      ret.adue := '0';
+    end if;
+    if menvcfg.dte = '0' then
+      ret.dte := '0';
+    end if;
+    if menvcfg.sse = '0' then
+      ret.sse := '0';
+    end if;
+    return ret;
+
+  end function;
+
+  function calc_senvcfg_write_val(wcsr_in       : wordx;
+                                 active_henvcfg : csr_henvcfg_const_type;
+                                 active_senvcfg : csr_senvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                 return csr_senvcfg_type is
+    variable menvcfg  : csr_menvcfg_type := csr_file.menvcfg and active_senvcfg;
+    variable henvcfg  : csr_henvcfg_type := calc_henvcfg_read_val(active_henvcfg, csr_file);
+    variable wdata    : csr_senvcfg_type := to_envcfg(wcsr_in, csr_file.senvcfg, active_senvcfg);
+    -- Some fields might be read-only zero, keep old value as a start.
+    variable ret      : csr_senvcfg_type := csr_file.senvcfg;
+    variable envcfg   : csr_envcfg_type;
+  begin
+    if csr_file.v = '1' then
+      envcfg := henvcfg;
+    else
+      envcfg := menvcfg;
+    end if;
+
+    -- When menvcfg.SSE is 0, the henvcfg.SSE and senvcfg.SSE fields are read-only zero.
+    -- Allow the writes if not read-only zero from the level above.
+    if envcfg.sse = '1' then
+      ret.sse := wdata.sse;
+    end if;
+
+    -- These can be written independent of what m/henvcfg thinks
+    ret.cbze   := wdata.cbze;
+    ret.cbcfe  := wdata.cbcfe;
+    ret.cbie   := wdata.cbie;
+    ret.lpe    := wdata.lpe;
+    ret.fiom   := wdata.fiom;
+
+    return ret;
+  end function;
+
+  function calc_senvcfg_read_val(active_henvcfg : csr_henvcfg_const_type;
+                                 active_senvcfg : csr_senvcfg_const_type;
+                                 csr_file       : csr_reg_type)
+                                return csr_senvcfg_type is
+    variable menvcfg  : csr_menvcfg_type := csr_file.menvcfg and active_senvcfg;
+    variable henvcfg  : csr_henvcfg_type := calc_henvcfg_read_val(active_henvcfg, csr_file);
+    variable ret      : csr_senvcfg_type := csr_file.senvcfg;
+    variable envcfg   : csr_envcfg_type;
+
+  begin
+    if csr_file.v = '1' then
+      envcfg := henvcfg;
+    else
+      envcfg := menvcfg;
+    end if;
+
+    if envcfg.sse = '0' then
+      ret.sse := '0';
+    end if;
+    return ret;
+
+  end function;
 
   function to_mseccfg(seccfg : csr_seccfg_type) return word64 is
     -- Non-constant
@@ -8435,13 +10920,13 @@ package body nvsupport is
     variable hpmevent : hpmevent_type := hpmevent_in;
   begin
     if XLEN = 64 then
-      hpmevent.overflow := wdata(63);
-      hpmevent.minh     := wdata(62);
-      hpmevent.sinh     := wdata(61);
-      hpmevent.uinh     := wdata(60);
-      hpmevent.vsinh    := wdata(59);
-      hpmevent.vuinh    := wdata(58);
-      hpmevent.class    := wdata(56 downto 57 - log2(MHPEVENT_C));
+      hpmevent.overflow := wdata(XLEN - 1);  -- 63
+      hpmevent.minh     := wdata(XLEN - 2);  -- 62
+      hpmevent.sinh     := wdata(XLEN - 3);  -- 61
+      hpmevent.uinh     := wdata(XLEN - 4);  -- 60
+      hpmevent.vsinh    := wdata(XLEN - 5);  -- 59
+      hpmevent.vuinh    := wdata(XLEN - 6);  -- 58
+      hpmevent.class    := wdata(XLEN - 8 downto XLEN - 7 - log2(MHPEVENT_C));  -- 56 downto 57 -...
       hpmevent.events   := wdata(hpmevent.events'range);
     end if;
 
@@ -8502,14 +10987,20 @@ package body nvsupport is
     return to_hpmevent(u2vec(event, XLEN), hpmevent_none);
   end;
 
+  function to_scountinhibit(mcountinhibit_in : word; mcounteren : word; wcsr : wordx) return word is
+    variable mcountinhibit : word;
+  begin
+    mcountinhibit    := (mcountinhibit_in and not mcounteren) or (wcsr(mcounteren'range) and mcounteren);
+    mcountinhibit(1) := '0';
+    return mcountinhibit;
+  end function;
+
+
   -- OR reduce a std_logic_vector
   function or_reduce(input : std_logic_vector) return std_logic is
     variable output : std_logic;
   begin
-    output := input(input'low);
-    for i in input'low + 1 to input'high loop
-      output := output or input(i);
-    end loop;
+    output := not all_0(input);
 
     return output;
   end;
@@ -8721,6 +11212,7 @@ package body nvsupport is
   end;
 
   function smepmp_ok_r(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
@@ -8735,7 +11227,9 @@ package body nvsupport is
     -- Non-constant
     variable fail : std_ulogic := '0';
   begin
-    if smepmp = 0 or mml = '0' then
+    if none = '1' then
+      fail := mmwp or to_bit(prv /= PRIV_LVL_M);
+    elsif smepmp = 0 or mml = '0' then
       -- Only fail if not machine mode access, or for locked entries.
       if none = '1' then
         fail := to_bit(prv /= PRIV_LVL_M);
@@ -8763,6 +11257,7 @@ package body nvsupport is
   end;
 
   function smepmp_ok_w(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
@@ -8778,11 +11273,11 @@ package body nvsupport is
     -- Non-constant
     variable fail : std_ulogic := '0';
   begin
-    if smepmp = 0 or mml = '0' then
+    if none = '1' then
+      fail := mmwp or to_bit(prv /= PRIV_LVL_M);
+    elsif smepmp = 0 or mml = '0' then
       -- Only fail if not machine mode access, or for locked entries.
-      if none = '1' then
-        fail := to_bit(prv /= PRIV_LVL_M);
-      elsif prv /= PRIV_LVL_M or l = '1' then
+      if prv /= PRIV_LVL_M or l = '1' then
         fail := not w;
       end if;
     else
@@ -8806,6 +11301,7 @@ package body nvsupport is
   end;
 
   function smepmp_ok_x(smepmp : integer;
+                       mmwp   : std_logic;
                        mml    : std_logic;
                        prv    : priv_lvl_type;
                        none   : std_logic;
@@ -8822,13 +11318,15 @@ package body nvsupport is
     if smepmp = 0 or mml = '0' then
       -- Only fail if not machine mode access, or for locked entries.
       if none = '1' then
-        fail := to_bit(prv /= PRIV_LVL_M);
+        fail := mmwp or to_bit(prv /= PRIV_LVL_M);
       elsif prv /= PRIV_LVL_M or l = '1' then
         fail := not x;
       end if;
     else
       -- Somewhat more complicated for Smepmp.
-      if l = '0' then
+      if none = '1' then
+        fail   := '1';
+      elsif l = '0' then
         if prv /= PRIV_LVL_M then
           fail := not x or owx;
         else
@@ -8846,132 +11344,114 @@ package body nvsupport is
     return fail = '0';
   end;
 
-  -- Note that this does not support pmp_g = 0!
-  procedure pmp_unit(prv_in     : in  priv_lvl_type;
-                     precalc    : in  pmp_precalc_vec;
-                     pmpcfg_in  : in  pmpcfg_vec_type;
-                     mmwp       : in  std_ulogic;
-                     mml        : in  std_ulogic;
-                     mprv_in    : in  std_ulogic;
-                     mpp_in     : in  priv_lvl_type;
-                     addr_in    : in  std_logic_vector;
-                     access_in  : in  pmpcfg_access_type;
-                     valid_in   : in  std_ulogic;
-                     xc_out     : out std_ulogic;
-                     hit_out    : out std_logic_vector;
-                     entries    : in  integer := 16;
-                     no_tor     : in  integer := 1;
-                     pmp_g      : in  integer range 1 to 32 := 1;
-                     msb        : in  integer := 31;
-                     smepmp     : in  integer := 0
-                    ) is
-    subtype  pmp_vec_type      is std_logic_vector(entries - 1 downto 0);
-    type     pmpcfg_access_vec is array (0 to entries - 1) of pmpcfg_access_type;
-    variable zero_entry  : pmp_vec_type       := (others => '0');
-    variable lowhi_msb   : integer            := msb - 55 + precalc(0).low'high;
+  function smepmp_rwx(pmpcfg  : pmpcfg_vec_type;
+                      mmwp    : std_logic;
+                      mml     : std_logic;
+                      prv     : priv_lvl_type;
+                      hit     : std_logic_vector;
+                      entries : integer := 16;
+                      smepmp  : integer := 0
+                     ) return word3 is
+    variable none : boolean                     := all_0(hit);
+    -- Lowest numbered hit is defined as the highest priority PMP.
+    variable prio : std_logic_vector(hit'range) := hit and std_logic_vector(-signed(hit));
     -- Non-constant
-    variable xc          : std_ulogic         := '0';
-    variable cfg         : word8;
-    variable l           : pmp_vec_type;
-    variable a           : pmpcfg_access_vec;
-    variable x           : pmp_vec_type;
-    variable w           : pmp_vec_type;
-    variable r           : pmp_vec_type;
-    variable enable      : pmp_vec_type       := (others => '1');
-    variable hit         : pmp_vec_type       := (others => '0');
-    variable hit_prio    : pmp_vec_type;
-    variable fail        : pmp_vec_type       := (others => '0');
-    variable prv         : priv_lvl_type;
-    variable align       : integer            := pmp_g - 1;
+    variable r_a : std_logic_vector(entries - 1 downto 0);
+    variable w_a : std_logic_vector(entries - 1 downto 0);
+    variable x_a : std_logic_vector(entries - 1 downto 0);
+    variable r   : std_logic;
+    variable w   : std_logic;
+    variable x   : std_logic;
+    variable rwx : word3;
   begin
-    prv := prv_in;
-    if prv_in = PRIV_LVL_M and mprv_in = '1' and
-       access_in /= PMP_ACCESS_X then
-      prv := mpp_in;
-    end if;
-
-
-    -- The A field in a PMP entry's configuration register encodes
-    -- the address-matching mode of the associated PMP address register.
-    -- When A=0, this PMP entry is disabled and matches no addresses.
-    -- Two other address-matching modes are supported: naturally aligned
-    -- power-of-2 regions (NAPOT), including the special case of naturally
-    -- aligned four-byte regions (NA4); and the top boundary of an arbitrary
-    -- range (TOR). These modes support four-byte granularity.
-
-    -- Resolve address in pmpaddr CSRs registers and provide memory region
-    -- boundaries.
-
-    for i in 0 to entries - 1 loop
-
-      -- Generate larwx signals.
-      cfg    := pmpcfg_in(i);
-      l(i)   := cfg(7);
-      a(i)   := cfg(4 downto 3);
-      x(i)   := cfg(2);
-      w(i)   := cfg(1);
-      r(i)   := cfg(0);
-
-      fail(i) := smepmp_fail(smepmp, mml, prv, access_in, l(i), r(i), w(i), x(i));
-
-      enable(i) := precalc(i).valid;
-
-      if no_tor = 1 then
-        -- With no TOR, mask is in pmphigh.
-        if (('0' & addr_in(msb downto 3 + align)) and precalc(i).high(lowhi_msb downto 3 + align)) =
-           precalc(i).low(lowhi_msb downto 3 + align) then
-          hit(i) := enable(i);
-        end if;
-      else
-        -- This deals with the requirement to fail on reverse and null ranges,
-        -- since it is then impossible to be >= low and < high.
-        if unsigned('0' & addr_in(msb downto 3 + align)) >= unsigned(precalc(i).low(lowhi_msb downto 3 + align)) and
-           unsigned('0' & addr_in(msb downto 3 + align)) < unsigned(precalc(i).high(lowhi_msb downto 3 + align)) then
-          hit(i)  := enable(i);
-        end if;
-      end if;
-
-
+    for n in r_a'range loop
+      rwx    := pmpcfg(n)(0) & pmpcfg(n)(1) & pmpcfg(n)(2);
+      r_a(n) := to_bit(smepmp_ok_r(smepmp, '0', mml, prv, '0', pmpcfg(n)(7), rwx));
+      w_a(n) := to_bit(smepmp_ok_w(smepmp, '0', mml, prv, '0', pmpcfg(n)(7), rwx));
+      x_a(n) := to_bit(smepmp_ok_x(smepmp, '0', mml, prv, '0', pmpcfg(n)(7), rwx));
     end loop;
-
-    -- Keep only the lowest numbered hit, since that is
-    -- defined as the highest priority PMP.
-    hit_prio := hit and std_logic_vector(-signed(hit));
-
-
-    -- If no PMP entry matches an M-mode access, the access succeeds.
-    -- If no PMP entry matches an S-mode or U-mode access, but at least
-    -- one PMP entry is implemented, the access fails.
-    --
-    -- If at least one PMP entry is implemented, but all PMP entries'
-    -- A fields are set to OFF, then all S-mode and U-mode memory accesses will fail.
-
-    -- Failed at highest priority PMP hit entry?
-    if (hit_prio and fail) /= zero_entry then
-      xc   := '1';
-    end if;
+    r := not all_0(r_a and prio);
+    w := not all_0(w_a and prio);
+    x := not all_0(x_a and prio);
 
     -- No hit means failure in non-machine mode, if there are implemented entries.
     -- Also failure in machine mode if "Machine Mode Whitelist Policy".
     -- With "Machine Mode Lockdown", executing code is always a failure with no hit.
-    if prv /= PRIV_LVL_M or
-       (smepmp = 1 and (mmwp = '1' or
-        (prv = PRIV_LVL_M and mmwp = '0' and mml = '1' and access_in = PMP_ACCESS_X))) then
-      if hit_prio = zero_entry and entries /= 0 then
-        xc := '1';
+    if none and entries /= 0 then
+      if prv /= PRIV_LVL_M then
+        r   := '0';
+        w   := '0';
+        x   := '0';
+      elsif smepmp = 1 then
+        r := not mmwp;
+        w := not mmwp;
+        x := not mmwp and not mml;
       end if;
     end if;
 
+    rwx := r & w & x;
+    return rwx;
+  end;
 
-    hit_out            := (hit_out'range => '0');
-    hit_out(hit'range) := hit;
 
-    xc_out             := xc and valid_in;
+  -- Note that this does not support pmp_g = 0!
+  function pmp_match(precalc : pmp_precalc_vec;
+                     addr    : std_logic_vector;
+                     entries : integer := 16;
+                     no_tor  : integer := 1;
+                     pmp_g   : integer range 1 to 32 := 1;
+                     msb     : integer := 31
+                    ) return std_logic_vector is
+
+    subtype  pmp_vec_type      is std_logic_vector(entries - 1 downto 0);
+    type     pmpcfg_access_vec is array (0 to entries - 1) of pmpcfg_access_type;
+    -- Non-constant
+    variable enable : pmp_vec_type := (others => '1');
+    variable hit    : pmp_vec_type := (others => '0');
+
+    function check(precalc : in pmp_precalc_type;
+                   addr    : std_logic_vector;
+                   no_tor  : integer := 1;
+                   pmp_g   : integer range 1 to 32 := 1;
+                   msb     : integer := 31
+                  ) return boolean is
+      variable lowhi_msb : integer := msb - 55 + precalc.low'high;
+      variable align     : integer := pmp_g - 1;
+    begin
+      if no_tor = 1 then
+        -- With no TOR, mask is in pmphigh.
+        if (('0' & addr(msb downto 3 + align)) and precalc.high(lowhi_msb downto 3 + align)) =
+           precalc.low(lowhi_msb downto 3 + align) then
+          return true;
+        end if;
+      else
+        -- This deals with the requirement to fail on reverse and null ranges,
+        -- since it is then impossible to be >= low and < high.
+        if unsigned('0' & addr(msb downto 3 + align)) >= unsigned(precalc.low(lowhi_msb downto 3 + align)) and
+           unsigned('0' & addr(msb downto 3 + align)) < unsigned(precalc.high(lowhi_msb downto 3 + align)) then
+          return true;
+        end if;
+      end if;
+
+      return false;
+    end;
+
+
+  begin
+    for i in 0 to entries - 1 loop
+      if check(precalc(i), addr, no_tor, pmp_g, msb) then
+      --if check(precalc(i)) then
+        hit(i) := precalc(i).valid;
+      end if;
+    end loop;
+
+
+    return hit;
   end;
 
 
   function to_pma(v_in : std_logic_vector) return pma_t is
-    constant v : std_logic_vector(v_in'length - 1 downto 0) := v_in;
+    variable v : std_logic_vector(v_in'length - 1 downto 0) := v_in;
     -- Non-constant
     variable pma : pma_t;
   begin
@@ -9018,11 +11498,6 @@ package body nvsupport is
     -- Non-constant
     variable pma : pma_t := to_pma(data);
   begin
-    -- It seems hard to define the behaviour of
-    -- uncachable code, so disallow it.
-    if pma.cache = '0' then
-      pma.x := '0';
-    end if;
 
     -- Fetching instructions from non-idempotent memory is a bad idea.
     if pma.idem = '0' then
@@ -9168,8 +11643,6 @@ package body nvsupport is
     pma.cache := '0';
     pma.idem  := '1';
 
-    -- Sanitize PMA
-    pma.x     := '0';     --   Uncachable instructions do not make sense
 
     return pma;
   end;
@@ -9183,7 +11656,6 @@ package body nvsupport is
     pma.idem  := '0';
 
     -- Sanitize PMA
-    pma.x     := '0';     --   Uncachable instructions do not make sense
     pma.pt_r  := '0';     --   Non-idempotent PT seems like a bad idea.
     pma.pt_w  := '0';
 
@@ -9234,8 +11706,14 @@ package body nvsupport is
   function is_same_mask(addr : word32; mask : std_logic_vector) return std_logic is
     variable index_width : integer                                    := 4;
     variable index       : std_logic_vector(index_width - 1 downto 0) := get(addr, addr'high + 1 - index_width, index_width);
-    variable part        : std_logic_vector(4 - 1 downto 0)           := get(mask, (u2i(index) / 4) * 4, 4);
+    variable part        : std_logic_vector(4 - 1 downto 0)           := (others => '0'); --get(mask, (u2i(index) / 4) * 4, 4);
   begin
+    -- DC workaround
+    for i in 0 to 2**index_width-1 loop
+      if u2i(index) = i then
+        part := get(mask, (i / 4) * 4, 4);
+      end if;
+    end loop;
     return to_bit(all_0(part) or all_1(part));  -- Check that all 4 parts of a 1G page contain the same PMA data!
   end;
 
@@ -9388,7 +11866,6 @@ package body nvsupport is
     variable addr_mask : std_logic_vector(addr_mask_in'range);  -- := limit_mask(addr_mask_in, addr_mask_in'high);
   begin
     addr_mask := addr_mask_in;
--- qqq Good idea?    addr_mask := limit_mask(addr_mask, addr_mask'high);
     hit := '0';
     fit := '0';
       -- MMU block vs PMP block
@@ -9542,8 +12019,6 @@ package body nvsupport is
     variable fit         : pma_vec_type       := (others => '0');
   begin
     addr_mask := addr_mask_in;
---    addr_mask(addr_mask'high downto msb + 1) := (others => '1');
--- qqq Good idea?    addr_mask := limit_mask(addr_mask);
 
     -- Two address-matching modes are supported: naturally aligned
     -- power-of-2 regions (NAPOT); and the top boundary of an arbitrary range (TOR).

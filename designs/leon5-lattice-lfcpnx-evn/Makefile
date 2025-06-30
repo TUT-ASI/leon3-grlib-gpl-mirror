@@ -83,7 +83,7 @@ LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 coreP
 	spansion secureip usb ddr grdmac mmuconfig atf eth micron esa fmf
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest ddr \
 	spacewire spacefibre ascs slink hssl pwm gr1553b iommu ac97 secureip canfd \
-	l2cache/v2 l2cache/v3 axi socbridge grdmac grdmac2 grscrub plic\
+	l2cache/v2 l2cache/v3 l2cache/str axi socbridge grdmac grdmac2 grscrub plic\
 	hcan greth noelv noelv/subsys riscv l2c_lite usb nand grrm mma lram
 
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd \

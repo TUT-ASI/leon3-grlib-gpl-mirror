@@ -96,9 +96,10 @@ ldc_set_location -site {Y4} [get_ports {pmod2[5]}]
 ldc_set_location -site {AB2} [get_ports {pmod2[6]}]
 ldc_set_location -site {AB1} [get_ports {pmod2[7]}]
 # JTAG
-# No need to instantiate JTAG pins since they are dedicated sysConfig 
-# pins on the FPGA. Radiant will automatically use it.  
+# No need to instantiate JTAG pins since they are dedicated sysConfig
+# pins on the FPGA. Radiant will automatically use it.
 #ldc_set_location -site {M5} [get_ports tck]
 #ldc_set_location -site {L7} [get_ports tms]
 #ldc_set_location -site {L9} [get_ports tdi]
 #ldc_set_location -site {M8} [get_ports tdo]
+ldc_set_sysconfig {BACKGROUND_RECONFIG=ON}

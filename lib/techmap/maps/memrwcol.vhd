@@ -38,7 +38,8 @@ entity memrwcol is
     dbits: integer;
     sepclk: integer;
     wrfst: integer;
-    rdhold: integer
+    rdhold: integer;
+    pipeline: integer
     );
   port (
     clk1     : in  std_ulogic;
@@ -69,6 +70,8 @@ architecture rtl of memrwcol is
     mux      : std_ulogic;              -- Read gated prev cycle
     wdata    : std_logic_vector((dbits-1) downto 0);
     wren     : std_ulogic;
+    mux2     : std_ulogic;
+    wdata2   : std_logic_vector((dbits-1) downto 0);
   end record;
 
   signal r1, r1i, r2, r2i: memrwcol_regs;
@@ -126,13 +129,6 @@ begin
       end if;
     end if;
 
-    if (domux1='1' and wrfst=1) or testmode='1' then
-      vout1 := r2.wdata;
-    end if;
-    if (domux2='1' and wrfst=1) or testmode='1' then
-      vout2 := r1.wdata;
-    end if;
-
     if (techrwcol=1 or iwrfst=1) and techrdhold=1 and rdhold/=0 then
       -- If technology provides read-hold characteristics but not
       -- write-first behavior, make sure that works also in case
@@ -150,6 +146,35 @@ begin
         v1.wren := r1.wren;
         v1.wdata := r1.wdata;
         v1.address := r1.address;
+      end if;
+    end if;
+
+    if pipeline /= 0 then
+      v1.mux2 := domux1;
+      v1.wdata2 := r1.wdata;
+      v2.mux2 := domux2;
+      v2.wdata2 := r2.wdata;
+      domux1 := r1.mux2;
+      domux2 := r2.mux2;
+    else
+      v1.wdata2 := (others => '0');
+      v1.mux2 := '0';
+      v2.wdata2 := (others => '0');
+      v2.mux2 := '0';
+    end if;
+
+    if (domux1='1' and wrfst=1) or testmode='1' then
+      if pipeline /= 0 then
+        vout1 := r2.wdata2;
+      else
+        vout1 := r2.wdata;
+      end if;
+    end if;
+    if (domux2='1' and wrfst=1) or testmode='1' then
+      if pipeline /= 0 then
+        vout2 := r1.wdata2;
+      else
+        vout2 := r1.wdata;
       end if;
     end if;
 

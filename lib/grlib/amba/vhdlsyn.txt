@@ -15,3 +15,6 @@ dma2ahb.vhd
 ahbmst.vhd
 ahblitm2ahbm.vhd
 ambaprot.vhd
+ahbstripe.vhd
+ahbstripectrl.vhd
+ahbstripectrl_slice.vhd

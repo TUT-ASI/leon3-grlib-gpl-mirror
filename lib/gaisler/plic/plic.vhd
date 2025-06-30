@@ -67,15 +67,15 @@ package plic is
 
   component grplic_ahb
     generic (
-      hindex      : integer range 0 to NAPBSLV-1  := 0;
-      haddr       : integer range 0 to 16#FFF#    := 0;
-      hmask       : integer range 0 to 16#FFC#    := 16#FFC#;
-      nsources    : integer range 0 to 32         := NAHBIRQ;
-      ncpu        : integer range 0 to 4096       := 4;
-      priorities  : integer range 0 to 32         := 8;
-      pendingbuff : integer range 0 to 32         := 1;
-      irqtype     : integer range 0 to 1          := 1;
-      thrshld     : integer range 0 to 1          := 1
+      hindex      : integer range 0 to NAPBSLV-1      := 0;
+      haddr       : integer range 0 to 16#FFF#        := 0;
+      hmask       : integer range 0 to 16#FFC#        := 16#FFC#;
+      nsources    : integer range 0 to RISCV_SOURCES  := NAHBIRQ;
+      ncpu        : integer range 0 to 4096           := 4;
+      priorities  : integer range 0 to 128            := 8;
+      pendingbuff : integer range 0 to 128            := 1;
+      irqtype     : integer range 0 to 1              := 1;
+      thrshld     : integer range 0 to 1              := 1
       );
     port (
       rst         : in  std_ulogic;

@@ -68,7 +68,8 @@ component l2c is
     ft          : integer range 0 to 3 := 0;
     fttiming    : integer range 0 to 1 := 0;
     wbmask      : integer range 0 to 16#FFFF# := 16#FFFF#;
-    debug       : integer range 0 to 1 := 0);
+    debug       : integer range 0 to 1 := 0
+  );
   port (
     rst   : in  std_ulogic;
     clk   : in  std_ulogic;
@@ -81,6 +82,8 @@ component l2c is
     debugo: out std_logic_vector(255*debug downto 0)
     );
 end component;
+
+
 
 component l2c_axi_be is
   generic (

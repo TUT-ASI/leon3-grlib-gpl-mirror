@@ -105,8 +105,6 @@ architecture rtl of grdmac2_ahb is
     0      => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRDMAC2, 0, REVISION, 0),
     others => zero32);
 
-  -- Bus master interface burst chop mask
-  constant burst_chop_mask : integer := (max_burst_length*(log_2(AHBDW)-1));
 
   -----------------------------------------------------------------------------
   -- Records and types
@@ -236,7 +234,6 @@ begin  -- rtl
       be_rd_pipe       => 0,
       max_size         => 1024,
       max_burst_length => max_burst_length,
-      burst_chop_mask  => burst_chop_mask,
       bm_info_print    => 1,
       hindex           => hindex0
       )        
@@ -280,7 +277,6 @@ begin  -- rtl
         be_rd_pipe       => 0,
         max_size         => 1024,
         max_burst_length => max_burst_length,
-        burst_chop_mask  => burst_chop_mask,
         bm_info_print    => 1,
         hindex           => hindex1
         )          

@@ -47,7 +47,6 @@ use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.noelv.all;
 use gaisler.plic.all;
-use gaisler.imsic.all;
 use gaisler.aplic.all;
 use gaisler.misc.grgpreg;
 -- pragma translate_off
@@ -59,7 +58,6 @@ entity noelvsys is
   generic (
     fabtech  : integer;
     memtech  : integer;
-    mularch  : integer;
     ncpu     : integer;
     nextmst  : integer;
     nextslv  : integer;
@@ -82,10 +80,7 @@ entity noelvsys is
     devid    : integer;
     nodbus   : integer;
     trace    : integer;
-    scantest : integer;
-    htif     : integer;
-    tohost   : std_logic_vector(63 downto 0); -- fromhost addr
-    fromhost : std_logic_vector(63 downto 0) -- tohost addr
+    scantest : integer
     );
   port (
     clk      : in  std_ulogic;
@@ -122,18 +117,14 @@ entity noelvsys is
     testrst  : in  std_ulogic := '1';
     scanen   : in  std_ulogic := '0';
     testoen  : in  std_ulogic := '1';
-    testsig  : in  std_logic_vector(1 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0');
-    -- Memory bus tracing
-    mem_trace_w : out memTraceW
+    testsig  : in  std_logic_vector(1 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
 
     );
 end;
 
 architecture hier of noelvsys is
 
-  -- type trace_d_vector is array (0 to ncpu - 1) of std_logic_vector(1023 downto 0);
-  signal vtrace_d : trace_d_vector(ncpu - 1 downto 0);
-  signal vtrace_v : std_logic_vector(ncpu - 1 downto 0);
+
   -- AIA configuration functions -------------------------------------
 
   function no_x(v        : std_logic_vector;
@@ -278,22 +269,6 @@ architecture hier of noelvsys is
     return out_config;
   end function;
 
-  function eip_or(aia : nv_irq_in_vector(0 to ncpu-1); old : nv_irq_in_vector(0 to ncpu-1)) return nv_irq_in_vector is
-  variable eip : nv_irq_in_vector(0 to ncpu-1);
-  begin
-    for i in 0 to ncpu-1 loop
-      eip(i).mtip        := aia(i).mtip  or old(i).mtip;
-      eip(i).msip        := aia(i).msip  or old(i).msip;
-      eip(i).ssip        := aia(i).ssip  or old(i).ssip;
-      eip(i).meip        := aia(i).meip  or old(i).meip;
-      eip(i).seip        := aia(i).seip  or old(i).seip;
-      eip(i).ueip        := aia(i).ueip  or old(i).ueip;
-      eip(i).heip        := aia(i).heip  or old(i).heip;
-      eip(i).hgeip       := aia(i).hgeip;
-      eip(i).stime       := aia(i).stime;
-    end loop;
-    return eip;
-  end function;
 
   function config_domain_harts(in_config_arr : aplic_harts_config_type) return preset_active_harts_type is
     variable out_config_arr : preset_active_harts_type := (others => (others => '0'));
@@ -344,43 +319,43 @@ architecture hier of noelvsys is
 
   ----------------------------------------------------------------
 
-  signal cpumi    : ahb_mst_in_type;
-  signal cpumo    : ahb_mst_out_vector;
-  signal cpusi    : ahb_slv_in_type;
-  signal cpusix   : ahb_slv_in_type;
-  signal cpuso    : ahb_slv_out_vector;
-  signal irqi     : nv_irq_in_vector(0 to ncpu - 1);
-  signal irqo     : nv_irq_out_vector(0 to ncpu - 1);
-  signal nirqi    : nv_nirq_in_vector(0 to ncpu - 1);
-  signal meip     : std_logic_vector(0 to ncpu - 1);
-  signal seip     : std_logic_vector(0 to ncpu - 1);
-  signal imsici   : imsic_in_vector(0 to ncpu - 1);
-  signal imsico   : imsic_out_vector(0 to ncpu - 1);
-  signal dbgi     : nv_debug_in_vector(0 to ncpu - 1);
-  signal dbgo     : nv_debug_out_vector(0 to ncpu - 1);
-  signal dsui     : nv_dm_in_type;
-  signal dsuo     : nv_dm_out_type;
-  signal cpuapbi  : apb_slv_in_type;
-  signal cpuapbix : apb_slv_in_type;
-  signal cpuapbo  : apb_slv_out_vector;
-  signal gpti     : gptimer_in_type;
-  signal gpto     : gptimer_out_type;
-  signal tstop    : std_ulogic;
-  signal xuarto   : uart_out_type;
+  signal cpumi     : ahb_mst_in_type;
+  signal cpumo     : ahb_mst_out_vector;
+  signal cpusi     : ahb_slv_in_type;
+  signal cpusix    : ahb_slv_in_type;
+  signal cpuso     : ahb_slv_out_vector;
+  signal irqi      : nv_irq_in_vector(0 to ncpu - 1);
+  signal irqo      : nv_irq_out_vector(0 to ncpu - 1);
+  signal aplic_meip: std_logic_vector(0 to ncpu - 1);
+  signal aplic_seip: std_logic_vector(0 to ncpu - 1);
+  signal imsic_ack : std_logic_vector(0 to ncpu - 1);
+  signal imsic_irq : imsic_irq_vector(0 to ncpu - 1);
+  signal dbgi      : nv_debug_in_vector(0 to ncpu - 1);
+  signal dbgo      : nv_debug_out_vector(0 to ncpu - 1);
+  signal dsui      : nv_dm_in_type;
+  signal dsuo      : nv_dm_out_type;
+  signal cpuapbi   : apb_slv_in_type;
+  signal cpuapbix  : apb_slv_in_type;
+  signal cpuapbo   : apb_slv_out_vector;
+  signal gpti      : gptimer_in_type;
+  signal gpto      : gptimer_out_type;
+  signal tstop     : std_ulogic;
+  signal xuarto    : uart_out_type;
+
   -- PLIC/IMSIC => CLINT
   signal eip      : nv_irq_in_vector(0 to ncpu - 1);
-  signal aia_eip  : nv_irq_in_vector(0 to ncpu-1);
   signal old_eip  : nv_irq_in_vector(0 to ncpu-1);
   signal plic_eip : std_logic_vector(ncpu * 4 - 1 downto 0);
   -- Real Time Clock
   signal rtc      : std_ulogic := '0';
+
   -- Trace
-  signal eto      : nv_etrace_out_vector(ncpu - 1 downto 0);
+  signal tpo      : nv_full_trace_vector(ncpu - 1 downto 0);
+  signal eto      : nv_etrace_vector(ncpu - 1 downto 0);
 
   signal apbo_uart, apbo_gptime, apbo_etrace, apbo_iommu : apb_slv_out_type;
   signal ahbso_apbctrl : ahb_slv_out_type;
 
-  signal mem_trace_w_s : memTraceW;
 
   constant DUAL_PLIC : integer := conv_integer(conv_std_logic(AIA_SUPPORT*intcconf >= 2));
 
@@ -437,8 +412,8 @@ architecture hier of noelvsys is
   constant H_EN : integer := conv_integer(conv_std_logic(AIA_en /= 0));
   constant S_EN : integer := conv_integer(conv_std_logic(AIA_en /= 0));
 
-  constant identities_int  : nidentities_vector(0 to ncpu - 1)          := (others => neiid);
-  constant gidentities_int : nidentities_vector(0 to ncpu * GEILEN - 1) := (others => neiid);
+  constant nintid  : nidentities_vector(0 to ncpu - 1)          := (others => neiid);
+  constant gnintid : nidentities_vector(0 to ncpu * GEILEN - 1) := (others => neiid);
 
   -- APLIC
   constant groups   : integer := 0; -- In the future could be part of the system configuration
@@ -452,8 +427,8 @@ architecture hier of noelvsys is
   constant nvcpubits   : integer := log2x(GEILEN + 1);
   constant groupbits   : integer := log2x(groups);
   --
-  constant mbase_PPN : std_logic_vector(31 downto 0)  := IMSIC_BADDR;
-  constant sbase_PPN : std_logic_vector(31 downto 0)  := calc_sbase(IMSIC_BADDR, ncpu, groups, H_EN, nvcpubits);
+  constant mbase_PPN : std_logic_vector(31 downto 0)  := x"000" & IMSIC_BADDR(31 downto 12); -- base_ppn is internally shifted 12 bits to the left
+  constant sbase_PPN : std_logic_vector(31 downto 0)  := x"000" & calc_sbase(IMSIC_BADDR, ncpu, groups, H_EN, nvcpubits)(31 downto 12);
   constant mLHXS     : integer                        := 0;                           -- Machine Low Hart Index Shift = C - 12 (see specs)
   constant sLHXS     : integer                        := nvcpubits * H_EN;            -- Supervisor Low Hart Index Shift = D - 12 (see specs)
   constant HHXS      : integer                        := ncpubits + nvcpubits * H_EN - 12;  -- High Hart Index Shift = E - 24 (see specs)
@@ -471,6 +446,7 @@ begin
       ioaddr   => AHBC_IOADDR,
       rrobin   => 1,
       split    => 1,
+      debug    => 0,
       nahbm    => ncpu + nextmst + 2,
       nahbs    => nextslv + 4 + DUAL_PLIC,
       fpnpen   => 1,
@@ -513,7 +489,8 @@ begin
       hindex  => APBC_HINDEX,
       haddr   => APBC_HADDR,
       hmask   => APBC_HMASK,
-      nslaves => nextapb + 3
+      nslaves => nextapb + 3,
+      debug   => 0
       )
     port map (
       rst  => rstn,
@@ -554,7 +531,6 @@ begin
         hindex   => c,
         fabtech  => fabtech,
         memtech  => memtech,
-        mularch  => mularch,
         cached   => cached,
         wbmask   => wbmask,
         busw     => busw,
@@ -564,6 +540,9 @@ begin
         tcmconf  => tcmconf,
         mulconf  => mulconf,
         intcconf => intcconf,
+        mnintid  => nintid(c),
+        snintid  => nintid(c),
+        gnintid  => gnintid(c),
         disas    => disas,
         pbaddr   => 16#90000#,
         cfg      => cfg,
@@ -577,74 +556,20 @@ begin
         ahbo   => cpumo(c),
         ahbsi  => cpusix,
         ahbso  => cpuso,
-        imsici => imsici(c),
-        imsico => imsico(c),
         irqi   => irqi(c),
         irqo   => irqo(c),
-        nirqi  => nirqi(c),
         dbgi   => dbgi(c),
         dbgo   => dbgo(c),
-        eto    => eto(c),
+        tpo    => tpo(c),
         cnt    => cnt(c),
         pwrd   => pwrd(C)
       );
+
   end generate;
 
 
   cpu0errn <= not dbgo(0).error;
 
-  memTrace: process (clk, cpumi, cpusi)
-    variable r   : mem_trace := mem_trace_res;
-    variable mtr : memTraceW := memTraceWRes;
-  begin
-    mtr := memTraceWRes;
-    -- What function can I use to make these non X/U?
-    if (no_x(r.ahbmip.hready) = '1' and no_x(r.ahbmip.hresp) = HRESP_OKAY) then
-      if (no_x(r.ahbsip.hwrite) = '1' and (no_x(r.ahbsip.htrans) = HTRANS_NONSEQ or no_x(r.ahbsip.htrans) = HTRANS_SEQ)) then
-        mtr.physAddr  := no_x(r.ahbsip.haddr);
-        mtr.size      := no_x(r.ahbsip.hsize);
-        mtr.rw        := no_x(r.ahbsip.hwrite);
-        mtr.id        := no_x(r.ahbsip.hmaster);
-        mtr.data      := no_x(cpusi.hwdata); -- Sample data on current cycle
-        mtr.valid     := '1';
-        -- assert notx(r.ahbsip.haddr) report "Detected metavalue in mem tracer" severity warning;
-        -- assert notx(r.ahbsip.hsize) report "Detected metavalue in mem tracer" severity warning;
-        -- assert notx(r.ahbsip.hwrite) report "Detected metavalue in mem tracer" severity warning;
-        -- assert notx(r.ahbsip.hmaster) report "Detected metavalue in mem tracer" severity warning;
-        -- assert notx(cpusi.hwdata) report "Detected metavalue in mem tracer" severity warning;
-      end if;
-      -- pragma translate_off
-      if (r.ahbmip.hready = '1' and r.ahbmip.hresp = HRESP_ERROR and r.ahbsip.hwrite = '1' and (r.ahbsip.htrans = HTRANS_NONSEQ or r.ahbsip.htrans = HTRANS_SEQ)) then
-          report "HRESP reported ERROR: " & tost(r.ahbsip.hmaster) severity warning;
-      end if;
-      -- pragma translate_on
-    end if;
-    if (rising_edge(clk)) then
-      r.ahbmip := cpumi;
-      r.ahbsip := cpusi;
-      r.mtr    := mtr;
-    end if;
-
-    mem_trace_w <= r.mtr;
-  end process;
-
-  -- pragma translate_off
-  htif_gen : if (htif = 1) generate
-    htif_if : htif_sim
-    generic map(dbg           => false,
-                data_width    => 64,
-                tohost_addr   => tohost,
-                fromhost_addr => fromhost)
-    port map(clk,
-             mem_trace_w_s.physAddr,
-             mem_trace_w_s.data(64 - 1 downto 0),
-             mem_trace_w_s.size,
-             mem_trace_w_s.valid,
-             mem_trace_w_s.rw,
-             mem_trace_w_s.id
-          );
-  end generate;
-  -- pragma translate_on
 
   ----------------------------------------------------------------------------
   -- Debug and tracing module
@@ -690,7 +615,11 @@ begin
   dsui.break  <= dsubreak;
 
   etrace : if trace /= 0 generate
-    x : etracenv
+    e : for i in 0 to ncpu - 1 generate
+      eto(i) <= tpo(i).eto;
+    end generate;
+
+  x : etracenv
       generic map(
         ext_c   => 1,
         ncpu    => ncpu,
@@ -846,7 +775,7 @@ begin
 
   aia_gen : if AIA_en /= 0 generate
     -- IMSIC  ---------------------------------------------------------
-    imsic0 : grimsic_ahb
+    imsic0 : imsic_ahb
      generic map (
        hindex            => IMSIC_HINDEX,
        haddr             => IMSIC_HADDR,
@@ -855,22 +784,21 @@ begin
        groups            => groups,
        S_EN              => S_EN,
        H_EN              => H_EN,
-       plic              => 1,
-       mnidentities_vector   => identities_int,
-       snidentities_vector   => identities_int,
-       gnidentities_vector   => gidentities_int
+       mnidentities_vector   => nintid,
+       snidentities_vector   => nintid,
+       gnidentities_vector   => gnintid
        )
      port map (
-       rst               => rstn,
-       clk               => clk,
-       ahbi              => cpusix,
-       ahbo              => cpuso(IMSIC_HINDEX),
-       plic_meip         => meip,
-       plic_seip         => seip,
-       imsici            => imsici,
-       imsico            => imsico,
-       eip               => aia_eip
+       rst        => rstn,
+       clk        => clk,
+       ahbi       => cpusix,
+       ahbo       => cpuso(IMSIC_HINDEX),
+       irq_ack    => imsic_ack,
+       irqo       => imsic_irq
        );
+    imsic_ack_gen : for i in 0 to ncpu-1 generate
+      imsic_ack(i) <= '1';
+    end generate;
 
 
     -- GRAPLIC ----------------------------------------------------------
@@ -908,8 +836,8 @@ begin
         ahbmo     => cpumo(APLIC_HMINDEX),
         ahbsi     => cpusix,
         ahbso     => cpuso(APLIC_HSINDEX),
-        meip      => meip,
-        seip      => seip
+        meip      => aplic_meip,
+        seip      => aplic_seip
         );
   end generate aia_gen;
 
@@ -941,7 +869,6 @@ begin
         cpuso(IMSIC_HINDEX)  <= ahbs_none;
         cpumo(APLIC_HMINDEX) <= ahbm_none;
         --cpuso(APLIC_HSINDEX) <= ahbs_none;
-        imsico               <= (others => imsic_out_none);
       end generate;
 
         -- IRQ Interface
@@ -955,15 +882,43 @@ begin
           old_eip(i).msip     <= '0';
           old_eip(i).ssip     <= '0';
           old_eip(i).stime    <= (others => '0');
+          old_eip(i).nmirq    <= (others => '0');
         end generate eip_gen;
   end generate old_interrupt_gen;
 
-  eip <= aia_eip when AIA_en = 1 else
-         old_eip when AIA_en = 0 else
-         eip_or(aia_eip, old_eip);
+
+  eip_select : process(imsic_irq, old_eip, aplic_meip, aplic_seip
+  ) is
+  begin
+    eip <= (others => nv_irq_in_none);
+    if AIA_en = 0 or AIA_en = 2 then
+      -- Old PLIC is implemented 
+      eip <= old_eip;
+    end if;
+    if AIA_en /= 0 then
+      -- AIA is implemented
+      for i in 0 to ncpu-1 loop
+        eip(i).imsic      <= imsic_irq(i);
+        eip(i).aplic_meip <= aplic_meip(i);
+        eip(i).aplic_seip <= aplic_seip(i);
+      end loop;
+    else
+      -- AIA is not implemented 
+      -- tie unused signals
+      for i in 0 to ncpu-1 loop
+        eip(i).imsic      <= imsic_irq_none;
+        eip(i).aplic_meip <= '0';
+        eip(i).aplic_seip <= '0';
+      end loop;
+    end if;
+    for i in 0 to ncpu-1 loop
+      eip(i).nmirq <= (others => '0');
+    end loop;
+  end process;
+
 
     -- nirq_zero : for i in 0 to ncpu-1 generate
-    --   nirqi(i) <= (others => '0');
+    --   irqi(i).nmirq <= (others => '0');
     -- end generate nirq_zero;
 
 

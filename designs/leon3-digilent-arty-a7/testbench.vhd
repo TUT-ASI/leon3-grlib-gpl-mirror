@@ -73,6 +73,11 @@ architecture behav of testbench is
   signal cpu_resetn         : std_ulogic;
   -- Switches
   signal sw                 : std_logic_vector(3 downto 0);    
+  -- PMOD
+  signal jabcd              : std_logic_vector(31 downto 0);
+  -- Arduino/ChipKit SPI
+  signal ck_miso            : std_ulogic;
+  signal ck_mosi            : std_ulogic;
   -- USB-RS232 interface
   signal uart_tx_in         : std_logic;
   signal uart_rx_out        : std_logic;
@@ -128,6 +133,9 @@ begin
   -- dsui.enable
   sw(3)         <= '1';
 
+  jabcd <= (others => 'H');
+  ck_miso <= ck_mosi;
+
   d3 : entity work.leon3mp
     generic map (fabtech, memtech, padtech, clktech, disas, dbguart, pclow,
                  SIM_BYPASS_INIT_CAL, SIMULATION, USE_MIG_INTERFACE_MODEL)
@@ -136,7 +144,12 @@ begin
       ck_rst => ck_rst,
       btn => btn,
       sw => sw,
-      ck_miso => '1',
+      ja => jabcd( 7 downto  0),
+      jb => jabcd(15 downto  8),
+      jc => jabcd(23 downto 16),
+      jd => jabcd(31 downto 24),
+      ck_miso => ck_miso,
+      ck_mosi => ck_mosi,
       uart_txd_in => '1',
       uart_rxd_out => open,
       qspi_sck        => qspi_sck,

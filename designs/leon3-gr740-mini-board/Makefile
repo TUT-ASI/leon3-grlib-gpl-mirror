@@ -38,7 +38,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gsi fmf spansion micron  
 	
 DIRSKIP = b1553 leon2 leon2ft crypto satcan leon3ft ambatest ddr \
-	leon4v0 l2cache/v2 l2cache/v3 gr1553b iommu ascs slink pwm \
+	leon4v0 l2cache/v2 l2cache/v3 l2cache/str gr1553b iommu ascs slink pwm \
 	ge_1000baseX canfd \
 	leon5v0 leon5v0/blockred grfpu5 noelv noelv/subsys riscv \
 	ftaddr hcan spacefibre usb nand 

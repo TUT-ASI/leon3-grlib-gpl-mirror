@@ -86,7 +86,7 @@ entity leon5sys is
     -- AHB bus interface for slaves (memory controllers, etc)
     ahbsi    : out ahb_slv_in_type;
     ahbso    : in  ahb_slv_out_vector_type(nextslv-1 downto 0);
-    ahbpnp   : out ahb_config_array;
+    ahbpnp   : out ahb_config_array(NAHBSLV-1 downto 0);
     -- AHB master interface for debug links
     dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
     dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);

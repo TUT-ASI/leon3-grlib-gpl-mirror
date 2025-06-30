@@ -95,7 +95,8 @@ component memrwcol is
     dbits: integer;
     sepclk: integer;
     wrfst: integer;
-    rdhold: integer
+    rdhold: integer;
+    pipeline: integer
     );
   port (
     clk1     : in  std_ulogic;
@@ -189,7 +190,8 @@ begin
       dbits      => dbits,
       sepclk     => isepclk,
       wrfst      => wrfst,
-      rdhold     => rdhold
+      rdhold     => rdhold,
+      pipeline   => boolean'pos(pipeline /= 0 and has_sram_pipe(xtech)/=0)
       )
     port map (
       clk1      => rclk,
@@ -623,9 +625,6 @@ begin
   begin
     assert isepclk = 0 or wrfst = 0
       report "syncram_2p: Write-first not supported for RAM with separate clocks"
-      severity failure;
-    assert pipeline = 0 or wrfst = 0
-      report "syncram_2p: Write-first not supported for RAM with pipeline registers"
       severity failure;
     wait;
   end process;

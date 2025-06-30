@@ -138,7 +138,8 @@ package gr1553b_pkg is
       codecfreq: integer := 20;
       sameclk: integer range 0 to 1 := 0;
       codecver: integer range 0 to 2 := 1;
-      extctrlen: integer range 0 to 1 := 0
+      extctrlen: integer range 0 to 1 := 0;
+      databufen: integer range 0 to 1 := 0
       );
     port(
       clk: in std_logic;

@@ -22,8 +22,10 @@
 -- File:        uart.vhd
 -- Authors:     Jiri Gaisler - Gaisler Research
 --              Marko Isomaki - Gaisler Research
--- Description: Asynchronous UART. Implements 8-bit data frame with one stop-bit.
-------------------------------------------------------------------------------
+-- Modified:    Amamr Shihabi - Frontgrade Gaisler AB
+-- Description: Asynchronous UART. Implements 8-bit data frame with one stop-bit 
+--              and a configurable break size for transmission and detection.
+-----------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -63,14 +65,14 @@ end;
 
 architecture rtl of apbuart is
 
-constant REVISION : integer := 1;
+constant REVISION : integer := 2;
 
 constant pconfig : apb_config_type := (
   0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_APBUART, 0, REVISION, pirq),
   1 => apb_iobar(paddr, pmask));
 
-type rxfsmtype is (idle, startbit, data, cparity, stopbit);
-type txfsmtype is (idle, data, cparity, stopbit);
+type rxfsmtype is (idle, startbit, data, cparity, stopbit, breakstate);
+type txfsmtype is (idle, data, cparity, stopbit, breakstate);
 
 type fifo is array (0 to fifosize - 1) of std_logic_vector(7 downto 0);
 
@@ -90,6 +92,11 @@ type uartregs is record
   tsemptyirqen  :  std_ulogic;  -- generate irq when tx shift register is empty
   break         :  std_ulogic;  -- break detected
   breakirqen    :  std_ulogic;  -- generate irq when break has been received
+  tbreak        :  std_ulogic;  -- send a transmitter break
+  breaksize     :  std_logic_vector(3 downto 0);  -- breaksize between 10 and 16
+  tbreakstream  :  std_logic_vector(16 downto 0); -- tx breakstream 
+  rbreakstream  :  std_logic_vector(16 downto 0); -- rx breakstream 
+  breakcounter  :  integer;     -- internal flag to the receiver operation
   ovf           :  std_ulogic;  -- receiver overflow
   parerr        :  std_ulogic;  -- parity error
   frame         :  std_ulogic;  -- framing error
@@ -140,7 +147,8 @@ constant RES : uartregs :=
   (rxen => '0', txen => '0', rirqen => '0', tirqen => '0', parsel => '0',
    paren => '0', flow => '0', loopb => '0', debug => '0', rsempty => '1',
    tsempty => '1', stop => '0', tsemptyirqen => '0', break => '0', breakirqen => '0',
-   ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
+   tbreakstream => (others => '1'), rbreakstream => (others => '1'), breaksize => "1001", 
+   tbreak => '0', breakcounter => 10, ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
    rtsn => '1', extclken => '0', extclk => '0', rhold => fifozero,
    rshift => (others => '0'), tshift => (others => '1'), thold => fifozero,
    irq => '0', irqpend => '0', delayirqen => '0', tpar => '0', txstate => idle,
@@ -236,7 +244,7 @@ begin
       rdata(6 downto 0) := r.frame & r.parerr & r.ovf &
                 r.break & thempty & r.tsempty & dready;
 --pragma translate_off
-      if CONSOLE = 1 then
+      if console = 1 then
         rdata(2 downto 1) := "11";
         if fifosize /= 1 then
           rdata(20 + log2x(fifosize) downto 20) := rcntzero;
@@ -249,6 +257,8 @@ begin
       if fifosize > 1 then
         rdata(31) := '1';
       end if;
+      rdata(20) := r.tbreak;
+      rdata(19 downto 16) := r.breaksize;
       rdata(15) := r.stop;
       rdata(14) := r.tsemptyirqen;
       rdata(13) := r.delayirqen;
@@ -262,17 +272,21 @@ begin
     when "000011" =>
       rdata(sbits-1 downto 0) := r.brate;
     when "000100" =>
-    
-        -- Read TX FIFO.
-        if r.debug = '1' and r.tcnt /= rcntzero then
-            rdata(7 downto 0) := r.thold(conv_integer(r.traddr));
-            if fifosize = 1 then
-                v.tcnt(0) := '0';
-            else
-                v.traddr := r.traddr + 1;
-                v.tcnt := r.tcnt - 1;
-            end if;
+      -- Read TX FIFO
+      if r.debug = '1' and r.tcnt /= rcntzero then
+        rdata(7 downto 0) := r.thold(conv_integer(r.traddr));
+        if fifosize = 1 then
+          v.tcnt(0) := '0';
+        else
+          v.traddr := r.traddr + 1;
+          v.tcnt   := r.tcnt - 1;
         end if;
+      end if;
+    when "000101" =>
+      rdata(0) := r.debug;
+    when "000110" => 
+      rdata(6 downto 0) := conv_std_logic_vector(flow, 1) &
+                           conv_std_logic_vector(fifosize, 6);  
     when others =>
       null;
     end case;
@@ -287,11 +301,16 @@ begin
         v.ovf        := apbi.pwdata(4);
         v.break      := apbi.pwdata(3);
       when "000010" =>
-        v.stop       := apbi.pwdata(15);
+        v.tbreak     := apbi.pwdata(20);
+        if apbi.pwdata(19 downto 16) > "1001" then
+          v.breaksize := apbi.pwdata(19 downto 16);
+        else
+          v.breaksize := "1001";
+        end if;
+        v.stop         := apbi.pwdata(15);
         v.tsemptyirqen := apbi.pwdata(14);
-        v.delayirqen := apbi.pwdata(13);
-        v.breakirqen := apbi.pwdata(12);
-        v.debug      := apbi.pwdata(11);
+        v.delayirqen   := apbi.pwdata(13);
+        v.breakirqen   := apbi.pwdata(12);
         if fifosize /= 1 then
           v.rfifoirqen := apbi.pwdata(10);
           v.tfifoirqen := apbi.pwdata(9);
@@ -318,8 +337,10 @@ begin
           if r.debug = '1' then
               v.irq := v.irq or r.rirqen;
           end if;
-          
         end if;
+      when "000101" =>
+        v.debug      := apbi.pwdata(0);
+      when "000110" =>
       when others =>
         null;
       end case;
@@ -365,7 +386,7 @@ begin
                   (r.rxf(3) and r.rxf(2));
 -- loop-back mode
     if r.loopb = '1' then
-      v.rxdb(0) := r.tshift(0); ctsn := dready and not r.rsempty;
+      v.rxdb(0) := (r.tshift(0) and r.tbreakstream(0)); ctsn := dready and not r.rsempty;
     elsif (flow = 1) then ctsn := r.ctsn(1); else ctsn := '0'; end if;
     rxd := r.rxdb(0);
 
@@ -376,7 +397,7 @@ begin
       if (r.txtick = '1') then v.tsempty := '1'; end if;
       
       if ((not r.debug and r.txen and (not thempty) and r.txtick) and
-          ((not ctsn) or not r.flow)) = '1' then
+          ((not ctsn) or not r.flow) and not r.tbreak) = '1' then
           v.txstate := data;
           v.tpar := r.parsel; v.tsempty := '0';
           v.txclk := "00" & r.tick; v.txtick := '0';
@@ -387,6 +408,10 @@ begin
               v.traddr := r.traddr + 1;
               v.tcnt := r.tcnt - 1;
           end if;
+      end if;
+      if (r.tbreak and (not r.debug and r.txen and r.txtick) and ((not ctsn) or not r.flow)) = '1' then
+        v.tbreakstream := (others => '0');
+        v.txstate     := breakstate;
       end if;
     when data =>        -- transmit data frame
       if r.txtick = '1' then
@@ -418,6 +443,15 @@ begin
       if r.txtick = '1' then
         v.txstate := idle;
       end if;
+    when breakstate =>  -- transmit a desired size break character
+      if r.txtick = '1' then
+        v.tbreakstream := '1' & r.tbreakstream(16 downto 1);
+        if (r.tbreakstream(16 - conv_integer(r.breaksize)+1) = '1') then
+          v.tbreakstream(0) := '1';
+          v.tbreak := '0';
+          v.txstate := idle; 
+        end if;
+      end if;
     end case;
 
 -- writing of tx data register must be done after tx fsm to get correct
@@ -435,7 +469,7 @@ begin
           end if;
         end if;
 --pragma translate_off
-        if CONSOLE = 1 then
+        if console = 1 then
           if first then L1:= new string'(""); first := false; end if; --'
           if apbi.penable'event then    --'
             CH := character'val(conv_integer(apbi.pwdata(7 downto 0))); --'
@@ -467,6 +501,7 @@ begin
         if v.rsempty = '0' then v.ovf := '1'; end if;
         v.rsempty := '0'; v.rxtick := '0';
       end if;
+      v.breakcounter := 10;
     when startbit =>    -- check validity of start bit
       if r.rxtick = '1' then
         if rxd = '0' then
@@ -488,6 +523,8 @@ begin
     when cparity =>     -- receive parity bit
       if r.rxtick = '1' then
         v.dpar := r.dpar xor rxd; v.rxstate := stopbit;
+        v.breakcounter := r.breakcounter + 1;
+        v.rbreakstream(11) := '0';
       end if;
     when stopbit =>     -- receive stop bit
       if r.rxtick = '1' then
@@ -505,14 +542,43 @@ begin
             if fifosize = 1 then v.rcnt(0) := '1';
             else v.rwaddr := r.rwaddr + 1; v.rcnt := v.rcnt + 1; end if;
           end if;
+          v.rxstate := idle;
         else
           if r.rshift = "00000000" then
-            v.break := '1';
-            v.irq := v.irq or r.breakirqen;
-          else v.frame := '1'; end if;
-          v.rsempty := '1';
+            if r.breaksize = "1001" then  -- legacy break detected of 10 bits
+              v.break := '1';
+              v.irq   := v.irq or r.breakirqen;
+              v.rxstate := idle;
+              v.rsempty := '1';
+            else
+              v.rxstate := breakstate;
+              v.breakcounter := r.breakcounter + 1;
+              v.rbreakstream(10 downto 0) := "00000000000";
+            end if;
+          else
+            v.frame := '1';
+            v.rsempty    := '1';
+            v.rxstate := idle;
+          end if;
         end if;
-        v.rxstate := idle;
+      end if;
+    when breakstate =>  -- break state for size larger than 10
+      if r.rxtick = '1' then
+        if (rxd = '0') and (r.breakcounter <= conv_integer(r.breaksize)) then
+          v.breakcounter := r.breakcounter + 1;
+          v.rbreakstream := r.rbreakstream(15 downto 0) & '0';
+        else
+          v.breakcounter := 10;
+          v.rbreakstream  := (others => '1');
+          v.rsempty := '1';
+          v.rxstate := idle;
+          -- flag the break register, and generate an irq
+          if r.rbreakstream(conv_integer(r.breaksize)) = '0' then
+            v.break := '1';  v.irq := v.irq or r.breakirqen;
+          else
+            v.frame := '1';
+          end if;
+        end if;
       end if;
     end case;
 
@@ -520,7 +586,7 @@ begin
       v.rtsn := (rfull and not r.rsempty) or r.loopb;
     end if;
 
-    v.txd := r.tshift(0) or r.loopb or r.debug;
+    v.txd := (r.tshift(0) and r.tbreakstream(0)) or r.loopb or r.debug;
 
     if fifosize /= 1 then
       if thempty = '0' and v.tcnt = rcntzero then
@@ -548,6 +614,9 @@ begin
       v.rwaddr := RES.rwaddr; v.twaddr := RES.twaddr;
       v.rraddr := RES.rraddr; v.traddr := RES.traddr;
       v.irqcnt := RES.irqcnt; v.irqpend := RES.irqpend;
+      v.tbreak := RES.tbreak; v.tbreakstream := RES.tbreakstream; 
+      v.rbreakstream := RES.rbreakstream; v.breaksize := RES.breaksize; v.breakirqen := RES.breakirqen;
+      v.breakcounter := RES.breakcounter; v.debug := RES.debug;
     end if;
 
 -- update registers

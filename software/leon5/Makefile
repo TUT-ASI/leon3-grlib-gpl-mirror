@@ -1,5 +1,7 @@
 VPATH=$(GRLIB)/software/leon5
+SYSTINC=$(GRLIB)/software/systest/include
 XINC=-I$(GRLIB)/software/leon5 -I$(GRLIB)/software/l2c
+XINC+=-I$(SYSTINC)
 XTARGET=sparc-gaisler-elf
 XCC=$(XTARGET)-gcc $(XINC) $(BOPT)
 XAS=$(XTARGET)-gcc -c -I. $(XINC) $(BOPT)
@@ -29,22 +31,25 @@ endif
 PROGS = grcanfd apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
-	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth atactrl \
-	amba dsu3 greth_api grcan grdmac grspfi grwizl \
+	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth \
+	amba dsu3 greth_api grcan grcanfd grdmac grdmac2 grspfi grwizl \
 	spictrl i2cmst misc spimctrl svgactrl apbps2 \
 	i2cslv i2c l2c \
+	report report_device report_stdio \
 	grusbdc rt_1553 brm_1553 pcif grtc grtm satcan memscrub_test \
 	ftahbram ftlib ftsrctrl ftmctrl bch l2timers l2irqctrl leon2_test \
 	grpwm grhcan brm grusbhc leon4_test base_test4 griommu l34stat ftddr2spa \
 	router greth_throughput grpci2 gr1553b_test spwrouter \
 	cgtest privtest privtest_asm mmudmap leon_tsc dpr_test mem_test grspwtdp \
-	rextest rextest_asm awptest L2C_multiport \
-	grfpu_test5 fpu5 leon5_test leon5sys_test base_test5 \
+	rextest rextest_asm awptest \
+	grfpu_test5 fpu5 leon5_test base_test5 \
 	rextest rextest_asm awptest leon5asm
-PROGS += isrhelper
 
 FPROGS=$(shell for i in $(PROGS); do \
 			if [ -r $(GRLIB)/software/leon5/$$i.c -o -r $(GRLIB)/software/leon5/$$i.S ]; then \
+				echo $$i; \
+			fi; \
+			if [ -r $(GRLIB)/software/systest/$$i.c -o -r $(GRLIB)/software/systest/$$i.S ]; then \
 				echo $$i; \
 			fi; \
 		done; \
@@ -54,8 +59,13 @@ FPROGS=$(shell for i in $(PROGS); do \
 		if [ -r $(GRLIB)/software/l2c/l2capi.c ]; then \
 			echo l2capi; \
 		fi)
+
 FPROGS+=$(EXTRA_PROGS)
+FPROGS += isrhelper
+FPROGS += inthelper
+
 VPATH+=$(GRLIB)/software/l2c
+VPATH+=$(GRLIB)/software/systest
 
 OFILES = $(FPROGS:%=%.o)
 
@@ -63,19 +73,21 @@ OFILES = $(FPROGS:%=%.o)
 	$(XCC) $(XCFLAGS) -c  $<
 
 %.o: %.S
-	$(XCC) $(XCFLAGS) -mcpu=leon3 -c  $<
+	$(XCC) $(XCFLAGS) -mcpu=leon5 -c  $<
 
 %.exe.dis: %.exe
 	$(XOBJDUMP) -d $< > $@
+
+greth.o: XINC+=-I$(GRLIB)/software/greth
 
 fpu.o: fpu.c
 	$(XCC) -ffast-math -O3 -c  $<
 
 multest.o: multest.c
-	$(XCC) $(XCFLAGS) -mcpu=leon3 -c $<
+	$(XCC) $(XCFLAGS) -mcpu=leon5 -c $<
 
 divtest.o: divtest.c
-	$(XCC) $(XCFLAGS) -mcpu=leon3 -c $<
+	$(XCC) $(XCFLAGS) -mcpu=leon5 -c $<
 
 greth_api.o : $(GRLIB)/software/greth/greth_api.c
 	$(XCC) $(XCFLAGS) -c $<
@@ -83,9 +95,9 @@ greth_api.o : $(GRLIB)/software/greth/greth_api.c
 cgtest.o : cgtest.c
 	$(XCC) -c  $<
 
-gptimer.o : gptimer.c gptimer.h gpio.h
+gptimer.o : gptimer.c $(SYSTINC)/gptimer.h $(SYSTINC)/gpio.h
 
-grspwtdp.o : grspwtdp.c grspwtdp.h grspwtdp-regs.h
+grspwtdp.o : grspwtdp.c $(SYSTINC)/grspwtdp.h $(SYSTINC)/grspwtdp-regs.h
 
 dpr_test.o: dpr_test.c
 	$(XCC) -O0 -msoft-float -c  $<
@@ -99,7 +111,6 @@ lib3tests.a: $(OFILES)
 	$(XAR) -cr lib3tests.a $(OFILES)
 
 soft: $(SOFT_SRECS) $(EXTRA_SOFT)
-hard: standalone.exe
 
 prom.o: prom.S prom.h
 	$(XAS) $<
@@ -109,8 +120,8 @@ prom.exe: prom.o
 prom.srec: prom.exe
 	$(XOBJCOPY) -O srec $(EXTRA_PROM) prom.exe prom.srec
 
-systest.exe: systest.o report_device.o bcc2sim.o lib3tests.a
-	$(XCC) $(XCFLAGS) systest.o report_device.o bcc2sim.o $(XLDFLAGS) -o systest.exe
+systest.exe: systest.o bcc2sim.o lib3tests.a
+	$(XCC) $(XCFLAGS) systest.o bcc2sim.o $(XLDFLAGS) -o systest.exe
 
 # NOTE: .bss section included in ram.srec to allow skipping bss init
 ram.srec: systest.exe
@@ -122,5 +133,3 @@ soft-clean:
 mmusoft:
 	make -f Makefile.img mmusoft
 
-standalone.exe: systest.o report_stdio.o bcc2hw.o lib3tests.a
-	$(XCC) $(XCFLAGS) systest.o report_stdio.o bcc2hw.o $(XLDFLAGS) -o standalone.exe

@@ -29,6 +29,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library gaisler;
 use gaisler.noelv.XLEN;
+use gaisler.l5nv_shared.all;
+use gaisler.noelv.CAUSELEN;
+use gaisler.utilnv.all;
 
 package noelvtypes is
 
@@ -42,7 +45,7 @@ package noelvtypes is
   constant MAX_TRIGGER_NUM : integer := 5;   -- For nvsupport
   constant PMPENTRIES      : integer := 16;  -- For noelvint
   constant PMAENTRIES      : integer := 16;  -- For noelvint
-  constant MAXWAYS         : integer := 8;   -- For noelvint and cctrl
+  constant MAXWAYS         : integer := 4;   -- For noelvint and cctrl
 
   -----------------------------------------------------------------------------
   -- Internal Constants (not for use outside)
@@ -54,8 +57,6 @@ package noelvtypes is
 -- pragma translate_on
                                     ;
 
-  constant IDXMAX      : integer := 16;
-  constant TAGMAX      : integer := 32;  -- For noelvint
 
   constant PMPADDRBITS : integer := 54;
 
@@ -75,6 +76,12 @@ package noelvtypes is
   subtype pmpaddr_type       is std_logic_vector(PMPADDRBITS + 2 downto 2);
 
   constant pmpaddrzero : pmpaddr_type := (others => '0');
+
+  subtype integer64 is integer range 0 to 63;
+  subtype integer32 is integer range 0 to 31;
+  subtype integer16 is integer range 0 to 15;
+  subtype integer4  is integer range 0 to 3;
+  subtype integer2  is integer range 0 to 1;
 
   subtype word64 is std_logic_vector(63 downto 0);
   subtype word32 is std_logic_vector(31 downto 0);
@@ -106,18 +113,19 @@ package noelvtypes is
                       x_fpu_debug, x_dtcm, x_itcm,
                       x_rv64, x_mode_u, x_mode_s,
                       x_noelv, x_noelvalu,
-                      x_m, x_f, x_d,
+                      x_m, x_f, x_d, x_q, x_n,
                       x_a, x_c, x_h, x_sscofpmf,
                       x_zba, x_zbb, x_zbc, x_zbs,
                       x_zbkb, x_zbkc, x_zbkx,
                       x_zcb,
-                      x_time, x_sstc, x_imsic,
+                      x_time, x_sdtrig, x_sstc, x_imsic,
                       x_smepmp, x_smaia, x_ssaia,
                       x_smstateen, x_smrnmi,
-                      x_ssdbltrp, x_smdbltrp, x_sddbltrp,
+                      x_ssdbltrp, x_smdbltrp,
                       x_smcsrind, x_sscsrind,
-                      x_zicbom, x_zicond, x_zimop, x_zcmop,
-                      x_zicfiss, x_zicfilp,
+                      x_svadu,
+                      x_zicbom, x_zicboz, x_zicond, x_zimop, x_zcmop,
+                      x_zicfiss, x_zicfilp, x_shlcofideleg, x_smcdeleg,
                       x_svinval,
                       x_zfa, x_zfh, x_zfhmin, x_zfbfmin,
                       x_last);
@@ -132,16 +140,113 @@ package noelvtypes is
   -- For faults, 5 bits are needed (without hypervisor, RAS, double trap etc - 4 bits).
   -- For interrupts, 4 bits used to be enough, but with RAS 6 are needed.
   --  Also, AIA requires 6 bits for its equivalent .iid field.
-  subtype cause_type     is std_logic_vector(6 downto 0);  -- Top bit is IRQ
-  subtype int_cause_type is std_logic_vector(cause_type'high - 1 downto 0);
 
-type xc_type is record
-  xc_v : std_logic;
-  xc   : std_logic;
-end record;
+  subtype int_cause_type is natural range 0 to (2 ** CAUSELEN) - 1;
+  type    cause_type  is record
+    irq  : std_logic;
+    code : int_cause_type;
+  end record;
+
+  constant cause_res : cause_type := (irq => '0', code => 0);
+
+  function to_cause(code : int_cause_type; irq : boolean := false) return cause_type;
+  function int2mask(n : int_cause_type)   return wordx;
+  function cause2int(cause : cause_type)  return integer;
+  function cause2mask(cause : cause_type) return wordx;
+  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic;
+  function is_irq(cause : cause_type) return boolean;
+  function u2cause(cause : unsigned; irq : std_ulogic) return cause_type;
+  function cause2wordx(cause : cause_type) return wordx;
+  function wordx2cause(v : wordx) return cause_type;
+  function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector;
+
+
+  type xc_type is record
+    xc_v : boolean;
+    xc   : boolean;
+  end record;
+
+  constant XC_ILLEGAL    : xc_type := xc_type'(xc => true, xc_v => false);
+  constant XC_VIRT       : xc_type := xc_type'(xc => true, xc_v => true);
+  constant XC_NONE       : xc_type := xc_type'(xc => false, xc_v => false);
 
 
 end;
 
 package body noelvtypes is
+  function to_cause(code : int_cause_type; irq : boolean := false) return cause_type is
+    variable irqv : std_logic;
+  begin
+    if irq then irqv := '1'; else irqv := '0'; end if;
+    return cause_type'(irq => irqv, code => code);
+  end;
+
+  function int2mask(n : int_cause_type) return wordx is
+    -- Non-constant
+    variable v : wordx := zerox;
+  begin
+    v(n) := '1';
+
+    return v;
+  end;
+
+  function cause2mask(cause : cause_type) return wordx is
+  begin
+    return int2mask(cause.code);
+  end;
+
+  function cause2int(cause : cause_type) return integer is
+  begin
+    return cause.code;
+  end;
+
+  function cause_bit(bits : std_logic_vector; cause : cause_type) return std_logic is
+  begin
+    return bits(cause.code);
+  end;
+
+  function is_irq(cause : cause_type) return boolean is
+  begin
+    return cause.irq = '1';
+  end;
+
+  function u2cause(cause : unsigned; irq : std_ulogic) return cause_type is
+  begin
+    return cause_type'(irq => irq, code => u2i(cause));
+  end;
+
+  function cause2wordx(cause : cause_type) return wordx is
+    -- Non-constant
+    variable v : wordx := zerox;
+  begin
+    v(CAUSELEN - 1 downto 0) := u2vec(cause.code, CAUSELEN);
+    v(v'high)                  := cause.irq;
+
+    return v;
+  end;
+
+  function wordx2cause(v : wordx) return cause_type is
+    -- Non-constant
+    variable cause : cause_type;
+  begin
+    -- Integers are 32 bits in VHDL, we can't use the full 64-bit range
+    -- Not a prblem for cause though.
+    cause.code := u2i(v(CAUSELEN-1 downto 0));
+    cause.irq  := get_hi(v);
+
+    return cause;
+  end;
+
+  function cause2vec(cause : cause_type; vec_in : std_logic_vector) return std_logic_vector is
+    -- Non-constant
+    variable vec : std_logic_vector(vec_in'length - 1 downto 0) := vec_in;
+  begin
+    vec(0) := '0';
+    -- vec(cause'high + 1 downto 2) := cause(cause'high - 1 downto 0);
+    vec(CAUSELEN + 1 downto 2) := u2slv(cause.code, CAUSELEN);
+
+    return vec;
+  end;
+
+
 end;

@@ -58,7 +58,7 @@ entity htif_sim is
 
 
 
-architecture htif of htif_sim is
+architecture rtl of htif_sim is
   subtype arg_type     is unsigned(data_width - 1    downto 0);
   subtype dev_cmd_type is unsigned(dev_cmd_width - 1 downto 0);
   subtype addr_type    is unsigned(addr_width - 1    downto 0);
@@ -69,8 +69,6 @@ architecture htif of htif_sim is
   constant DEVICE_CHAR         : dev_cmd_type := "00000001"; -- Device 1
   constant COMMAND_WRITE_CHAR  : dev_cmd_type := "00000001"; -- Write character command
 
-  -- SYSCALL codes
-  constant SYS_WRITE : integer := 64;
 
   function is_tohost(addr : addr_type; valid : std_logic; rw : std_logic) return boolean is
   begin
@@ -94,8 +92,7 @@ architecture htif of htif_sim is
     return "";
   end;
 
-
-  procedure log_debug(str : string) is 
+  procedure log_debug(str : string) is
   begin
     if (dbg) then
       print("HTIF DBG: " & str);
@@ -106,14 +103,14 @@ begin
   -- pragma translate_off
   process(clk)
     variable htif_req     : unsigned(data_width - 1 downto 0);
-    variable exit_code    : integer      := -1;
+    variable exit_code    : unsigned(47 downto 1);
     variable has_ptr      : boolean      := false;
     variable device       : dev_cmd_type := (others => '0');
     variable command      : dev_cmd_type := (others => '0');
     variable is_exit_code : boolean;   -- Bit 1 of syscall data to distinguish sys_exit
     variable char_output  : character; -- Single character output
     -- SYSCALL related
-    variable which     : integer;
+    variable which     : unsigned(63 downto 0);
     variable magic_mem : arg_type;
     variable arg0      : arg_type;
     variable arg1      : arg_type;
@@ -128,6 +125,9 @@ begin
 
     -- MISC
     variable conts     : string(1 to 9);
+
+    -- SYSCALL codes
+    constant SYS_WRITE : unsigned(63 downto 0) := to_unsigned(64, 64);
 
   begin
     if valid = '1' and rising_edge(clk) then
@@ -146,42 +146,40 @@ begin
       -- Handle syscall device (device 0, command 0)
       if (device = DEVICE_SYSCALL) and (command = COMMAND_SYSCALL) then
         if is_exit_code then
-          exit_code := to_integer(unsigned(htif_req(47 downto 1)));  -- Exit code in bits 47:1
-          assert false report "Exit code: " & integer'image(exit_code) severity failure;
+          exit_code := unsigned(htif_req(47 downto 1));  -- Exit code in bits 47:1
+          assert false report "Exit code: " & tost(exit_code) severity failure;
         else -- syscall
           magic_mem := htif_req;
-          which     := to_integer(read_mem(magic_mem, 64));
+          which     := read_mem(magic_mem, 64);
           arg0      := read_mem(magic_mem + 8, 64);
           arg1      := read_mem(magic_mem + 16, 64);
           arg2      := read_mem(magic_mem + 24, 64);
-          log_debug("GOT SYSCALL: which = " & integer'image(which));
-          case which is
+          log_debug("GOT SYSCALL: which = " & tost(which));
+          if which = SYS_WRITE then
             -- GRLIB_INTERNAL_BEGIN
-            when SYS_WRITE =>
-              -- GRLIB_INTERNAL_BEGIN
-              -- I need some way to access memory through a backdoor to be able to implement syscalls.
-              -- GRLIB_INTERNAL_END
-              assert false report "Not yet supported or tested" severity failure;
-              buf     := arg1;
-              len     := to_integer(unsigned(arg2));
-              newline := false;
-              while (len /= 0) loop 
-                i := 1; -- reset index
-                while (i <= len and (i <= BUFSIZE)) loop
-                  text_buf(i) := character'val(to_integer(unsigned(read_mem(buf, 8))));
-                  buf := buf + 1; -- Pointer arithmetic
-                  if not newline then
-                    newline := text_buf(i) = LF or text_buf(i) = CR;
-                  end if;
-
-                  i := i + 1;
-                  len := len - 1;
-                end loop;
-                text_buf(i) := NUL;
-              end loop;
+            -- I need some way to access memory through a backdoor to be able to implement syscalls.
             -- GRLIB_INTERNAL_END
-            when others => report "Unsupported  SYSCALL " & integer'image(which) severity warning;
-          end case;
+            assert false report "Not yet supported or tested" severity failure;
+            buf     := arg1;
+            len     := to_integer(unsigned(arg2));
+            newline := false;
+            while (len /= 0) loop
+              i := 1; -- reset index
+              while (i <= len and (i <= BUFSIZE)) loop
+                text_buf(i) := character'val(to_integer(unsigned(read_mem(buf, 8))));
+                buf := buf + 1; -- Pointer arithmetic
+                if not newline then
+                  newline := text_buf(i) = LF or text_buf(i) = CR;
+                end if;
+
+                i := i + 1;
+                len := len - 1;
+              end loop;
+              text_buf(i) := NUL;
+            end loop;
+          else
+            report "Unsupported  SYSCALL " & tost(which) severity warning;
+          end if;
         end if;
 
       -- Handle character device (device 1)
@@ -204,8 +202,7 @@ begin
             -- null terminate the line, i already incremented and one position left for nul
             text_buf(i) := NUL;
             -- print the buffer and restore counter
-            print("htif: " & text_buf & conts);
-            text_buf(1) := NUL;
+            print("htif: " & text_buf(1 to i) & conts);
             i := 1;
           else
             log_debug("Added character '" & char_output & "' to pos(" & tost(i) & ")");
@@ -219,5 +216,4 @@ begin
     end if;
   end process;
   -- pragma translate_on
-end htif;
-
+end rtl;

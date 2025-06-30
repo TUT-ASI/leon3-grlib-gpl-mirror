@@ -663,6 +663,8 @@ package riscv is
   constant CSR_SCOUNTEREN       : csratype := x"106";
   -- Supervisor Configuration
   constant CSR_SENVCFG          : csratype := x"10a";
+  -- Smcdeleg
+  constant CSR_SCOUNTINHIBIT     : csratype := x"120";
   -- Supervisor Trap Handling
   constant CSR_SSCRATCH         : csratype := x"140";
   constant CSR_SEPC             : csratype := x"141";
@@ -689,7 +691,7 @@ package riscv is
   constant CSR_SSTATEEN1        : csratype := x"10d";
   constant CSR_SSTATEEN2        : csratype := x"10e";
   constant CSR_SSTATEEN3        : csratype := x"10f";
- 
+
   constant CSR_STIMECMP         : csratype := x"14d";
   constant CSR_STIMECMPH        : csratype := x"15d";
   -- Supervisor Protection and Translation
@@ -700,6 +702,7 @@ package riscv is
   -- Hypervisor Trap Setup
   constant CSR_HSTATUS          : csratype := x"600";
   constant CSR_HEDELEG          : csratype := x"602";
+  constant CSR_HEDELEGH         : csratype := x"612";
   constant CSR_HIDELEG          : csratype := x"603";
   constant CSR_HIE              : csratype := x"604";
   constant CSR_HCOUNTEREN       : csratype := x"606";
@@ -1022,6 +1025,14 @@ package riscv is
   constant DCAUSE_GROUPHALT     : std_logic_vector(2 downto 0) := "110";
   constant DCAUSE_EXTENDED      : std_logic_vector(2 downto 0) := "111";
   constant EXTDCAUSE_CRITERROR  : std_logic_vector(2 downto 0) := "000";
+
+  -- Select ranges for Smcsrind/Sscsrind
+  constant CSRIND_SMAIA_IPRIO_LOW   : integer := 16#30#;
+  constant CSRIND_SMAIA_IPRIO_HIGH  : integer := 16#3F#;
+  constant CSRIND_SMCDELEG_LOW      : integer := 16#40#;
+  constant CSRIND_SMCDELEG_HIGH     : integer := 16#5F#;
+  constant CSRIND_IMSIC_LOW         : integer := 16#70#;
+  constant CSRIND_IMSIC_HIGH        : integer := 16#FF#;
 
   function rd(inst : std_logic_vector) return reg_t;
   function rs1(inst : std_logic_vector) return reg_t;

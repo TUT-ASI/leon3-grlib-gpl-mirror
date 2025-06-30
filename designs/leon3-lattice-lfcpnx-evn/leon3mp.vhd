@@ -42,6 +42,7 @@ use gaisler.canfd.all;
 use gaisler.subsys.all;
 use gaisler.hssl.all;
 use gaisler.spacewire.all;
+use gaisler.grlsedc_pkg.all;
 --pragma translate_off
 use gaisler.sim.all;
 library nexus_sim;
@@ -111,6 +112,7 @@ entity leon3mp is
     -- recommended for clarity. However, a clock constraint must be applied to
     -- tck. Note that if the Reveal debug inserter is to be used then these
     -- ports must be commented out and the AHBJTAG instantiation removed.
+    -- config.vhd must also be renamed.
     tck : in std_logic;
     tms : in std_logic;
     tdi : in std_logic;
@@ -179,6 +181,9 @@ architecture rtl of leon3mp is
   signal clkm, clk100, rstn, reset_in : std_ulogic;
   signal rstraw             : std_logic;
   signal lock               : std_logic;
+
+  signal cram_ue : std_ulogic;
+  signal ext_rstn : std_ulogic := '1';
 
   attribute keep                     : boolean;
   attribute keep of lock             : signal is true;
@@ -263,7 +268,8 @@ architecture rtl of leon3mp is
   constant pidx_grspw2      : integer := pidx_ahbstat + CFG_AHBSTAT;
   constant pidx_grcan       : integer := pidx_grspw2 + CFG_SPW_EN*CFG_SPW_NUM;
   constant pidx_grcanfd     : integer := pidx_grcan + CFG_GRCAN;
-  constant pidx_free        : integer := pidx_grcanfd + CFG_GRCANFD;
+  constant pidx_grlsedc     : integer := pidx_grcanfd + CFG_GRCANFD;
+  constant pidx_free        : integer := pidx_grlsedc + CFG_GRLSEDC;
 
 
   constant paddr_base       : integer :=  16#001#;  -- start position for addres allocation
@@ -282,7 +288,8 @@ architecture rtl of leon3mp is
   constant paddr_ahbstat     : integer :=  paddr_grgpio + CFG_GRGPIO_ENABLE*paddr_256byte; -- requires 256byte CFG_AHBSTAT
   constant paddr_grcan      : integer :=  (paddr_ahbstat/paddr_1kbyte + 1)*paddr_1kbyte;-- requires 1kbyte, CFG_GRGPIO_ENABLE doesn't matter as we need to go to the next 400 slot anyway
   constant paddr_grcanfd    : integer :=  (paddr_grcan/paddr_1kbyte + CFG_GRCAN)*paddr_1kbyte;-- requires 1kbyte
-  constant paddr_stat       : integer :=  (paddr_grcanfd/paddr_1kbyte + CFG_GRCANFD)*paddr_1kbyte; -- requires 1kbyte
+  constant paddr_grlsedc    : integer :=  paddr_grcanfd + CFG_GRCANFD*paddr_256byte; --- requires 256byte
+  constant paddr_stat       : integer :=  (paddr_grlsedc/paddr_1kbyte + CFG_GRLSEDC)*paddr_1kbyte; -- requires 1kbyte
   --CFG_NCPU
 
   component GSR
@@ -1189,6 +1196,24 @@ begin
 
     ahbmi_canfd(0) <= ahbmi;
     ahbmo(hmidx_grcanfd)       <= ahbmo_canfd(0);
+  end generate;
+
+  ----------------------------------------------------
+  -- GRLSEDC instantiation
+  ----------------------------------------------------
+  grlsedcgen: if CFG_GRLSEDC = 1 generate
+    grlsedc0: grlsedc
+      generic map(
+        pindex => pidx_grlsedc,
+        paddr  => paddr_grlsedc,
+        pmask  => 16#FFF#)
+      port map(
+        clk      => clkm,
+        rstn     => rstn,
+        ext_rstn => ext_rstn,
+        apbi     => apbi,
+        apbo     => apbo(pidx_grlsedc),
+        cram_ue  => cram_ue);
   end generate;
 
   nogrcanfdgen1 : if CFG_GRCANFD = 0 generate

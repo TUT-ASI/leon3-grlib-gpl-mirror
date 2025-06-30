@@ -644,7 +644,7 @@ set active_menus [list]
 set processed_top_level 0
 set ARCH sparc
 set menus_per_column 4
-set total_menus 16
+set total_menus 19
 
 proc toplevel_menu {num} {
 	if {$num == 4} then {return 3}
@@ -655,6 +655,9 @@ proc toplevel_menu {num} {
 	if {$num == 13} then {return 10}
 	if {$num == 14} then {return 10}
 	if {$num == 15} then {return 10}
+	if {$num == 16} then {return 10}
+	if {$num == 17} then {return 10}
+	if {$num == 18} then {return 10}
 	return $num
 }
 
@@ -2271,6 +2274,9 @@ proc menu10 {w title} {
 	submenu $w.config.f 10 1 "NANDFCTRL" 13
 	submenu $w.config.f 10 2 "Ethernet             " 14
 	submenu $w.config.f 10 3 "UARTs, timers and irq control         " 15
+	submenu $w.config.f 10 4 "SPW" 16
+	submenu $w.config.f 10 5 "CANFD" 17
+	submenu $w.config.f 10 6 "HSSL" 18
 
 
 
@@ -2593,15 +2599,17 @@ proc menu13 {w title} {
 	int $w.config.f 13 18 "ecc1_gfsize   " CONFIG_NFC2_ECC1_GFSIZE
 	int $w.config.f 13 19 "ecc1_chunk    " CONFIG_NFC2_ECC1_CHUNK
 	int $w.config.f 13 20 "ecc1_cap      " CONFIG_NFC2_ECC1_CAP
+	int $w.config.f 13 21 "rst_cycles    " CONFIG_NFC2_RST_CYCLES
+	int $w.config.f 13 22 "tag_size      " CONFIG_NFC2_TAG_SIZE
 	global tmpvar_14
-	minimenu $w.config.f 13 21 "GRSPW2 FIFO protection           " tmpvar_14 CONFIG_NFC2_FT_NONE
-	menu $w.config.f.x21.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
-	$w.config.f.x21.x.menu add radiobutton -label "None" -variable tmpvar_14 -value "None" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_14 -value "Parity-DMR" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "TMR" -variable tmpvar_14 -value "TMR" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "BCH" -variable tmpvar_14 -value "BCH" -command "update_active"
-	$w.config.f.x21.x.menu add radiobutton -label "TechSpec" -variable tmpvar_14 -value "TechSpec" -command "update_active"
-	menusplit $w $w.config.f.x21.x.menu 5
+	minimenu $w.config.f 13 23 "GRSPW2 FIFO protection           " tmpvar_14 CONFIG_NFC2_FT_NONE
+	menu $w.config.f.x23.x.menu -tearoffcommand "menutitle \"GRSPW2 FIFO protection           \""
+	$w.config.f.x23.x.menu add radiobutton -label "None" -variable tmpvar_14 -value "None" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "Parity-DMR" -variable tmpvar_14 -value "Parity-DMR" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "TMR" -variable tmpvar_14 -value "TMR" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "BCH" -variable tmpvar_14 -value "BCH" -command "update_active"
+	$w.config.f.x23.x.menu add radiobutton -label "TechSpec" -variable tmpvar_14 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x23.x.menu 5
 
 
 
@@ -2680,7 +2688,11 @@ proc update_menu13 {} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu13.config.f.x19.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x19.l configure -state normal; } else {.menu13.config.f.x19.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x19.l configure -state disabled}
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu13.config.f.x20.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x20.l configure -state normal; } else {.menu13.config.f.x20.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x20.l configure -state disabled}
-	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {configure_entry .menu13.config.f.x21 normal {x l}} else {configure_entry .menu13.config.f.x21 disabled {x l}}
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu13.config.f.x21.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x21.l configure -state normal; } else {.menu13.config.f.x21.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x21.l configure -state disabled}
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {.menu13.config.f.x22.x configure -state normal -foreground [ cget .ref -foreground ]; .menu13.config.f.x22.l configure -state normal; } else {.menu13.config.f.x22.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu13.config.f.x22.l configure -state disabled}
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {configure_entry .menu13.config.f.x23 normal {x l}} else {configure_entry .menu13.config.f.x23 disabled {x l}}
 }
 
 
@@ -2728,6 +2740,10 @@ proc update_define_menu13 {} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CHUNK "$CONFIG_NFC2_ECC1_CHUNK" 512}
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_ECC1_CAP "$CONFIG_NFC2_ECC1_CAP" 16}
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_RST_CYCLES "$CONFIG_NFC2_RST_CYCLES" 10}
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {validate_int CONFIG_NFC2_TAG_SIZE "$CONFIG_NFC2_TAG_SIZE" 0}
 	global tmpvar_14
 	global CONFIG_NFC2_FT_NONE
 	if {$tmpvar_14 == "None"} then {set CONFIG_NFC2_FT_NONE 1} else {set CONFIG_NFC2_FT_NONE 0}
@@ -2896,7 +2912,7 @@ proc menu15 {w title} {
 	wm title $w "UARTs, timers and irq control         " 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 15; break"
-	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 15; catch {destroy .menu10}; unregister_active 10; menu16 .menu16 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 15; menu16 .menu16 \"$title\""
 	frame $w.f
 	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 15"
@@ -2992,28 +3008,27 @@ proc update_define_menu15 {} {
 }
 
 
-menu_option menu16 16 "VHDL Debugging        "
 proc menu16 {w title} {
 	set oldFocus [focus]
+	catch {focus .menu10}
 	catch {destroy $w; unregister_active 16}
 	toplevel $w -class Dialog
 	wm withdraw $w
 	global active_menus
 	set active_menus [lsort -integer [linsert $active_menus end 16]]
 	message $w.m -width 400 -aspect 300 -text \
-		"VHDL Debugging        "  -relief raised
+		"SPW"  -relief raised
 	pack $w.m -pady 10 -side top -padx 10
-	wm title $w "VHDL Debugging        " 
+	wm title $w "SPW" 
 
 	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 16; break"
-	set nextscript "catch {focus $oldFocus}; menu17 .menu17 \"$title\""
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 16; menu17 .menu17 \"$title\""
 	frame $w.f
-	button $w.f.back -text "Main Menu" \
+	button $w.f.back -text "OK" \
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 16"
 	button $w.f.next -text "Next" -underline 0\
 		-width 15 -command $nextscript
-	$w.f.next configure -state disabled
-	bind all <Alt-n> "puts \"no more menus\" "
+	bind all <Alt-n> $nextscript
 	button $w.f.prev -text "Prev" -underline 0\
 		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 16; menu15 .menu15 \"$title\""
 	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 16; menu15 .menu15 \"$title\";break"
@@ -3044,7 +3059,575 @@ proc menu16 {w title} {
 	pack $w.config.canvas -side right -fill y
 
 
-	bool $w.config.f 16 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
+	bool $w.config.f 16 0 "Enable Spacewire routing switch               " CONFIG_SPWRTR_ENABLE
+	global tmpvar_16
+	minimenu $w.config.f 16 1 "Select SpaceWire link receiver input type " tmpvar_16 CONFIG_SPWRTR_RX_SDR
+	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Select SpaceWire link receiver input type \""
+	$w.config.f.x1.x.menu add radiobutton -label "SDR" -variable tmpvar_16 -value "SDR" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "DDR" -variable tmpvar_16 -value "DDR" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "XOR" -variable tmpvar_16 -value "XOR" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "XOR-ER1" -variable tmpvar_16 -value "XOR-ER1" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "XOR-ER2" -variable tmpvar_16 -value "XOR-ER2" -command "update_active"
+	$w.config.f.x1.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_16 -value "Aeroflex" -command "update_active"
+	menusplit $w $w.config.f.x1.x.menu 6
+	global tmpvar_17
+	minimenu $w.config.f 16 2 "Select SpaceWire link transmitter output type " tmpvar_17 CONFIG_SPW_TX_SDR
+	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Select SpaceWire link transmitter output type \""
+	$w.config.f.x2.x.menu add radiobutton -label "SDR" -variable tmpvar_17 -value "SDR" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "DDR" -variable tmpvar_17 -value "DDR" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "Aeroflex" -variable tmpvar_17 -value "Aeroflex" -command "update_active"
+	menusplit $w $w.config.f.x2.x.menu 3
+	bool $w.config.f 16 3 "SpaceWire link receiver and transmitter uses same clock  " CONFIG_SPWRTR_RTSAME
+	global tmpvar_18
+	minimenu $w.config.f 16 4 "Port receiver and transmitter FIFO size (SpW characters) " tmpvar_18 CONFIG_SPWRTR_RXFIFO16
+	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Port receiver and transmitter FIFO size (SpW characters) \""
+	$w.config.f.x4.x.menu add radiobutton -label "16" -variable tmpvar_18 -value "16" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_18 -value "32" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "64" -variable tmpvar_18 -value "64" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "128" -variable tmpvar_18 -value "128" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "256" -variable tmpvar_18 -value "256" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "512" -variable tmpvar_18 -value "512" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "1024" -variable tmpvar_18 -value "1024" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "2048" -variable tmpvar_18 -value "2048" -command "update_active"
+	menusplit $w $w.config.f.x4.x.menu 8
+	bool $w.config.f 16 5 "Use technology specific RAM blocks for routing table and port FIFOs" CONFIG_SPWRTR_TECHFIFO
+	global tmpvar_19
+	minimenu $w.config.f 16 6 "Select SpaceWire RAM fault-tolerance " tmpvar_19 CONFIG_SPWRTR_FT_NOFT
+	menu $w.config.f.x6.x.menu -tearoffcommand "menutitle \"Select SpaceWire RAM fault-tolerance \""
+	$w.config.f.x6.x.menu add radiobutton -label "NoFT" -variable tmpvar_19 -value "NoFT" -command "update_active"
+	$w.config.f.x6.x.menu add radiobutton -label "Parity" -variable tmpvar_19 -value "Parity" -command "update_active"
+	$w.config.f.x6.x.menu add radiobutton -label "TMR" -variable tmpvar_19 -value "TMR" -command "update_active"
+	menusplit $w $w.config.f.x6.x.menu 3
+	bool $w.config.f 16 7 "Enable Spacewire link ports " CONFIG_SPWRTR_SPWEN
+	int $w.config.f 16 8 "Number of SpaceWire link ports (0 - 31)" CONFIG_SPWRTR_SPWPORTS
+	bool $w.config.f 16 9 "Enable AMBA ports " CONFIG_SPWRTR_AMBAEN
+	int $w.config.f 16 10 "Number of AMBA ports (0 - 16)" CONFIG_SPWRTR_AMBAPORTS
+	bool $w.config.f 16 11 "Enable FIFO ports " CONFIG_SPWRTR_FIFOEN
+	int $w.config.f 16 12 "Number of FIFO ports (0 - 31)" CONFIG_SPWRTR_FIFOPORTS
+	global tmpvar_20
+	minimenu $w.config.f 16 13 "Select port arbitration " tmpvar_20 CONFIG_SPWRTR_ARB_RR
+	menu $w.config.f.x13.x.menu -tearoffcommand "menutitle \"Select port arbitration \""
+	$w.config.f.x13.x.menu add radiobutton -label "Round-robin" -variable tmpvar_20 -value "Round-robin" -command "update_active"
+	menusplit $w $w.config.f.x13.x.menu 1
+	bool $w.config.f 16 14 "Enable hardware RMAP target in AMBA ports   " CONFIG_SPWRTR_RMAP
+	global tmpvar_21
+	minimenu $w.config.f 16 15 "RMAP buffer size (bytes)    " tmpvar_21 CONFIG_SPWRTR_RMAPBUF2
+	menu $w.config.f.x15.x.menu -tearoffcommand "menutitle \"RMAP buffer size (bytes)    \""
+	$w.config.f.x15.x.menu add radiobutton -label "64" -variable tmpvar_21 -value "64" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "128" -variable tmpvar_21 -value "128" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "192" -variable tmpvar_21 -value "192" -command "update_active"
+	$w.config.f.x15.x.menu add radiobutton -label "256" -variable tmpvar_21 -value "256" -command "update_active"
+	menusplit $w $w.config.f.x15.x.menu 4
+	bool $w.config.f 16 16 "Enable RMAP CRC support in AMBA ports  " CONFIG_SPWRTR_RMAPCRC
+	bool $w.config.f 16 17 "Enable Rx unaligned transfers in AMBA ports" CONFIG_SPWRTR_RXUNAL
+	global tmpvar_22
+	minimenu $w.config.f 16 18 "AMBA port AHB RX/TX FIFO size (32-bit words)     " tmpvar_22 CONFIG_SPWRTR_FIFO2_4
+	menu $w.config.f.x18.x.menu -tearoffcommand "menutitle \"AMBA port AHB RX/TX FIFO size (32-bit words)     \""
+	$w.config.f.x18.x.menu add radiobutton -label "4" -variable tmpvar_22 -value "4" -command "update_active"
+	$w.config.f.x18.x.menu add radiobutton -label "8" -variable tmpvar_22 -value "8" -command "update_active"
+	$w.config.f.x18.x.menu add radiobutton -label "16" -variable tmpvar_22 -value "16" -command "update_active"
+	$w.config.f.x18.x.menu add radiobutton -label "32" -variable tmpvar_22 -value "32" -command "update_active"
+	menusplit $w $w.config.f.x18.x.menu 4
+	int $w.config.f 16 19 "FIFO port almost indication range" CONFIG_SPWRTR_ALMOST
+	int $w.config.f 16 20 "Number of DMA channels (1 - 4)" CONFIG_SPWRTR_DMACHAN
+	bool $w.config.f 16 21 "Enable configuration port AHB slave interface   " CONFIG_SPWRTR_AHBSLVEN
+	int $w.config.f 16 22 "Number of bits for Timer prescaler (0 disables timer) " CONFIG_SPWRTR_TIMERBITS
+	bool $w.config.f 16 23 "SpaceWire Plug and Play      " CONFIG_SPWRTR_PNP
+	bool $w.config.f 16 24 "Routing table Auto-scrubbing " CONFIG_SPWRTR_AUTOSCRUB
+
+
+
+	focus $w
+	update_active
+	global winx; global winy
+	if {[winfo exists .menu10] == 0} then {menu10 .menu10 "Peripherals             "}
+	set winx [expr [winfo x .menu10]+30]; set winy [expr [winfo y .menu10]+30]
+	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
+	update idletasks
+	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
+
+	$w.config.canvas configure \
+		-width [expr [winfo reqwidth $w.config.f] + 1]\
+		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
+			 [expr [winfo reqheight $w.config.f] + 1]"
+
+	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
+	set scry [expr [winfo screenh $w] / 2]
+	set maxy [expr [winfo screenh $w] * 3 / 4]
+	set canvtotal [expr [winfo reqh $w.config.f] + 2]
+	if [expr $winy + $canvtotal < $maxy] {
+		$w.config.canvas configure -height $canvtotal
+	} else {
+		$w.config.canvas configure -height [expr $scry - $winy]
+		}
+	}
+	update idletasks
+	if {[winfo exists $w]} then {
+	wm maxsize $w [winfo width $w] [winfo screenheight $w]
+	wm minsize $w [winfo width $w] 100
+
+	wm deiconify $w
+}
+}
+
+proc update_menu16 {} {
+	global CONFIG_SPWRTR_ENABLE
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x1 normal {x l}} else {configure_entry .menu16.config.f.x1 disabled {x l}}
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x2 normal {x l}} else {configure_entry .menu16.config.f.x2 disabled {x l}}
+	global CONFIG_SPWRTR_RTSAME
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x3 normal {n l y}} else {configure_entry .menu16.config.f.x3 disabled {y n l}}
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x4 normal {x l}} else {configure_entry .menu16.config.f.x4 disabled {x l}}
+	global CONFIG_SPWRTR_TECHFIFO
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x5 normal {n l y}} else {configure_entry .menu16.config.f.x5 disabled {y n l}}
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x6 normal {x l}} else {configure_entry .menu16.config.f.x6 disabled {x l}}
+	global CONFIG_SPWRTR_SPWEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x7 normal {n l y}} else {configure_entry .menu16.config.f.x7 disabled {y n l}}
+	global CONFIG_SPWRTR_SPWPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_SPWEN == 1)} then {.menu16.config.f.x8.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x8.l configure -state normal; } else {.menu16.config.f.x8.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x8.l configure -state disabled}
+	global CONFIG_SPWRTR_AMBAEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x9 normal {n l y}} else {configure_entry .menu16.config.f.x9 disabled {y n l}}
+	global CONFIG_SPWRTR_AMBAPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_AMBAEN == 1)} then {.menu16.config.f.x10.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x10.l configure -state normal; } else {.menu16.config.f.x10.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x10.l configure -state disabled}
+	global CONFIG_SPWRTR_FIFOEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x11 normal {n l y}} else {configure_entry .menu16.config.f.x11 disabled {y n l}}
+	global CONFIG_SPWRTR_FIFOPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_FIFOEN == 1)} then {.menu16.config.f.x12.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x12.l configure -state normal; } else {.menu16.config.f.x12.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x12.l configure -state disabled}
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x13 normal {x l}} else {configure_entry .menu16.config.f.x13 disabled {x l}}
+	global CONFIG_SPWRTR_RMAP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x14 normal {n l y}} else {configure_entry .menu16.config.f.x14 disabled {y n l}}
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_RMAP == 1)} then {configure_entry .menu16.config.f.x15 normal {x l}} else {configure_entry .menu16.config.f.x15 disabled {x l}}
+	global CONFIG_SPWRTR_RMAPCRC
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x16 normal {n l y}} else {configure_entry .menu16.config.f.x16 disabled {y n l}}
+	global CONFIG_SPWRTR_RXUNAL
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x17 normal {n l y}} else {configure_entry .menu16.config.f.x17 disabled {y n l}}
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {configure_entry .menu16.config.f.x18 normal {x l}} else {configure_entry .menu16.config.f.x18 disabled {x l}}
+	global CONFIG_SPWRTR_ALMOST
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {.menu16.config.f.x19.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x19.l configure -state normal; } else {.menu16.config.f.x19.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x19.l configure -state disabled}
+	global CONFIG_SPWRTR_DMACHAN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {.menu16.config.f.x20.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x20.l configure -state normal; } else {.menu16.config.f.x20.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x20.l configure -state disabled}
+	global CONFIG_SPWRTR_AHBSLVEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x21 normal {n l y}} else {configure_entry .menu16.config.f.x21 disabled {y n l}}
+	global CONFIG_SPWRTR_TIMERBITS
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {.menu16.config.f.x22.x configure -state normal -foreground [ cget .ref -foreground ]; .menu16.config.f.x22.l configure -state normal; } else {.menu16.config.f.x22.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu16.config.f.x22.l configure -state disabled}
+	global CONFIG_SPWRTR_PNP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x23 normal {n l y}} else {configure_entry .menu16.config.f.x23 disabled {y n l}}
+	global CONFIG_SPWRTR_AUTOSCRUB
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	configure_entry .menu16.config.f.x24 normal {n l y}} else {configure_entry .menu16.config.f.x24 disabled {y n l}}
+}
+
+
+proc update_define_menu16 {} {
+	update_define_mainmenu
+	global CONFIG_MODULES
+	global tmpvar_16
+	global CONFIG_SPWRTR_RX_SDR
+	if {$tmpvar_16 == "SDR"} then {set CONFIG_SPWRTR_RX_SDR 1} else {set CONFIG_SPWRTR_RX_SDR 0}
+	global CONFIG_SPWRTR_RX_DDR
+	if {$tmpvar_16 == "DDR"} then {set CONFIG_SPWRTR_RX_DDR 1} else {set CONFIG_SPWRTR_RX_DDR 0}
+	global CONFIG_SPWRTR_RX_XOR
+	if {$tmpvar_16 == "XOR"} then {set CONFIG_SPWRTR_RX_XOR 1} else {set CONFIG_SPWRTR_RX_XOR 0}
+	global CONFIG_SPWRTR_RX_XORER1
+	if {$tmpvar_16 == "XOR-ER1"} then {set CONFIG_SPWRTR_RX_XORER1 1} else {set CONFIG_SPWRTR_RX_XORER1 0}
+	global CONFIG_SPWRTR_RX_XORER2
+	if {$tmpvar_16 == "XOR-ER2"} then {set CONFIG_SPWRTR_RX_XORER2 1} else {set CONFIG_SPWRTR_RX_XORER2 0}
+	global CONFIG_SPWRTR_RX_AFLEX
+	if {$tmpvar_16 == "Aeroflex"} then {set CONFIG_SPWRTR_RX_AFLEX 1} else {set CONFIG_SPWRTR_RX_AFLEX 0}
+	global tmpvar_17
+	global CONFIG_SPW_TX_SDR
+	if {$tmpvar_17 == "SDR"} then {set CONFIG_SPW_TX_SDR 1} else {set CONFIG_SPW_TX_SDR 0}
+	global CONFIG_SPW_TX_DDR
+	if {$tmpvar_17 == "DDR"} then {set CONFIG_SPW_TX_DDR 1} else {set CONFIG_SPW_TX_DDR 0}
+	global CONFIG_SPW_TX_AFLEX
+	if {$tmpvar_17 == "Aeroflex"} then {set CONFIG_SPW_TX_AFLEX 1} else {set CONFIG_SPW_TX_AFLEX 0}
+	global CONFIG_SPWRTR_ENABLE
+	global CONFIG_SPWRTR_RTSAME
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_RTSAME [expr $CONFIG_SPWRTR_RTSAME&15]} else {set CONFIG_SPWRTR_RTSAME [expr $CONFIG_SPWRTR_RTSAME|16]}
+	global tmpvar_18
+	global CONFIG_SPWRTR_RXFIFO16
+	if {$tmpvar_18 == "16"} then {set CONFIG_SPWRTR_RXFIFO16 1} else {set CONFIG_SPWRTR_RXFIFO16 0}
+	global CONFIG_SPWRTR_RXFIFO32
+	if {$tmpvar_18 == "32"} then {set CONFIG_SPWRTR_RXFIFO32 1} else {set CONFIG_SPWRTR_RXFIFO32 0}
+	global CONFIG_SPWRTR_RXFIFO64
+	if {$tmpvar_18 == "64"} then {set CONFIG_SPWRTR_RXFIFO64 1} else {set CONFIG_SPWRTR_RXFIFO64 0}
+	global CONFIG_SPWRTR_RXFIFO128
+	if {$tmpvar_18 == "128"} then {set CONFIG_SPWRTR_RXFIFO128 1} else {set CONFIG_SPWRTR_RXFIFO128 0}
+	global CONFIG_SPWRTR_RXFIFO256
+	if {$tmpvar_18 == "256"} then {set CONFIG_SPWRTR_RXFIFO256 1} else {set CONFIG_SPWRTR_RXFIFO256 0}
+	global CONFIG_SPWRTR_RXFIFO512
+	if {$tmpvar_18 == "512"} then {set CONFIG_SPWRTR_RXFIFO512 1} else {set CONFIG_SPWRTR_RXFIFO512 0}
+	global CONFIG_SPWRTR_RXFIFO1024
+	if {$tmpvar_18 == "1024"} then {set CONFIG_SPWRTR_RXFIFO1024 1} else {set CONFIG_SPWRTR_RXFIFO1024 0}
+	global CONFIG_SPWRTR_RXFIFO2048
+	if {$tmpvar_18 == "2048"} then {set CONFIG_SPWRTR_RXFIFO2048 1} else {set CONFIG_SPWRTR_RXFIFO2048 0}
+	global CONFIG_SPWRTR_TECHFIFO
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_TECHFIFO [expr $CONFIG_SPWRTR_TECHFIFO&15]} else {set CONFIG_SPWRTR_TECHFIFO [expr $CONFIG_SPWRTR_TECHFIFO|16]}
+	global tmpvar_19
+	global CONFIG_SPWRTR_FT_NOFT
+	if {$tmpvar_19 == "NoFT"} then {set CONFIG_SPWRTR_FT_NOFT 1} else {set CONFIG_SPWRTR_FT_NOFT 0}
+	global CONFIG_SPWRTR_FT_PAR
+	if {$tmpvar_19 == "Parity"} then {set CONFIG_SPWRTR_FT_PAR 1} else {set CONFIG_SPWRTR_FT_PAR 0}
+	global CONFIG_SPWRTR_FT_TMR
+	if {$tmpvar_19 == "TMR"} then {set CONFIG_SPWRTR_FT_TMR 1} else {set CONFIG_SPWRTR_FT_TMR 0}
+	global CONFIG_SPWRTR_SPWEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_SPWEN [expr $CONFIG_SPWRTR_SPWEN&15]} else {set CONFIG_SPWRTR_SPWEN [expr $CONFIG_SPWRTR_SPWEN|16]}
+	global CONFIG_SPWRTR_SPWPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_SPWEN == 1)} then {validate_int CONFIG_SPWRTR_SPWPORTS "$CONFIG_SPWRTR_SPWPORTS" 2}
+	global CONFIG_SPWRTR_AMBAEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_AMBAEN [expr $CONFIG_SPWRTR_AMBAEN&15]} else {set CONFIG_SPWRTR_AMBAEN [expr $CONFIG_SPWRTR_AMBAEN|16]}
+	global CONFIG_SPWRTR_AMBAPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_AMBAEN == 1)} then {validate_int CONFIG_SPWRTR_AMBAPORTS "$CONFIG_SPWRTR_AMBAPORTS" 0}
+	global CONFIG_SPWRTR_FIFOEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_FIFOEN [expr $CONFIG_SPWRTR_FIFOEN&15]} else {set CONFIG_SPWRTR_FIFOEN [expr $CONFIG_SPWRTR_FIFOEN|16]}
+	global CONFIG_SPWRTR_FIFOPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_FIFOEN == 1)} then {validate_int CONFIG_SPWRTR_FIFOPORTS "$CONFIG_SPWRTR_FIFOPORTS" 0}
+	global tmpvar_20
+	global CONFIG_SPWRTR_ARB_RR
+	if {$tmpvar_20 == "Round-robin"} then {set CONFIG_SPWRTR_ARB_RR 1} else {set CONFIG_SPWRTR_ARB_RR 0}
+	global CONFIG_SPWRTR_RMAP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_RMAP [expr $CONFIG_SPWRTR_RMAP&15]} else {set CONFIG_SPWRTR_RMAP [expr $CONFIG_SPWRTR_RMAP|16]}
+	global tmpvar_21
+	global CONFIG_SPWRTR_RMAPBUF2
+	if {$tmpvar_21 == "64"} then {set CONFIG_SPWRTR_RMAPBUF2 1} else {set CONFIG_SPWRTR_RMAPBUF2 0}
+	global CONFIG_SPWRTR_RMAPBUF4
+	if {$tmpvar_21 == "128"} then {set CONFIG_SPWRTR_RMAPBUF4 1} else {set CONFIG_SPWRTR_RMAPBUF4 0}
+	global CONFIG_SPWRTR_RMAPBUF6
+	if {$tmpvar_21 == "192"} then {set CONFIG_SPWRTR_RMAPBUF6 1} else {set CONFIG_SPWRTR_RMAPBUF6 0}
+	global CONFIG_SPWRTR_RMAPBUF8
+	if {$tmpvar_21 == "256"} then {set CONFIG_SPWRTR_RMAPBUF8 1} else {set CONFIG_SPWRTR_RMAPBUF8 0}
+	global CONFIG_SPWRTR_RMAPCRC
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_RMAPCRC [expr $CONFIG_SPWRTR_RMAPCRC&15]} else {set CONFIG_SPWRTR_RMAPCRC [expr $CONFIG_SPWRTR_RMAPCRC|16]}
+	global CONFIG_SPWRTR_RXUNAL
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_RXUNAL [expr $CONFIG_SPWRTR_RXUNAL&15]} else {set CONFIG_SPWRTR_RXUNAL [expr $CONFIG_SPWRTR_RXUNAL|16]}
+	global tmpvar_22
+	global CONFIG_SPWRTR_FIFO2_4
+	if {$tmpvar_22 == "4"} then {set CONFIG_SPWRTR_FIFO2_4 1} else {set CONFIG_SPWRTR_FIFO2_4 0}
+	global CONFIG_SPWRTR_FIFO2_8
+	if {$tmpvar_22 == "8"} then {set CONFIG_SPWRTR_FIFO2_8 1} else {set CONFIG_SPWRTR_FIFO2_8 0}
+	global CONFIG_SPWRTR_FIFO2_16
+	if {$tmpvar_22 == "16"} then {set CONFIG_SPWRTR_FIFO2_16 1} else {set CONFIG_SPWRTR_FIFO2_16 0}
+	global CONFIG_SPWRTR_FIFO2_32
+	if {$tmpvar_22 == "32"} then {set CONFIG_SPWRTR_FIFO2_32 1} else {set CONFIG_SPWRTR_FIFO2_32 0}
+	global CONFIG_SPWRTR_ALMOST
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {validate_int CONFIG_SPWRTR_ALMOST "$CONFIG_SPWRTR_ALMOST" 8}
+	global CONFIG_SPWRTR_DMACHAN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {validate_int CONFIG_SPWRTR_DMACHAN "$CONFIG_SPWRTR_DMACHAN" 1}
+	global CONFIG_SPWRTR_AHBSLVEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_AHBSLVEN [expr $CONFIG_SPWRTR_AHBSLVEN&15]} else {set CONFIG_SPWRTR_AHBSLVEN [expr $CONFIG_SPWRTR_AHBSLVEN|16]}
+	global CONFIG_SPWRTR_TIMERBITS
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {validate_int CONFIG_SPWRTR_TIMERBITS "$CONFIG_SPWRTR_TIMERBITS" 0}
+	global CONFIG_SPWRTR_PNP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_PNP [expr $CONFIG_SPWRTR_PNP&15]} else {set CONFIG_SPWRTR_PNP [expr $CONFIG_SPWRTR_PNP|16]}
+	global CONFIG_SPWRTR_AUTOSCRUB
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	set CONFIG_SPWRTR_AUTOSCRUB [expr $CONFIG_SPWRTR_AUTOSCRUB&15]} else {set CONFIG_SPWRTR_AUTOSCRUB [expr $CONFIG_SPWRTR_AUTOSCRUB|16]}
+}
+
+
+proc menu17 {w title} {
+	set oldFocus [focus]
+	catch {focus .menu10}
+	catch {destroy $w; unregister_active 17}
+	toplevel $w -class Dialog
+	wm withdraw $w
+	global active_menus
+	set active_menus [lsort -integer [linsert $active_menus end 17]]
+	message $w.m -width 400 -aspect 300 -text \
+		"CANFD"  -relief raised
+	pack $w.m -pady 10 -side top -padx 10
+	wm title $w "CANFD" 
+
+	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 17; break"
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 17; menu18 .menu18 \"$title\""
+	frame $w.f
+	button $w.f.back -text "OK" \
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 17"
+	button $w.f.next -text "Next" -underline 0\
+		-width 15 -command $nextscript
+	bind all <Alt-n> $nextscript
+	button $w.f.prev -text "Prev" -underline 0\
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 17; menu16 .menu16 \"$title\""
+	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 17; menu16 .menu16 \"$title\";break"
+	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
+	pack $w.f -pady 10 -side bottom -anchor w -fill x
+	frame $w.topline -relief ridge -borderwidth 2 -height 2
+	pack $w.topline -side top -fill x
+
+	frame $w.botline -relief ridge -borderwidth 2 -height 2
+	pack $w.botline -side bottom -fill x
+
+	frame $w.config
+	pack $w.config -fill y -expand on
+
+	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
+	pack $w.config.vscroll -side right -fill y
+
+	canvas $w.config.canvas -height 1\
+		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
+		-width [expr [winfo screenwidth .] * 1 / 2] 
+	frame $w.config.f
+	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
+	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
+	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
+	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
+	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
+	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
+	pack $w.config.canvas -side right -fill y
+
+
+	bool $w.config.f 17 0 "Enable GRCANFD interface               " CONFIG_GRCANFD_ENABLE
+	int $w.config.f 17 1 "Interrupt number                      " CONFIG_GRCANFDIRQ
+	bool $w.config.f 17 2 "Enable single common interrupt       " CONFIG_GRCANFDSINGLE
+
+
+
+	focus $w
+	update_active
+	global winx; global winy
+	if {[winfo exists .menu10] == 0} then {menu10 .menu10 "Peripherals             "}
+	set winx [expr [winfo x .menu10]+30]; set winy [expr [winfo y .menu10]+30]
+	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
+	update idletasks
+	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
+
+	$w.config.canvas configure \
+		-width [expr [winfo reqwidth $w.config.f] + 1]\
+		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
+			 [expr [winfo reqheight $w.config.f] + 1]"
+
+	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
+	set scry [expr [winfo screenh $w] / 2]
+	set maxy [expr [winfo screenh $w] * 3 / 4]
+	set canvtotal [expr [winfo reqh $w.config.f] + 2]
+	if [expr $winy + $canvtotal < $maxy] {
+		$w.config.canvas configure -height $canvtotal
+	} else {
+		$w.config.canvas configure -height [expr $scry - $winy]
+		}
+	}
+	update idletasks
+	if {[winfo exists $w]} then {
+	wm maxsize $w [winfo width $w] [winfo screenheight $w]
+	wm minsize $w [winfo width $w] 100
+
+	wm deiconify $w
+}
+}
+
+proc update_menu17 {} {
+	global CONFIG_GRCANFD_ENABLE
+	global CONFIG_GRCANFDIRQ
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {.menu17.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu17.config.f.x1.l configure -state normal; } else {.menu17.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu17.config.f.x1.l configure -state disabled}
+	global CONFIG_GRCANFDSINGLE
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {
+	configure_entry .menu17.config.f.x2 normal {n l y}} else {configure_entry .menu17.config.f.x2 disabled {y n l}}
+}
+
+
+proc update_define_menu17 {} {
+	update_define_mainmenu
+	global CONFIG_MODULES
+	global CONFIG_GRCANFD_ENABLE
+	global CONFIG_GRCANFDIRQ
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {validate_int CONFIG_GRCANFDIRQ "$CONFIG_GRCANFDIRQ" 13}
+	global CONFIG_GRCANFDSINGLE
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {
+	set CONFIG_GRCANFDSINGLE [expr $CONFIG_GRCANFDSINGLE&15]} else {set CONFIG_GRCANFDSINGLE [expr $CONFIG_GRCANFDSINGLE|16]}
+}
+
+
+proc menu18 {w title} {
+	set oldFocus [focus]
+	catch {focus .menu10}
+	catch {destroy $w; unregister_active 18}
+	toplevel $w -class Dialog
+	wm withdraw $w
+	global active_menus
+	set active_menus [lsort -integer [linsert $active_menus end 18]]
+	message $w.m -width 400 -aspect 300 -text \
+		"HSSL"  -relief raised
+	pack $w.m -pady 10 -side top -padx 10
+	wm title $w "HSSL" 
+
+	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 18; break"
+	set nextscript "catch {focus $oldFocus}; destroy $w; unregister_active 18; catch {destroy .menu10}; unregister_active 10; menu19 .menu19 \"$title\""
+	frame $w.f
+	button $w.f.back -text "OK" \
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 18"
+	button $w.f.next -text "Next" -underline 0\
+		-width 15 -command $nextscript
+	bind all <Alt-n> $nextscript
+	button $w.f.prev -text "Prev" -underline 0\
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 18; menu17 .menu17 \"$title\""
+	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 18; menu17 .menu17 \"$title\";break"
+	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
+	pack $w.f -pady 10 -side bottom -anchor w -fill x
+	frame $w.topline -relief ridge -borderwidth 2 -height 2
+	pack $w.topline -side top -fill x
+
+	frame $w.botline -relief ridge -borderwidth 2 -height 2
+	pack $w.botline -side bottom -fill x
+
+	frame $w.config
+	pack $w.config -fill y -expand on
+
+	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
+	pack $w.config.vscroll -side right -fill y
+
+	canvas $w.config.canvas -height 1\
+		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
+		-width [expr [winfo screenwidth .] * 1 / 2] 
+	frame $w.config.f
+	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
+	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
+	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
+	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
+	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
+	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
+	pack $w.config.canvas -side right -fill y
+
+
+	bool $w.config.f 18 0 "Enable High-Speed Serial Link         " CONFIG_GRHSSL_ENABLE
+	int $w.config.f 18 1 "Number of High-Speed Serial Links     " CONFIG_GRHSSL_NUM
+	bool $w.config.f 18 2 "Enable internal SpaceFibre codec      " CONFIG_GRHSSL_SPFI
+	bool $w.config.f 18 3 "Enable internal WizardLink codec      " CONFIG_GRHSSL_WIZL
+
+
+
+	focus $w
+	update_active
+	global winx; global winy
+	if {[winfo exists .menu10] == 0} then {menu10 .menu10 "Peripherals             "}
+	set winx [expr [winfo x .menu10]+30]; set winy [expr [winfo y .menu10]+30]
+	if {[winfo exists $w]} then {wm geometry $w +$winx+$winy}
+	update idletasks
+	if {[winfo exists $w]} then  {$w.config.canvas create window 0 0 -anchor nw -window $w.config.f
+
+	$w.config.canvas configure \
+		-width [expr [winfo reqwidth $w.config.f] + 1]\
+		-scrollregion "-1 -1 [expr [winfo reqwidth $w.config.f] + 1] \
+			 [expr [winfo reqheight $w.config.f] + 1]"
+
+	set winy [expr [winfo reqh $w] - [winfo reqh $w.config.canvas]]
+	set scry [expr [winfo screenh $w] / 2]
+	set maxy [expr [winfo screenh $w] * 3 / 4]
+	set canvtotal [expr [winfo reqh $w.config.f] + 2]
+	if [expr $winy + $canvtotal < $maxy] {
+		$w.config.canvas configure -height $canvtotal
+	} else {
+		$w.config.canvas configure -height [expr $scry - $winy]
+		}
+	}
+	update idletasks
+	if {[winfo exists $w]} then {
+	wm maxsize $w [winfo width $w] [winfo screenheight $w]
+	wm minsize $w [winfo width $w] 100
+
+	wm deiconify $w
+}
+}
+
+proc update_menu18 {} {
+	global CONFIG_GRHSSL_ENABLE
+	global CONFIG_GRHSSL_NUM
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {.menu18.config.f.x1.x configure -state normal -foreground [ cget .ref -foreground ]; .menu18.config.f.x1.l configure -state normal; } else {.menu18.config.f.x1.x configure -state disabled -foreground [ cget .ref -disabledforeground ]; .menu18.config.f.x1.l configure -state disabled}
+	global CONFIG_GRHSSL_SPFI
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {
+	configure_entry .menu18.config.f.x2 normal {n l y}} else {configure_entry .menu18.config.f.x2 disabled {y n l}}
+	global CONFIG_GRHSSL_WIZL
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {
+	configure_entry .menu18.config.f.x3 normal {n l y}} else {configure_entry .menu18.config.f.x3 disabled {y n l}}
+}
+
+
+proc update_define_menu18 {} {
+	update_define_mainmenu
+	global CONFIG_MODULES
+	global CONFIG_GRHSSL_ENABLE
+	global CONFIG_GRHSSL_NUM
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {validate_int CONFIG_GRHSSL_NUM "$CONFIG_GRHSSL_NUM" 1}
+	global CONFIG_GRHSSL_SPFI
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {
+	set CONFIG_GRHSSL_SPFI [expr $CONFIG_GRHSSL_SPFI&15]} else {set CONFIG_GRHSSL_SPFI [expr $CONFIG_GRHSSL_SPFI|16]}
+	global CONFIG_GRHSSL_WIZL
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {
+	set CONFIG_GRHSSL_WIZL [expr $CONFIG_GRHSSL_WIZL&15]} else {set CONFIG_GRHSSL_WIZL [expr $CONFIG_GRHSSL_WIZL|16]}
+}
+
+
+menu_option menu19 19 "VHDL Debugging        "
+proc menu19 {w title} {
+	set oldFocus [focus]
+	catch {destroy $w; unregister_active 19}
+	toplevel $w -class Dialog
+	wm withdraw $w
+	global active_menus
+	set active_menus [lsort -integer [linsert $active_menus end 19]]
+	message $w.m -width 400 -aspect 300 -text \
+		"VHDL Debugging        "  -relief raised
+	pack $w.m -pady 10 -side top -padx 10
+	wm title $w "VHDL Debugging        " 
+
+	bind $w <Escape> "catch {focus $oldFocus}; destroy $w; unregister_active 19; break"
+	set nextscript "catch {focus $oldFocus}; menu20 .menu20 \"$title\""
+	frame $w.f
+	button $w.f.back -text "Main Menu" \
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 19"
+	button $w.f.next -text "Next" -underline 0\
+		-width 15 -command $nextscript
+	$w.f.next configure -state disabled
+	bind all <Alt-n> "puts \"no more menus\" "
+	button $w.f.prev -text "Prev" -underline 0\
+		-width 15 -command "catch {focus $oldFocus}; destroy $w; unregister_active 19; menu18 .menu18 \"$title\""
+	bind $w <Alt-p> "catch {focus $oldFocus}; destroy $w; unregister_active 19; menu18 .menu18 \"$title\";break"
+	pack $w.f.back $w.f.next $w.f.prev -side left -expand on
+	pack $w.f -pady 10 -side bottom -anchor w -fill x
+	frame $w.topline -relief ridge -borderwidth 2 -height 2
+	pack $w.topline -side top -fill x
+
+	frame $w.botline -relief ridge -borderwidth 2 -height 2
+	pack $w.botline -side bottom -fill x
+
+	frame $w.config
+	pack $w.config -fill y -expand on
+
+	scrollbar $w.config.vscroll -command "$w.config.canvas yview"
+	pack $w.config.vscroll -side right -fill y
+
+	canvas $w.config.canvas -height 1\
+		-relief flat -borderwidth 0 -yscrollcommand "$w.config.vscroll set" \
+		-width [expr [winfo screenwidth .] * 1 / 2] 
+	frame $w.config.f
+	bind $w <Key-Down> "$w.config.canvas yview scroll  1 unit;break;"
+	bind $w <Key-Up> "$w.config.canvas yview scroll  -1 unit;break;"
+	bind $w <Key-Next> "$w.config.canvas yview scroll  1 page;break;"
+	bind $w <Key-Prior> "$w.config.canvas yview scroll  -1 page;break;"
+	bind $w <Key-Home> "$w.config.canvas yview moveto 0;break;"
+	bind $w <Key-End> "$w.config.canvas yview moveto 1 ;break;"
+	pack $w.config.canvas -side right -fill y
+
+
+	bool $w.config.f 19 0 "Accelerated UART tracing       " CONFIG_DEBUG_UART
 
 
 
@@ -3080,11 +3663,11 @@ proc menu16 {w title} {
 }
 }
 
-proc update_menu16 {} {
+proc update_menu19 {} {
 }
 
 
-proc update_define_menu16 {} {
+proc update_define_menu19 {} {
 	update_define_mainmenu
 	global CONFIG_MODULES
 }
@@ -3300,6 +3883,8 @@ set CONFIG_NFC2_ECC0_CAP 60
 set CONFIG_NFC2_ECC1_GFSIZE 13
 set CONFIG_NFC2_ECC1_CHUNK 512
 set CONFIG_NFC2_ECC1_CAP 16
+set CONFIG_NFC2_RST_CYCLES 10
+set CONFIG_NFC2_TAG_SIZE 0
 set tmpvar_14 "(not set)"
 set CONFIG_NFC2_FT_NONE 0
 set CONFIG_NFC2_FT_DMR 0
@@ -3319,6 +3904,67 @@ set CONFIG_GRETH_PHY_ADDR 1
 set CONFIG_GRGPIO_ENABLE 0
 set CONFIG_GRGPIO_WIDTH 8
 set CONFIG_GRGPIO_IMASK 0000
+set CONFIG_SPWRTR_ENABLE 0
+set tmpvar_16 "(not set)"
+set CONFIG_SPWRTR_RX_SDR 0
+set CONFIG_SPWRTR_RX_DDR 0
+set CONFIG_SPWRTR_RX_XOR 0
+set CONFIG_SPWRTR_RX_XORER1 0
+set CONFIG_SPWRTR_RX_XORER2 0
+set CONFIG_SPWRTR_RX_AFLEX 0
+set tmpvar_17 "(not set)"
+set CONFIG_SPW_TX_SDR 0
+set CONFIG_SPW_TX_DDR 0
+set CONFIG_SPW_TX_AFLEX 0
+set CONFIG_SPWRTR_RTSAME 0
+set tmpvar_18 "(not set)"
+set CONFIG_SPWRTR_RXFIFO16 0
+set CONFIG_SPWRTR_RXFIFO32 0
+set CONFIG_SPWRTR_RXFIFO64 0
+set CONFIG_SPWRTR_RXFIFO128 0
+set CONFIG_SPWRTR_RXFIFO256 0
+set CONFIG_SPWRTR_RXFIFO512 0
+set CONFIG_SPWRTR_RXFIFO1024 0
+set CONFIG_SPWRTR_RXFIFO2048 0
+set CONFIG_SPWRTR_TECHFIFO 0
+set tmpvar_19 "(not set)"
+set CONFIG_SPWRTR_FT_NOFT 0
+set CONFIG_SPWRTR_FT_PAR 0
+set CONFIG_SPWRTR_FT_TMR 0
+set CONFIG_SPWRTR_SPWEN 0
+set CONFIG_SPWRTR_SPWPORTS 2
+set CONFIG_SPWRTR_AMBAEN 0
+set CONFIG_SPWRTR_AMBAPORTS 0
+set CONFIG_SPWRTR_FIFOEN 0
+set CONFIG_SPWRTR_FIFOPORTS 0
+set tmpvar_20 "(not set)"
+set CONFIG_SPWRTR_ARB_RR 0
+set CONFIG_SPWRTR_RMAP 0
+set tmpvar_21 "(not set)"
+set CONFIG_SPWRTR_RMAPBUF2 0
+set CONFIG_SPWRTR_RMAPBUF4 0
+set CONFIG_SPWRTR_RMAPBUF6 0
+set CONFIG_SPWRTR_RMAPBUF8 0
+set CONFIG_SPWRTR_RMAPCRC 0
+set CONFIG_SPWRTR_RXUNAL 0
+set tmpvar_22 "(not set)"
+set CONFIG_SPWRTR_FIFO2_4 0
+set CONFIG_SPWRTR_FIFO2_8 0
+set CONFIG_SPWRTR_FIFO2_16 0
+set CONFIG_SPWRTR_FIFO2_32 0
+set CONFIG_SPWRTR_ALMOST 8
+set CONFIG_SPWRTR_DMACHAN 1
+set CONFIG_SPWRTR_AHBSLVEN 0
+set CONFIG_SPWRTR_TIMERBITS 0
+set CONFIG_SPWRTR_PNP 0
+set CONFIG_SPWRTR_AUTOSCRUB 0
+set CONFIG_GRCANFD_ENABLE 0
+set CONFIG_GRCANFDIRQ 13
+set CONFIG_GRCANFDSINGLE 0
+set CONFIG_GRHSSL_ENABLE 0
+set CONFIG_GRHSSL_NUM 1
+set CONFIG_GRHSSL_SPFI 0
+set CONFIG_GRHSSL_WIZL 0
 set CONFIG_DEBUG_UART 0
 set CONFIG_HAS_SHARED_GRFPU 4
 set CONFIG_SYN_ARTISAN 4
@@ -3713,6 +4359,10 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CHUNK $CONFIG_NFC2_ECC1_CHUNK $notmod }
 	global CONFIG_NFC2_ECC1_CAP
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_ECC1_CAP $CONFIG_NFC2_ECC1_CAP $notmod }
+	global CONFIG_NFC2_RST_CYCLES
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_RST_CYCLES $CONFIG_NFC2_RST_CYCLES $notmod }
+	global CONFIG_NFC2_TAG_SIZE
+	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_NFC2_TAG_SIZE $CONFIG_NFC2_TAG_SIZE $notmod }
 	global tmpvar_14
 	if {($CONFIG_NANDFCTRL2_ENABLE == 1)} then {
 	if { $tmpvar_14 == "None" } then { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_NFC2_FT_NONE 0 [list $notmod] 2 }
@@ -3742,6 +4392,102 @@ proc writeconfig {file1 file2} {
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRGPIO_WIDTH $CONFIG_GRGPIO_WIDTH $notmod }
 	global CONFIG_GRGPIO_IMASK
 	if {($CONFIG_GRGPIO_ENABLE == 1)} then {write_hex $cfg $autocfg CONFIG_GRGPIO_IMASK $CONFIG_GRGPIO_IMASK $notmod }
+	write_comment $cfg $autocfg "SPW"
+	global CONFIG_SPWRTR_ENABLE
+	write_tristate $cfg $autocfg CONFIG_SPWRTR_ENABLE $CONFIG_SPWRTR_ENABLE [list $notmod] 2
+	global tmpvar_16
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_16 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_SDR 0 [list $notmod] 2 }
+	if { $tmpvar_16 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_DDR 0 [list $notmod] 2 }
+	if { $tmpvar_16 == "XOR" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XOR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XOR 0 [list $notmod] 2 }
+	if { $tmpvar_16 == "XOR-ER1" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XORER1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XORER1 0 [list $notmod] 2 }
+	if { $tmpvar_16 == "XOR-ER2" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XORER2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_XORER2 0 [list $notmod] 2 }
+	if { $tmpvar_16 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RX_AFLEX 0 [list $notmod] 2 }}
+	global tmpvar_17
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_17 == "SDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_SDR 0 [list $notmod] 2 }
+	if { $tmpvar_17 == "DDR" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_DDR 0 [list $notmod] 2 }
+	if { $tmpvar_17 == "Aeroflex" } then { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPW_TX_AFLEX 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_RTSAME
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_RTSAME $CONFIG_SPWRTR_RTSAME [list $notmod] 2 }
+	global tmpvar_18
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_18 == "16" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO16 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "32" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO32 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "64" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO64 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO64 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "128" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO128 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO128 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "256" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO256 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO256 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "512" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO512 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO512 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "1024" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO1024 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO1024 0 [list $notmod] 2 }
+	if { $tmpvar_18 == "2048" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO2048 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RXFIFO2048 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_TECHFIFO
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_TECHFIFO $CONFIG_SPWRTR_TECHFIFO [list $notmod] 2 }
+	global tmpvar_19
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_19 == "NoFT" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_NOFT 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_NOFT 0 [list $notmod] 2 }
+	if { $tmpvar_19 == "Parity" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_PAR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_PAR 0 [list $notmod] 2 }
+	if { $tmpvar_19 == "TMR" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_TMR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FT_TMR 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_SPWEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_SPWEN $CONFIG_SPWRTR_SPWEN [list $notmod] 2 }
+	global CONFIG_SPWRTR_SPWPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_SPWEN == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_SPWPORTS $CONFIG_SPWRTR_SPWPORTS $notmod }
+	global CONFIG_SPWRTR_AMBAEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_AMBAEN $CONFIG_SPWRTR_AMBAEN [list $notmod] 2 }
+	global CONFIG_SPWRTR_AMBAPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_AMBAEN == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_AMBAPORTS $CONFIG_SPWRTR_AMBAPORTS $notmod }
+	global CONFIG_SPWRTR_FIFOEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFOEN $CONFIG_SPWRTR_FIFOEN [list $notmod] 2 }
+	global CONFIG_SPWRTR_FIFOPORTS
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_FIFOEN == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_FIFOPORTS $CONFIG_SPWRTR_FIFOPORTS $notmod }
+	global tmpvar_20
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_20 == "Round-robin" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_ARB_RR 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_ARB_RR 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_RMAP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAP $CONFIG_SPWRTR_RMAP [list $notmod] 2 }
+	global tmpvar_21
+	if {($CONFIG_SPWRTR_ENABLE == 1) && ($CONFIG_SPWRTR_RMAP == 1)} then {
+	if { $tmpvar_21 == "64" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF2 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF2 0 [list $notmod] 2 }
+	if { $tmpvar_21 == "128" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF4 0 [list $notmod] 2 }
+	if { $tmpvar_21 == "192" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF6 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF6 0 [list $notmod] 2 }
+	if { $tmpvar_21 == "256" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPBUF8 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_RMAPCRC
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_RMAPCRC $CONFIG_SPWRTR_RMAPCRC [list $notmod] 2 }
+	global CONFIG_SPWRTR_RXUNAL
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_RXUNAL $CONFIG_SPWRTR_RXUNAL [list $notmod] 2 }
+	global tmpvar_22
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {
+	if { $tmpvar_22 == "4" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_4 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_4 0 [list $notmod] 2 }
+	if { $tmpvar_22 == "8" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_8 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_8 0 [list $notmod] 2 }
+	if { $tmpvar_22 == "16" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_16 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_16 0 [list $notmod] 2 }
+	if { $tmpvar_22 == "32" } then { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_32 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_SPWRTR_FIFO2_32 0 [list $notmod] 2 }}
+	global CONFIG_SPWRTR_ALMOST
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_ALMOST $CONFIG_SPWRTR_ALMOST $notmod }
+	global CONFIG_SPWRTR_DMACHAN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_DMACHAN $CONFIG_SPWRTR_DMACHAN $notmod }
+	global CONFIG_SPWRTR_AHBSLVEN
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_AHBSLVEN $CONFIG_SPWRTR_AHBSLVEN [list $notmod] 2 }
+	global CONFIG_SPWRTR_TIMERBITS
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_SPWRTR_TIMERBITS $CONFIG_SPWRTR_TIMERBITS $notmod }
+	global CONFIG_SPWRTR_PNP
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_PNP $CONFIG_SPWRTR_PNP [list $notmod] 2 }
+	global CONFIG_SPWRTR_AUTOSCRUB
+	if {($CONFIG_SPWRTR_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_SPWRTR_AUTOSCRUB $CONFIG_SPWRTR_AUTOSCRUB [list $notmod] 2 }
+	write_comment $cfg $autocfg "CANFD"
+	global CONFIG_GRCANFD_ENABLE
+	write_tristate $cfg $autocfg CONFIG_GRCANFD_ENABLE $CONFIG_GRCANFD_ENABLE [list $notmod] 2
+	global CONFIG_GRCANFDIRQ
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRCANFDIRQ $CONFIG_GRCANFDIRQ $notmod }
+	global CONFIG_GRCANFDSINGLE
+	if {($CONFIG_GRCANFD_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRCANFDSINGLE $CONFIG_GRCANFDSINGLE [list $notmod] 2 }
+	write_comment $cfg $autocfg "HSSL"
+	global CONFIG_GRHSSL_ENABLE
+	write_tristate $cfg $autocfg CONFIG_GRHSSL_ENABLE $CONFIG_GRHSSL_ENABLE [list $notmod] 2
+	global CONFIG_GRHSSL_NUM
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {write_int $cfg $autocfg CONFIG_GRHSSL_NUM $CONFIG_GRHSSL_NUM $notmod }
+	global CONFIG_GRHSSL_SPFI
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRHSSL_SPFI $CONFIG_GRHSSL_SPFI [list $notmod] 2 }
+	global CONFIG_GRHSSL_WIZL
+	if {($CONFIG_GRHSSL_ENABLE == 1)} then {write_tristate $cfg $autocfg CONFIG_GRHSSL_WIZL $CONFIG_GRHSSL_WIZL [list $notmod] 2 }
 	write_comment $cfg $autocfg "VHDL Debugging        "
 	global CONFIG_DEBUG_UART
 	write_tristate $cfg $autocfg CONFIG_DEBUG_UART $CONFIG_DEBUG_UART [list $notmod] 2
@@ -3881,6 +4627,35 @@ proc clear_choices { } {
 	global CONFIG_GRETH_FIFO16; set CONFIG_GRETH_FIFO16 0
 	global CONFIG_GRETH_FIFO32; set CONFIG_GRETH_FIFO32 0
 	global CONFIG_GRETH_FIFO64; set CONFIG_GRETH_FIFO64 0
+	global CONFIG_SPWRTR_RX_SDR; set CONFIG_SPWRTR_RX_SDR 0
+	global CONFIG_SPWRTR_RX_DDR; set CONFIG_SPWRTR_RX_DDR 0
+	global CONFIG_SPWRTR_RX_XOR; set CONFIG_SPWRTR_RX_XOR 0
+	global CONFIG_SPWRTR_RX_XORER1; set CONFIG_SPWRTR_RX_XORER1 0
+	global CONFIG_SPWRTR_RX_XORER2; set CONFIG_SPWRTR_RX_XORER2 0
+	global CONFIG_SPWRTR_RX_AFLEX; set CONFIG_SPWRTR_RX_AFLEX 0
+	global CONFIG_SPW_TX_SDR; set CONFIG_SPW_TX_SDR 0
+	global CONFIG_SPW_TX_DDR; set CONFIG_SPW_TX_DDR 0
+	global CONFIG_SPW_TX_AFLEX; set CONFIG_SPW_TX_AFLEX 0
+	global CONFIG_SPWRTR_RXFIFO16; set CONFIG_SPWRTR_RXFIFO16 0
+	global CONFIG_SPWRTR_RXFIFO32; set CONFIG_SPWRTR_RXFIFO32 0
+	global CONFIG_SPWRTR_RXFIFO64; set CONFIG_SPWRTR_RXFIFO64 0
+	global CONFIG_SPWRTR_RXFIFO128; set CONFIG_SPWRTR_RXFIFO128 0
+	global CONFIG_SPWRTR_RXFIFO256; set CONFIG_SPWRTR_RXFIFO256 0
+	global CONFIG_SPWRTR_RXFIFO512; set CONFIG_SPWRTR_RXFIFO512 0
+	global CONFIG_SPWRTR_RXFIFO1024; set CONFIG_SPWRTR_RXFIFO1024 0
+	global CONFIG_SPWRTR_RXFIFO2048; set CONFIG_SPWRTR_RXFIFO2048 0
+	global CONFIG_SPWRTR_FT_NOFT; set CONFIG_SPWRTR_FT_NOFT 0
+	global CONFIG_SPWRTR_FT_PAR; set CONFIG_SPWRTR_FT_PAR 0
+	global CONFIG_SPWRTR_FT_TMR; set CONFIG_SPWRTR_FT_TMR 0
+	global CONFIG_SPWRTR_ARB_RR; set CONFIG_SPWRTR_ARB_RR 0
+	global CONFIG_SPWRTR_RMAPBUF2; set CONFIG_SPWRTR_RMAPBUF2 0
+	global CONFIG_SPWRTR_RMAPBUF4; set CONFIG_SPWRTR_RMAPBUF4 0
+	global CONFIG_SPWRTR_RMAPBUF6; set CONFIG_SPWRTR_RMAPBUF6 0
+	global CONFIG_SPWRTR_RMAPBUF8; set CONFIG_SPWRTR_RMAPBUF8 0
+	global CONFIG_SPWRTR_FIFO2_4; set CONFIG_SPWRTR_FIFO2_4 0
+	global CONFIG_SPWRTR_FIFO2_8; set CONFIG_SPWRTR_FIFO2_8 0
+	global CONFIG_SPWRTR_FIFO2_16; set CONFIG_SPWRTR_FIFO2_16 0
+	global CONFIG_SPWRTR_FIFO2_32; set CONFIG_SPWRTR_FIFO2_32 0
 }
 
 
@@ -4177,6 +4952,78 @@ proc update_choices { } {
 	if { $CONFIG_GRETH_FIFO32 == 1 } then { set tmpvar_15 "32" }
 	global CONFIG_GRETH_FIFO64
 	if { $CONFIG_GRETH_FIFO64 == 1 } then { set tmpvar_15 "64" }
+	global tmpvar_16
+	set tmpvar_16 "DDR"
+	global CONFIG_SPWRTR_RX_SDR
+	if { $CONFIG_SPWRTR_RX_SDR == 1 } then { set tmpvar_16 "SDR" }
+	global CONFIG_SPWRTR_RX_DDR
+	if { $CONFIG_SPWRTR_RX_DDR == 1 } then { set tmpvar_16 "DDR" }
+	global CONFIG_SPWRTR_RX_XOR
+	if { $CONFIG_SPWRTR_RX_XOR == 1 } then { set tmpvar_16 "XOR" }
+	global CONFIG_SPWRTR_RX_XORER1
+	if { $CONFIG_SPWRTR_RX_XORER1 == 1 } then { set tmpvar_16 "XOR-ER1" }
+	global CONFIG_SPWRTR_RX_XORER2
+	if { $CONFIG_SPWRTR_RX_XORER2 == 1 } then { set tmpvar_16 "XOR-ER2" }
+	global CONFIG_SPWRTR_RX_AFLEX
+	if { $CONFIG_SPWRTR_RX_AFLEX == 1 } then { set tmpvar_16 "Aeroflex" }
+	global tmpvar_17
+	set tmpvar_17 "SDR"
+	global CONFIG_SPW_TX_SDR
+	if { $CONFIG_SPW_TX_SDR == 1 } then { set tmpvar_17 "SDR" }
+	global CONFIG_SPW_TX_DDR
+	if { $CONFIG_SPW_TX_DDR == 1 } then { set tmpvar_17 "DDR" }
+	global CONFIG_SPW_TX_AFLEX
+	if { $CONFIG_SPW_TX_AFLEX == 1 } then { set tmpvar_17 "Aeroflex" }
+	global tmpvar_18
+	set tmpvar_18 "64"
+	global CONFIG_SPWRTR_RXFIFO16
+	if { $CONFIG_SPWRTR_RXFIFO16 == 1 } then { set tmpvar_18 "16" }
+	global CONFIG_SPWRTR_RXFIFO32
+	if { $CONFIG_SPWRTR_RXFIFO32 == 1 } then { set tmpvar_18 "32" }
+	global CONFIG_SPWRTR_RXFIFO64
+	if { $CONFIG_SPWRTR_RXFIFO64 == 1 } then { set tmpvar_18 "64" }
+	global CONFIG_SPWRTR_RXFIFO128
+	if { $CONFIG_SPWRTR_RXFIFO128 == 1 } then { set tmpvar_18 "128" }
+	global CONFIG_SPWRTR_RXFIFO256
+	if { $CONFIG_SPWRTR_RXFIFO256 == 1 } then { set tmpvar_18 "256" }
+	global CONFIG_SPWRTR_RXFIFO512
+	if { $CONFIG_SPWRTR_RXFIFO512 == 1 } then { set tmpvar_18 "512" }
+	global CONFIG_SPWRTR_RXFIFO1024
+	if { $CONFIG_SPWRTR_RXFIFO1024 == 1 } then { set tmpvar_18 "1024" }
+	global CONFIG_SPWRTR_RXFIFO2048
+	if { $CONFIG_SPWRTR_RXFIFO2048 == 1 } then { set tmpvar_18 "2048" }
+	global tmpvar_19
+	set tmpvar_19 "NoFT"
+	global CONFIG_SPWRTR_FT_NOFT
+	if { $CONFIG_SPWRTR_FT_NOFT == 1 } then { set tmpvar_19 "NoFT" }
+	global CONFIG_SPWRTR_FT_PAR
+	if { $CONFIG_SPWRTR_FT_PAR == 1 } then { set tmpvar_19 "Parity" }
+	global CONFIG_SPWRTR_FT_TMR
+	if { $CONFIG_SPWRTR_FT_TMR == 1 } then { set tmpvar_19 "TMR" }
+	global tmpvar_20
+	set tmpvar_20 "Round-robin"
+	global CONFIG_SPWRTR_ARB_RR
+	if { $CONFIG_SPWRTR_ARB_RR == 1 } then { set tmpvar_20 "Round-robin" }
+	global tmpvar_21
+	set tmpvar_21 "64"
+	global CONFIG_SPWRTR_RMAPBUF2
+	if { $CONFIG_SPWRTR_RMAPBUF2 == 1 } then { set tmpvar_21 "64" }
+	global CONFIG_SPWRTR_RMAPBUF4
+	if { $CONFIG_SPWRTR_RMAPBUF4 == 1 } then { set tmpvar_21 "128" }
+	global CONFIG_SPWRTR_RMAPBUF6
+	if { $CONFIG_SPWRTR_RMAPBUF6 == 1 } then { set tmpvar_21 "192" }
+	global CONFIG_SPWRTR_RMAPBUF8
+	if { $CONFIG_SPWRTR_RMAPBUF8 == 1 } then { set tmpvar_21 "256" }
+	global tmpvar_22
+	set tmpvar_22 "16"
+	global CONFIG_SPWRTR_FIFO2_4
+	if { $CONFIG_SPWRTR_FIFO2_4 == 1 } then { set tmpvar_22 "4" }
+	global CONFIG_SPWRTR_FIFO2_8
+	if { $CONFIG_SPWRTR_FIFO2_8 == 1 } then { set tmpvar_22 "8" }
+	global CONFIG_SPWRTR_FIFO2_16
+	if { $CONFIG_SPWRTR_FIFO2_16 == 1 } then { set tmpvar_22 "16" }
+	global CONFIG_SPWRTR_FIFO2_32
+	if { $CONFIG_SPWRTR_FIFO2_32 == 1 } then { set tmpvar_22 "32" }
 }
 
 

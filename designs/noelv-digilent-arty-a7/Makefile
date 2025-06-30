@@ -13,11 +13,11 @@ include $(CFG_DIR)/.config
 
 #32-bit NOEL-V
 ifeq ($(CONFIG_NOELV_RV32),y)
-DIRADD = noelv/pkg_32 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
+DIRADD = l5nv/shared noelv/pkg_32 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 32
 else
 #64-bit NOEL-V
-DIRADD = noelv/pkg_64 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
+DIRADD = l5nv/shared noelv/pkg_64 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 64
 endif
 
@@ -123,7 +123,7 @@ TECHLIBS = unisim
 SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
-	tmtc openchip ihp usbhc spw
+	tmtc openchip ihp usbhc
 LIBSKIP += opencores
 LIBSKIP += esa
 LIBSKIP += fmf
@@ -133,7 +133,7 @@ LIBSKIP += micron
 LIBSKIP += cypress
 
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest can \
-	usb grusbhc spacewire ascs slink hcan \
+	usb grusbhc ascs slink hcan \
 	leon4v0 l2cache pwm gr1553b iommu
 DIRSKIP += i2c
 DIRSKIP += spi

@@ -76,17 +76,59 @@ mmu_double:
 	ret 
  	restore 
 
-/* SRMMU_TFAULT() SRMMU_DFAULT()
+/* The caller returns in user mode. */
+        .global         systest_enter_supervisor
+systest_enter_supervisor:
+        set     1, %o0
+        ta      0x8F
+        retl
+         nop
+
+/* The caller returns in supervisor mode. */
+        .global         systest_enter_user
+systest_enter_user:
+        mov     %g0, %o0
+        ta      0x8F
+        retl
+         nop
+
+/*
+ * Trap handler for chaning supervisor mode.
+ *
+ * IF %i0 is 0 on entry THEN
+ *   set PSR.S
+ * ELSE
+ *   clear PSR.S
+ * ENDIF
+ */
+        .global         systest_trap_set_supervisor
+SPARC_PSR_PS = (1<<6)
+systest_trap_set_supervisor:
+        cmp     %i0, %g0
+        beq     .Lunset
+         andn   %l0, SPARC_PSR_PS, %l0
+.Lset:
+        or      %l0, SPARC_PSR_PS, %l0
+.Lunset:
+        wr      %l0, %psr
+        nop
+        nop
+        nop
+        jmp     %l2
+         rett   %l2 + 4
+
+/*
+ * MMU related trap handlers
+ * Register values on entry
+ *
  * %l0 : %psr
  * %l1 = pc            :set by trap
  * %l2 = npc           :set by trap
- * %l3 : %wim
- * %l6 : 1 on inst, 0 on data
  */
-	.global _srmmu_fault,_srmmu_fault_svt
-_srmmu_fault_svt:
-	rd      %wim, %l3
-_srmmu_fault:
+	.global systest_data_access_exception
+	.global systest_instruction_access_exception
+systest_data_access_exception:
+systest_instruction_access_exception:
 	//check if we are coming from mmu_so_check
 	//fault address must be 0x400F0000
 	mov	0x400, %l5
@@ -128,11 +170,13 @@ mmu_fault_t0:
 	inc   12,%l7
 	set	pth_addr,%l5
 	st    %l7,[%l5]
-	
-mmu_fault_end:	
-	jmp	%l1				! reexecute command
-	rett	%l2
 
+mmu_fault_end:
+	jmp	%l1				! reexecute instruction
+	 rett	%l2
+
+
+	.section .data
 	.align 8 
 	.global pth_addr, pth_addr1
 pth_addr:	.word 0
@@ -142,6 +186,9 @@ pth_addr1:	.word 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	.align 32 
 	.global srmmu_set_mmureg_aligned
 
+
+	.section .text
+	.align 8
 srmmu_set_mmureg_aligned:
 	retl
 	sta %o0, [%g0] 0x19
@@ -207,4 +254,44 @@ vxAtomic32Cas:
         ret
         restore
         nop
+
+
+/* MMU tables */
+	.section .bss
+
+	.align PAGE_SIZE_MAX
+	.global mmu_ctx_start
+mmu_ctx_start:
+        .skip SRMMU_PGD_TABLE_SIZE
+
+	.align SRMMU_PGD_TABLE_SIZE
+	.global mmu_pg0_start
+mmu_pg0_start:
+	.skip SRMMU_PGD_TABLE_SIZE
+
+	.align SRMMU_PMD_TABLE_SIZE
+	.global mmu_pm0_start
+mmu_pm0_start:
+	.skip SRMMU_PMD_TABLE_SIZE
+
+	.align SRMMU_PTE_TABLE_SIZE
+	.global mmu_pt0_start
+mmu_pt0_start:
+	.skip SRMMU_PTE_TABLE_SIZE
+
+	.align PAGE_SIZE_MAX
+	.global mmu_page0_start
+mmu_page0_start:
+	.skip PAGE_SIZE_MAX
+
+	.global mmu_page1_start
+mmu_page1_start:
+	.skip PAGE_SIZE_MAX
+
+	.global mmu_page2_start
+mmu_page2_start:
+	.skip (3*(PAGE_SIZE))
+
+	.global mmu_page2_end
+mmu_page2_end:
 

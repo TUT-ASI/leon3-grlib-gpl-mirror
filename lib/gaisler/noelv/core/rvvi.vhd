@@ -69,6 +69,7 @@ use gaisler.noelvint.fpu5_out_async_type;
 use gaisler.noelvint.fpu5_out_async_none;
 use gaisler.noelvint.trace_info;
 use gaisler.noelvint.trace_info_none;
+use gaisler.mmucacheconfig.from_atp;
 
 package rvvi is
 end;

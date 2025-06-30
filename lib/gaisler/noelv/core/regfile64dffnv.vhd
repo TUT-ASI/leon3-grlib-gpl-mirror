@@ -70,7 +70,13 @@ architecture rtl of regfile64dffnv is
 
   subtype data_t is std_logic_vector(wdata1'range);
 
-  type entry_type is array(0 to 2 ** reg_t'length - 1) of data_t;
+  subtype reg_int is integer range 0 to 2 ** reg_t'length - 1;
+  type entry_type is array(reg_int'low to reg_int'high) of data_t;
+
+  function rno(r : reg_t) return reg_int is
+  begin
+    return u2i(r);
+  end;
 
   type reg_type is record
     entry   : entry_type;
@@ -84,7 +90,11 @@ architecture rtl of regfile64dffnv is
 
 begin  -- rtl
 
-  comb : process(r, rstn, waddr1, we1, waddr2, we2, re1, raddr1, re2, raddr2, re3, raddr3, re4, raddr4, wdata1, wdata2, rdhold)
+  comb : process(r,
+                 waddr1, we1, waddr2, we2,
+                 re1, raddr1, re2, raddr2,
+                 re3, raddr3, re4, raddr4,
+                 wdata1, wdata2, rdhold)
     variable v       : reg_type;
     variable rdata1v : data_t;
     variable rdata2v : data_t;
@@ -112,11 +122,11 @@ begin  -- rtl
     end if;
 
     if we1 = '1' then
-      v.entry(u2i(waddr1)) := wdata1;
+      v.entry(rno(waddr1)) := wdata1;
     end if;
 
     if we2 = '1' then
-      v.entry(u2i(waddr2)) := wdata2;
+      v.entry(rno(waddr2)) := wdata2;
     end if;
 
     rdata1v := (others => '0');
@@ -126,7 +136,7 @@ begin  -- rtl
 
     if (r.raddr1 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr1) then
-        rdata1v := r.entry(u2i(r.raddr1));
+        rdata1v := r.entry(rno(r.raddr1));
       end if;
 
       -- Bypass value currently being written?
@@ -143,7 +153,7 @@ begin  -- rtl
 
     if (r.raddr2 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr2) then
-        rdata2v := r.entry(u2i(r.raddr2));
+        rdata2v := r.entry(rno(r.raddr2));
       end if;
 
       -- Bypass value currently being written?
@@ -160,7 +170,7 @@ begin  -- rtl
 
     if (r.raddr3 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr3) then
-        rdata3v := r.entry(u2i(r.raddr3));
+        rdata3v := r.entry(rno(r.raddr3));
       end if;
 
       -- Bypass value currently being written?
@@ -177,7 +187,7 @@ begin  -- rtl
 
     if (r.raddr4 /= "00000") or (reg0write /= 0) then
       if notx(r.raddr4) then
-        rdata4v := r.entry(u2i(r.raddr4));
+        rdata4v := r.entry(rno(r.raddr4));
       end if;
 
       -- Bypass value currently being written?
@@ -207,7 +217,7 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk, rstn)
+  seq : process(clk)
   begin
     if rising_edge(clk) then
       r <= rin;

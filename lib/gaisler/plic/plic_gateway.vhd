@@ -40,7 +40,7 @@ use gaisler.plic.all;
 
 entity plic_gateway is
   generic (
-    pendingbuff : integer range 0 to 32 := 8;
+    pendingbuff : integer range 0 to 128 := 8;
     irqtype     : integer range 0 to 1 := 0 -- 0 for level, 1 for edge
     );
   port (

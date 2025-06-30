@@ -1,21 +1,43 @@
 VPATH=$(GRLIB)/software/leon3
+SYSTINC=$(GRLIB)/software/systest/include
 XINC=-I$(GRLIB)/software/leon3 -I$(GRLIB)/software/l2c
-XCC=sparc-elf-gcc $(XINC) $(BOPT)
-XAS=sparc-elf-gcc -c -I. $(XINC) $(BOPT)
-XAR=sparc-elf-ar
-XCFLAGS=-O2 -g -msoft-float
-ifeq ("$(LDFLAGS)","")
-LDFLAGS=-qnoambapp
+XINC+=-I$(SYSTINC)
+XTARGET=sparc-gaisler-elf
+XCC=$(XTARGET)-gcc $(XINC) $(BOPT)
+XAS=$(XTARGET)-gcc -c -I. $(XINC) $(BOPT)
+XAR=$(XTARGET)-ar
+XOBJCOPY=$(XTARGET)-objcopy
+XOBJDUMP=$(XTARGET)-objdump
+
+XCFLAGS=-O2 -msoft-float
+XCFLAGS+=-Wall
+XCFLAGS+=-Wextra
+XCFLAGS+=-pedantic
+XLDFLAGS=lib3tests.a $(LDFLAGS)
+
+# Use linkprom in current directory if existsing, otherwise the default. The
+# variable PROMLDSCRIPT can be overridden by local Makefile in both cases.
+ifneq ("$(wildcard linkprom)","")
+  PROMLDSCRIPT ?= linkprom
+else
+  PROMLDSCRIPT ?= $(GRLIB)/software/leon3/linkprom.default
 endif
-XLDFLAGS=-L./ lib3tests.a $(LDFLAGS)
+
+SOFT_SRECS = ram.srec
+
+# Build prom.srec only if prom.h exists
+ifneq ("$(wildcard prom.h)","")
+  SOFT_SRECS += prom.srec
+endif
 
 PROGS = apbuart divtest multest regtest \
 	cache gpio ramfill ramtest irqmp leon3_test gptimer \
 	mulasm cacheasm spwtest mptest fpu grfpu_ops \
-	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth atactrl \
+	base_test grfpu_test can_oc mmu mmu_asm mmu_so_check pcitest greth \
 	amba dsu3 greth_api grcan grcanfd grdmac grdmac2 grspfi grwizl \
 	spictrl i2cmst misc spimctrl svgactrl apbps2 \
 	i2cslv i2c l2c \
+	report report_device report_stdio \
 	grusbdc rt_1553 brm_1553 pcif grtc grtm satcan memscrub_test \
 	ftahbram ftlib ftsrctrl ftmctrl bch l2timers l2irqctrl leon2_test \
 	grpwm grhcan brm grusbhc leon4_test base_test4 griommu l34stat ftddr2spa \
@@ -27,6 +49,9 @@ FPROGS=$(shell for i in $(PROGS); do \
 			if [ -r $(GRLIB)/software/leon3/$$i.c -o -r $(GRLIB)/software/leon3/$$i.S ]; then \
 				echo $$i; \
 			fi; \
+			if [ -r $(GRLIB)/software/systest/$$i.c -o -r $(GRLIB)/software/systest/$$i.S ]; then \
+				echo $$i; \
+			fi; \
 		done; \
 		if [ -r $(GRLIB)/software/greth/greth_api.c ]; then \
 			echo greth_api; \
@@ -34,8 +59,14 @@ FPROGS=$(shell for i in $(PROGS); do \
 		if [ -r $(GRLIB)/software/l2c/l2capi.c ]; then \
 			echo l2capi; \
 		fi)
+
 FPROGS+=$(EXTRA_PROGS)
+FPROGS += isrhelper
+FPROGS += inthelper
+
+
 VPATH+=$(GRLIB)/software/l2c
+VPATH+=$(GRLIB)/software/systest
 
 OFILES = $(FPROGS:%=%.o)
 
@@ -43,61 +74,61 @@ OFILES = $(FPROGS:%=%.o)
 	$(XCC) $(XCFLAGS) -c  $<
 
 %.o: %.S
-	$(XCC) $(XCFLAGS) -c  $<
+	$(XCC) $(XCFLAGS) -mcpu=leon3 -c  $<
+
+%.exe.dis: %.exe
+	$(XOBJDUMP) -d $< > $@
+
+greth.o: XINC+=-I$(GRLIB)/software/greth
 
 fpu.o: fpu.c
 	$(XCC) -ffast-math -O3 -c  $<
 
-l2c.o: l2c.c
-	$(XCC) -O2 -g -Wall -c -mcpu=v8  $<
-
-l2capi.o: l2capi.c
-	$(XCC) -O2 -g -c -mcpu=v8  $<
-
 multest.o: multest.c
-	$(XCC) -O2 -c -mcpu=v8  $<
+	$(XCC) $(XCFLAGS) -mcpu=leon3 -c $<
 
 divtest.o: divtest.c
-	$(XCC) -O2 -c -mcpu=v8  $<
+	$(XCC) $(XCFLAGS) -mcpu=leon3 -c $<
 
 greth_api.o : $(GRLIB)/software/greth/greth_api.c
-	$(XCC) -g -msoft-float -c $(GRLIB)/software/greth/greth_api.c
+	$(XCC) $(XCFLAGS) -c $<
 
 cgtest.o : cgtest.c
 	$(XCC) -c  $<
 
-gptimer.o : gptimer.c gptimer.h gpio.h
-	$(XCC) -c -g -O2 $<
+gptimer.o : gptimer.c $(SYSTINC)/gptimer.h $(SYSTINC)/gpio.h
 
-grspwtdp.o : grspwtdp.c grspwtdp.h grspwtdp-regs.h
-	$(XCC) -c -g -Wall -O2 $<
+grspwtdp.o : grspwtdp.c $(SYSTINC)/grspwtdp.h $(SYSTINC)/grspwtdp-regs.h
 
 dpr_test.o: dpr_test.c
-	$(XCC) -O0 -g -msoft-float -c  $<
+	$(XCC) -O0 -msoft-float -c  $<
 
 #mptest.o: mptest.c
 #	$(XCC) -msoft-float -O -c  $<
 #
 
+mmu.o: $(SYSTINC)/mmu.h
+mmu_so_check.o: $(SYSTINC)/mmu.h
 
 lib3tests.a: $(OFILES)
 	$(XAR) -cr lib3tests.a $(OFILES)
 
-soft: prom.srec ram.srec $(EXTRA_SOFT)
+soft: $(SOFT_SRECS) $(EXTRA_SOFT)
 
 prom.o: prom.S prom.h
 	$(XAS) $<
 prom.exe: prom.o
-	$(XCC) -nostdlib -Tlinkprom -N -L./ -nostartfiles -o prom.exe $<
+	$(XCC) -nostdlib -T$(PROMLDSCRIPT) -N -L./ -nostartfiles -o prom.exe $<
 
 prom.srec: prom.exe
-	sparc-elf-objcopy -O srec $(EXTRA_PROM) prom.exe prom.srec
+	$(XOBJCOPY) -O srec $(EXTRA_PROM) prom.exe prom.srec
 
-systest.exe: systest.o report_device.o lib3tests.a
-	$(XCC) $(XCFLAGS) systest.o report_device.o $(XLDFLAGS) -o systest.exe
+systest.exe: systest.o bcc2sim.o lib3tests.a
+	$(XCC) $(XCFLAGS) systest.o bcc2sim.o $(XLDFLAGS) -o systest.exe
 
+# NOTE: .bss section included in ram.srec to allow skipping bss init
 ram.srec: systest.exe
-	sparc-elf-objcopy -O srec --gap-fill 0 systest.exe ram.srec
+	$(XOBJCOPY) -O srec --gap-fill 0 --set-section-flags .bss=alloc,contents,load systest.exe ram.srec
 
 soft-clean:
 	-rm -rf *.o *.exe *.a
@@ -105,5 +136,3 @@ soft-clean:
 mmusoft:
 	make -f Makefile.img mmusoft
 
-standalone.exe: systest.o report_stdio.o lib3tests.a
-	$(XCC) $(XCFLAGS) systest.o report_stdio.o $(XLDFLAGS) -o standalone.exe

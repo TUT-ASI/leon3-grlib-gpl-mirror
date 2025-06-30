@@ -36,28 +36,26 @@ use grlib.amba.hsize_dword;
 library gaisler;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.u2i;
+use gaisler.utilnv.u2vec;
 use gaisler.utilnv.cond;
-use gaisler.nvsupport.supports_impl_mmu_sv32;
-use gaisler.nvsupport.supports_impl_mmu_sv39;
-use gaisler.nvsupport.supports_impl_mmu_sv48;
+use gaisler.utilnv.uext;
+use gaisler.utilnv.get;
+use gaisler.utilnv.get_lo;
+use gaisler.utilnv.get_right;
+use gaisler.utilnv.maximum;
+use gaisler.noelvint.atp_type;
+use gaisler.noelvint.atp_none;
+use gaisler.noelvtypes.word16_arr;
+use gaisler.noelvtypes.zerow16;
+use gaisler.noelvtypes.integer64;
 
 package mmucacheconfig is
 
-constant M_CTX_SZ       : integer := 8;
-constant M_ENT_MAX      : integer := 64;
-constant XM_ENT_MAX_LOG : integer := log2(M_ENT_MAX);
-constant M_ENT_MAX_LOG  : integer := XM_ENT_MAX_LOG;
-
-subtype ctxword is std_logic_vector(M_CTX_SZ - 1 downto 0);
-
-type mmu_idcache is (id_icache, id_dcache);
-
---type va_type is (sparc, sv32, sv39, sv48);
-subtype va_type is integer range 0 to 3;
-constant sparc : integer := 0;
-constant sv32  : integer := 1;
-constant sv39  : integer := 2;
-constant sv48  : integer := 3;
+subtype  va_type is integer range 0 to 3;
+constant sparc    : integer := 0;
+constant sv32     : integer := 1;
+constant sv39     : integer := 2;
+constant sv48     : integer := 3;
 
 -- Virtual address bits of the various map levels.
 type va_bits is array (integer range <>) of integer;
@@ -100,6 +98,10 @@ subtype page_offset is std_logic_vector(11 downto 0);
 -- Note that RISC-V counts indices from 0, starting at low bits,
 -- while Sparc counts from 1, starting at high bits (at least in the LEON MMU code).
 
+function supports_impl_mmu_sv32(what : integer) return boolean;
+function supports_impl_mmu_sv39(what : integer) return boolean;
+function supports_impl_mmu_sv48(what : integer) return boolean;
+
 function va(what : va_type) return std_logic_vector;
 function va_msb(what : va_type) return integer;
 function vpn(what : va_type) return std_logic_vector;
@@ -112,32 +114,46 @@ function pte_hsize(what : va_type) return std_logic_vector;
 function va_size(what : va_type) return integer;
 function va_size(what : va_type; index : integer) return integer;
 function is_riscv(what : va_type) return boolean;
-function is_pt_invalid(what : va_type; data : std_logic_vector) return boolean;
-function is_valid_pte(what       : va_type;
-                      data       : std_logic_vector;
-                      mask       : std_logic_vector;
-                      ext_svpbmt : boolean := false
+function is_valid_pte(what        : va_type;
+                      data        : std_logic_vector;
+                      mask        : std_logic_vector;
+                      ext_svpbmt  : boolean := false;
+                      ext_svnapot : boolean := false
                      ) return boolean;
 function is_pte(what : va_type; data : std_logic_vector) return boolean;
 function is_valid_ptd(what : va_type;
                       data : std_logic_vector
                      ) return boolean;
 function is_ptd(what : va_type; data : std_logic_vector) return boolean;
-function satp_base(what : va_type; satp : std_logic_vector) return std_logic_vector;
-function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector;
-function satp_mode(what : va_type; satp : std_logic_vector) return integer;
-function compute_hgatp(
-  hgatp_prv : std_logic_vector;
-  hgatp_in : std_logic_vector;
-  proc_xlen : integer;
-  vmid_len : integer;
-  phys_addr : integer;
-  riscv_mmu : integer
-) return std_logic_vector;
-function pt_addr(what : va_type; data  : std_logic_vector; mask : std_logic_vector;
-                 vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector;
+function satp_base(what : va_type; satp : atp_type) return std_logic_vector;
+--function satp_asid(what : va_type; satp : atp_type) return std_logic_vector;
+--function satp_mode(what : va_type; satp : atp_type) return integer;
+--function satp_mask(id : integer; physaddr : integer; what : va_type) return std_logic_vector;
+--function vsatp_mask(id : integer; what : va_type) return std_logic_vector;
+function from_atp(what : va_type; atp : atp_type) return std_logic_vector;
+function to_satp(satp_prv : atp_type;
+                 satp_in  : std_logic_vector;
+                 proc_xlen : integer;
+                 asid_len  : integer;
+                 phys_addr : integer;
+                 what      : va_type) return atp_type;
+function to_vsatp(vsatp_prv : atp_type;
+                  vsatp_in  : std_logic_vector;
+                  hgatp     : atp_type;
+                  as_satp   : boolean;
+                  proc_xlen : integer;
+                  asid_len  : integer;
+                  phys_addr : integer;
+                  what      : va_type) return atp_type;
+function to_hgatp(hgatp_prv : atp_type;
+                  hgatp_in  : std_logic_vector;
+                  proc_xlen : integer;
+                  vmid_len  : integer;
+                  phys_addr : integer;
+                  what      : va_type) return atp_type;
+function has_pt(what : va_type; atp : atp_type) return boolean;
 function pte_paddr(what : va_type; data : std_logic_vector) return std_logic_vector;
-function pte_cached(what : va_type; data : std_logic_vector) return std_logic;
+function vpn_split(what : va_type; vaddr : std_logic_vector) return word16_arr;
 procedure pte_mark_modacc(what   : va_type;
                           data   : inout std_logic_vector; modified   : std_logic;
                           needwb : out std_logic;          needwblock : out std_logic);
@@ -278,6 +294,21 @@ end mmucacheconfig;
 
 package body mmucacheconfig is
 
+  function supports_impl_mmu_sv32(what : integer) return boolean is
+  begin
+    return what = sv32;
+  end;
+
+  function supports_impl_mmu_sv39(what : integer) return boolean is
+  begin
+    return what >= sv39;
+  end;
+
+  function supports_impl_mmu_sv48(what : integer) return boolean is
+  begin
+    return what >= sv48;
+  end;
+
   function va(what : va_type) return std_logic_vector is
     variable VA_SPARC : std_logic_vector(31 downto  0) := (others => '0');
     variable VA_SV32  : std_logic_vector(31 downto  0) := (others => '0');
@@ -412,64 +443,40 @@ package body mmucacheconfig is
     return what /= sparc;
   end;
 
-  function is_pt_invalid(what : va_type;
-                         data : std_logic_vector) return boolean is
-  begin
-    if what = sparc then
-      return data(PT_ET_U downto PT_ET_D) = ET_INV;
-    else
-      return data(rv_pte_v) = '0';
-    end if;
-  end;
-
-  function is_valid_pte(what       : va_type;
-                        data       : std_logic_vector;
-                        mask       : std_logic_vector;
-                        ext_svpbmt : boolean := false
+  function is_valid_pte(what        : va_type;
+                        data        : std_logic_vector;
+                        mask        : std_logic_vector;
+                        ext_svpbmt  : boolean := false;
+                        ext_svnapot : boolean := false
                        ) return boolean is
   begin
-    if what = sparc then
-      return true;
-    else
-      if what = sv32 then
-        if mask(mask'high) = '0' and not all_0(data(19 downto 10)) then
-          return false;
-        end if;
-        if mask(mask'high - 1) = '0' and not all_0(data(31 downto 20)) then
-          return false;
-        end if;
-      else
-        if mask(mask'high) = '0' and not all_0(data(18 downto 10)) then
-          return false;
-        end if;
-        if mask(mask'high - 1) = '0' and not all_0(data(27 downto 19)) then
-          return false;
-        end if;
-        if what = sv48 then
-          if mask(mask'high - 2) = '0' and not all_0(data(36 downto 28)) then
-            return false;
-          end if;
-        end if;
-      end if;
 
-      -- Reserved top bits must be zero.
-      if not all_0(data(rv_pte_resv'range)) then
+    -- Reserved top bits must be zero.
+    if not all_0(data(rv_pte_resv'range)) then
+      return false;
+    end if;
+
+    if ext_svpbmt then
+      -- PBMT 11 is reserved.
+      if data(rv_pte_pbmt'range) = "11" then
         return false;
       end if;
-
-      if ext_svpbmt then
-        -- PBMT 11 is reserved.
-        if data(rv_pte_pbmt'range) = "11" then
-          return false;
-        end if;
-      else
-        -- PBMT is reserved
-        if data(rv_pte_pbmt'range) /= "00" then
-          return false;
-        end if;
+    else
+      -- PBMT is reserved
+      if data(rv_pte_pbmt'range) /= "00" then
+        return false;
       end if;
+    end if;
 
-      -- N (Svnapot) is not yet supported.
+    if ext_svnapot then
+      -- Only 64 kByte NAPOT defined so far,
+      -- and NAPOT is only defined at the base page level.
+      if data(rv_pte_n) = '1' and
+         (mask(mask'right) = '0' or get_lo(data(rv_ppn'range), 4) /= "1000") then
+        return false;
+      end if;
+    else
+      -- N (Svnapot) is reserved
       if data(rv_pte_n) /= '0' then
         return false;
       end if;
@@ -481,40 +488,32 @@ package body mmucacheconfig is
   function is_pte(what : va_type;
                   data : std_logic_vector) return boolean is
   begin
-    if what = sparc then
-      return data(PT_ET_U downto PT_ET_D) = ET_PTE;
-    else
-      -- PTE is marked by not R=0, W=0, X=0. Must also be valid.
-      return data(rv_pte_v) = '1' and data(rv_pte_xwr'range) /= "000";
-    end if;
+    -- PTE is marked by not R=0, W=0, X=0. Must also be valid.
+    return data(rv_pte_v) = '1' and data(rv_pte_xwr'range) /= "000";
   end;
 
   function is_valid_ptd(what : va_type;
                         data : std_logic_vector
                        ) return boolean is
   begin
-    if what = sparc then
-      return true;
-    else
-      -- Reserved top bits must be zero.
-      if not all_0(data(rv_pte_resv'range)) then
-        return false;
-      end if;
+    -- Reserved top bits must be zero.
+    if not all_0(data(rv_pte_resv'range)) then
+      return false;
+    end if;
 
-      -- PBMT is reserved.
-      if data(rv_pte_pbmt'range) /= "00" then
-        return false;
-      end if;
+    -- PBMT is reserved.
+    if data(rv_pte_pbmt'range) /= "00" then
+      return false;
+    end if;
 
-      -- N is assumed to be reserved (the standar does not appear to say).
-      if data(rv_pte_n) /= '0' then
-        return false;
-      end if;
+    -- N is assumed to be reserved (the standard does not appear to say).
+    if data(rv_pte_n) /= '0' then
+      return false;
+    end if;
 
-      -- PTD also has D, A and U reserved, so enforce 0 (Spike does).
-      if data(rv_pte_d) = '1' or data(rv_pte_a) = '1' or data(rv_pte_u) = '1' then
-        return false;
-      end if;
+    -- PTD also has D, A and U reserved, so enforce 0 (Spike does).
+    if data(rv_pte_d) = '1' or data(rv_pte_a) = '1' or data(rv_pte_u) = '1' then
+      return false;
     end if;
 
     return true;
@@ -523,15 +522,11 @@ package body mmucacheconfig is
   function is_ptd(what : va_type;
                   data : std_logic_vector) return boolean is
   begin
-    if what = sparc then
-      return data(PT_ET_U downto PT_ET_D) = ET_PTD;
-    else
-      -- PTD is marked by R=0, W=0, X=0. Must also be valid.
-      return data(rv_pte_v) = '1' and data(rv_pte_xwr'range) = "000";
-    end if;
+    -- PTD is marked by R=0, W=0, X=0. Must also be valid.
+    return data(rv_pte_v) = '1' and data(rv_pte_xwr'range) = "000";
   end;
 
-  function satp_base(what : va_type; satp : std_logic_vector) return std_logic_vector is
+  function satp_base(what : va_type; satp : atp_type) return std_logic_vector is
     --variable BASE_SV32  : std_logic_vector(21 downto 0)  := (others => '0');
     --variable BASE_SV39  : std_logic_vector(43 downto 0)  := (others => '0');
     --variable BASE_SV48  : std_logic_vector(43 downto 0)  := (others => '0');
@@ -546,15 +541,15 @@ package body mmucacheconfig is
     case what is
     when sv32   => -- base(ppn_sv32'range) := satp(BASE_SV32'range);
       for i in ppn_sv32'high downto ppn_sv32'low loop
-        base(i) := satp(i - 12);
+        base(i) := satp.ppn(i - 12);
       end loop;
     when sv39   => -- base(ppn_sv39'range) := satp(BASE_SV39'range);
       for i in ppn_sv39'high downto ppn_sv39'low loop
-        base(i) := satp(i - 12);
+        base(i) := satp.ppn(i - 12);
       end loop;
     when sv48   => -- base(ppn_sv48'range) := satp(BASE_SV48'range);
       for i in ppn_sv48'high downto ppn_sv48'low loop
-        base(i) := satp(i - 12);
+        base(i) := satp.ppn(i - 12);
       end loop;
     when others => assert false
                      report "This function does not work for Sparc!"
@@ -564,185 +559,307 @@ package body mmucacheconfig is
     return base;
   end;
 
-  function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector is
-    variable ASID_SV32 : std_logic_vector(30 downto 22) := (others => '0');
-    variable ASID_SV39 : std_logic_vector(59 downto 44) := (others => '0');
-    variable ASID_SV48 : std_logic_vector(59 downto 44) := (others => '0');
+--  function satp_asid(what : va_type; satp : std_logic_vector) return std_logic_vector is
+--    variable ASID_SV32 : std_logic_vector(30 downto 22) := (others => '0');
+--    variable ASID_SV39 : std_logic_vector(59 downto 44) := (others => '0');
+--    variable ASID_SV48 : std_logic_vector(59 downto 44) := (others => '0');
+--    -- Non-constant
+--    variable asid32    : std_logic_vector(ASID_SV32'length - 1 downto 0);
+--    variable asid39    : std_logic_vector(ASID_SV39'length - 1 downto 0);
+--    variable asid48    : std_logic_vector(ASID_SV48'length - 1 downto 0);
+--  begin
+--    case what is
+--    when sv32   => asid32 := satp(ASID_SV32'range); return asid32;
+--    when sv39   => asid39 := satp(ASID_SV39'range); return asid39;
+--    when sv48   => asid48 := satp(ASID_SV48'range); return asid48;
+--    when others => assert false
+--                     report "This function does not work for Sparc!"
+--                     severity failure;
+--    end case;
+--
+--    return "0";      -- Can never happen!
+--  end;
+--
+--  function satp_mode(what : va_type; satp : std_logic_vector) return integer is
+--    variable MODE_RV32 : std_logic_vector(31 downto 31) := (others => '0');
+--    variable MODE_RV64 : std_logic_vector(63 downto 60) := (others => '0');
+--  begin
+--    case what is
+--    when sv32 =>
+--      if satp'length = 32 then
+--        return u2i(satp(MODE_RV32'range));
+--      else
+--        return u2i(satp(MODE_RV64'range));
+--      end if;
+--    when sv39 | sv48 =>
+--      assert satp'length = 64
+--        report "XLEN does not match requested MMU mode!"
+--        severity failure;
+--      return u2i(satp(MODE_RV64'range));
+--    when others => assert false
+--                     report "This function does not work for Sparc!"
+--                     severity failure;
+--    end case;
+--
+--    return 0;        -- Can never happen!
+--  end;
+
+  function from_atp(what : va_type; atp : atp_type) return std_logic_vector is
+    constant ASID_32 : std_logic_vector(30 downto 22) := (others => '0');
     -- Non-constant
-    variable asid32    : std_logic_vector(ASID_SV32'length - 1 downto 0);
-    variable asid39    : std_logic_vector(ASID_SV39'length - 1 downto 0);
-    variable asid48    : std_logic_vector(ASID_SV48'length - 1 downto 0);
+    variable mode    : std_logic_vector(3 downto 0)   := (others => '0');
   begin
-    case what is
-    when sv32   => asid32 := satp(ASID_SV32'range); return asid32;
-    when sv39   => asid39 := satp(ASID_SV39'range); return asid39;
-    when sv48   => asid48 := satp(ASID_SV48'range); return asid48;
-    when others => assert false
-                     report "This function does not work for Sparc!"
-                     severity failure;
-    end case;
-
-    return "0";      -- Can never happen!
-  end;
-
-  function satp_mode(what : va_type; satp : std_logic_vector) return integer is
-    variable MODE_RV32 : std_logic_vector(31 downto 31) := (others => '0');
-    variable MODE_RV64 : std_logic_vector(63 downto 60) := (others => '0');
-  begin
-    case what is
-    when sv32 =>
-      if satp'length = 32 then
-        return u2i(satp(MODE_RV32'range));
-      else
-        return u2i(satp(MODE_RV64'range));
+    if what = sv32 then
+      assert not atp.small severity failure;
+      return cond(atp.normal, '1', '0') & get_lo(atp.id, ASID_32'length) & get_lo(atp.ppn, ASID_32'low);
+    else
+      assert not (atp.normal and atp.small) severity failure;
+      assert not (what = sv39 and atp.small) severity failure;
+      if atp.normal then
+        mode := u2vec(cond(what = sv39, 8, 9), mode);
+      elsif what = sv48 and atp.small then
+        mode := u2vec(8, mode);
       end if;
-    when sv39 | sv48 =>
-      assert satp'length = 64
-        report "XLEN does not match requested MMU mode!"
-        severity failure;
-      return u2i(satp(MODE_RV64'range));
-    when others => assert false
-                     report "This function does not work for Sparc!"
-                     severity failure;
-    end case;
-
-    return 0;        -- Can never happen!
+      return mode & atp.id & atp.ppn;
+    end if;
   end;
 
-  function compute_hgatp(
-      hgatp_prv : std_logic_vector;
-      hgatp_in  : std_logic_vector;
-      proc_xlen : integer;
-      vmid_len  : integer;
-      phys_addr : integer;
-      riscv_mmu : integer
-  ) return std_logic_vector is
-      constant HGATP32_MODE : std_logic_vector(31 downto 31)                := "1";
-      constant HGATP32_VMID : std_logic_vector(22 + vmid_len - 1 downto 22) := (others => '1');
-      constant HGATP32_PPN  : std_logic_vector(21 downto 0)                 := (others => '1');
+  constant ATP32_MODE : std_logic_vector(31 downto 31) := "1";
+  constant ATP32_ID   : std_logic_vector(30 downto 22) := (others => '1');
+  constant ATP32_PPN  : std_logic_vector(21 downto  0) := (others => '1');
 
-      constant HGATP64_VMID : std_logic_vector(44 + vmid_len - 1 downto 44) := (others => '1');
-      constant HGATP64_MODE : std_logic_vector(63 downto 60)                := (others => '1');
-      -- ppn[1:0] is zero, 16 KiB alignment
-      constant HGATP64_PPN  : std_logic_vector(phys_addr - 1 - 12 downto 2) := (others => '1');
+  constant ATP64_ID   : std_logic_vector(59 downto 44) := (others => '1');
+  constant ATP64_MODE : std_logic_vector(63 downto 60) := (others => '1');
+  constant ATP64_PPN  : std_logic_vector(43 downto  0) := (others => '1');
 
-      constant BARE : integer := 0;
-      constant SV39 : integer := 8;
-      constant SV48 : integer := 9;
+  constant MODE_BARE : integer := 0;
+  constant MODE_SV39 : integer := 8;
+  constant MODE_SV48 : integer := 9;
 
-      variable mask      : std_logic_vector(hgatp_in'range) := (others => '0');
-      variable hgatp_out : std_logic_vector(hgatp_in'range) := (others => '0');
-      variable mode64_in : integer range 0 to 15 := u2i(hgatp_in(proc_xlen - 1 downto proc_xlen - 4));
+  function to_satp(satp_prv  : atp_type;
+                   satp_in   : std_logic_vector;
+                   proc_xlen : integer;
+                   asid_len  : integer;
+                   phys_addr : integer;
+                   what      : va_type) return atp_type is
+    variable mode64_in : integer range 0 to 15 := u2i(satp_in(proc_xlen - 1 downto proc_xlen - 4));
+    -- Non-constant
+    variable satp_out : atp_type := atp_none;
   begin
+    assert proc_xlen = 32 or proc_xlen = 64 severity failure;
+    satp_out.mmu := what;  -- For RVVI debug
     if proc_xlen = 32 then
-      -- Illegal config
-      assert not supports_impl_mmu_sv39(riscv_mmu) and not
-      supports_impl_mmu_sv48(riscv_mmu) severity failure;
+      assert not supports_impl_mmu_sv39(what) and                -- Illegal config
+             not supports_impl_mmu_sv48(what) severity failure;
 
-      if (supports_impl_mmu_sv32(riscv_mmu)) then
-        mask(HGATP32_MODE'range) := HGATP32_MODE;
-        mask(HGATP32_VMID'range) := HGATP32_VMID;
-        mask(HGATP32_PPN'range ) := HGATP32_PPN;
+      if (supports_impl_mmu_sv32(what)) then
+        satp_out.ppn      := uext(satp_in(ATP32_PPN'range), satp_out.ppn);
+        satp_out.id       := uext(get_right(satp_in(ATP32_ID'range), asid_len), satp_out.id);
+        satp_out.normal   := satp_in(ATP32_MODE'range) = "1";
+        satp_out.small    := false;
       end if;
-      hgatp_out := hgatp_in and mask;
-	  return hgatp_out;
     else
-      assert not supports_impl_mmu_sv32(riscv_mmu) severity failure; -- Illegal config
-      mask(HGATP64_VMID'range) := HGATP64_VMID; -- Base mask
-      mask(HGATP64_PPN'range)  := HGATP64_PPN;  -- Base mask
+      assert not supports_impl_mmu_sv32(what) severity failure;  -- Illegal config
+
+      satp_out.ppn        := uext(get_right(satp_in(ATP64_PPN'range), phys_addr - 12), satp_out.ppn);
+      satp_out.id         := uext(get_right(satp_in(ATP64_ID'range), asid_len), satp_out.id);
       -- Any of the legal modes trying to be written?
-      if (mode64_in = BARE or
-         (supports_impl_mmu_sv39(riscv_mmu) and mode64_in = SV39) or
-         (supports_impl_mmu_sv48(riscv_mmu) and mode64_in = SV48))
-      then
-        -- Insert the mode part of the mask if valid mode
-        mask(HGATP64_MODE'range) := HGATP64_MODE;
-      end if;
-      return (hgatp_prv and not mask) or (hgatp_in and mask);
-    end if;
-  end function;
+      case mode64_in is
+      when MODE_BARE =>
+        satp_out.normal   := false;
+        satp_out.small    := false;
+      when MODE_SV39 =>
+        if supports_impl_mmu_sv39(what) then
+          satp_out.normal := not supports_impl_mmu_sv48(what);
+          satp_out.small  :=     supports_impl_mmu_sv48(what);
+        end if;
+      when MODE_SV48 =>
+        if supports_impl_mmu_sv48(what) then
+          satp_out.normal := true;
+          satp_out.small  := false;
+        else
+          -- Bad mode selection, keep previous fields
+          satp_out        := satp_prv;
+        end if;
+      when others =>
+        -- Bad mode selection, keep previous fields
+        satp_out          := satp_prv;
+      end case;
 
-  -- Calculates page table address.
-  function pt_addr(what  : va_type;
-                   data  : std_logic_vector; mask : std_logic_vector;
-                   vaddr : std_logic_vector; code : std_logic_vector) return std_logic_vector is
-    --constant pa_tmp : std_logic_vector               := pa(what);  -- constant
-    variable index  : integer range 1 to mask'length := mask'length - u2i(code);
-    variable lowbit : integer                        := 11 - va_size(what, index) + 1;
+      return satp_out;
+    end if;
+
+    return satp_out;
+  end;
+
+  function to_vsatp(vsatp_prv : atp_type;
+                    vsatp_in  : std_logic_vector;
+                    hgatp     : atp_type;
+                    as_satp   : boolean;
+                    proc_xlen : integer;
+                    asid_len  : integer;
+                    phys_addr : integer;
+                    what      : va_type) return atp_type is
+    variable mode64_in : integer range 0 to 15 := u2i(vsatp_in(proc_xlen - 1 downto proc_xlen - 4));
     -- Non-constant
-    variable addr   : std_logic_vector(pa_msb(what) downto 0) := (others => '0');
-    variable pos    : integer;
+    variable vsatp_out : atp_type := atp_none;
   begin
-    if what = sparc then
-      -- Since physical address is only 32 bit, do not use the top 4 bits of PTP.
-      addr(addr'high downto 8) := data(27 downto 4);
-      -- Index into table, depending on current level.
-      if mask(1) = '0' then
-        addr(9 downto 2) := addr(9 downto 2) or vaddr(31 downto 24);
-      end if;
-      if mask(1 to 2) = "10" then
-        addr(7 downto 2) := addr(7 downto 2) or vaddr(23 downto 18);
-      end if;
-      if mask(1 to 2) = "11" then
-        addr(7 downto 2) := addr(7 downto 2) or vaddr(17 downto 12);
+    assert proc_xlen = 32 or proc_xlen = 64 severity failure;
+    vsatp_out.mmu := what;  -- For RVVI debug
+    if proc_xlen = 32 then
+      assert not supports_impl_mmu_sv39(what) and                -- Illegal config
+             not supports_impl_mmu_sv48(what) severity failure;
+
+      if (supports_impl_mmu_sv32(what)) then
+        vsatp_out.ppn      := uext(vsatp_in(ATP32_PPN'range), vsatp_out.ppn);
+        vsatp_out.id       := uext(get_right(vsatp_in(ATP32_ID'range), asid_len), vsatp_out.id);
+        vsatp_out.normal   := vsatp_in(ATP32_MODE'range) = "1";
+        vsatp_out.small    := false;
       end if;
     else
-      -- Every page table is the size of one page (thus downto 12).
-      -- 12 due to smallest page size, 10 are the information bits.
-      addr(addr'high downto 12) := data(addr'high - 12 + 10 downto 10);
-      pos := 12;
-      for i in mask'length downto 1 loop
-        if i > u2i(code) then
-          pos := pos + va_size(what, i);
+      assert not supports_impl_mmu_sv32(what) severity failure;  -- Illegal config
+
+      vsatp_out.ppn        := uext(get_right(vsatp_in(ATP64_PPN'range),
+                                             maximum(phys_addr, ga_msb(what) + 1) - 12), vsatp_out.ppn);
+      vsatp_out.id         := uext(get_right(vsatp_in(ATP64_ID'range), asid_len), vsatp_out.id);
+      -- Any of the legal modes trying to be written?
+      case mode64_in is
+      when MODE_BARE =>
+        vsatp_out.normal   := false;
+        vsatp_out.small    := false;
+      when MODE_SV39 =>
+        if supports_impl_mmu_sv39(what) then
+          vsatp_out.normal := not supports_impl_mmu_sv48(what);
+          vsatp_out.small  :=     supports_impl_mmu_sv48(what);
+        else
+          -- Bad mode selection, keep previous mode
+          vsatp_out.normal := vsatp_prv.normal;
+          vsatp_out.small  := vsatp_prv.small;
         end if;
-      end loop;
+      when MODE_SV48 =>
+        if supports_impl_mmu_sv48(what) then
+          vsatp_out.normal := true;
+          vsatp_out.small  := false;
+        else
+          if as_satp then
+            -- Bad mode selection, keep previous fields
+            vsatp_out      := vsatp_prv;
+          else
+            -- Bad mode selection, keep previous mode
+            vsatp_out.normal := vsatp_prv.normal;
+            vsatp_out.small  := vsatp_prv.small;
+          end if;
+        end if;
+      when others =>
+        if as_satp then
+          -- Bad mode selection, keep previous fields
+          vsatp_out        := vsatp_prv;
+        else
+          -- Bad mode selection, keep previous mode
+          vsatp_out.normal := vsatp_prv.normal;
+          vsatp_out.small  := vsatp_prv.small;
+        end if;
+      end case;
 
-
-      -- DesignCompiler cannot count by itself...
---      addr(11 downto lowbit) := vaddr(pos - 1 downto pos - va_size(what)(index));
-      if what = sv32 then
-        -- We know that on RISC-V32 (Sv32), va_size(what)(index) is always 10.
-        -- This means pos must be 12 + 10n (n in [0,2]).
-        addr(11 downto 11 - 10 + 1) := vaddr(pos - 1 downto pos - 10);
-      else
-        -- We know that on RISC-V64 (Sv39/48), va_size(what)(index) is always 9.
-        -- This means pos must be 12 + 9n (n in [0,3], the latter only for Sv48).
-        addr(11 downto 11 - 9 + 1) := vaddr(pos - 1 downto pos - 9);
-      end if;
+      return vsatp_out;
     end if;
 
-    return addr;
+    return vsatp_out;
+  end;
+
+  function to_hgatp(hgatp_prv : atp_type;
+                    hgatp_in  : std_logic_vector;
+                    proc_xlen : integer;
+                    vmid_len  : integer;
+                    phys_addr : integer;
+                    what      : va_type) return atp_type is
+    variable mode64_in : integer range 0 to 15 := u2i(hgatp_in(proc_xlen - 1 downto proc_xlen - 4));
+    -- Non-constant
+    variable hgatp_out : atp_type := atp_none;
+  begin
+    assert proc_xlen = 32 or proc_xlen = 64 severity failure;
+    hgatp_out.mmu := what;  -- For RVVI debug
+    if proc_xlen = 32 then
+      assert not supports_impl_mmu_sv39(what) and                -- Illegal config
+             not supports_impl_mmu_sv48(what) severity failure;
+
+      if (supports_impl_mmu_sv32(what)) then
+        hgatp_out.ppn    := uext(hgatp_in(ATP32_PPN'range), hgatp_out.ppn);
+        hgatp_out.id     := uext(get_right(hgatp_in(ATP32_ID'range), vmid_len), hgatp_out.id);
+        hgatp_out.normal := hgatp_in(ATP32_MODE'range) = "1";
+        hgatp_out.small  := false;
+      end if;
+    else
+      assert not supports_impl_mmu_sv32(what) severity failure;  -- Illegal config
+
+      hgatp_out.ppn := uext(get_right(hgatp_in(ATP64_PPN'high downto 2) & "00", phys_addr - 12), hgatp_out.ppn);
+      hgatp_out.id  := uext(get_right(hgatp_in(ATP64_ID'range), vmid_len), hgatp_out.id);
+      -- Any of the legal modes trying to be written?
+      case mode64_in is
+      when MODE_BARE =>
+        hgatp_out.normal   := false;
+        hgatp_out.small    := false;
+      when MODE_SV39 =>
+        if supports_impl_mmu_sv39(what) then
+          hgatp_out.normal := not supports_impl_mmu_sv48(what);
+          hgatp_out.small  :=     supports_impl_mmu_sv48(what);
+        else
+          -- Invalid mode so keep the old one
+          hgatp_out.normal := hgatp_prv.normal;
+          hgatp_out.small  := hgatp_prv.small;
+        end if;
+      when MODE_SV48 =>
+        if supports_impl_mmu_sv48(what) then
+          hgatp_out.normal := true;
+          hgatp_out.small  := false;
+        else
+          -- Invalid mode so keep the old one
+          hgatp_out.normal := hgatp_prv.normal;
+          hgatp_out.small  := hgatp_prv.small;
+        end if;
+      when others =>
+        -- Invalid mode so keep the old one
+        hgatp_out.normal   := hgatp_prv.normal;
+        hgatp_out.small    := hgatp_prv.small;
+      end case;
+
+      return hgatp_out;
+    end if;
+
+    return hgatp_out;
+  end;
+
+  function has_pt(what : va_type; atp : atp_type) return boolean is
+  begin
+    return atp.normal or (supports_impl_mmu_sv48(what) and atp.small);
   end;
 
   function pte_paddr(what : va_type;
                      data : std_logic_vector) return std_logic_vector is
     constant pa_tmp : std_logic_vector := pa(what);  -- constant
   begin
-    if what = sparc then
-      -- Actual PTP is (31 downto 2) with only 256 byte alignment allowed.
-      -- We do not allow for more than 32 bits of physical address (Sparc
-      -- documentation says 36 bits), so skip the top 4 bits.
-      -- We also require 4k page aligment, so skip at the bottom as well.
-      return data(27 downto 8);
-    else
-      -- Every page table is the size of one page (thus downto 12).
-      -- 12 due to smallest page size, 10 are the information bits.
-      return data(pa_tmp'high - 12 + 10 downto 10);
-    end if;
+    -- Every page table is the size of one page (thus downto 12).
+    -- 12 due to smallest page size, 10 are the information bits.
+    return data(pa_tmp'high - 12 + 10 downto 10);
   end;
 
-  -- Must not be called for RISC-V!
-  function pte_cached(what : va_type;
-                      data : std_logic_vector) return std_logic is
-    variable pbmt : std_logic_vector(rv_pte_pbmt'range) := data(rv_pte_pbmt'range);
+  -- Create an array of the various VPN levels, to simplify synthesis.
+  function vpn_split(what : va_type; vaddr : std_logic_vector) return word16_arr is
+    variable va_step : integer            := va_size(what, 1);  -- On RISC-V, va_size(n) is the same for all n.
+    -- Non-constant
+    variable vpn     : word16_arr(0 to 3) := (others => zerow16);
+    variable pos     : integer64          := 12;
   begin
-    if what = sparc then
-      return data(PTE_C);
-    else
-      assert false report "This function does not work for RISC-V!" severity failure;
-      return '0';
-    end if;
+    for i in vpn'range loop
+      if pos + va_step <= vaddr'high + 1 then
+        vpn(i)(va_step - 1 downto 0) := get(vaddr, pos, va_step);
+      end if;
+      pos := pos + va_step;
+    end loop;
+
+    return vpn;
   end;
+
 
   -- Check if PTE will be modified (Accessed/Dirty bits).
   -- needwb     - writeback is needed since D and/or A is changed
@@ -756,34 +873,24 @@ package body mmucacheconfig is
 --    variable was_modified : std_logic;
 --    variable tmpneedwb    : std_logic := '0';  -- Since reading from out parameter is impossible.
 --    variable accessed     : std_logic;
-    variable accessed : std_logic := cond(what = sparc, data(PTE_R), data(rv_pte_a));
-    variable dirty    : std_logic := cond(what = sparc, data(PTE_M), data(rv_pte_d));
+    variable accessed : std_logic := data(rv_pte_a);
+    variable dirty    : std_logic := data(rv_pte_d);
   begin
---    if what = sparc then
---      was_modified     := data(PTE_M);
---      if modified = '1' then
---        tmpneedwb      := not data(PTE_M);                  -- Mark if was not '1' already.
---        data(PTE_M)    := '1';
---      end if;
---      tmpneedwb        := tmpneedwb or not data(PTE_R);     -- Mark if was not '1' already.
---      data(PTE_R)      := '1';         -- Referenced
---    else
---      was_modified     := data(rv_pte_d);
---      if modified = '1' then
---        tmpneedwb      := not data(rv_pte_d);               -- Mark if was not '1' already.
---        data(rv_pte_d) := '1';
---      end if;
---      tmpneedwb        := tmpneedwb or not data(rv_pte_a);  -- Mark if was not '1' already.
---      data(rv_pte_a)   := '1';         -- Accessed
+--    was_modified     := data(rv_pte_d);
+--    if modified = '1' then
+--      tmpneedwb      := not data(rv_pte_d);               -- Mark if was not '1' already.
+--      data(rv_pte_d) := '1';
 --    end if;
+--    tmpneedwb        := tmpneedwb or not data(rv_pte_a);  -- Mark if was not '1' already.
+--    data(rv_pte_a)   := '1';         -- Accessed
 --
 --    needwblock := tmpneedwb and not was_modified;
 --    needwb     := tmpneedwb;
 
-    data(cond(what = sparc, PTE_R, rv_pte_a)) := '1';    -- Always accessed!
+    data(rv_pte_a) := '1';    -- Always accessed!
 
     if modified = '1' then
-      data(cond(what = sparc, PTE_M, rv_pte_d)) := '1';  -- Now dirty!
+      data(rv_pte_d) := '1';  -- Now dirty!
       needwb     := not dirty or not accessed;           -- First modification?
       needwblock := '0';                                 -- No lock needed!
     else
@@ -816,113 +923,67 @@ package body mmucacheconfig is
     paddr := xpaddr(paddr'range);
   end;
 
-  -- Return the SPARC v8 Fault Type field (thus 0 means OK).
   -- at(0) - privileged
   -- at(1) - execution
   -- at(2) - write
-  -- r(0)  - invalid address (Sparc), SUM permission error (RISC-V)
+  -- r(0)  - SUM permission error (RISC-V)
   -- r(1)  - permission error
-  -- r(2)  - translation error (Sparc, unused here), MXR permission error (RISC-V)
+  -- r(2)  - MXR permission error (RISC-V)
   function ft_acc_resolve(what : va_type;
                           at : std_logic_vector(2 downto 0); data : std_logic_vector)
     return std_logic_vector is
-    variable sparc_acc : integer := u2i(data(PTE_ACC_U downto PTE_ACC_D));
-    -- For RISC-V
-    variable is_user   : boolean := at(0) = '0';
-    variable is_exec   : boolean := at(1) = '1';
-    variable is_write  : boolean := at(2) = '1';
-    -- From the table in SPARC v8 H.5
-    --
-    -- Bit Permission
-    -- 0 - read
-    -- 1 - read/write
-    -- 2 - read/execute                          xxx      user
-    -- 3 - all                                  w w
-    -- 4 - execute                             rrrr r
-    -- 5 - user read, supervisor read/write      xxx xx   supervisor
-    -- 6 - supervisor read/execute              w w w w
-    -- 7 - supervisor all                      rrrr rrr       space        access
-    variable v0 : std_logic_vector(0 to 7) := "00001011";  -- user       d load
-    variable v1 : std_logic_vector(0 to 7) := "00001000";  -- supervisor d load
-    variable v2 : std_logic_vector(0 to 7) := "11000111";  -- user       i load/execute
-    variable v3 : std_logic_vector(0 to 7) := "11000100";  -- supervisor i load/execute
-    variable v4 : std_logic_vector(0 to 7) := "10101111";  -- user       d store
-    variable v5 : std_logic_vector(0 to 7) := "10101010";  -- supervisor d store
-    variable v6 : std_logic_vector(0 to 7) := "11101111";  -- user       i store
-    variable v7 : std_logic_vector(0 to 7) := "11101110";  -- supervisor i store
+    variable is_user  : boolean := at(0) = '0';
+    variable is_exec  : boolean := at(1) = '1';
+    variable is_write : boolean := at(2) = '1';
     -- Non-constant
     variable r        : std_logic_vector(2 downto 0);
-    -- For RISC-V
     variable err_mxr  : std_logic := '0';  -- Assume all is OK.
     variable err_perm : std_logic := '0';
     variable err_sum  : std_logic := '0';
   begin
-    if what = sparc then
-      r := "000";                     -- Assume OK
-      if notx(data(PTE_ACC_U downto PTE_ACC_D)) and notx(at) then
-        case at is
-          when "000"  => r(1) := v0(sparc_acc);
-          when "001"  => r(1) := v1(sparc_acc);
-          when "010"  => r(1) := v2(sparc_acc);
-          when "011"  => r(1) := v3(sparc_acc);
-          when "100"  => r(1) := v4(sparc_acc);
-          when "101"  => r(1) := v5(sparc_acc);
-          when "110"  => r(1) := v6(sparc_acc);
-          when others => r(1) := v7(sparc_acc);
-        end case;
-        -- If not permitted, supervisor read/execute(/write) permission,
-        --    and not doing supervisor store
-        if r(1) = '1' and (sparc_acc = 6 or sparc_acc = 7) and not (at = "101" or at = "111") then
-          r(0) := '1';
-        end if;
-      else
-        setx(r);
-      end if;
-    else
-      -- Normally, allow access only from correct mode!
-      -- SUM flag allows user page accesses from supervisor mode,
-      -- but only for read/write (see below).
-      if (    is_user and (data(rv_pte_u)     = '0')) or
-         (not is_user and (data(rv_pte_u + 1) = '0')) then
-        err_perm    := '1';
-      end if;
-
-      if is_exec then
-        if data(rv_pte_x) = '0' then
-          err_perm  := '1';
-        end if;
-        err_sum     := '1';            -- SUM flag does not affect execute.
-        err_mxr     := '1';            -- MXR is only OK for read.
-      elsif is_write then
-        if data(rv_pte_w) = '0' then
-          err_perm  := '1';
-          err_sum   := '1';
-        end if;
-        err_mxr     := '1';            -- MXR is only OK for read.
-      else                             -- Read
-        if data(rv_pte_r) = '0' then
-          err_perm  := '1';
-          err_sum   := '1';
-          -- MXR read fails only if both R and X would.
-          if data(rv_pte_x) = '0' then
-            err_mxr := '1';
-          end if;
-        end if;
-      end if;
-
-      -- W without R is reserved!
-      -- Execute & Write is an invalid query!
-      if data(rv_pte_w downto rv_pte_r) = "10" or
-         (is_exec and is_write) then
-        err_mxr     := '1';
-        err_perm    := '1';
-        err_sum     := '1';
-      end if;
-
-      r := err_mxr & err_perm & err_sum;
+    -- Normally, allow access only from correct mode!
+    -- SUM flag allows user page accesses from supervisor mode,
+    -- but only for read/write (see below).
+    if (    is_user and (data(rv_pte_u)     = '0')) or
+       (not is_user and (data(rv_pte_u + 1) = '0')) then
+      err_perm    := '1';
     end if;
 
+    if is_exec then
+      if data(rv_pte_x) = '0' then
+        err_perm  := '1';
+      end if;
+      err_sum     := '1';            -- SUM flag does not affect execute.
+      err_mxr     := '1';            -- MXR is only OK for read.
+    elsif is_write then
+      if data(rv_pte_w) = '0' then
+        err_perm  := '1';
+        err_sum   := '1';
+      end if;
+      err_mxr     := '1';            -- MXR is only OK for read.
+    else                             -- Read
+      if data(rv_pte_r) = '0' then
+        err_perm  := '1';
+        err_sum   := '1';
+        -- MXR read fails only if both R and X would.
+        if data(rv_pte_x) = '0' then
+          err_mxr := '1';
+        end if;
+      end if;
+    end if;
+
+    -- W without R is reserved!
+    -- Execute & Write is an invalid query!
+    if data(rv_pte_w downto rv_pte_r) = "10" or
+       (is_exec and is_write) then
+      err_mxr     := '1';
+      err_perm    := '1';
+      err_sum     := '1';
+    end if;
+
+    r := err_mxr & err_perm & err_sum;
+
     return r;
-  end ft_acc_resolve;
+  end;
 
 end;

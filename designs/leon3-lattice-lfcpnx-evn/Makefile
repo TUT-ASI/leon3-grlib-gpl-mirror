@@ -19,11 +19,12 @@ SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_const
 VHDLSYNFILES=config.vhd leon3mp.vhd
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
-LATTICE_IP=lifcl/pll/pll_125i_50o lifcl/mpcs/hssl_serdes_x2
+LATTICE_IP=lifcl/pll/pll_125i_50o lifcl/mpcs/hssl_serdes_x2 lifcl/sedc/cram_sedc lifcl/osc/osc_cram_sedc_50o
 
 #PDC=$(GRLIB)/boards/$(BOARD)/LIFCL-40-EVN.pdc
 PDC=leon3mp.pdc
 LDC=leon3mp.ldc
+FDC=leon3mp.fdc
 SDCFILE=leon3mp.sdc
 
 BITGEN=$(GRLIB)/boards/$(BOARD)/default.ut
@@ -40,7 +41,7 @@ LIBSKIP = core1553bbc core1553brm core1553brt gr1553 corePCIF \
 	tmtc openchip hynix cypress ihp gsi fmf spansion \
 	eth micron esa
 DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
-	leon4v0 l2cache/v2 l2cache/v3 gr1553b iommu ascs slink pwm \
+	leon4v0 l2cache/v2 l2cache/v3 l2cache/str gr1553b iommu ascs slink pwm \
 	ge_1000baseX \
 	leon5v0 leon5v0/blockred grfpu5 noelv noelv/subsys riscv \
 	ftaddr hcan greth usb nand \

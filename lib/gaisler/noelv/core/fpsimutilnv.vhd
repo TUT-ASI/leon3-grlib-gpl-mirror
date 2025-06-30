@@ -47,7 +47,7 @@ use gaisler.utilnv.all_1;
 package fpsimutilnv is
 -- pragma translate_off
 
-  constant fpulen : integer := 64;  -- qqq Should not be here!
+  constant fpulen : integer := 64;
 
   function tost(op : fpuop_t) return string;
   function tost(f : float) return string;

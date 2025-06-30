@@ -328,6 +328,23 @@ end;
 architecture rtl of unisim_oddr_reg is
   attribute BOX_TYPE : string;
 
+  component ODDRE1
+    generic (
+      IS_C_INVERTED  : bit := '0';
+      IS_D1_INVERTED : bit := '0';
+      IS_D2_INVERTED : bit := '0';
+      --SIM_DEVICE     : string := "ULTRASCALE_PLUS"; -- Some old unisim do not have this generic
+      SRVAL : bit    := '0'
+    );
+    port (
+      Q  : out std_logic;
+      C  : in  std_logic;
+      D1 : in  std_logic;
+      D2 : in  std_logic;
+      SR : in  std_logic
+    );
+  end component ODDRE1;
+  attribute BOX_TYPE of ODDRE1 : component is "PRIMITIVE";
 
   component ODDR
     generic
@@ -390,6 +407,11 @@ architecture rtl of unisim_oddr_reg is
   signal preD2 : std_ulogic;
   
 begin
+
+  KU : if (tech = kintexu) or (tech = virtexup) generate
+	  U0 : ODDRE1
+		  Port map(Q => Q, C => C1, D1 => D1, D2 => D2, SR => R);
+  end generate;
 
   V7 : if (tech = virtex7) or (tech = kintex7) or (tech = artix7) generate
      U0 : ODDR generic map( DDR_CLK_EDGE => "SAME_EDGE")

@@ -441,15 +441,19 @@ begin
     -- IRQ Interface
     irqo              <= (others => nv_irq_in_none);
     for i in 0 to ncpu-1 loop
-      irqo(i).mtip    <= '0';
-      irqo(i).msip    <= '0';
-      irqo(i).ssip    <= '0';
-      irqo(i).meip    <= irqi(i).meip;
-      irqo(i).seip    <= irqi(i).seip;
-      irqo(i).ueip    <= irqi(i).ueip;
-      irqo(i).heip    <= irqi(i).heip;
-      irqo(i).hgeip   <= irqi(i).hgeip;
-      irqo(i).stime   <= stime;
+      irqo(i).mtip        <= '0';
+      irqo(i).msip        <= '0';
+      irqo(i).ssip        <= '0';
+      irqo(i).meip        <= irqi(i).meip;
+      irqo(i).seip        <= irqi(i).seip;
+      irqo(i).ueip        <= irqi(i).ueip;
+      irqo(i).heip        <= irqi(i).heip;
+      irqo(i).hgeip       <= irqi(i).hgeip;
+      irqo(i).stime       <= stime;
+      irqo(i).imsic       <= irqi(i).imsic;
+      irqo(i).aplic_meip  <= irqi(i).aplic_meip;
+      irqo(i).aplic_seip  <= irqi(i).aplic_seip;
+      irqo(i).nmirq       <= irqi(i).nmirq;
     end loop;
 
     if mswi = 1 then

@@ -27,7 +27,10 @@ mainmenu_option next_comment
     int 'ecc1_gfsize   ' CONFIG_NFC2_ECC1_GFSIZE 13
     int 'ecc1_chunk    ' CONFIG_NFC2_ECC1_CHUNK 512
     int 'ecc1_cap      ' CONFIG_NFC2_ECC1_CAP 16
-    
+
+    int 'rst_cycles    ' CONFIG_NFC2_RST_CYCLES 10
+    int 'tag_size      ' CONFIG_NFC2_TAG_SIZE 0
+
     choice 'GRSPW2 FIFO protection           ' \
       "None		CONFIG_NFC2_FT_NONE \
 	     Parity-DMR	CONFIG_NFC2_FT_DMR \

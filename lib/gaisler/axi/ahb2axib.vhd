@@ -55,6 +55,8 @@ entity ahb2axib is
                                                            --transalted to AXI
                                                            --supported only in BE-to-BE
     ostand_writes  : integer range 1 to 16          := 4;
+    extra_awidth   : integer range 0 to 96          := 0;  --Extra AMBA Address length
+                                                           --/!\ P&P not fully supported when used
     -- scantest
     scantest        : integer                       := 0;
     -- GRLIB plug&play configuration
@@ -66,12 +68,18 @@ entity ahb2axib is
     bar3            : integer range 0 to 1073741823 := 0
     );
   port (
-    rst   : in  std_logic;
-    clk   : in  std_logic;
-    ahbsi : in  ahb_slv_in_type;
-    ahbso : out ahb_slv_out_type;
-    aximi : in  axi_somi_type;
-    aximo : out axix_mosi_type
+    -- Clock and Reset
+    rst             : in  std_logic;
+    clk             : in  std_logic;
+    -- AMBA Interface
+    ahbsi           : in  ahb_slv_in_type;
+    ahbso           : out ahb_slv_out_type;
+    aximi           : in  axi_somi_type;
+    aximo           : out axix_mosi_type;
+    -- Extra AMBA Address
+    i_extra_addr    : in  std_logic_vector(extra_awidth-1 downto 0) := (others => '0');
+    o_extra_r_addr  : out std_logic_vector(extra_awidth-1 downto 0);
+    o_extra_w_addr  : out std_logic_vector(extra_awidth-1 downto 0)
     );  
 end ahb2axib;
 
@@ -80,6 +88,9 @@ architecture rtl of ahb2axib is
 
 
   constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
+  -- Extended AMBA Address Width
+  constant AWIDTH : integer := 32 + extra_awidth;
 
   constant wbuf_num_ptwo  : integer := power_of_two(wbuffer_num);
   constant read_pref_ptwo : integer := power_of_two(rprefetch_num);
@@ -130,7 +141,7 @@ architecture rtl of ahb2axib is
   end record;
 
   type ahb_slv_in_local_type is record
-    haddr  : std_logic_vector(31 downto 0);       -- address bus (byte)
+    haddr  : std_logic_vector(AWIDTH-1 downto 0); -- address bus (byte)
     hwrite : std_ulogic;                          -- read/write
     htrans : std_logic_vector(1 downto 0);        -- transfer type
     hsize  : std_logic_vector(2 downto 0);        -- transfer size
@@ -139,8 +150,72 @@ architecture rtl of ahb2axib is
     hprot  : std_logic_vector(3 downto 0);        -- protection control
   end record;
 
+  --------------------------------------------------------------------
+  -- Address-extended local AMBA records                            --
+  --------------------------------------------------------------------
+
+  -- AHB IN
+  type ahb_slv_in_ext_type is record
+    hsel        : std_logic_vector(0 to NAHBSLV-1);     -- slave select
+    haddr       : std_logic_vector(AWIDTH-1 downto 0);        -- address bus (byte)
+    hwrite      : std_ulogic;                           -- read/write
+    htrans      : std_logic_vector(1 downto 0);         -- transfer type
+    hsize       : std_logic_vector(2 downto 0);         -- transfer size
+    hburst      : std_logic_vector(2 downto 0);         -- burst type
+    hwdata      : std_logic_vector(AHBDW-1 downto 0);   -- write data bus
+    hprot       : std_logic_vector(3 downto 0);         -- protection control
+    hready      : std_ulogic;                           -- transfer done
+    hmaster     : std_logic_vector(3 downto 0);         -- current master
+    hmastlock   : std_ulogic;                           -- locked access
+    hmbsel      : std_logic_vector(0 to NAHBAMR-1);     -- memory bank select
+    hirq        : std_logic_vector(NAHBIRQ-1 downto 0); -- interrupt result bus
+    testen      : std_ulogic;                           -- scan test enable
+    testrst     : std_ulogic;                           -- scan test reset
+    scanen      : std_ulogic;                           -- scan enable
+    testoen     : std_ulogic;                           -- test output enable 
+    testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
+    endian      : std_ulogic;                           -- endianness of bus
+  end record;
+
+  -- AXI AW
+  type axix_aw_mosi_ext_type is record
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0);  -- awid
+    addr   : std_logic_vector (AWIDTH-1 downto 0);        -- awaddr
+    len    : std_logic_vector (7 downto 0);               -- awlen
+    size   : std_logic_vector (2 downto 0);               -- awsize
+    burst  : std_logic_vector (1 downto 0);               -- awburst
+    lock   : std_logic_vector (1 downto 0);               -- awlock
+    cache  : std_logic_vector (3 downto 0);               -- awcache
+    prot   : std_logic_vector (2 downto 0);               -- awprot
+    valid  : std_logic;                                   -- awvalid
+    qos    : std_logic_vector (3 downto 0);  
+  end record;
+
+  -- AXI AR
+  type axix_ar_mosi_ext_type is record
+    id     : std_logic_vector (AXI_ID_WIDTH-1 downto 0); -- arid
+    addr   : std_logic_vector (AWIDTH-1 downto 0);       -- araddr
+    len    : std_logic_vector (7 downto 0);              -- arlen
+    size   : std_logic_vector (2 downto 0);              -- arsize
+    burst  : std_logic_vector (1 downto 0);              -- arburst
+    lock   : std_logic_vector (1 downto 0);              -- arlock
+    cache  : std_logic_vector (3 downto 0);              -- arcache
+    prot   : std_logic_vector (2 downto 0);              -- arprot
+    valid  : std_logic;                                  -- arvalid
+    qos    : std_logic_vector (3 downto 0);              -- arqos 
+  end record;
+
+  -- AXI out
+  type axix_mosi_ext_type is record
+    aw  : axix_aw_mosi_ext_type;
+    w   : axi_w_mosi_type;
+    b   : axi_b_mosi_type;
+    ar  : axix_ar_mosi_ext_type;
+    r   : axi_r_mosi_type;
+  end record;
+
   type axi_rwc_local_type is record
-    addr  : std_logic_vector (31 downto 0);
+    addr  : std_logic_vector (AWIDTH-1 downto 0);
     len   : std_logic_vector (7 downto 0);
     size  : std_logic_vector (2 downto 0);
     burst : std_logic_vector (1 downto 0);
@@ -151,14 +226,14 @@ architecture rtl of ahb2axib is
 
   type reg_type is record
     state                 : ahbm_to_axis_state;
-    aximout               : axix_mosi_type;
+    aximout               : axix_mosi_ext_type;
     ahbsout               : ahb_slv_out_local_type;
     b2b                   : std_logic;  --back-2-back AHB operation
     write_op              : std_logic;  --write operation
     rburst_valid          : std_logic;  --read burst on the AHB side is still ongoing
     ahbin_reg_b2b         : ahb_slv_in_local_type;
     ahbin_reg_write       : ahb_slv_in_local_type;
-    addr_temp             : std_logic_vector(31 downto 0);
+    addr_temp             : std_logic_vector(AWIDTH-1 downto 0);
     addr_strb             : std_logic_vector(log2(AXIDW/8)-1 downto 0);
     rerror                : std_logic;
     rlast_reg             : std_logic;
@@ -189,7 +264,7 @@ architecture rtl of ahb2axib is
     busy_resp             : std_logic;
   end record;
   
-  constant rac_reset : axix_ar_mosi_type := (id    => (others => '0'), addr => (others => '0'),
+  constant rac_reset : axix_ar_mosi_ext_type := (id    => (others => '0'), addr => (others => '0'),
                                              len   => (others => '0'), size => (others => '0'),
                                              burst => (others => '0'), lock => (others => '0'),
                                              cache => (others => '0'), prot => (others => '0'),
@@ -197,7 +272,7 @@ architecture rtl of ahb2axib is
 
   constant rdc_reset : axi_r_mosi_type := (ready => '0');
 
-  constant wac_reset : axix_aw_mosi_type := (id    => (others => '0'), addr => (others => '0'),
+  constant wac_reset : axix_aw_mosi_ext_type := (id    => (others => '0'), addr => (others => '0'),
                                              len   => (others => '0'), size => (others => '0'),
                                              burst => (others => '0'), lock => (others => '0'),
                                              cache => (others => '0'), prot => (others => '0'),
@@ -209,7 +284,7 @@ architecture rtl of ahb2axib is
 
   constant wrc_reset : axi_b_mosi_type := (ready => '0');
 
-  constant aximout_res_t : axix_mosi_type := (
+  constant aximout_res_t : axix_mosi_ext_type := (
     aw => wac_reset,
     w  => wdc_reset,
     b  => wrc_reset,
@@ -272,7 +347,10 @@ architecture rtl of ahb2axib is
   signal mem_dout, mem_din  : std_logic_vector(AXIDW-1 downto 0);
   signal rd_ptr_i, wr_ptr_i : std_logic_vector(log2(wbuf_num_ptwo)-1+wbuf_zero(wbuf_num_ptwo) downto 0);
   signal resp_add           : std_logic;
-  
+
+  signal ahbsi_ext          : ahb_slv_in_ext_type;
+  signal aximo_ext          : axix_mosi_ext_type;
+
 begin
 
   -- pragma translate_off
@@ -281,6 +359,12 @@ begin
   assert (ahb_endianness /= 0) = (ahbsi.endian/='0') or ahbsi.endian='U'
     report "ahb2axib: Mismatch between ahb_endianness generic and AHB configuration"
     severity warning;
+
+  assert (aximi.b.resp = "00" or aximi.b.resp = "UU")
+    report "AXI Write Response Channel: Write was unsuccessful! BRESP value : 0b"
+           & std_logic'image(aximi.b.resp(1))
+           & std_logic'image(aximi.b.resp(0))
+    severity failure;
   -- pragma translate_on
 
   arst <= ahbsi.testrst when (ASYNC_RESET and scantest /= 0 and ahbsi.testen /= '0') else
@@ -304,7 +388,57 @@ begin
       waddress => wr_ptr_i,
       datain   => mem_din);
 
-  comb : process(r, ahbsi, aximi, mem_dout, resp_add)
+  -- AXIMO has 32b fixed address length
+  aximo.ar.id    <= aximo_ext.ar.id;
+  aximo.ar.addr  <= aximo_ext.ar.addr(31 downto 0);
+  aximo.ar.len   <= aximo_ext.ar.len;
+  aximo.ar.size  <= aximo_ext.ar.size;
+  aximo.ar.burst <= aximo_ext.ar.burst;
+  aximo.ar.lock  <= aximo_ext.ar.lock;
+  aximo.ar.cache <= aximo_ext.ar.cache;
+  aximo.ar.prot  <= aximo_ext.ar.prot;
+  aximo.ar.valid <= aximo_ext.ar.valid;
+  aximo.ar.qos   <= aximo_ext.ar.qos;
+  aximo.aw.id    <= aximo_ext.aw.id;
+  aximo.aw.addr  <= aximo_ext.aw.addr(31 downto 0);
+  aximo.aw.len   <= aximo_ext.aw.len;
+  aximo.aw.size  <= aximo_ext.aw.size;
+  aximo.aw.burst <= aximo_ext.aw.burst;
+  aximo.aw.lock  <= aximo_ext.aw.lock;
+  aximo.aw.cache <= aximo_ext.aw.cache;
+  aximo.aw.prot  <= aximo_ext.aw.prot;
+  aximo.aw.valid <= aximo_ext.aw.valid;
+  aximo.aw.qos   <= aximo_ext.aw.qos;
+  aximo.b        <= aximo_ext.b;
+  aximo.r        <= aximo_ext.r;
+  aximo.w        <= aximo_ext.w;
+
+  -- Output potential extra address asignement
+  o_extra_r_addr <= aximo_ext.ar.addr(AWIDTH-1 downto 32);
+  o_extra_w_addr <= aximo_ext.aw.addr(AWIDTH-1 downto 32);
+
+  -- Fill AHB record with potential extra address
+  ahbsi_ext.hsel      <= ahbsi.hsel;
+  ahbsi_ext.haddr     <= i_extra_addr & ahbsi.haddr;
+  ahbsi_ext.hwrite    <= ahbsi.hwrite;
+  ahbsi_ext.htrans    <= ahbsi.htrans;
+  ahbsi_ext.hsize     <= ahbsi.hsize;
+  ahbsi_ext.hburst    <= ahbsi.hburst;
+  ahbsi_ext.hwdata    <= ahbsi.hwdata;
+  ahbsi_ext.hprot     <= ahbsi.hprot;
+  ahbsi_ext.hready    <= ahbsi.hready;
+  ahbsi_ext.hmaster   <= ahbsi.hmaster;
+  ahbsi_ext.hmastlock <= ahbsi.hmastlock;
+  ahbsi_ext.hmbsel    <= ahbsi.hmbsel;
+  ahbsi_ext.hirq      <= ahbsi.hirq;
+  ahbsi_ext.testen    <= ahbsi.testen;
+  ahbsi_ext.testrst   <= ahbsi.testrst;
+  ahbsi_ext.scanen    <= ahbsi.scanen;
+  ahbsi_ext.testoen   <= ahbsi.testoen;
+  ahbsi_ext.testin    <= ahbsi.testin;
+  ahbsi_ext.endian    <= ahbsi.endian;
+
+  comb : process(r, ahbsi_ext, aximi, mem_dout, resp_add)
     variable v                       : reg_type;
     variable wsample_ahb             : std_logic;
     variable wsample_axi             : std_logic;
@@ -329,7 +463,7 @@ begin
     variable narrow_boundary_limit   : std_logic;
     variable wbuf_boundary           : std_logic;
     variable vrd_ptr_i, vwr_ptr_i    : std_logic_vector(log2(wbuf_num_ptwo)-1+wbuf_zero(wbuf_num_ptwo) downto 0);
-    variable haddr_endianness        : std_logic_vector(31 downto 0);
+    variable haddr_endianness        : std_logic_vector(AWIDTH-1 downto 0);
     variable ahbso_hrdata            : std_logic_vector(AHBDW-1 downto 0);
     variable mem_din_v               : std_logic_vector(AHBDW-1 downto 0);
     variable slvcfg                  : ahb_config_type;
@@ -402,22 +536,22 @@ begin
       end if;
     end if;
 
-    haddr_endianness := ahbsi.haddr;
+    haddr_endianness := ahbsi_ext.haddr;
     if endianness_mode = 1 and ahb_endianness = 0 then
       haddr_endianness(log2(AXIDW/8)-1 downto 0) :=
-        be_to_le_address(AXIDW, ahbsi.haddr(log2(AXIDW/8)-1 downto 0), ahbsi.hsize);
+        be_to_le_address(AXIDW, ahbsi_ext.haddr(log2(AXIDW/8)-1 downto 0), ahbsi_ext.hsize);
     end if;
 
 
     if r.b2b = '0' and r.write_op = '0' then
       --read operation
       ahbin_mux.haddr  := haddr_endianness;
-      ahbin_mux.hwrite := ahbsi.hwrite;
-      ahbin_mux.htrans := ahbsi.htrans;
-      ahbin_mux.hburst := ahbsi.hburst;
-      ahbin_mux.hwdata := ahbsi.hwdata;
-      ahbin_mux.hprot  := ahbsi.hprot;
-      ahbin_mux.hsize  := ahbsi.hsize;
+      ahbin_mux.hwrite := ahbsi_ext.hwrite;
+      ahbin_mux.htrans := ahbsi_ext.htrans;
+      ahbin_mux.hburst := ahbsi_ext.hburst;
+      ahbin_mux.hwdata := ahbsi_ext.hwdata;
+      ahbin_mux.hprot  := ahbsi_ext.hprot;
+      ahbin_mux.hsize  := ahbsi_ext.hsize;
     elsif r.write_op = '1' then
       --write operation
       ahbin_mux.haddr  := r.ahbin_reg_write.haddr;
@@ -473,7 +607,7 @@ begin
     v.ahbsout.hresp := HRESP_OKAY;
 
 
-    if ahbsi.haddr(wbuf_boundary_high downto 0) = wbuf_addr_zero then
+    if ahbsi_ext.haddr(wbuf_boundary_high downto 0) = wbuf_addr_zero then
       wbuf_boundary := '1';
     end if;
 
@@ -555,7 +689,7 @@ begin
         v.b2b_single_write      := '0';
         v.b2b_single_write_del  := '0';
 
-        if (ahbsi.htrans(1) = '1' and ahbsi.hready = '1' and ahbsi.hsel(hindex) = '1')
+        if (ahbsi_ext.htrans(1) = '1' and ahbsi_ext.hready = '1' and ahbsi_ext.hsel(hindex) = '1')
           or r.b2b = '1' then
 
           v.ahbsout.hready := '0';
@@ -657,14 +791,14 @@ begin
         end if;
 
         -- Release busy stall on AXI side        
-        if (r.busy_resp = '1') and (ahbsi.htrans /= HTRANS_BUSY) then 
+        if (r.busy_resp = '1') and (ahbsi_ext.htrans /= HTRANS_BUSY) then 
           v.busy_resp := '0'; 
           v.aximout.r.ready  := '1';
         end if;
 
-        if ((ahbsi.hsel(hindex) = '0' or
-             ((ahbsi.htrans = HTRANS_IDLE or ahbsi.htrans = HTRANS_NONSEQ) and (ahbsi.hsel(hindex) = '1')))
-            and ahbsi.hready = '1') then
+        if ((ahbsi_ext.hsel(hindex) = '0' or
+             ((ahbsi_ext.htrans = HTRANS_IDLE or ahbsi_ext.htrans = HTRANS_NONSEQ) and (ahbsi_ext.hsel(hindex) = '1')))
+            and ahbsi_ext.hready = '1') then
           v.rburst_valid := '0';
         end if;
 
@@ -681,7 +815,7 @@ begin
         if rdata_avail = '1' then
 
           -- Stall on AXI side if AHB side is busy
-          if ahbsi.htrans = HTRANS_BUSY then 
+          if ahbsi_ext.htrans = HTRANS_BUSY then 
             v.busy_resp := '1'; 
             v.aximout.r.ready  := '0';
           end if;
@@ -713,7 +847,7 @@ begin
           
         end if;
 
-        if (ahbsi.htrans = HTRANS_NONSEQ) and (ahbsi.hsel(hindex) = '1') and (ahbsi.hready = '1') then
+        if (ahbsi_ext.htrans = HTRANS_NONSEQ) and (ahbsi_ext.hsel(hindex) = '1') and (ahbsi_ext.hready = '1') then
           v.b2b            := '1';
           b2bsample        := '1';
           v.ahbsout.hready := '0';
@@ -747,7 +881,7 @@ begin
         if r.rlast_reg = '1' then
           v.aximout.r.ready := '0';
           --AXI transaction finished
-          if ((ahbsi.htrans = HTRANS_SEQ and ahbsi.hsel(hindex) = '1' and ahbsi.hready = '1')
+          if ((ahbsi_ext.htrans = HTRANS_SEQ and ahbsi_ext.hsel(hindex) = '1' and ahbsi_ext.hready = '1')
               and (r.rburst_valid = '1')) then
             --undefined length read burst continous
             rsample            := '1';
@@ -761,7 +895,7 @@ begin
                 axi_mux.len := (others => '0');
               end if;
             end if;
-          elsif ((ahbsi.htrans = HTRANS_NONSEQ) and (ahbsi.hsel(hindex) = '1' and ahbsi.hready = '1')) then
+          elsif ((ahbsi_ext.htrans = HTRANS_NONSEQ) and (ahbsi_ext.hsel(hindex) = '1' and ahbsi_ext.hready = '1')) then
             --b2b operation
             if r.b2b = '0' then
               v.b2b     := '1';
@@ -897,12 +1031,12 @@ begin
           --a new word can be read on the AHB write burst
           v.ahbsout.hready := '1';
 
-          if (ahbsi.hready = '1') then
+          if (ahbsi_ext.hready = '1') then
             --HREADY is asserted meaning either there is a valid data-word
             --and possibly a new transaction information
             wen                 := '1';
             v.wr_ptr            := r.wr_ptr+1;
-            v.last_latched_word := ahbsi.hwdata;
+            v.last_latched_word := ahbsi_ext.hwdata;
 
             if (v.wr_ptr = r.rd_ptr) then
               --Clear HREADY in order not to read and write to the same entry
@@ -911,8 +1045,8 @@ begin
             end if;
 
             if (v.wr_ptr = wbuf_num_ptwo)
-              or (ahbsi.hsel(hindex) = '0' or ahbsi.htrans /= HTRANS_SEQ)
-              or ((full_dwsize(AXIDW) /= ahbsi.hsize) and
+              or (ahbsi_ext.hsel(hindex) = '0' or ahbsi_ext.htrans /= HTRANS_SEQ)
+              or ((full_dwsize(AXIDW) /= ahbsi_ext.hsize) and
                   (endianness_mode = 1 or narrow_acc_mode = 0)) 
               or (r.initial_wbuf_fill = '1' and wbuf_boundary = '1') then
               --end of the buffer reached
@@ -926,8 +1060,8 @@ begin
               wsample_onlyaddr    := '1';
 
               if (r.initial_wbuf_fill = '1') and (wbuf_boundary = '1')
-                and (ahbsi.htrans = HTRANS_SEQ and ahbsi.hsel(hindex) = '1')
-                and (full_dwsize(AXIDW) = ahbsi.hsize or
+                and (ahbsi_ext.htrans = HTRANS_SEQ and ahbsi_ext.hsel(hindex) = '1')
+                and (full_dwsize(AXIDW) = ahbsi_ext.hsize or
                      (narrow_acc_mode = 1 and endianness_mode = 0)) then
                 --write buffer address boundary is crossed start the AXI transaction
                 --here so that the start address of upcoming write batches
@@ -936,7 +1070,7 @@ begin
                 v.wbuf_boundary_crossed := '1';
               end if;
 
-              if (ahbsi.htrans = HTRANS_SEQ and ahbsi.hsel(hindex) = '1') then
+              if (ahbsi_ext.htrans = HTRANS_SEQ and ahbsi_ext.hsel(hindex) = '1') then
                 --the AHB write burst is still ongoing mark it and start to
                 --fill the buffer when there is space
                 --the reason having a temp variable here is for not to deassert
@@ -946,7 +1080,7 @@ begin
               else
                 v.write_continues_temp := '0';
 
-                if (ahbsi.htrans = HTRANS_NONSEQ and ahbsi.hsel(hindex) = '1') then
+                if (ahbsi_ext.htrans = HTRANS_NONSEQ and ahbsi_ext.hsel(hindex) = '1') then
                   --b2b operation
                   v.b2b     := '1';
                   b2bsample := '1';
@@ -968,12 +1102,12 @@ begin
               v.ahbsout.hready := '1';
             end if;
 
-            if (ahbsi.hready = '1' and ahbsi.hsel(hindex) = '1' and ahbsi.htrans(1) = '1') then
+            if (ahbsi_ext.hready = '1' and ahbsi_ext.hsel(hindex) = '1' and ahbsi_ext.htrans(1) = '1') then
               v.b2b            := '1';
               b2bsample        := '1';
               v.ahbsout.hready := '0';
               v.b2b_single_write := '0';
-              if ahbsi.hburst = HBURST_SINGLE and ahbsi.hwrite = '1' and r.single_write = '1' then
+              if ahbsi_ext.hburst = HBURST_SINGLE and ahbsi_ext.hwrite = '1' and r.single_write = '1' then
                 v.b2b_single_write := '1';
                 if r.aximout.aw.valid = '0' then
                   --if the slave is not ready immediately
@@ -1065,9 +1199,9 @@ begin
 
           if r.single_write = '1' then
             if endianness_mode = 0 and ahb_endianness = 0 then
-              v.aximout.w.data := byte_swap(ahbsi.hwdata);
+              v.aximout.w.data := byte_swap(ahbsi_ext.hwdata);
             else
-              v.aximout.w.data := ahbsi.hwdata;
+              v.aximout.w.data := ahbsi_ext.hwdata;
             end if;
 
             if (full_dwsize(AXIDW) = r.aximout.aw.size) then
@@ -1127,12 +1261,12 @@ begin
 
     if wsample_ahb = '1' then
       v.ahbin_reg_write.haddr  := haddr_endianness;
-      v.ahbin_reg_write.hwrite := ahbsi.hwrite;
-      v.ahbin_reg_write.htrans := ahbsi.htrans;
-      v.ahbin_reg_write.hburst := ahbsi.hburst;
-      v.ahbin_reg_write.hwdata := ahbsi.hwdata;
-      v.ahbin_reg_write.hprot  := ahbsi.hprot;
-      v.ahbin_reg_write.hsize  := ahbsi.hsize;
+      v.ahbin_reg_write.hwrite := ahbsi_ext.hwrite;
+      v.ahbin_reg_write.htrans := ahbsi_ext.htrans;
+      v.ahbin_reg_write.hburst := ahbsi_ext.hburst;
+      v.ahbin_reg_write.hwdata := ahbsi_ext.hwdata;
+      v.ahbin_reg_write.hprot  := ahbsi_ext.hprot;
+      v.ahbin_reg_write.hsize  := ahbsi_ext.hsize;
     end if;
 
     if wsample_onlyaddr = '1' then
@@ -1155,12 +1289,12 @@ begin
     if b2bsample = '1' then
       --back-to-back sample
       v.ahbin_reg_b2b.haddr  := haddr_endianness;
-      v.ahbin_reg_b2b.hwrite := ahbsi.hwrite;
-      v.ahbin_reg_b2b.htrans := ahbsi.htrans;
-      v.ahbin_reg_b2b.hburst := ahbsi.hburst;
-      v.ahbin_reg_b2b.hwdata := ahbsi.hwdata;
-      v.ahbin_reg_b2b.hprot  := ahbsi.hprot;
-      v.ahbin_reg_b2b.hsize  := ahbsi.hsize;
+      v.ahbin_reg_b2b.hwrite := ahbsi_ext.hwrite;
+      v.ahbin_reg_b2b.htrans := ahbsi_ext.htrans;
+      v.ahbin_reg_b2b.hburst := ahbsi_ext.hburst;
+      v.ahbin_reg_b2b.hwdata := ahbsi_ext.hwdata;
+      v.ahbin_reg_b2b.hprot  := ahbsi_ext.hprot;
+      v.ahbin_reg_b2b.hsize  := ahbsi_ext.hsize;
     end if;
 
     if wbuf_num_ptwo = 1 then
@@ -1185,23 +1319,23 @@ begin
     ahbso.hirq   <= (others => '0');
     ahbso.hindex <= hindex;
 
-    aximo.ar      <= r.aximout.ar;
-    aximo.aw      <= r.aximout.aw;
-    aximo.b       <= r.aximout.b;
-    aximo.r       <= r.aximout.r;
-    aximo.w.id    <= r.aximout.w.id;
-    aximo.w.data  <= r.aximout.w.data;
-    aximo.w.strb  <= r.aximout.w.strb;
-    aximo.w.last  <= r.aximout.w.last;
-    aximo.w.valid <= r.aximout.w.valid;
+    aximo_ext.ar      <= r.aximout.ar;
+    aximo_ext.aw      <= r.aximout.aw;
+    aximo_ext.b       <= r.aximout.b;
+    aximo_ext.r       <= r.aximout.r;
+    aximo_ext.w.id    <= r.aximout.w.id;
+    aximo_ext.w.data  <= r.aximout.w.data;
+    aximo_ext.w.strb  <= r.aximout.w.strb;
+    aximo_ext.w.last  <= r.aximout.w.last;
+    aximo_ext.w.valid <= r.aximout.w.valid;
 
     wr_ptr_i <= vwr_ptr_i;
     rd_ptr_i <= vrd_ptr_i;
 
     if endianness_mode = 0 and ahb_endianness = 0 then
-      mem_din_v := byte_swap(ahbsi.hwdata);
+      mem_din_v := byte_swap(ahbsi_ext.hwdata);
     else
-      mem_din_v := ahbsi.hwdata;
+      mem_din_v := ahbsi_ext.hwdata;
     end if;
     mem_din <= mem_din_v;
     mem_wen <= wen;

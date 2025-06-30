@@ -66,6 +66,7 @@ package devices is
   constant VENDOR_SEMIBLOCKS : amba_vendor_type := 16#28#;
   constant VENDOR_NEC        : amba_vendor_type := 16#29#;
   constant VENDOR_HONEYWELL  : amba_vendor_type := 16#2A#;
+  constant VENDOR_ST         : amba_vendor_type := 16#2B#;
   constant VENDOR_AITECH     : amba_vendor_type := 16#30#;
   constant VENDOR_S3         : amba_vendor_type := 16#31#;
   constant VENDOR_TTTECH     : amba_vendor_type := 16#40#;
@@ -433,10 +434,13 @@ package devices is
 
   constant NASA_EP32 : amba_device_type := 16#001#;
 
+-- ST device ids
+
+  constant ST_MIPHY : amba_device_type := 16#001#;
+
 -- TTTECH device ids
 
   constant TTTECH_SWITCH : amba_device_type := 16#001#;
-
 
 -- AppleCore device ids
 
@@ -533,6 +537,7 @@ package devices is
   constant XILINX_ML605          : system_device_type := 16#0605#;
   constant LEON_LATTICE_NEXUS    : system_device_type := 16#0800#;
   constant GAISLER_GR740MINI     : system_device_type := 16#0801#;
+  constant FRONTGRADE_SBC8       : system_device_type := 16#0802#;
   constant XILINX_AC701          : system_device_type := 16#A701#;
   constant XILINX_KC705          : system_device_type := 16#A705#;
   constant XILINX_VC707          : system_device_type := 16#A707#;
@@ -1122,6 +1127,18 @@ package devices is
     device_table => nasa_device_table
     );
 
+  constant ST_DESC : vendor_description := "ST Microelectronics     ";
+
+  constant st_device_table : device_table_type := (
+    ST_MIPHY => "MIPHY transceiver               ",
+    others   => "Unknown Device                  ");
+
+  constant st_lib : vendor_library_type := (
+    vendorid     => VENDOR_ST,
+    vendordesc   => ST_DESC,
+    device_table => st_device_table
+    );
+
   constant TTTECH_DESC : vendor_description := "TTTECH                  ";
 
   constant tttech_device_table : device_table_type := (
@@ -1134,7 +1151,6 @@ package devices is
     device_table => tttech_device_table
     );
   
-
   constant NIIET_DESC : vendor_description := "NIIET                   ";
 
   constant niiet_device_table : device_table_type := (
@@ -1386,6 +1402,7 @@ package devices is
     VENDOR_SEMIBLOCKS   => semiblocks_lib,
     VENDOR_NEC          => nec_lib,
     VENDOR_HONEYWELL    => honeywell_lib,
+    VENDOR_ST           => st_lib,
     VENDOR_AITECH       => aitech_lib,
     VENDOR_S3           => s3_lib,
     VENDOR_TAS          => tas_lib,
@@ -1442,6 +1459,7 @@ package devices is
     NOELV_SOC              => "NOEL-V SoC                      ",
     LEON_LATTICE_NEXUS     => "LEON on Lattice Nexus FPGA      ",
     GAISLER_GR740MINI      => "Lattice CertusPro on GR740-MINI ",
+    FRONTGRADE_SBC8        => "Lattice CertusPro on SBC8 board ",
     others                 => "Unknown system                  ");
 
 -- pragma translate_on

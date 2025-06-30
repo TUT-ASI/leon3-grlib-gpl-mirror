@@ -45,7 +45,7 @@ entity bhtnv is
     tech       : integer;
     nentries   : integer range 32 to 1024;  -- Number of Entries
     hlength    : integer range 2 to 10;     -- History Length
-    predictor  : integer range 0 to 2;      -- Predictor 
+    predictor  : integer range 0 to 2;      -- Predictor
     ext_c      : integer range 0 to 1;      -- C Base Extension Set
     dissue     : integer range 0 to 1;      -- Dual issue
     testen     : integer
@@ -154,7 +154,7 @@ begin  -- rtl
 
     phtable : syncram_2p generic map (tech, log2ext(nentries), (2 ** hlength) * 2, 0, 0, testen, 0, memtest_vlen)
     port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin
-               );   
+               );
 
   comb : process(r, bhti, rstn, holdn, pht_rdata)
     variable v                     : reg_type;
@@ -192,7 +192,7 @@ begin  -- rtl
       v.write_forwarded := '0';
     end if;
     pht_rev             := v.ren;
-    
+
     if bhti.iustall = '0' and holdn = '1' then
       v.rindex_bhist_reg := bhti.rindex_bhist(BHTBITS - 1 downto OFFSET);
     end if;
@@ -222,7 +222,7 @@ begin  -- rtl
       end if;
       v.bhist_data_hold := bhistory;
     end if;
-    
+
     bhti_wdata := bhti.phistory(1 downto 0);
     if notx(bhti.bhistory) then
       for i in 0 to 2 ** hlength - 1 loop
@@ -249,11 +249,11 @@ begin  -- rtl
         when others => wdata := "00";
       end case;
     end if;
-             
+
     bhti_phistory_temp := bhti.phistory((2 ** hlength) * 2 - 1 downto 0);
 
     pht_raddrv := rindex_comb;
-    
+
     pht_wev     := '0';
     pht_waddrv  := windex;
     if bhti.wen = '1' then
@@ -276,11 +276,11 @@ begin  -- rtl
         v.write_forwarded := '1';
         v.pht_rdata_hold  := bhti_phistory_temp;
       end if;
-      
+
     end if;
 
     pht_wdatav := bhti_phistory_temp;
-    
+
     bhistory_new := bhti.taken & bhti.bhistory(hlength - 1 downto 1);
     if bhti.wen = '1' then
       v.bhttable(u2i(windex))(hlength - 1)          := bhti.taken;
@@ -294,9 +294,9 @@ begin  -- rtl
           v.taken(u2i(windex)) := bhti_phistory_temp(i * 2 + 1);
         end if;
       end loop;
-      
-    end if;                
-          
+
+    end if;
+
     taken(0)   := r.taken(u2i(r.rindex_bhist_reg));
     --taken(1)   := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 1) & '1'));
     taken(1)   := '0';
@@ -307,7 +307,7 @@ begin  -- rtl
       taken(2) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "10"));
       taken(3) := r.taken(u2i(r.rindex_bhist_reg(log2ext(nentries) - 1 downto 2) & "11"));
     end if;
-  
+
     if bhti.flush = '1' then
       v.valid := (others => '0');
     end if;
@@ -330,13 +330,12 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk, rstn)
+  seq : process(clk)
   begin
     if rising_edge(clk) then
+      r <= rin;
       if rstn = '0' then
         r <= RES;
-      else
-        r <= rin;
       end if;
     end if;
 

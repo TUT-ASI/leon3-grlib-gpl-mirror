@@ -53,10 +53,10 @@ entity grplic_ahb is
     hindex      : integer range 0 to NAHBSLV-1  := 0;
     haddr       : integer range 0 to 16#FFF#    := 0;
     hmask       : integer range 0 to 16#FFC#    := 16#FFC#;
-    nsources    : integer range 0 to 32         := NAHBIRQ;
+    nsources    : integer range 0 to RISCV_SOURCES := NAHBIRQ;
     ncpu        : integer range 0 to MAX_HARTS  := 4;
-    priorities  : integer range 0 to 32         := 8;
-    pendingbuff : integer range 0 to 32         := 1;
+    priorities  : integer range 0 to 128        := 8;
+    pendingbuff : integer range 0 to 128        := 1;
     irqtype     : integer range 0 to 1          := 1;
     thrshld     : integer range 0 to 1          := 1
     );
@@ -84,8 +84,18 @@ architecture rtl of grplic_ahb is
   -- Register width
   constant regw         : integer := 32;
 
+  function calc_srcregmax(sources : in integer) return integer is
+  begin
+    if (sources mod 32) = 0 then
+      return sources/32;
+    else
+      return sources/32+1;
+    end if;
+  end function calc_srcregmax;
+
   constant ntargets     : integer := ncpu*4;  -- 4 running modes
   constant sources      : integer := nsources;  -- ID 0 reserved
+  constant srcregmax    : integer := calc_srcregmax(nsources);
   constant prbits       : integer := log2x(priorities);
   constant srcbits      : integer := log2x(sources);
   constant trgbits      : integer := log2x(ntargets);
@@ -231,7 +241,8 @@ begin
   comb : process (rst, r, ahbi, ip, pr_out_array, id, irqreq)
     variable v          : reg_type;
     variable selhart    : integer range 0 to ntargets-1;
-    variable selsrc     : integer range 0 to RISCV_SOURCES-1;
+    variable selsrc     : integer;
+    variable selsrcreg  : integer;
     variable selen      : integer range 0 to ntargets-1;
     variable srcmaxid   : integer range 0 to sources-1;
     variable cmplsource : integer range 0 to 2**srcbits-1;
@@ -324,7 +335,9 @@ begin
     -- Select context for claim/complete register block
     selhart     := to_integer(unsigned(r.haddr(trgbits+11 downto 12)));
     -- Select source for priority register block
-    selsrc      := to_integer(unsigned(r.haddr(srcbits+1 downto 2)));
+    selsrc      := to_integer(unsigned(r.haddr(11 downto 2)));
+    -- Select source register that is being accessed
+    selsrcreg   := to_integer(unsigned(r.haddr(6 downto 2)));
     -- Select context for enable bits register block
     selen       := to_integer(unsigned(r.haddr(trgbits+6 downto 7)));
 
@@ -368,19 +381,33 @@ begin
               rdata(prbits-1 downto 0)    := r.priorities(selsrc);
             end if;
           else -- pending register
-            -- only support 32 sources (including 0)
-            if r.haddr(11 downto 2) = zero32(11 downto 2) then 
-              rdata(sources-1 downto 0)   := r.ipbits(sources-1 downto 0);
-            end if;
+            for i in 0 to srcregmax-1 loop
+              if i = selsrcreg then
+                if (i+1)*regw <= sources then
+                  rdata(regw-1 downto 0)   := r.ipbits((i+1)*regw-1 downto i*regw);
+                elsif i*regw < sources then
+                  if (sources mod regw) /= 0 then
+                    rdata((sources mod regw)-1 downto 0)   := r.ipbits(i*regw+(sources mod regw)-1 downto i*regw);
+                  end if;
+                end if;
+              end if;
+            end loop;
           end if;
         else -- enable register
           -- only for suppoted contexts
           if unsigned(r.haddr(THR_BIT-1 downto 7)) < unsigned(max_ctx(THR_BIT-1 downto 7)) then
-              -- only support 32 sources (including 0)
-              if r.haddr(6 downto 2) = zero32(6 downto 2) then 
-                rdata(sources-1 downto 0)     := r.enable(selen)(sources-1 downto 0);
+            for i in 0 to srcregmax-1 loop
+              if i = selsrcreg then
+                if (i+1)*regw <= sources then
+                  rdata(regw-1 downto 0)                   := r.enable(selen)((i+1)*regw-1 downto i*regw);
+                elsif i*regw < sources then
+                  if (sources mod regw) /= 0 then
+                    rdata((sources mod regw)-1 downto 0)   := r.enable(selen)(i*regw+(sources mod regw)-1 downto i*regw);
+                  end if;
+                end if;
               end if;
-            end if;
+            end loop;
+          end if;
         end if; -- r.haddr(12)
       else  -- Claim/complete register block
         -- only for suppoted contexts
@@ -418,10 +445,17 @@ begin
         else -- enable register
           -- only for suppoted contexts
           if unsigned(r.haddr(THR_BIT-1 downto 7)) < unsigned(max_ctx(THR_BIT-1 downto 7)) then
-            -- only support 32 sources (including 0)
-            if r.haddr(6 downto 2) = zero32(6 downto 2) then 
-              v.enable(selen)(sources-1 downto 0)   := wdata(sources-1 downto 0);
-            end if;
+            for i in 0 to srcregmax-1 loop
+              if i = selsrcreg then
+                if (i+1)*regw <= sources then
+                  v.enable(selen)((i+1)*regw-1 downto i*regw)   := wdata(regw-1 downto 0);
+                elsif i*regw < sources then
+                  if (sources mod regw) /= 0 then
+                    v.enable(selen)(i*regw+(sources mod regw)-1 downto i*regw)  := wdata((sources mod regw)-1 downto 0);
+                  end if;
+                end if;
+              end if;
+            end loop;
           end if;
         end if; -- r.haddr(12)
       else -- Claim/complete register block

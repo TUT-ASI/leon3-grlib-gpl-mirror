@@ -890,13 +890,7 @@ package body utilnv is
                 d    : std_logic) is
     variable data : std_logic_vector(0 downto 0) := (others => d);
   begin
---    set(dest, start, data);
-    -- Pointless, except that GHDL+Verilator has issues...
-    for i in dest'range loop
-      if i = start then
-        dest(i) := d;
-      end if;
-    end loop;
+    set(dest, start, data);
   end;
 
   function set(src  : std_logic_vector; start : integer;

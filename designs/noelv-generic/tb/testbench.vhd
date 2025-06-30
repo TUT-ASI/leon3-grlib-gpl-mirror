@@ -47,9 +47,7 @@ entity testbench is
     disas    : integer := CFG_DISAS;
     dm_ctrl  : integer := 0;
     romfile  : string  := "prom.srec"; -- rom contents
-    ramfile  : string  := "ram.srec";  -- ram contents
-    htif     : integer := 0;
-    tohost   : integer := 0
+    ramfile  : string  := "ram.srec"   -- ram contents
     );
 end;
 
@@ -127,10 +125,7 @@ begin
       disas             => disas,
       SIMULATION        => 1,
       romfile           => romfile,
-      ramfile           => ramfile,
-      tohost            => std_logic_vector(to_unsigned(tohost, 64)),
-      fromhost          => (others => '1'),
-      htif              => htif
+      ramfile           => ramfile
       )
     port map(
       reset             => system_rst,

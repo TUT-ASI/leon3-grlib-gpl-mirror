@@ -15,11 +15,11 @@ include $(CFG_DIR)/.config
 
 #32-bit NOEL-V
 ifeq ($(CONFIG_NOELV_RV32),y)
-DIRADD = noelv/pkg_32 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
+DIRADD = l5nv/shared noelv/pkg_32 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 32
 else
 #64-bit NOEL-V
-DIRADD = noelv/pkg_64 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
+DIRADD = l5nv/shared noelv/pkg_64 noelv noelv/core noelv/dm noelv/subsys noelv/grfpunv
 XLEN   = 64
 endif
 
@@ -121,11 +121,11 @@ TECHLIBS = unisim
 SKIP_SIM_TECHLIBS = 1
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 corePCIF \
-	tmtc openchip ihp spw gsi cypress hynix ge_1000baseX \
-	spansion secureip usb ddr grdmac mmuconfig fmf esa micron spfi
+	tmtc openchip ihp gsi cypress hynix ge_1000baseX \
+	spansion secureip usb ddr grdmac mmuconfig fmf esa micron
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft leon5 leon5v0 leon5v0/blockred srio idt crypto satcan pci ambatest \
-	spacewire ascs slink irqmp grdmac grrm nand\
-	pwm gr1553b iommu ac97 secureip mmuiface clk2x canfd leon4v0 hssl
+	ascs slink irqmp grdmac grrm nand\
+	pwm gr1553b iommu ac97 secureip mmuiface clk2x leon4v0
 FILESKIP = grcan.vhd ddr2.v mobile_ddr.v adapters/sgmii.vhd iu4.vhd
 
 ### Regenerate AHBROM #################################################

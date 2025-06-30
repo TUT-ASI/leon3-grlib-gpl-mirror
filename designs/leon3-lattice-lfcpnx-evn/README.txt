@@ -106,7 +106,7 @@ programming file.
 
 = Programming the FPGA =
 
-The programming part is done by using Radiant Programmerm which can be
+The programming part is done by using Radiant Programmer which can be
 launched from Radiant itself.
 
 To connect to Lattice boards (for programming purposes), you'll need to use

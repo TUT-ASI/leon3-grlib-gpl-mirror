@@ -71,7 +71,7 @@ package config is
   constant CFG_ETH_ENL : integer := 16#000000#;
 -- Xilinx MIG 7-Series
   constant CFG_MIG_7SERIES : integer := 1;
-  constant CFG_MIG_7SERIES_MODEL : integer := 0;
+  constant CFG_MIG_7SERIES_MODEL : integer := 1;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);
@@ -97,11 +97,11 @@ package config is
   constant CFG_NFC2_ECC1_GFSIZE : integer := 0;
   constant CFG_NFC2_ECC1_CHUNK : integer := 0;
   constant CFG_NFC2_ECC1_CAP : integer := 0;
-  constant CFG_NFC2_RST_CYCLES : integer := 0;
+  constant CFG_NFC2_RST_CYCLES : integer := 10;
   constant CFG_NFC2_TAG_SIZE : integer := 0;
   constant CFG_NFC2_FT : integer := 0;
 -- Gaisler Ethernet core
-  constant CFG_GRETH : integer := 0;
+  constant CFG_GRETH : integer := 1;
   constant CFG_GRETH1G : integer := 0;
   constant CFG_ETH_FIFO : integer := 8;
   constant CFG_GRETH_FMC : integer := 0;
@@ -110,6 +110,41 @@ package config is
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#FFFE#;
   constant CFG_GRGPIO_WIDTH : integer := (20);
+-- Spacewire interface
+  constant CFG_SPWRTR_ENABLE : integer := 0;
+  constant CFG_SPWRTR_INPUT : integer := 2;
+  constant CFG_SPWRTR_OUTPUT : integer := 0;
+  constant CFG_SPWRTR_RTSAME : integer := 0;
+  constant CFG_SPWRTR_RXFIFO : integer := 64;
+  constant CFG_SPWRTR_TECHFIFO : integer := 1;
+  constant CFG_SPWRTR_FT : integer := 0;
+  constant CFG_SPWRTR_SPWEN : integer := 0;
+  constant CFG_SPWRTR_AMBAEN : integer := 0;
+  constant CFG_SPWRTR_FIFOEN : integer := 0;
+  constant CFG_SPWRTR_SPWPORTS : integer := 2;
+  constant CFG_SPWRTR_AMBAPORTS : integer := 0;
+  constant CFG_SPWRTR_FIFOPORTS : integer := 0;
+  constant CFG_SPWRTR_ARB : integer := 0;
+  constant CFG_SPWRTR_RMAP : integer := 0;
+  constant CFG_SPWRTR_RMAPCRC : integer := 0;
+  constant CFG_SPWRTR_FIFO2 : integer := 4;
+  constant CFG_SPWRTR_ALMOST : integer := 8;
+  constant CFG_SPWRTR_RXUNAL : integer := 0;
+  constant CFG_SPWRTR_RMAPBUF : integer := 4;
+  constant CFG_SPWRTR_DMACHAN : integer := 1;
+  constant CFG_SPWRTR_AHBSLVEN : integer := 1;
+  constant CFG_SPWRTR_TIMERBITS : integer := 0;
+  constant CFG_SPWRTR_PNP : integer := 1;
+  constant CFG_SPWRTR_AUTOSCRUB : integer := 1;
+-- GRCANFD interface
+  constant CFG_GRCANFD : integer := 0;
+  constant CFG_GRCANFDIRQ : integer := 0;
+  constant CFG_GRCANFDSINGLE : integer := 0;
+-- High Speed Serial Links
+  constant CFG_HSSL_EN : integer := 0;
+  constant CFG_HSSL_NUM : integer := 1;
+  constant CFG_HSSL_SPFI : integer := 1;
+  constant CFG_HSSL_WIZL : integer := 0;
 -- GRLIB debugging
   constant CFG_DUART : integer := 1;
 end;

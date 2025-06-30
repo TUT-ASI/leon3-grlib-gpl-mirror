@@ -1,0 +1,3 @@
+define_attribute {v:gaisler.mmu_icache*} {syn_ramstyle} {registers};
+define_attribute {v:gaisler.mmu_dcache*} {syn_ramstyle} {registers};
+define_attribute {v:gaisler.sqrtrom*}    {syn_romstyle} {auto};

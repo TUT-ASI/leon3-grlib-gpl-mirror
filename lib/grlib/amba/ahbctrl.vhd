@@ -85,6 +85,7 @@ entity ahbctrl is
     msto    : in  ahb_mst_out_vector;
     slvi    : out ahb_slv_in_type;
     slvo    : in  ahb_slv_out_vector;
+    endian  : in  std_ulogic := '0';
     testen  : in  std_ulogic := '0';
     testrst : in  std_ulogic := '1';
     scanen  : in  std_ulogic := '0';
@@ -374,7 +375,7 @@ begin
           rst when ASYNC_RESET else
           '1';
 
-  comb : process(rst, msto, slvo, r, rsplit, testen, testrst, scanen, testoen, testsig)
+  comb : process(rst, msto, slvo, r, rsplit, endian, testen, testrst, scanen, testoen, testsig)
   variable v : reg_type;
   variable nhmaster: integer range 0 to nahbmx -1;
   variable hgrant  : std_logic_vector(0 to NAHBMST-1);   -- bus grant
@@ -397,11 +398,18 @@ begin
   variable defmst   : std_ulogic;
   variable tmpv     : std_logic_vector(0 to nahbmx-1);
 
+  variable sys_endian : std_ulogic;
+
   begin
 
     v := r; hgrant := (others => '0'); defmst := '0';
     haddr := msto(r.hmaster).haddr;
 
+    sys_endian := conv_std_logic(ahbendian /= 0);
+    if ahbendian = 2 then
+      sys_endian := endian;
+    end if;
+  
     nhmaster := r.hmaster;
 
     --determine if bus should be rearbitrated. This is done if the current
@@ -550,7 +558,7 @@ begin
           v.hrdatas(13 downto 0) := conv_std_logic_vector(LIBVHDL_BUILD, 14);
           v.hrdatas(31 downto 16) := conv_std_logic_vector(devid, 16);
         elsif r.haddr(3 downto 2) = "01" then
-          v.hrdatas(0) := conv_std_logic(ahbendian /= 0);
+          v.hrdatas(0) := sys_endian;
         elsif hwdebug = 1 and r.haddr(3 downto 2) = "10" then
           for i in 0 to nahbmx-1 loop v.hrdatas(i) := msto(i).hbusreq; end loop;
         elsif hwdebug = 1 then
@@ -676,7 +684,7 @@ begin
     vslvi.scanen  := scanen and testen;
     vslvi.testoen := testoen;
     vslvi.testin  := testen & (scanen and testen) & testsig;
-    vslvi.endian  := conv_std_logic(ahbendian /= 0);
+    vslvi.endian  := sys_endian;
 
     -- reset operation
     if (not ASYNC_RESET) and (not RESET_ALL) and (rst = '0') then
@@ -698,7 +706,7 @@ begin
     msti.scanen  <= scanen and testen;
     msti.testoen <= testoen;
     msti.testin  <= testen & (scanen and testen) & testsig;
-    msti.endian  <= conv_std_logic(ahbendian /= 0);
+    msti.endian  <= sys_endian;
 
     -- drive slave inputs
     slvi     <= vslvi;

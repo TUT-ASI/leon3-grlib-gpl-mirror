@@ -1,4 +1,3 @@
-devices 
 arith 
 memctrl
 grfpu
@@ -15,6 +14,7 @@ leon4v0
 irqmp
 l2cache/pkg
 l2cache/v3
+l2cache/str
 lram
 can
 canfd 
@@ -55,6 +55,7 @@ ftaddr
 grscrub
 plic
 aplic
+#l5nv/shared
 leon5
 leon5v0
 leon5v0/blockred
@@ -64,4 +65,4 @@ l2c_lite
 bch
 nandfctrl2
 griommu2
-nandfctrl2_phy
+grlsedc

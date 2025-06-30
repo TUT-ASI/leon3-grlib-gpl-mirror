@@ -82,7 +82,7 @@ package config is
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
-  constant CFG_AHB_JTAG : integer := 1;
+  constant CFG_AHB_JTAG : integer := 0;
 -- AHB RAM
   constant CFG_AHBRAMEN : integer := 1;
   constant CFG_AHBRSZ : integer := 128;
@@ -167,6 +167,8 @@ package config is
   constant CFG_GPT_SEPIRQ : integer := 1;
   constant CFG_GPT_WDOGEN : integer := 0;
   constant CFG_GPT_WDOG : integer := 16#0#;
+-- GRLSEDC
+  constant CFG_GRLSEDC : integer := 0;
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#00FF#;

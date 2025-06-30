@@ -1971,7 +1971,7 @@ begin
     -- Data TCM hit and muxing logic
     dtcmhit := '0';
     if dtcmen /= 0 then
-      if r.d1tcmen='1' and tcmaddr_comp(r.d1vaddr(31 downto 16),r.dtcmaddr,dtcmen,dtcmabits)='1' then
+      if r.d1tcmen='1' and r.d1specialasi='0' and tcmaddr_comp(r.d1vaddr(31 downto 16),r.dtcmaddr,dtcmen,dtcmabits)='1' then
         dtcmhit := '1';
         dhit := '1';
         dhitv := (others => '0');

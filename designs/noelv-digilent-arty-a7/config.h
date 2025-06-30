@@ -208,6 +208,18 @@
 #define CONFIG_GRGPIO_WIDTH (20)
 #define CONFIG_GRGPIO_IMASK FFFE
 /*
+ * SPW
+ */
+#undef  CONFIG_SPWRTR_ENABLE
+/*
+ * CANFD
+ */
+#undef  CONFIG_GRCANFD_ENABLE
+/*
+ * HSSL
+ */
+#undef  CONFIG_GRHSSL_ENABLE
+/*
  * VHDL Debugging        
  */
 #define CONFIG_DEBUG_UART 1

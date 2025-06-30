@@ -851,14 +851,13 @@ package body fputilnv is
     variable bias : integer                              := 2 ** (ebits - 1) - 1;
     variable bits : integer                              := 1 + ebits + mbits;
     -- Non-constant
-    variable r    : float;  -- GHDL synth does not like assigment here!
+    variable r    : float                                := float_none;
 -- pragma translate_off
     variable f    : float                                := to_float_ext(opu);
 -- pragma translate_on
     variable exp  : std_logic_vector(ebits - 1 downto 0) := get(opu, mbits, ebits);
     variable mant : std_logic_vector(mbits - 1 downto 0) := get_lo(opu, mbits);
   begin
-    r            := float_none;  -- GHDL synth does not like assignment above for this!
     r.w          := opu;
     r.neg        := opu(ebits + mbits) = '1';
     r.exp        := signed(usub(uext(exp, r.exp'length), bias));

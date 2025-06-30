@@ -515,6 +515,8 @@ begin
     variable HHXW_int       : integer;
     variable HHXS_int       : integer;
     variable g, h, guest_index : unsigned(31 downto 0) := (others => '0');
+    variable shifted_mbase_ppn : std_logic_vector(31 downto 0);
+    variable shifted_sbase_ppn : std_logic_vector(31 downto 0);
   begin
     
 
@@ -813,44 +815,46 @@ begin
       HHXW_int := to_integer(unsigned(r.mmsiaddrcfg.HHXW));
       HHXS_int := to_integer(signed(r.mmsiaddrcfg.HHXS));
       LHXW_int := to_integer(unsigned(r.mmsiaddrcfg.LHXW));
+      shifted_mbase_ppn := std_logic_vector(shift_left(unsigned(r.mmsiaddrcfg.base_ppn(31 downto 0)),12));
+      shifted_sbase_ppn := std_logic_vector(shift_left(unsigned(r.smsiaddrcfg.base_ppn(31 downto 0)),12));
       if MSI_pmode = '0' or S_EN = 0 then -- machine mode domain 
         LHXS_int := to_integer(unsigned(r.mmsiaddrcfg.LHXS));
         if grouped_harts = 0 then
           -- h = Hart_Index & (2^LHXW − 1)
-          -- MSI_address = Base_PPN | (h<<LHXS) <<12
+          -- MSI_address = (Base_PPN | (h<<LHXS)) <<12
           ---------------------------------------------------------------------------------------------------------
           h := resize(unsigned(MSI_hart), 32);
-          next_addr := r.mmsiaddrcfg.base_ppn(31 downto 0) or std_logic_vector(shift_left(h, 12+LHXS_int));
+          next_addr := shifted_mbase_ppn or std_logic_vector(shift_left(h, 12+LHXS_int));
         else
           -- g = (Hart_Index>>LHXW) & (2^HHXW − 1)
           -- h = Hart_Index & (2^LHXW − 1)
-          -- MSI_address = Base PPN | ((g<<(HHXS + 12)) | (h<<LHXS)) <<12
+          -- MSI_address = (Base PPN | (g<<(HHXS + 12)) | (h<<LHXS)) <<12
           ---------------------------------------------------------------------------------------------------------
           h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
           h := shift_left(h, 12+LHXS_int);
           g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32); 
           g := shift_left(g, 12+(12+HHXS_int));
-          next_addr := r.mmsiaddrcfg.base_ppn(31 downto 0) or std_logic_vector(g) or std_logic_vector(h);
+          next_addr := shifted_mbase_ppn or std_logic_vector(g) or std_logic_vector(h);
         end if;
       else -- supervisor mode 
         LHXS_int := to_integer(unsigned(r.smsiaddrcfg.LHXS));
         if grouped_harts = 0 then
           -- h = machine-level hart index & (2 LHXW − 1)
-          -- MSI address = Base PPN | ((h<<LHXS) | Guest Index) <<12 
+          -- MSI address = (Base PPN | ((h<<LHXS) | Guest Index)) <<12 
           h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
           h := shift_left(h, 12+LHXS_int);
           guest_index := shift_left(resize(unsigned(MSI_guest_hart), 32), 12);
-          next_addr := r.smsiaddrcfg.base_ppn(31 downto 0) or std_logic_vector(h) or std_logic_vector(guest_index);
+          next_addr := shifted_sbase_ppn  or std_logic_vector(h) or std_logic_vector(guest_index);
         else
           -- g = (machine-level hart index>>LHXW) & (2 HHXW − 1)
           -- h = machine-level hart index & (2 LHXW − 1)
-          -- MSI address = Base PPN | ((g<<(HHXS + 12)) | (h<<LHXS) | Guest Index) <<12 
+          -- MSI address = (Base PPN | ((g<<(HHXS + 12)) | (h<<LHXS) | Guest Index)) <<12 
           h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
           h := shift_left(h, 12+LHXS_int);
           g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32); 
           g := shift_left(g, 12+(12+HHXS_int));
           guest_index := shift_left(resize(unsigned(MSI_guest_hart), 32), 12);
-          next_addr := r.smsiaddrcfg.base_ppn(31 downto 0) or std_logic_vector(g) or std_logic_vector(h) or std_logic_vector(guest_index);
+          next_addr := shifted_sbase_ppn or std_logic_vector(g) or std_logic_vector(h) or std_logic_vector(guest_index);
         end if;
       end if;
     end if;

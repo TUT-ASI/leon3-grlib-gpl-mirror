@@ -115,6 +115,7 @@ type registers is record
   iflag         :  std_logic_vector(nbits-1 downto 0);
   inpen         :  std_logic_vector(nbits-1 downto 0);
   pulse         :  std_logic_vector(nbits-1 downto 0);
+  setbits       :  std_logic_vector(nbits-1 downto 0);
 end record;
 
 constant nbitszero : std_logic_vector(nbits-1 downto 0) := (others => '0');
@@ -126,7 +127,7 @@ constant RES : registers := (
   dout => DOUT_RESVAL(nbits-1 downto 0), imask => nbitszero, level => nbitszero, edge => nbitszero,
   ilat => nbitszero, dir => DIR_RESVAL(nbits-1 downto 0), bypass => BP_RESVAL(nbits-1 downto 0), irqmap => irqmapzero,
   iflag => nbitszero, inpen => INPEN_RESVAL(nbits-1 downto 0),
-  pulse => nbitszero);
+  pulse => nbitszero, setbits => nbitszero);
 
 
 signal r, rin : registers;
@@ -225,72 +226,101 @@ begin
 -- write registers
 
     if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
-      case apbi.paddr(6 downto 2) is
-      when "00000" => null;
-      when "00001" => v.dout := apbi.pwdata(nbits-1 downto 0);
-      when "00010" => v.dir := apbi.pwdata(nbits-1 downto 0);
-      when "00011" =>
+      case apbi.paddr(7 downto 2) is
+      when "000000" => null;
+      when "000001" => v.dout := apbi.pwdata(nbits-1 downto 0);
+      when "000010" => v.dir := apbi.pwdata(nbits-1 downto 0);
+      when "000011" =>
         if (imask /= 0) then
 	  v.imask := apbi.pwdata(nbits-1 downto 0) and PIMASK(nbits-1 downto 0);
         end if;
-      when "00100" =>
+      when "000100" =>
         if (imask /= 0) then
 	  v.level := apbi.pwdata(nbits-1 downto 0) and PIMASK(nbits-1 downto 0);
         end if;
-      when "00101" =>
+      when "000101" =>
         if (imask /= 0) then
 	  v.edge := apbi.pwdata(nbits-1 downto 0) and PIMASK(nbits-1 downto 0);
         end if;
-      when "00110" =>
+      when "000110" =>
         if (bypass /= 0) then
 	  v.bypass := apbi.pwdata(nbits-1 downto 0) and BPMASK(nbits-1 downto 0);
         end if;
-      when "00111" => 
+      when "000111" => 
         null;
-      when "10000" =>
+      when "010000" =>
         null;
-      when "10001" =>
+      when "010001" =>
         if (iflagreg /= 0) then
           v.iflag := (r.iflag and not apbi.pwdata(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);
         end if;
-      when "10010" =>
+      when "010010" =>
         if (inpen /= 0) then
           v.inpen := apbi.pwdata(nbits-1 downto 0);
         end if;
-      when "10011" =>
+      when "010011" =>
         if (pulse /= 0) then
           v.pulse := apbi.pwdata(nbits-1 downto 0);
         end if;
-      when "10100" =>
+      when "010100" =>
         if (inpen /= 0) then
           v.inpen := r.inpen or apbi.pwdata(nbits-1 downto 0);
         end if;
-      when "10101" => v.dout := r.dout or apbi.pwdata(nbits-1 downto 0);
-      when "10110" => v.dir := r.dir or apbi.pwdata(nbits-1 downto 0);
-      when "10111" =>
+      when "010101" => v.dout := r.dout or apbi.pwdata(nbits-1 downto 0);
+      when "010110" => v.dir := r.dir or apbi.pwdata(nbits-1 downto 0);
+      when "010111" =>
         if (imask /= 0) then
           v.imask := (r.imask or apbi.pwdata(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);
         end if;
-      when "11000" =>
+      when "011000" =>
         if (inpen /= 0) then
           v.inpen := r.inpen and apbi.pwdata(nbits-1 downto 0);
         end if;
-      when "11001" => v.dout := r.dout and apbi.pwdata(nbits-1 downto 0);
-      when "11010" => v.dir := r.dir and apbi.pwdata(nbits-1 downto 0);
-      when "11011" =>
+      when "011001" => v.dout := r.dout and apbi.pwdata(nbits-1 downto 0);
+      when "011010" => v.dir := r.dir and apbi.pwdata(nbits-1 downto 0);
+      when "011011" =>
         if (imask /= 0) then
           v.imask := (r.imask and apbi.pwdata(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);
         end if;
-      when "11100" =>
+      when "011100" =>
         if (inpen /= 0) then
           v.inpen := r.inpen xor apbi.pwdata(nbits-1 downto 0);
         end if;
-      when "11101" => v.dout := r.dout xor apbi.pwdata(nbits-1 downto 0);
-      when "11110" => v.dir := r.dir xor apbi.pwdata(nbits-1 downto 0);
-      when "11111" =>
+      when "011101" => v.dout := r.dout xor apbi.pwdata(nbits-1 downto 0);
+      when "011110" => v.dir := r.dir xor apbi.pwdata(nbits-1 downto 0);
+      when "011111" =>
         if (imask /= 0) then
           v.imask := (r.imask xor apbi.pwdata(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);
-        end if;        
+        end if;  
+        
+      when "100000" => -- 0x80  Input enable register, logical-Set&Clear
+        v.setbits :=  apbi.pwdata(nbits-1 downto 0);
+
+      when "100001" => -- 0x84  Input enable register, logical-Set&Clear
+        v.inpen := r.inpen or r.setbits;
+        v.inpen := v.inpen and not apbi.pwdata(nbits-1 downto 0);
+        
+      when "100010" => -- 0x88  I/O port output register, logical-Set&Clear
+        v.setbits :=  apbi.pwdata(nbits-1 downto 0);
+
+      when "100011" => -- 0x8C  I/O port output register, logical-Set&Clear
+        v.dout := r.dout or r.setbits;
+        v.dout := v.dout and not apbi.pwdata(nbits-1 downto 0);
+
+      when "100100" => -- 0x90  I/O port direction register, logical-Set&Clear
+        v.setbits :=  apbi.pwdata(nbits-1 downto 0);
+
+      when "100101" => -- 0x94  I/O port direction register, logical-Set&Clear
+        v.dir := r.dir or r.setbits;
+        v.dir := v.dir and not apbi.pwdata(nbits-1 downto 0);
+
+      when "100110" => -- 0x98  Interrupt mask register, logical-Set&Clear
+        v.setbits :=  apbi.pwdata(nbits-1 downto 0);
+
+      when "100111" => -- 0x9C  Interrupt mask register, logical-Set&Clear
+        v.imask := (r.imask or r.setbits(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);
+        v.imask := (v.imask and not apbi.pwdata(nbits-1 downto 0)) and PIMASK(nbits-1 downto 0);        
+              
       when others => --when "01000" to "01111" =>
         if (irqgen > 1) then
           for i in 0 to (nbits+3)/4-1 loop

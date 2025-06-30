@@ -1,5 +1,11 @@
 noelvcpu.vhd
+noelvcpu_str.vhd
 dummy_pnp.vhd
-wrap_noelvcpu.vhd
+noelvcfgmap.vhd
+#wrap_noelvcpu.vhd
 noelvsys.vhd
-wrap_noelvsys.vhd
+noelvadv.vhd
+noelvadv_ahb.vhd
+#wrap_noelvsys.vhd
+#noelvgppadv.vhd
+#noelvgppadvsys.vhd

@@ -84,7 +84,7 @@ architecture rtl of saed32_syncram is
  end component;
 
 
-  signal d, q, gnd : std_logic_vector(48 downto 0);
+  signal d, q, gnd : std_logic_vector(63 downto 0);
   signal a : std_logic_vector(17 downto 0);
   signal vcc, csn, wen : std_ulogic;
   --constant synopsys_bug : std_logic_vector(31 downto 0) := (others => '0');

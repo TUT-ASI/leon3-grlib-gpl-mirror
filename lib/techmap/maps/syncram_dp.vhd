@@ -76,7 +76,8 @@ architecture rtl of syncram_dp is
       dbits: integer;
       sepclk: integer;
       wrfst: integer;
-      rdhold: integer
+      rdhold: integer;
+      pipeline: integer
       );
     port (
       clk1     : in  std_ulogic;
@@ -208,7 +209,8 @@ begin
       dbits     => dbits,
       sepclk    => isepclk,
       wrfst     => wrfst,
-      rdhold    => rdhold
+      rdhold    => rdhold,
+      pipeline   => boolean'pos(pipeline /= 0 and has_sram_pipe(tech)/=0)
       )
     port map (
       clk1      => clk1,
