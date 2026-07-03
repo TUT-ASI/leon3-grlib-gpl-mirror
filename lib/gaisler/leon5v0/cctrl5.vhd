@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -480,6 +480,7 @@ architecture rtl of cctrl5 is
     slowwrpend: std_ulogic;
     dbgaccpend: std_ulogic;
     syncbar: std_ulogic;
+    dtcmstall: std_ulogic;
     holdn: std_ulogic;
     ramreload: std_ulogic;
     fastwr_rdy: std_ulogic;
@@ -682,6 +683,7 @@ architecture rtl of cctrl5 is
       dtcmaddr => (others => '0'), dtcmctx => (others => '0'), itcmwipe => '0', dtcmwipe => '0',
       s => as_normal, imisspend => '0', dmisspend => '0',
       iflushpend => '1', dflushpend => '1', slowwrpend => '0', dbgaccpend => '0', syncbar => '0',
+      dtcmstall => '0',
       holdn => '1',
       ramreload => '0', fastwr_rdy => '1', stbuffull => '0',
       flushwrd => (others => '0'), flushwri => (others => '0'), regflpipe => (others => regfl_pipe_entry_zero),
@@ -1978,13 +1980,25 @@ begin
         dway := "00";
         odco.data(0) := cramo.dtcmdout;
         if r.holdn='1' then
-          if ( (dci.read='1' and r.d1su='0' and r.dtcmperm(0)='0') or
-               (dci.write='1' and r.d1su='0' and r.dtcmperm(1)='0') or
-               (dci.read='1' and r.d1su='1' and r.dtcmperm(2)='0') or
-               (dci.write='1' and r.d1su='1' and r.dtcmperm(3)='0') ) then
+          if ( ((dci.read='1' or dci.lock='1') and r.d1su='0' and r.dtcmperm(0)='0') or
+               ((dci.write='1' or dci.lock='1') and r.d1su='0' and r.dtcmperm(1)='0') or
+               ((dci.read='1' or dci.lock='1') and r.d1su='1' and r.dtcmperm(2)='0') or
+               ((dci.write='1' or dci.lock='1') and r.d1su='1' and r.dtcmperm(3)='0') ) then
             odco.mexc := '1';
+          elsif dci.read='1' and dci.lock='1' then
+            -- The atomic access fSM in the IU needs the read to act as a miss
+            -- (generate hold cycles and deliver data via mds)
+            v.dtcmstall := '1';
           end if;
         end if;
+      end if;
+      -- Forward TCM data for dtcm stall (wptectag2 state)
+      if r.dtcmstall='1' then
+        dtcmhit := '1';
+        dhit := '1';
+        dhitv := (others => '0');
+        dway := "00";
+        odco.data(0) := cramo.dtcmdout;
       end if;
     end if;
 
@@ -2130,7 +2144,7 @@ begin
       if r.dbgacc(1)='1' then v.d2specread := '0'; end if;
       v.d2tcmhit := dtcmhit;
       -- Set dcmiss pending bit for load cache miss
-      if (dci.nullify='0' or r.dbgacc(1)='1') and not (dhit='1' and dforcemiss='0' and dspecialasi='0' and dci.lock='0') and (dci.read='1' or (r.dbgacc(1)='1' and r.dbgaccwr='0')) then
+      if (dci.nullify='0' or r.dbgacc(1)='1') and not (dhit='1' and dforcemiss='0' and dspecialasi='0' and dci.lock='0') and (dci.read='1' or (r.dbgacc(1)='1' and r.dbgaccwr='0')) and dtcmhit='0' then
         v.dmisspend := '1';
       end if;
       -- Cache update for writes
@@ -3525,6 +3539,11 @@ begin
           ocrami.ddataen := (others => '1');
           v.d1ten := '1';
         end if;
+        v.d1tcmen := '0';
+        if r.dtcmstall='1' then
+          v.d1tcmen := '1';
+          ocrami.dtcmen := '1';
+        end if;
 
       when as_wptectag2 =>
         -- Write PTE and recheck tags stage 2 - tag check
@@ -3568,6 +3587,9 @@ begin
         if r.dmisspend='1' and r.d2tcmhit='0' then
           odco.mds := '0';
         end if;
+        if r.dtcmstall='1' then
+          odco.mds := '0';
+        end if;
         v.d1vaddr := r.d2vaddr;
         v.d2vaddr := r.d1vaddr;
         v.d1su := r.d2su;
@@ -3586,12 +3608,14 @@ begin
             v.dmisspend := '0';
           end if;
         end if;
+        v.dtcmstall := '0';
         if r.d2write='1' and r.d2specialasi='0' then
           ocrami.ddataen(0 to DWAYS-1) := dhitv;
           ocrami.dtcmen := r.d2tcmhit;
         end if;
         ocrami.ddatawrite := getdmask64(r.d1vaddr,r.d2size,ENDIAN);
         ocrami.ddatadin := (others => r.d2data);
+        ocrami.dtcmdin  := r.d2data;
         v.d1ten := r.d1chk and r.cctrl.dcs(0);
         v.d1tcmen := r.d1chk and dtcmact;
         v.ramreload := '1';
@@ -5228,7 +5252,7 @@ begin
     v.holdn := '1';
     if ( v.imisspend='1' or v.dmisspend='1' or v.slowwrpend='1' or
          v.iflushpend='1' or v.dflushpend='1' or v.ramreload='1' or
-         v.stbuffull='1' or v.syncbar='1' or v.dbgaccpend='1' or freeze='1') then
+         v.stbuffull='1' or v.syncbar='1' or v.dtcmstall='1' or v.dbgaccpend='1' or freeze='1') then
       v.holdn := '0';
     end if;
 
@@ -5391,6 +5415,7 @@ begin
         v.dflushpend     := RRES.dflushpend;
         v.slowwrpend     := RRES.slowwrpend;
         v.syncbar        := RRES.syncbar;
+        v.dtcmstall      := RRES.dtcmstall;
         v.irdbufen       := RRES.irdbufen;
         v.holdn          := RRES.holdn;
         v.ahb_hbusreq    := RRES.ahb_hbusreq;

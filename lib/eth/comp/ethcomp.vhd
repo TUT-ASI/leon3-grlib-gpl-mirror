@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -549,6 +549,148 @@ package ethcomp is
       -- Auto negotiation results.
       aneg_valid : out std_logic_vector(31 downto 0); -- Which PHY
       aneg_results : out std_logic_vector(2 downto 0) -- 0: 100M, 1: gbit, 2: full duplex
+    );
+  end component;
+
+  component greth2c is
+    generic(
+      ifg_gap            : integer := 24;
+      attempt_limit      : integer := 16;
+      backoff_limit      : integer := 10;
+      slot_time          : integer := 128;
+      mdcscaler          : integer range 0 to 255 := 25;
+      nsync              : integer range 1 to 2 := 2;
+      edcl               : integer range 0 to 3 := 0;
+      edclbufsz          : integer range 1 to 64 := 1;
+      burstlength        : integer range 4 to 128 := 32;
+      macaddrh           : integer := 16#00005E#;
+      macaddrl           : integer := 16#000000#;
+      ipaddrh            : integer := 16#c0a8#;
+      ipaddrl            : integer := 16#0035#;
+      phyrstadr          : integer range 0 to 32 := 0;
+      oepol              : integer range 0 to 1 := 0;
+      scanen             : integer range 0 to 1 := 0;
+      mdint_pol          : integer range 0 to 1 := 0;
+      enable_mdint       : integer range 0 to 1 := 0;
+      multicast          : integer range 0 to 1 := 0;
+      edclsepahbg        : integer range 0 to 1 := 0;
+      ramdebug           : integer range 0 to 2 := 0;
+      mdiohold           : integer := 1;
+      gmiimode           : integer range 0 to 1 := 0;
+      rgmiimode          : integer range 0 to 1 := 0;
+      timestamps         : integer range 0 to 1 := 0;
+      iotest             : integer range 0 to 1 := 0;
+      external_mdio_ctrl : integer range 0 to 1 := 0;
+      fifo_address_bits  : integer              := 9;
+      ahb_address_bits   : integer range 32 to 64 := 32
+    );
+    port(
+      rst            : in  std_ulogic;
+      clk            : in  std_ulogic;
+      -- AHB mst in
+      hgrant         : in  std_ulogic;
+      hready         : in  std_ulogic;
+      hresp          : in  std_logic_vector(1 downto 0);
+      hrdata         : in  std_logic_vector(31 downto 0);
+      ahb_endian     : in  std_ulogic;
+      -- AHB mst out
+      hbusreq        : out  std_ulogic;
+      hlock          : out  std_ulogic;
+      htrans         : out  std_logic_vector(1 downto 0);
+      haddr          : out  std_logic_vector(ahb_address_bits - 1 downto 0);
+      hwrite         : out  std_ulogic;
+      hsize          : out  std_logic_vector(2 downto 0);
+      hburst         : out  std_logic_vector(2 downto 0);
+      hprot          : out  std_logic_vector(3 downto 0);
+      hwdata         : out  std_logic_vector(31 downto 0);
+      -- EDCL AHB mst in
+      ehgrant        : in  std_ulogic;
+      ehready        : in  std_ulogic;
+      ehresp         : in  std_logic_vector(1 downto 0);
+      ehrdata        : in  std_logic_vector(31 downto 0);
+      -- EDCL AHB mst out
+      ehbusreq       : out  std_ulogic;
+      ehlock         : out  std_ulogic;
+      ehtrans        : out  std_logic_vector(1 downto 0);
+      ehaddr         : out  std_logic_vector(31 downto 0);
+      ehwrite        : out  std_ulogic;
+      ehsize         : out  std_logic_vector(2 downto 0);
+      ehburst        : out  std_logic_vector(2 downto 0);
+      ehprot         : out  std_logic_vector(3 downto 0);
+      ehwdata        : out  std_logic_vector(31 downto 0);
+      -- APB slv in
+      psel           : in   std_ulogic;
+      penable        : in   std_ulogic;
+      paddr          : in   std_logic_vector(31 downto 0);
+      pwrite         : in   std_ulogic;
+      pwdata         : in   std_logic_vector(31 downto 0);
+      -- APB slv out
+      prdata         : out  std_logic_vector(31 downto 0);
+      -- IRQ
+      irq            : out  std_logic;
+      -- RX AHB FIFO
+      rxrenable      : out  std_ulogic;
+      rxraddress     : out  std_logic_vector(fifo_address_bits - 1 downto 0);
+      rxwrite        : out  std_ulogic;
+      rxwdata        : out  std_logic_vector(31 downto 0);
+      rxwaddress     : out  std_logic_vector(fifo_address_bits - 1 downto 0);
+      rxrdata        : in   std_logic_vector(31 downto 0);
+      -- TX AHB FIFO
+      txrenable      : out  std_ulogic;
+      txraddress     : out  std_logic_vector(fifo_address_bits - 1 downto 0);
+      txwrite        : out  std_ulogic;
+      txwdata        : out  std_logic_vector(31 downto 0);
+      txwaddress     : out  std_logic_vector(fifo_address_bits - 1 downto 0);
+      txrdata        : in   std_logic_vector(31 downto 0);
+      -- EDCL buf
+      erenable       : out  std_ulogic;
+      eraddress      : out  std_logic_vector(15 downto 0);
+      ewritem        : out  std_ulogic;
+      ewritel        : out  std_ulogic;
+      ewaddressm     : out  std_logic_vector(15 downto 0);
+      ewaddressl     : out  std_logic_vector(15 downto 0);
+      ewdata         : out  std_logic_vector(31 downto 0);
+      erdata         : in   std_logic_vector(31 downto 0);
+      -- Ethernet input signals
+      gtx_clk        : in   std_ulogic;
+      tx_clk         : in   std_ulogic;
+      tx_dv          : in   std_ulogic;
+      rx_clk         : in   std_ulogic;
+      rxd            : in   std_logic_vector(7 downto 0);
+      rx_dv          : in   std_ulogic;
+      rx_er          : in   std_ulogic;
+      rx_col         : in   std_ulogic;
+      rx_crs         : in   std_ulogic;
+      rx_en          : in   std_ulogic;
+      mdio_i         : in   std_ulogic;
+      phyrstaddr     : in   std_logic_vector(4 downto 0);
+      mdint          : in   std_ulogic;
+      -- Ethernet output signals
+      reset          : out  std_ulogic;
+      txd            : out  std_logic_vector(7 downto 0);
+      tx_en          : out  std_ulogic;
+      tx_er          : out  std_ulogic;
+      mdc            : out  std_ulogic;
+      mdio_o         : out  std_ulogic;
+      mdio_oe        : out  std_ulogic;
+      -- Scantest
+      testrst        : in   std_ulogic;
+      testen         : in   std_ulogic;
+      testoen        : in   std_ulogic;
+      edcladdr       : in   std_logic_vector(3 downto 0) := "0000";
+      edclsepahb     : in   std_ulogic;
+      edcldisable    : in   std_ulogic;
+      speed          : out  std_ulogic;
+      gbit           : out  std_ulogic;
+      -- Debug Interface
+      debug_rx        : out std_logic_vector(63 downto 0);
+      debug_tx        : out std_logic_vector(63 downto 0);
+      debug_gtx       : out std_logic_vector(63 downto 0);
+      timestamp       : in  std_logic_vector(63 downto 0);
+      -- External MDIO inputs, tie to 0 if external_mdio_ctrl = 0
+      phy_aneg_valid  : in  std_ulogic := '0';
+      -- Index 0: 100, 1: gbit, 2: fduplex
+      phy_aneg_result : in  std_logic_vector(2 downto 0) := (others => '0')
     );
   end component;
 end package;

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -8423,13 +8423,13 @@ begin
     btb_wl       := '0';
     btb_instpc_v := r.x.ctrl.inst_pc(0);
     if r.x.ctrl.inst_valid(0) = '1' and r.x.annul_all = '0' and mask_we1 = '0' and is_branch(r.x.ctrl.inst(0)) = '1'and r.x.ctrl.inst_pc(0)(2) = '0' and r.x.ctrl.trap(0) = '0' then
-      if r_x_br_taken = '1' and (r.x.ctrl.bht_data /= "00" or r.x.ctrl.inst(0)(28 downto 25) = "1000") then
+      if r_x_br_taken = '1' then
         btb_wen_v := '1';
       end if;
     end if;
 
     if r.x.ctrl.inst_valid(1) = '1' and r.x.annul_all = '0' and mask_we2 = '0' and is_branch(r.x.ctrl.inst(1)) = '1'and r.x.ctrl.inst_pc(1)(2) = '0' and r.x.ctrl.trap(1) = '0' then
-      if r_x_br_taken = '1' and (r.x.ctrl.bht_data /= "00" or r.x.ctrl.inst(1)(28 downto 25) = "1000") then
+      if r_x_br_taken = '1' then
         btb_wen_v    := '1';
         btb_wl       := '1';
         btb_instpc_v := r.x.ctrl.inst_pc(1);
@@ -8858,7 +8858,6 @@ begin
       memory_icc := r.x.icc;
     end if;
 
-    v.x.ctrl.br_missp := '0';
     mem_ld_recover    := '0';
     if r.m.ctrl.branch(0) = '1' and r.m.ctrl.inst_valid(0) = '1' and r.m.ctrl.trap(0) = '0' then
       if not (((r.m.ctrl.wicc_dmem = '1' or r.m.ctrl.wicc_muldiv = '1' or r.m.ctrl.wicc_dexc = '1')
@@ -9502,7 +9501,6 @@ begin
     exe_delay_no_annul := '0';
     exe_br_miss_pc     := r.e.bht_ctrl.br_miss_pc;
     wicc_mem_delayed   := r.m.ctrl.wicc_dexc or r.m.ctrl.wicc_dmem or r.m.ctrl.wicc_muldiv;
-    v.m.ctrl.br_missp  := '0';
     exe_ld_recover     := '0';
 
     exe_branch_l0_resolve := not((r.e.ctrl.swap and r.e.ctrl.wicc and r.e.ctrl.inst_valid(1))
@@ -9965,7 +9963,6 @@ begin
     ra_delay_annul    := '0';
     ra_delay_no_annul := '0';
     ra_br_miss_pc     := r.a.bht_ctrl.br_miss_pc;
-    v.e.ctrl.br_missp := '0';
 
     ra_branch_l0_resolve := not((r.a.ctrl.swap and r.a.ctrl.wicc and r.a.ctrl.inst_valid(1))
                                   or (r.e.ctrl.inst_valid(1) and r.e.ctrl.wicc)
@@ -13133,7 +13130,7 @@ begin
       v.perf(3) := '1';
     end if;
     --misspredict (index-4)
-    v.perf(4) := r_x_ctrl_br_missp and holdn;
+    v.perf(4) := r_x_ctrl_br_missp and (v.perf(1) or v.perf(0)) and holdn;
     --ncycles lost on holdn (index-5) asserted on sequential process
     v.perf(5) := '0';
     --ncycles lost on branch misspredict (index-6)
@@ -13358,6 +13355,7 @@ begin
           r.d.btb_diag_in      <= rin.d.btb_diag_in;
           r.d.bht_diag_in_en   <= rin.d.bht_diag_in_en;
           r.d.bht_diag_in_wren <= rin.d.bht_diag_in_wren;
+          r.d.br_flush         <= rin.d.diag_bht_flush;
           if FPEN then
             if holdn = '0' and is_fpu_store(r.a.ctrl.inst(0)) = '1' then
               if r.a.fp_stdata_latched = '0' then

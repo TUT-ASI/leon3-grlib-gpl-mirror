@@ -33,7 +33,8 @@ cpucorenvbc_str.vhd
 cpucorenvb_str.vhd
 cpucorenv_str.vhd
 cpucorenvb_strnpkg.vhd
-cpucorenvb_strn.vhd
+#cpucorenvb_strn.vhd
 interrupt_file.vhd
 imsic_int_files.vhd
 nvirqcdc.vhd
+nvdbgcdc.vhd

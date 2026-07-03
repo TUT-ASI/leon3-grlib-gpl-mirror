@@ -19,7 +19,10 @@ proc append_file_top_xise {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

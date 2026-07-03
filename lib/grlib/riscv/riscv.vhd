@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -138,6 +138,7 @@ package riscv is
   constant F12_REV8_RV32  : funct12_type := "011010011000";  -- R_SRL
   constant F12_REV8_RV64  : funct12_type := "011010111000";  -- R_SRL
   constant F12_ORCB       : funct12_type := "001010000111";  -- R_SRL
+
 
   -- Zbkb
   constant F12_BREV8      : funct12_type := "011010000111";  -- R_SRL
@@ -326,6 +327,23 @@ package riscv is
 
   constant OP_CUSTOM0   : opcode_type := "0001011";
   constant OP_CUSTOM1   : opcode_type := "0101011";
+  constant OP_CUSTOM2   : opcode_type := "1011011";
+  constant OP_CUSTOM3   : opcode_type := "1111011";
+
+  constant OP_NOELV0    : opcode_type := OP_CUSTOM0;
+  constant OP_NOELV1    : opcode_type := OP_CUSTOM2;  -- RORMIXI
+
+  constant F7_NOELV0    : funct7_type := "0000000";   -- Diagnostics
+  constant F7_NOELV1    : funct7_type := "0000001";
+  constant F7_NOELV2    : funct7_type := "0000010";
+  constant F7_NOELV3    : funct7_type := "0000011";
+  constant F7_NOELV4    : funct7_type := "0000100";
+  constant F7_NOELV5    : funct7_type := "0000101";
+  constant F7_NOELV6    : funct7_type := "0000110";
+  constant F7_NOELV7    : funct7_type := "0000111";
+  constant F7_NOELV8    : funct7_type := "0001000";
+  constant F7_NOELV9    : funct7_type := "0001001";
+  constant F7_NOELV16   : funct7_type := "0010000";
 
   -----------------------------------------------------------------------------
   -- RV64I Base Instruction Set
@@ -571,16 +589,8 @@ package riscv is
 
   subtype csratype is std_logic_vector(11 downto 0);
 
-  -- User Trap Setup
-  constant CSR_USTATUS          : csratype := x"000";
-  constant CSR_UIE              : csratype := x"004";
-  constant CSR_UTVEC            : csratype := x"005";
-  -- User Trap Handling
-  constant CSR_USCRATCH         : csratype := x"040";
-  constant CSR_UEPC             : csratype := x"041";
-  constant CSR_UCAUSE           : csratype := x"042";
-  constant CSR_UTVAL            : csratype := x"043";
-  constant CSR_UIP              : csratype := x"044";
+  -- Unprivileged and User-Level CSRs
+
   -- User Floating-Point CSRs
   constant CSR_FFLAGS           : csratype := x"001";
   constant CSR_FRM              : csratype := x"002";
@@ -654,10 +664,10 @@ package riscv is
   constant CSR_HPMCOUNTER30H    : csratype := x"c9e";
   constant CSR_HPMCOUNTER31H    : csratype := x"c9f";
 
+  -- Supervisor-Level CSRs
+
   -- Supervisor Trap Setup
   constant CSR_SSTATUS          : csratype := x"100";
-  constant CSR_SEDELEG          : csratype := x"102";
-  constant CSR_SIDELEG          : csratype := x"103";
   constant CSR_SIE              : csratype := x"104";
   constant CSR_STVEC            : csratype := x"105";
   constant CSR_SCOUNTEREN       : csratype := x"106";
@@ -698,6 +708,10 @@ package riscv is
   constant CSR_SATP             : csratype := x"180";
   -- Supervisor Count Overflow
   constant CSR_SCOUNTOVF        : csratype := x"da0";
+
+  -- Supervisor Custom read/write
+
+  -- Hypervisor and VS CSRs
 
   -- Hypervisor Trap Setup
   constant CSR_HSTATUS          : csratype := x"600";
@@ -769,6 +783,10 @@ package riscv is
   constant CSR_HSTATEEN1H       : csratype := x"61d";
   constant CSR_HSTATEEN2H       : csratype := x"61e";
   constant CSR_HSTATEEN3H       : csratype := x"61f";
+
+  -- Virtual Supervisor Custom read/write
+
+  -- Machine-Level CSRs
 
   -- Machine Information Registers
   constant CSR_MVENDORID        : csratype := x"f11";
@@ -920,6 +938,8 @@ package riscv is
   constant CSR_MHPMCOUNTER31H   : csratype := x"b9f";
   -- Machine Counter Setup
   constant CSR_MCOUNTINHIBIT    : csratype := x"320";
+  constant CSR_MCYCLECFG        : csratype := x"321";
+  constant CSR_MINSTRETCFG      : csratype := x"322";
   constant CSR_MHPMEVENT3       : csratype := x"323";
   constant CSR_MHPMEVENT4       : csratype := x"324";
   constant CSR_MHPMEVENT5       : csratype := x"325";
@@ -950,6 +970,8 @@ package riscv is
   constant CSR_MHPMEVENT30      : csratype := x"33e";
   constant CSR_MHPMEVENT31      : csratype := x"33f";
   constant CSR_MHPMEVENT0H      : csratype := x"720";  -- Does not exist!
+  constant CSR_MCYCLECFGH       : csratype := x"721";
+  constant CSR_MINSTRETCFGH     : csratype := x"722";
   constant CSR_MHPMEVENT3H      : csratype := x"723";
   constant CSR_MHPMEVENT4H      : csratype := x"724";
   constant CSR_MHPMEVENT5H      : csratype := x"725";
@@ -996,26 +1018,51 @@ package riscv is
   constant CSR_DPC              : csratype := x"7b1";
   constant CSR_DSCRATCH0        : csratype := x"7b2";
   constant CSR_DSCRATCH1        : csratype := x"7b3";
+
   -- Custom Read/Write Registers
   constant CSR_FEATURES         : csratype := x"7c0";
   constant CSR_CCTRL            : csratype := x"7c1";
   constant CSR_TCMICTRL         : csratype := x"7c2";
   constant CSR_TCMDCTRL         : csratype := x"7c3";
-  constant CSR_FT               : csratype := x"7c4";
-  constant CSR_EINJECT          : csratype := x"7c5";
   constant CSR_DFEATURES        : csratype := x"7c6";
   constant CSR_FEATURESH        : csratype := x"7d0";
   constant CSR_CCTRLH           : csratype := x"7d1";
   constant CSR_TCMICTRLH        : csratype := x"7d2";
   constant CSR_TCMDCTRLH        : csratype := x"7d3";
-  constant CSR_FTH              : csratype := x"7d4";
-  constant CSR_EINJECTH         : csratype := x"7d5";
   constant CSR_DFEATURESH       : csratype := x"7d6";
+  constant CSR_MNTVEC           : csratype := x"7d7";
+  constant CSR_INTERRNMI        : csratype := x"7d8";
+  constant CSR_INTERRNMI2       : csratype := x"7d9";
+  constant CSR_INTERRNMI3       : csratype := x"7da";
+  constant CSR_INTERRNMIH       : csratype := x"7db";
+  constant CSR_INTERRNMI2H      : csratype := x"7dc";
+  constant CSR_INTERRNMI3H      : csratype := x"7dd";
+  constant CSR_INTERRHALT       : csratype := x"7de";
+  constant CSR_INTERRHALT2      : csratype := x"7df";
+  constant CSR_INTERRHALT3      : csratype := x"7e0";
+  constant CSR_INTERRHALTH      : csratype := x"7e1";
+  constant CSR_INTERRHALT2H     : csratype := x"7e2";
+  constant CSR_INTERRHALT3H     : csratype := x"7e3";
+  constant CSR_INTERROR         : csratype := x"7e4";
+  constant CSR_INTERROR2        : csratype := x"7e5";
+  constant CSR_INTERROR3        : csratype := x"7e6";
+  constant CSR_INTERRORH        : csratype := x"7e7";
+  constant CSR_INTERROR2H       : csratype := x"7e8";
+  constant CSR_INTERROR3H       : csratype := x"7e9";
   -- Custom Read-only Registers
   constant CSR_CAPABILITY       : csratype := x"fc0";
+  constant CSR_CAPABILITY2      : csratype := x"fc1";
+  constant CSR_CAPABILITY3      : csratype := x"fc2";
+  constant CSR_CAPABILITY4      : csratype := x"fc3";
+  constant CSR_CAPABILITY5      : csratype := x"fc4";
   constant CSR_CAPABILITYH      : csratype := x"fd0";
+  constant CSR_CAPABILITY2H     : csratype := x"fd1";
+  constant CSR_CAPABILITY3H     : csratype := x"fd2";
+  constant CSR_CAPABILITY4H     : csratype := x"fd3";
+  constant CSR_CAPABILITY5H     : csratype := x"fd4";
   -- Custom Read/Write Unprivileged Registers
 
+  constant MCSRIND_PMA_BASE         : integer := 32;
 
   constant DCAUSE_EBREAK        : std_logic_vector(2 downto 0) := "001";
   constant DCAUSE_TRIG          : std_logic_vector(2 downto 0) := "010";

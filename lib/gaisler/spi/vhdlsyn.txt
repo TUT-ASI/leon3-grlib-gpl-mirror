@@ -5,3 +5,8 @@ spictrl.vhd
 spi2ahbx.vhd
 spi2ahb.vhd
 spi2ahb_apb.vhd
+spiahbmst.vhd
+spimaster.vhd
+spislave.vhd
+grspimaster.vhd
+grspislave.vhd

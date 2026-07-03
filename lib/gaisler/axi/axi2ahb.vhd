@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -51,9 +51,13 @@ entity axi2ahb is
     -- E.g. a 16-bit access on a 32-bit bus. The address provided via AXI is 0x0.
     -- The resulting address would in this case become 0x2. This can be useful on big endian systems.
     sub_bus_width_address_inversion : integer range 0 to 1 := 0;
+    -- Allow bridge to make AHB burst writes if calculated hsize matches awsize.
+    speculative_bursts : integer range 0 to 1 := 0;
     mask        : integer               := 16#000#;
     vendorid    : integer               := VENDOR_GAISLER;
     deviceid    : integer               := GAISLER_AXI2AHB;
+    ext_awidth  : integer range 0 to 32 := 0; -- Extra address width above 32 bits using axixsi and ahbmxa
+    ext_idwidth : integer range 0 to 4  := 0; -- Extra idwidth above AXI_ID_WIDTH using axixsi/o
     scantest    : integer               := 0;
     memory_ft   : integer               := 0 -- Memory fault tolerance
   );
@@ -61,9 +65,12 @@ entity axi2ahb is
     resetn  : in  std_ulogic;
     clk     : in  std_ulogic;
     axisi   : in  axi4_mosi_type;
+    axixsi  : in  extaxi_mosi_type := extaxi_mosi_none;
     axiso   : out axi_somi_type;
+    axixso  : out extaxi_miso_type;
     ahbmi   : in  ahb_mst_in_type;
-    ahbmo   : out ahb_mst_out_type
+    ahbmo   : out ahb_mst_out_type;
+    ahbmxa  : out std_logic_vector(31 downto 0)
   );
 end entity;
 
@@ -302,11 +309,12 @@ architecture rtl of axi2ahb is
 
   -- Calculates the number of available beats until the next 1k boundary.
   function get_1k_burst_length (addr : std_logic_vector; hsize : std_logic_vector) return unsigned is
-    constant addr_1k : unsigned(10 downto 0) := unsigned('0' & addr(9 downto 0));
     constant one_k : unsigned(10 downto 0) := "100" & x"00";
 
+    variable addr_1k : unsigned(10 downto 0);
     variable r : unsigned(10 downto 0);
   begin
+    addr_1k := unsigned('0' & addr(9 downto 0));
     r := shift_right(one_k - addr_1k, to_integer(unsigned(hsize)));
     -- Saturate to longest burst length (256).
     if r > unsigned'("100000000") then
@@ -316,8 +324,23 @@ architecture rtl of axi2ahb is
     end if;
   end function;
 
-  constant dw : integer := wordsize;
-  constant mask_addr : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(mask, 12)) & (31-12 downto 0 => '0');
+  constant idw  : integer := AXI_ID_WIDTH+ext_idwidth;
+  constant aw   : integer := ahbmo.haddr'length+ext_awidth;
+  constant dw   : integer := wordsize;
+
+  function gen_mask return std_logic_vector is
+    variable v : std_logic_vector(aw-1 downto 0);
+    variable m : std_logic_vector(11 downto 0);
+  begin
+    m := std_logic_vector(to_unsigned(mask, 12));
+    if ext_awidth > 0 then
+      -- Sign extend mask
+      v(aw-1 downto 32) := (others => m(m'high));
+    end if;
+    v(31 downto 0) := m & (19 downto 0 => '0');
+    return v;
+  end function;
+  constant mask_addr : std_logic_vector(aw-1 downto 0) := gen_mask;
 
   constant hconfig : ahb_config_type := (
     0      => ahb_device_reg (vendorid, deviceid, 0, 0, 0),
@@ -338,11 +361,11 @@ architecture rtl of axi2ahb is
     last_cluster    : std_ulogic;
     remaining_len   : natural range 0 to (2**8)-1;
     force_end       : std_ulogic;
-    addr            : std_logic_vector(ahbmo.haddr'length - 1 downto 0);
+    addr            : std_logic_vector(aw - 1 downto 0);
   end record;
 
   type read_pipe_type is record
-    addr : std_logic_vector(ahbmo.haddr'length - 1 downto 0);
+    addr : std_logic_vector(aw - 1 downto 0);
     len : unsigned(axisi.ar.len'length downto 0);
   end record;
 
@@ -353,7 +376,8 @@ architecture rtl of axi2ahb is
     wp0             : write_pipe_type; -- pipeline stage 0
     wp1             : write_pipe_type; -- pipeline stage 1
     wp2             : write_pipe_type; -- pipeline stage 2
-    sidebuf         : write_pipe_type; -- Split buffer
+    sidebuf0        : write_pipe_type; -- Split buffer 0
+    sidebuf1        : write_pipe_type; -- Split buffer 1
     next_tag        : std_ulogic;
     hvalid          : std_ulogic;
     hvalid_p1       : std_ulogic;
@@ -365,8 +389,8 @@ architecture rtl of axi2ahb is
     last_burst_beat : std_ulogic;
     last_burst_beat_p1 : std_ulogic;
     -- AXI4 Slave Interface Signals
-    id          : std_logic_vector(AXI_ID_WIDTH-1 downto 0);
-    addr        : std_logic_vector(31 downto 0);
+    id          : std_logic_vector(idw-1 downto 0);
+    addr        : std_logic_vector(aw-1 downto 0);
     len         : unsigned(8 downto 0); -- AxLEN + 1
     size        : std_logic_vector(2 downto 0);
     burst       : std_logic_vector(1 downto 0);
@@ -378,7 +402,7 @@ architecture rtl of axi2ahb is
     hbusreq     : std_ulogic;                       -- bus request
     hlock       : std_ulogic;                       -- lock request
     htrans      : std_logic_vector(1 downto 0);     -- transfer type
-    haddr       : std_logic_vector(31 downto 0);    -- address bus (byte)
+    haddr       : std_logic_vector(aw-1 downto 0);  -- address bus (byte)
     hwrite      : std_ulogic;                       -- read/write
     hsize       : std_logic_vector(2 downto 0);     -- transfer size
     hburst      : std_logic_vector(2 downto 0);     -- burst type
@@ -410,7 +434,8 @@ architecture rtl of axi2ahb is
     wp0             => write_pipe_reset_c,
     wp1             => write_pipe_reset_c,
     wp2             => write_pipe_reset_c,
-    sidebuf         => write_pipe_reset_c,
+    sidebuf0        => write_pipe_reset_c,
+    sidebuf1        => write_pipe_reset_c,
     next_tag        => '0',
     hvalid          => '0',
     hvalid_p1       => '0',
@@ -447,7 +472,6 @@ architecture rtl of axi2ahb is
   signal mem_din, mem_dout      : std_logic_vector(1 + 1 + dw - 1 downto 0);
   signal mem_afull              : std_logic;
   signal mem_empty              : std_logic;
-  signal wready : std_logic;
 begin
 
   mem_ren <= (not mem_empty) and axisi.r.ready;
@@ -490,73 +514,200 @@ begin
       error    => open
     );
 
-  comb : process(r, axisi, ahbmi, mem_afull, mem_empty, mem_dout, wready)
+  comb : process(r, axisi, axixsi, ahbmi, mem_afull, mem_empty, mem_dout)
     -- Procedure to swap data based on size. Work-around for synthesis.
     procedure size_based_swap(data_in : in std_logic_vector(dw - 1 downto 0);
                               strb_in : in std_logic_vector(dw/8 - 1 downto 0);
                               variable data_out : inout std_logic_vector(dw - 1 downto 0);
                               variable strb_out : inout std_logic_vector(dw/8 - 1 downto 0);
                               size : in std_logic_vector(2 downto 0);
-                              in_offset : in natural) is
+                              in_offset : in natural range 0 to dw-1) is
+      variable data_shft: std_logic_vector(dw-1 downto 0);
+      variable strb_shft: std_logic_vector(dw/8-1 downto 0);
+      variable utmp: unsigned(dw/8-1 downto 0);
     begin
+      -- Shift strobe by in_offset bits and data by in_offset bytes
+      -- To make sure the synth tool does not get confused by 8*in_offset, we
+      -- break up the data into 8 separate slices, shift them and reassemble
+      strb_shft := std_logic_vector(shift_right(unsigned(strb_in), in_offset));
+      data_shft := (others => '0');     -- redundant, all bits assigned below
+      for x in 0 to 7 loop
+        utmp := (others => '0');
+        for y in 0 to (dw/8)-1 loop
+          utmp(y) := data_in(8*y+x);
+        end loop;
+        utmp := shift_right(utmp, in_offset);
+        for y in 0 to (dw/8)-1 loop
+          data_shft(8*y+x) := utmp(y);
+        end loop;
+      end loop;
       case size is
         when "000" =>
           data_out(8*(2**0) - 1 downto 0) :=
-            byte_swap(data_in(8*(2**0 + in_offset) - 1 downto 8*in_offset));
+            byte_swap(data_shft(8*(2**0 + 0) - 1 downto 8*0));
           strb_out((2**0) - 1 downto 0) :=
-            mirror_vector(strb_in((2**0 + in_offset) - 1 downto in_offset));
+            mirror_vector(strb_shft((2**0 + 0) - 1 downto 0));
         when "001" =>
           if dw >= ((2**1) * 8) then
             data_out(8*(2**1) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**1 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**1 + 0) - 1 downto 8*0));
             strb_out((2**1) - 1 downto 0) :=
-              mirror_vector(strb_in((2**1 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**1 + 0) - 1 downto 0));
           end if;
         when "010" =>
           if dw >= ((2**2) * 8) then
             data_out(8*(2**2) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**2 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**2 + 0) - 1 downto 8*0));
             strb_out((2**2) - 1 downto 0) :=
-              mirror_vector(strb_in((2**2 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**2 + 0) - 1 downto 0));
           end if;
         when "011" =>
           if dw >= ((2**3) * 8) then
             data_out(8*(2**3) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**3 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**3 + 0) - 1 downto 8*0));
             strb_out((2**3) - 1 downto 0) :=
-              mirror_vector(strb_in((2**3 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**3 + 0) - 1 downto 0));
           end if;
         when "100" =>
           if dw >= ((2**4) * 8) then
             data_out(8*(2**4) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**4 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**4 + 0) - 1 downto 8*0));
             strb_out((2**4) - 1 downto 0) :=
-              mirror_vector(strb_in((2**4 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**4 + 0) - 1 downto 0));
           end if;
         when "101" =>
           if dw >= ((2**5) * 8) then
             data_out(8*(2**5) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**5 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**5 + 0) - 1 downto 8*0));
             strb_out((2**5) - 1 downto 0) :=
-              mirror_vector(strb_in((2**5 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**5 + 0) - 1 downto 0));
           end if;
         when "110" =>
           if dw >= ((2**6) * 8) then
             data_out(8*(2**6) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**6 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**6 + 0) - 1 downto 8*0));
             strb_out((2**6) - 1 downto 0) :=
-              mirror_vector(strb_in((2**6 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**6 + 0) - 1 downto 0));
           end if;
         when "111" =>
           if dw >= ((2**7) * 8) then
             data_out(8*(2**7) - 1 downto 0) :=
-              byte_swap(data_in(8*(2**7 + in_offset) - 1 downto 8*in_offset));
+              byte_swap(data_shft(8*(2**7 + 0) - 1 downto 8*0));
             strb_out((2**7) - 1 downto 0) :=
-              mirror_vector(strb_in((2**7 + in_offset) - 1 downto in_offset));
+              mirror_vector(strb_shft((2**7 + 0) - 1 downto 0));
           end if;
         when others => null; -- To cover all other possible sl values...
       end case;
     end procedure;
+
+    procedure accept_axi_write_data(addr_i : in std_logic_vector;
+                                    next_tag_i : in std_ulogic;
+                                    remaining_len_i : in natural;
+                                    force_end_i : in std_ulogic;
+                                    variable dv_o : out std_ulogic;
+                                    variable data_o : out std_logic_vector(dw - 1 downto 0);
+                                    variable strb_o : out std_logic_vector(dw/8-1 downto 0);
+                                    variable last_o : out std_ulogic;
+                                    variable tag_o : out std_ulogic;
+                                    variable next_tag_o : out std_ulogic;
+                                    variable force_end_o : out std_ulogic;
+                                    variable addr_o : out std_logic_vector;
+                                    variable cluster_len_o : out natural;
+                                    variable remaining_len_io : inout natural)
+    is
+      variable strobe_offset : natural;
+      variable next_cluster : natural range 0 to dw/8;
+      variable strb_int : std_logic_vector(dw / 8 - 1 downto 0);
+      variable data_int : std_logic_vector(dw - 1 downto 0);
+    begin
+      last_o := axisi.w.last;
+      dv_o := axisi.w.valid;
+      tag_o := next_tag_i;
+      force_end_o := force_end_i;
+
+      if axisi.w.valid = '1' then
+        next_tag_o := not next_tag_i;
+      else
+        next_tag_o := next_tag_i;
+      end if;
+
+      strobe_offset := get_strobe_offset(addr_i, dw/8);
+
+      -- Swap endianess.
+      data_int := axisi.w.data(dw - 1 downto 0);
+      strb_int := (others => '0');
+      if to_sl(axi_endian) /= ahbmi.endian then
+        size_based_swap(data_in => axisi.w.data(dw - 1 downto 0),
+                        data_out => data_int,
+                        strb_in => axisi.w.strb(dw/8 - 1 downto 0),
+                        strb_out => strb_int,
+                        size => r.size, in_offset => strobe_offset);
+      else
+        strb_int := axisi.w.strb(dw/8 - 1 downto 0);
+        data_int := std_logic_vector(shift_right(unsigned(data_int), 8*strobe_offset));
+        strb_int := std_logic_vector(shift_right(unsigned(strb_int), strobe_offset));
+      end if;
+
+
+      -- The core maps bytes to address in a little endian fashion.
+      -- In the case of big endian the data will become shuffled if a transaction
+      -- of lesser size is created.
+      -- This is solved in two steps, this is the first one.
+      -- By byte swapping the relevant part of the data and strobe, the position
+      -- of each subword becomes globally corrected. The equivalent would be counting
+      -- the address backwards.
+      -- But this byte swap needs to be corrected for since the data is now in a little endian
+      -- format. This is done on an AHB transaction basis, thus performed later.
+      if ahbmi.endian = '0' and
+        2**to_integer(unsigned(r.size)) > get_cluster_length(strb_int, 0) then
+
+        size_based_swap(data_in => data_int, data_out => data_int,
+                        strb_in => strb_int, strb_out => strb_int,
+                        size => r.size, in_offset => 0);
+      end if;
+
+      -- Data needs to be qualified to act on it, since state (addr) is modified.
+      addr_o := addr_i;
+      if axisi.w.valid = '1' then
+        -- Instant adjustment needed due to bubbles.
+        -- Keep in mind that everything has been shifted by the strobe offset already.
+        if strb_int(0) = '0' then
+          next_cluster := find_next_cluster(strb_int);
+
+          data_int := std_logic_vector(shift_right(unsigned(data_int),
+                                                     8*next_cluster));
+          strb_int := std_logic_vector(shift_right(unsigned(strb_int),
+                                                      next_cluster));
+
+          -- There is a cluster somewhere, so a transaction has to happen.
+          if next_cluster > 0 then
+            -- If there is a bubble within the word, the address needs to be
+            -- adjustment for the sub-word transaction that will happen.
+            addr_o := std_logic_vector(unsigned(addr_i) +
+                                         to_unsigned(next_cluster,
+                                                     r.wp0.addr'length));
+          -- No clusters found, the transaction must be skipped.
+          else
+            addr_o := std_logic_vector(unsigned(addr_i) +
+                                         shift_left(to_unsigned(1, r.wp0.addr'length),
+                                                    to_integer(unsigned(r.size))));
+            dv_o := '0';
+            -- Last beat of the transaction, end it.
+            if remaining_len_i = 0 then
+              force_end_o := '1';
+            else
+              remaining_len_io := remaining_len_io - 1;
+            end if;
+          end if;
+        end if;
+        cluster_len_o := get_cluster_length(strb_int, 0);
+      else
+        cluster_len_o := 0;
+      end if;
+
+      data_o := data_int;
+      strb_o := strb_int;
+    end procedure accept_axi_write_data;
 
     variable v : reg_type;
     variable addr_incr : unsigned(7 downto 0);
@@ -567,10 +718,10 @@ begin
     variable dummy : std_logic_vector(dw/8 - 1 downto 0);
     variable awready : std_ulogic;
     variable arready : std_ulogic;
+    variable wbuf_handled : std_ulogic;
   begin
     v := r;
 
-    wready <= '0'; -- Avoid latches.
     mem_wen <= '0';
 
     next_cluster := 0;
@@ -579,6 +730,7 @@ begin
     wready_i := '0';
     awready := '0';
     arready := '0';
+    wbuf_handled := '0';
     -- Avoid reset glitches causing to_integer metavalue warnings in simulation with pragmas.
     -- pragma translate_off
     if r.state /= idle then
@@ -601,6 +753,8 @@ begin
         v.hlast_p1 := '0';
         v.hvalid := '0';
         v.hvalid_p1 := '0';
+        v.wp1.wbuf_dv := '0';
+        v.wp2.wbuf_dv := '0';
         --  AHB Control Signals
         v.htrans        := HTRANS_IDLE;
         v.hbusreq       := '0';
@@ -609,12 +763,25 @@ begin
         -- Check for a read
         if axisi.ar.valid = '1' then
           -- AXI4 Signals
-          v.id          := axisi.ar.id;
+          v.id(AXI_ID_WIDTH-1 downto 0) := axisi.ar.id;
+          if idw > AXI_ID_WIDTH then
+            v.id(idw-1 downto AXI_ID_WIDTH) := axixsi.ar.id(ext_idwidth-1 downto 0);
+          end if;
           v.len         := unsigned(axisi.ar.len) + to_unsigned(1, r.len'length);
           v.size        := axisi.ar.size;
           v.burst       := axisi.ar.burst;
-          -- Mask MSB of the address
-          v.rp0.addr    := axisi.ar.addr xor mask_addr;
+          -- Mask MSB of the address and remove unaligned address bits.
+          if ext_awidth = 0 then
+            v.rp0.addr    := std_logic_vector(
+              shift_left(shift_right(unsigned(axisi.ar.addr xor mask_addr),
+                                     to_integer(unsigned(axisi.ar.size))),
+                                     to_integer(unsigned(axisi.ar.size))));
+          else
+            v.rp0.addr    := std_logic_vector(
+              shift_left(shift_right(unsigned(std_logic_vector'(axixsi.ar.addr(ext_awidth-1 downto 0) & axisi.ar.addr) xor mask_addr),
+                                     to_integer(unsigned(axisi.ar.size))),
+                                     to_integer(unsigned(axisi.ar.size))));
+          end if;
           -- AHB Signals
           v.hlock       := '0';
           v.hwrite      := '0';
@@ -631,12 +798,25 @@ begin
           -- AXI4 signals
           v.bresp       := XRESP_OKAY;
           -- Sample AXI control signals
-          v.id          := axisi.aw.id;
+          v.id(AXI_ID_WIDTH-1 downto 0) := axisi.aw.id;
+          if idw > AXI_ID_WIDTH then
+            v.id(idw-1 downto AXI_ID_WIDTH) := axixsi.aw.id(ext_idwidth-1 downto 0);
+          end if;
           v.wp0.remaining_len := to_integer(unsigned(axisi.aw.len));
           v.size        := axisi.aw.size;
           v.burst       := axisi.aw.burst;
-          -- Mask MSB of the address
-          v.wp0.addr    := axisi.aw.addr xor mask_addr;
+          -- Mask MSB of the address and remove unaligned address bits.
+          if ext_awidth = 0 then
+            v.wp0.addr    := std_logic_vector(
+              shift_left(shift_right(unsigned(axisi.aw.addr xor mask_addr),
+                                     to_integer(unsigned(axisi.aw.size))),
+                                     to_integer(unsigned(axisi.aw.size))));
+          else
+            v.wp0.addr    := std_logic_vector(
+              shift_left(shift_right(unsigned(std_logic_vector'(axixsi.aw.addr(ext_awidth-1 downto 0) & axisi.aw.addr) xor mask_addr),
+                                     to_integer(unsigned(axisi.aw.size))),
+                                     to_integer(unsigned(axisi.aw.size))));
+          end if;
           -- AHB Signals
           v.hlock       := '0';
           v.hwrite      := '1';
@@ -651,97 +831,50 @@ begin
         end if;
 
       when write_transaction =>
-        -- Variable needed to avoid deltacycle propagation issues of the wready signal.
-        wready_i := ((not r.wp0.wbuf_dv) or
-                     (ahbmi.hready and to_sl(2**to_integer(unsigned(r.size)) =
-                                             get_cluster_length(axisi.w.strb(dw/8 - 1 downto 0),
-                                                                get_strobe_offset(r.wp0.addr,
-                                                                                  dw/8)))))
-                    and not r.wp0.wlast and not r.sidebuf.wbuf_dv;
-        wready <= wready_i;
+        -- Must be equivalent to assigning 1 at CAN_ACCEPT_NEW_AXI_BEAT
+        -- With the addition of reponse management to guard against RETRY/SPLIT.
+        wbuf_handled := ahbmi.hready and ahbmi.hgrant(hindex) and
+          to_sl(ahbmi.hresp = HRESP_OKAY or ahbmi.hresp = HRESP_ERROR) and
+          r.wp0.wbuf_dv and
+          to_sl(2**to_integer(unsigned(
+                  calc_hsize(r.size, r.wp0.cluster_len, r.wp0.addr, r.wp0.wstrb'length)))
+                =
+                r.wp0.cluster_len) and
+          to_sl(find_next_cluster(r.wp0.wstrb) = 0);
+        wready_i := (not r.wp0.wbuf_dv or wbuf_handled)
+                    and not ((r.wp0.wbuf_dv and r.wp0.wlast) or
+                             (r.hlast or r.hlast_p1))
+                    and not r.sidebuf0.wbuf_dv;
 
         -- Sample new input.
         if wready_i = '1' then
-          -- Store last to preserve the capability to go back to idle.
-          v.wp0.wlast := axisi.w.last;
-          v.wp0.wbuf_dv := axisi.w.valid;
-          v.wp0.tag := r.next_tag;
-
-          if axisi.w.valid = '1' then
-            v.next_tag := not r.next_tag;
-          end if;
-
-          strobe_offset := get_strobe_offset(r.wp0.addr, dw/8);
-
-          -- Swap endianess.
-          v.wp0.wstrb := (others => '0');
-          if to_sl(axi_endian) /= ahbmi.endian then
-            size_based_swap(data_in => axisi.w.data(dw - 1 downto 0),
-                            data_out => v.wp0.wbuf,
-                            strb_in => axisi.w.strb(dw/8 - 1 downto 0),
-                            strb_out => v.wp0.wstrb,
-                            size => r.size, in_offset => strobe_offset);
-          else
-            v.wp0.wbuf := axisi.w.data(dw - 1 downto 0);
-            v.wp0.wstrb := axisi.w.strb(dw/8 - 1 downto 0);
-
-            v.wp0.wbuf := std_logic_vector(shift_right(unsigned(v.wp0.wbuf),
-                                                       8*strobe_offset)); -- cluster in bytes
-            v.wp0.wstrb := std_logic_vector(shift_right(unsigned(v.wp0.wstrb),
-                                                        strobe_offset));
-          end if;
-
-          -- The core maps bytes to address in a little endian fashion.
-          -- In the case of big endian the data will become shuffled if a transaction
-          -- of lesser size is created.
-          -- This is solved in two steps, this is the first one.
-          -- By byte swapping the relevant part of the data and strobe, the position
-          -- of each subword becomes globally corrected. The equivalent would be counting
-          -- the address backwards.
-          -- But this byte swap needs to be corrected for since the data is now in a little endian
-          -- format. This is done on an AHB transaction basis, thus performed later.
-          if ahbmi.endian = '0' and
-            2**to_integer(unsigned(r.size)) > get_cluster_length(v.wp0.wstrb, 0) then
-
-            size_based_swap(data_in => v.wp0.wbuf, data_out => v.wp0.wbuf,
-                            strb_in => v.wp0.wstrb, strb_out => v.wp0.wstrb,
-                            size => r.size, in_offset => 0);
-          end if;
-
-          -- Data needs to be qualified to act on it, since state (addr) is modified.
-          if axisi.w.valid = '1' then
-            -- Instant adjustment needed due to bubbles.
-            -- Keep in mind that everything has been shifted by the strobe offset already.
-            if v.wp0.wstrb(0) = '0' then
-              next_cluster := find_next_cluster(v.wp0.wstrb);
-
-              v.wp0.wbuf := std_logic_vector(shift_right(unsigned(v.wp0.wbuf),
-                                                         8*next_cluster));
-              v.wp0.wstrb := std_logic_vector(shift_right(unsigned(v.wp0.wstrb),
-                                                          next_cluster));
-
-              -- There is a cluster somewhere, so a transaction has to happen.
-              if next_cluster > 0 then
-                -- If there is a bubble within the word, the address needs to be
-                -- adjustment for the sub-word transaction that will happen.
-                v.wp0.addr := std_logic_vector(unsigned(r.wp0.addr) +
-                                               to_unsigned(next_cluster,
-                                                           r.wp0.addr'length));
-              -- No clusters found, the transaction must be skipped.
-              else
-                v.wp0.addr := std_logic_vector(unsigned(r.wp0.addr) +
-                                               shift_left(to_unsigned(1, r.wp0.addr'length),
-                                                          to_integer(unsigned(r.size))));
-                v.wp0.wbuf_dv := '0';
-                -- Last beat of the transaction, end it.
-                if r.wp0.remaining_len = 0 then
-                  v.wp0.force_end := '1';
-                else
-                  v.wp0.remaining_len := v.wp0.remaining_len - 1;
-                end if;
-              end if;
-            end if;
-            v.wp0.cluster_len := get_cluster_length(v.wp0.wstrb, 0);
+          accept_axi_write_data(addr_i => r.wp0.addr,
+                                next_tag_i => r.next_tag,
+                                remaining_len_i => r.wp0.remaining_len,
+                                force_end_i => r.wp0.force_end,
+                                dv_o => v.wp0.wbuf_dv,
+                                data_o => v.wp0.wbuf,
+                                strb_o => v.wp0.wstrb,
+                                last_o => v.wp0.wlast,
+                                tag_o => v.wp0.tag,
+                                next_tag_o => v.next_tag,
+                                force_end_o => v.wp0.force_end,
+                                addr_o => v.wp0.addr,
+                                cluster_len_o => v.wp0.cluster_len,
+                                remaining_len_io => v.wp0.remaining_len);
+        -- HGRANT is required to mitigate the cases where hgrant loss can cause the
+        -- sidebuffer data to be lost due to pipeline rewind the same cycle that the
+        -- sidebuffer is moved.
+        elsif r.wp0.wbuf_dv = '0' and r.wp1.wbuf_dv = '0' and r.wp2.wbuf_dv = '0' and
+          ahbmi.hgrant(hindex) = '1'
+        then
+          -- The sidebuffer can be moved in since no new data is accepted from AXI.
+          -- This is intended to cover the cases where it can't be moved in directly
+          -- after a successful AHB transaction (e.g. grant losses).
+          if r.sidebuf0.wbuf_dv = '1' then
+            v.wp0 := r.sidebuf0;
+            v.sidebuf0 := r.sidebuf1;
+            v.sidebuf1.wbuf_dv := '0';
           end if;
         end if;
 
@@ -751,26 +884,53 @@ begin
             -- Keep the old pipeline data to be re-used in case of RETRY/SPLIT.
             v.wp1 := r.wp0;
             v.wp2 := r.wp1;
+          else
+            -- Valid state was lost due to the bus loss, rewind.
+            -- HGRANT deassertion will ensure that wbuf_handled is not asserted.
+            if r.wp1.wbuf_dv = '1' then
+              if axisi.w.valid = '1' and wready_i = '1' then
+                v.sidebuf0 := v.wp0;
+              elsif r.wp0.wbuf_dv = '1' and r.wp0.tag /= r.wp1.tag then
+                v.sidebuf0 := r.wp0;
+              end if;
+              -- Rewind state.
+              v.wp0 := r.wp1;
+            end if;
           end if;
 
           if ahbmi.hgrant(hindex) = '1' and r.wp0.wbuf_dv = '1' then
             -- Since the hsize parameter might vary due to strobe bubbles,
             -- every transfer must be a its own burst of length 1.
-            if r.wp0.cluster_len /= 0 then
+            v.hsize := calc_hsize(r.size, r.wp0.cluster_len, r.wp0.addr, r.wp0.wstrb'length);
+
+            if speculative_bursts /= 0 and r.htrans(1) = '1' then -- NONSEQ or SEQ
+              if r.wp0.cluster_len /= 0 and v.hsize = r.hsize and r.hsize = r.size then
+                -- Next transfer if hsize is same as AXI size and same as previous hsize, SEQ
+                v.htrans := HTRANS_SEQ;
+              elsif r.wp0.cluster_len /= 0 then
+                -- Next transfer is of another size, new transfer
+                v.htrans := HTRANS_NONSEQ;
+              else
+                -- Nothing to transfer, back to idle
+                v.htrans := HTRANS_IDLE;
+              end if;
+            elsif r.wp0.cluster_len /= 0 then
               v.htrans := HTRANS_NONSEQ;
             else
               v.htrans := HTRANS_IDLE;
             end if;
 
             v.haddr := r.wp0.addr;
-
-            -- The size depends on how well the address is aligned and how big the
-            -- current cluster is.
-            v.hsize := calc_hsize(r.size, r.wp0.cluster_len, r.wp0.addr, r.wp0.wstrb'length);
             -- Since strobes can have bubbles, there is no way to know how many
             -- actual beats there will be. Thus each burst will have to be
             -- of undefined length.
-            v.hburst := HBURST_SINGLE;
+            if speculative_bursts /= 0 and v.hsize = r.size then
+              -- Attempt burst if same hsize as AXI size
+              v.hburst := HBURST_INCR;
+            else
+              -- Single access for unaligned or sparse access
+              v.hburst := HBURST_SINGLE;
+            end if;
 
             -- Do address conversion for access if requested.
             if sub_bus_width_address_inversion = 1 then
@@ -783,18 +943,21 @@ begin
               next_cluster := find_next_cluster(r.wp0.wstrb);
 
               if next_cluster = 0 then
+                -- CAN_ACCEPT_NEW_AXI_BEAT
                 if r.wp0.remaining_len > 0 then
                   v.wp0.remaining_len := r.wp0.remaining_len - 1;
                 end if;
-                v.wp0.wbuf_dv := wready_i and axisi.w.valid;
-                if (wready_i and axisi.w.valid) = '0' then
-                  v.wp0.cluster_len := 0;
-                end if;
+                v.wp0.wbuf_dv := '0';
+                v.wp0.cluster_len := 0;
                 v.hlast := r.wp0.wlast;
                 -- Since there are no more clusters, the address should go to the next "even" address.
                 v.wp0.addr := std_logic_vector(unsigned(r.wp0.addr) +
                           shift_left(to_unsigned(1, r.wp0.addr'length), to_integer(unsigned(r.size))));
-                v.wp0.addr(to_integer(unsigned(r.size)) - 1 downto 0) := (others => '0');
+                for i in 0 to 2**r.size'length - 1 loop
+                  if i < to_integer(unsigned(r.size)) then
+                    v.wp0.addr(i) := '0';
+                  end if;
+                end loop;
               else
                 v.wp0.cluster_len := get_cluster_length(r.wp0.wstrb, next_cluster);
                 v.wp0.addr := std_logic_vector(
@@ -830,33 +993,70 @@ begin
 
             -- The last transaction of an AXI beat might be split. If that happens when a new AXI beat
             -- has been accepted, then the new beat must also be restored from the pipeline.
-            -- Due to the tic-toc nature of the ready, the new beat will be in wp0 during this scenario.
-            if r.wp0.wbuf_dv = '1' and r.wp0.tag /= r.wp2.tag then
-              v.sidebuf := r.wp0;
+            -- Populate the first (temporally) sidebuffer.
+            if r.wp1.wbuf_dv = '1' and r.wp1.tag /= r.wp2.tag then
+              v.sidebuf0 := r.wp1;
+            elsif r.wp0.wbuf_dv = '1' and r.wp0.tag /= r.wp2.tag then
+              v.sidebuf0 := r.wp0;
+            end if;
+            -- Populate the second (temporally) sidebuffer.
+            if r.wp0.wbuf_dv = '1' and r.wp1.wbuf_dv = '1' and r.wp0.tag /= r.wp1.tag
+            then
+              v.sidebuf1 := r.wp0;
             end if;
           end if;
         end if; -- bus can move
 
-        if ahbmi.hready = '1' or r.hvalid_p1 = '0' then
-          v.hvalid := r.wp0.wbuf_dv;
-          -- If the data was swapped earlier due to holes in the strobe (hsize < awsize),
-          -- then it must be restored to the big endian order. This is done by swapping back
-          -- the relevant part of the data buffer.
-          if ahbmi.endian = '0' and
-            2**to_integer(unsigned(r.size)) > get_cluster_length(r.wp0.wstrb, 0) then
+        -- Since wbuf_handled includes checking the response,
+        -- then this should not interfere with the RETRY/SPLIT restoration.
+        -- Requiring the total wready will ensure that loading from the side buffer
+        -- is not interfered with either.
+        if wready_i = '1' and wbuf_handled = '1' then
+          accept_axi_write_data(addr_i => v.wp0.addr,
+                                next_tag_i => r.next_tag,
+                                remaining_len_i => v.wp0.remaining_len,
+                                force_end_i => r.wp0.force_end,
+                                dv_o => v.wp0.wbuf_dv,
+                                data_o => v.wp0.wbuf,
+                                strb_o => v.wp0.wstrb,
+                                last_o => v.wp0.wlast,
+                                tag_o => v.wp0.tag,
+                                next_tag_o => v.next_tag,
+                                force_end_o => v.wp0.force_end,
+                                addr_o => v.wp0.addr,
+                                cluster_len_o => v.wp0.cluster_len,
+                                remaining_len_io => v.wp0.remaining_len);
+        end if;
 
-            size_based_swap(data_in => r.wp0.wbuf, data_out => v.hwdata,
-                            strb_in => dummy, strb_out => dummy,
-                            size => v.hsize, in_offset => 0);
+        if ahbmi.hready = '1' then
+          if ahbmi.hgrant(hindex) = '1' then
+            v.hvalid := r.wp0.wbuf_dv;
+            -- If the data was swapped earlier due to holes in the strobe (hsize < awsize),
+            -- then it must be restored to the big endian order. This is done by swapping back
+            -- the relevant part of the data buffer.
+            if ahbmi.endian = '0' and
+              2**to_integer(unsigned(r.size)) > get_cluster_length(r.wp0.wstrb, 0) then
+
+              size_based_swap(data_in => r.wp0.wbuf, data_out => v.hwdata,
+                              strb_in => dummy, strb_out => dummy,
+                              size => v.hsize, in_offset => 0);
+            else
+              v.hwdata := r.wp0.wbuf;
+            end if;
           else
-            v.hwdata := r.wp0.wbuf;
+            v.hvalid := '0';
           end if;
 
-          -- One cycle after addressing.
-          v.hlast_p1 := r.hlast;
-          -- Replicate the data across the output vector to match address offset.
-          v.hwdata_p1 := replicate_data(r.hwdata, r.hsize);
-          v.hvalid_p1 := r.hvalid;
+          -- HTRANS is active here.
+          if ahbmi.hgrant(hindex) = '1' then
+            v.hvalid_p1 := r.hvalid;
+            v.hlast_p1 := r.hlast;
+            -- Replicate the data across the output vector to match address offset.
+            v.hwdata_p1 := replicate_data(r.hwdata, r.hsize);
+          else
+            v.hvalid_p1 := '0';
+            v.hlast_p1 := '0';
+          end if;
         end if;
 
         -- Check response on the AHB side
@@ -865,9 +1065,12 @@ begin
             v.bresp := XRESP_SLVERR;
           end if;
 
-          if r.sidebuf.wbuf_dv = '1' and (ahbmi.hresp = HRESP_ERROR or ahbmi.hresp = HRESP_OKAY) then
-            v.wp0 := r.sidebuf;
-            v.sidebuf.wbuf_dv := '0';
+          if r.sidebuf0.wbuf_dv = '1' and ahbmi.hgrant(hindex) = '1' and
+            (ahbmi.hresp = HRESP_ERROR or ahbmi.hresp = HRESP_OKAY) then
+
+            v.wp0 := r.sidebuf0;
+            v.sidebuf0 := r.sidebuf1;
+            v.sidebuf1.wbuf_dv := '0';
           end if;
 
           -- Either the pipeline naturally terminates as the last data beat is pushed through.
@@ -895,62 +1098,70 @@ begin
           v.state := idle;
         end if;
 
+      -- Assumes that HTRANS is driven to IDLE when in this state.
       when read_start_burst =>
         mem_wen <= ahbmi.hready and r.hvalid_p1 and -- Can have a read from previous burst coming in.
                    to_sl(ahbmi.hresp /= HRESP_SPLIT and ahbmi.hresp /= HRESP_RETRY);
 
-        -- Move pipelines.
-        v.hvalid_p1 := r.hvalid;
-        v.hlast_p1 := r.hlast;
-        v.rp1 := r.rp0;
-        v.rp2 := r.rp1;
+        if ahbmi.hready = '1' then
+          -- Move pipelines.
+          v.hvalid_p1 := r.hvalid;
+          v.hlast_p1 := r.hlast;
+          v.rp1 := r.rp0;
+          v.rp2 := r.rp1;
 
-        if ahbmi.hgrant(hindex) = '1' then
-          v.htrans      := HTRANS_NONSEQ;
-          v.hsize       := r.size;
-          v.hvalid      := '1';
-          v.rp0.addr    := std_logic_vector(unsigned(r.rp0.addr) +
-                                            shift_left(to_unsigned(1, r.rp0.addr'length),
-                                                       to_integer(unsigned(r.size))));
-          -- Planned burst length.
-          burst_length := get_1k_burst_length(r.rp0.addr, r.size);
-          burst_length := unsigned(min(std_logic_vector(burst_length), std_logic_vector(r.len)));
-          -- Remaining length not scheduled for the coming burst.
-          v.len := unsigned(r.len) - burst_length;
-          v.rp0.len := burst_length;
-          case v.rp0.len is
-            when "000000001"   => v.hburst := HBURST_SINGLE;
-            when "000000100"   => v.hburst := HBURST_INCR4;
-            when "000001000"   => v.hburst := HBURST_INCR8;
-            when "000010000"   => v.hburst := HBURST_INCR16;
-            when others       => v.hburst := HBURST_INCR;
-          end case;
+          if ahbmi.hgrant(hindex) = '1' and mem_afull = '0' then
+            v.state := rdrivedata;
 
-          -- Update according to the calculated burst length.
-          if v.rp0.len > to_unsigned(1, v.rp0.len'length) then
-            v.last_burst_beat := '0';
+            v.htrans      := HTRANS_NONSEQ;
+            v.hsize       := r.size;
+            v.hvalid      := '1';
+            v.rp0.addr    := std_logic_vector(unsigned(r.rp0.addr) +
+                                              shift_left(to_unsigned(1, r.rp0.addr'length),
+                                                         to_integer(unsigned(r.size))));
+            -- Planned burst length.
+            burst_length := get_1k_burst_length(r.rp0.addr, r.size);
+            burst_length := unsigned(min(std_logic_vector(burst_length), std_logic_vector(r.len)));
+            -- Remaining length not scheduled for the coming burst.
+            v.len := unsigned(r.len) - burst_length;
+            v.rp0.len := burst_length;
+            case v.rp0.len is
+              when "000000001" => v.hburst := HBURST_SINGLE;
+              when "000000100" => v.hburst := HBURST_INCR4;
+              when "000001000" => v.hburst := HBURST_INCR8;
+              when "000010000" => v.hburst := HBURST_INCR16;
+              when others      => v.hburst := HBURST_INCR;
+            end case;
+
+            -- Update according to the calculated burst length.
+            if v.rp0.len > to_unsigned(1, v.rp0.len'length) then
+              v.last_burst_beat := '0';
+            else
+              v.last_burst_beat := '1';
+            end if;
+
+            if v.rp0.len = to_unsigned(1, v.rp0.len'length) and v.len = to_unsigned(0, v.len'length) then
+              v.hlast := '1';
+            else
+              v.hlast := '0';
+            end if;
+            v.rp1.len := burst_length; -- Copy the non-incremented state into the first pipe.
+            v.rp0.len := v.rp0.len - to_unsigned(1, v.rp0.len'length);
+
+            if sub_bus_width_address_inversion = 1 then
+              v.haddr(log2(dw/8)-1 downto 0) :=
+                be_to_le_address(dw, r.rp0.addr(log2(dw/8)-1 downto 0),
+                                 r.size);
+              v.haddr(31 downto log2(dw/8)) := r.rp0.addr(31 downto log2(dw/8));
+            else
+              v.haddr := r.rp0.addr;
+            end if;
+
+          -- Lost bus.
           else
-            v.last_burst_beat := '1';
-          end if;
-
-          if v.rp0.len = to_unsigned(1, v.rp0.len'length) and v.len = to_unsigned(0, v.len'length) then
-            v.hlast := '1';
-          else
-            v.hlast := '0';
-          end if;
-          v.rp1.len := burst_length; -- Copy the non-incremented state into the first pipe.
-          v.rp0.len := v.rp0.len - to_unsigned(1, v.rp0.len'length);
-
-          if sub_bus_width_address_inversion = 1 then
-            v.haddr(log2(dw/8)-1 downto 0) := be_to_le_address(dw, r.rp0.addr(log2(dw/8)-1 downto 0),
-                                                               r.size);
-            v.haddr(31 downto log2(dw/8)) := r.rp0.addr(31 downto log2(dw/8));
-          else
-            v.haddr := r.rp0.addr;
-          end if;
-        end if;
-
-        v.state := rdrivedata;
+            v.hvalid := '0';
+          end if; -- hgrant
+        end if; -- hready
 
       when rdrivedata =>
         mem_wen <= ahbmi.hready and r.hvalid_p1 and
@@ -974,6 +1185,7 @@ begin
               if mem_afull = '0' then
                 v.htrans := HTRANS_SEQ;
                 v.hvalid := '1';
+                v.rp0.len := unsigned(r.rp0.len) - to_unsigned(1, r.rp0.len'length);
 
                 -- Regenerate lost last flag.
                 -- Worst case is length has already been decremented to 0.
@@ -1036,8 +1248,9 @@ begin
               end if;
 
               -- FIFO almost full, stall the transfer.
-              if mem_afull = '1' then
+              if mem_afull = '1' and r.rp0.len > 0 then
                 v.htrans := HTRANS_BUSY;
+                v.rp0.len := r.rp0.len; -- Keep length since no transaction.
                 v.hvalid := '0';
               end if;
             end if; -- Active Transaction Type
@@ -1051,22 +1264,25 @@ begin
               v.htrans := HTRANS_IDLE;
             end if;
 
-            -- Last read data is entering the FIFO.
-            -- Needs to be at the end to overwrite hvalid and htrans.
-            if r.hvalid_p1 = '1' and r.hlast_p1 = '1' and
-              ahbmi.hresp /= HRESP_SPLIT and ahbmi.hresp /= HRESP_RETRY then
-
-              v.hvalid := '0';
-
-              v.state := idle;
-              v.hbusreq := '0';
-            end if;
           -- Lost bus access
           else
             v.state := read_start_burst;
             v.htrans := HTRANS_IDLE;
-            v.len := r.len + r.rp0.len;
+            v.len := r.len + r.rp1.len;
+            v.rp0 := r.rp1;
             v.hvalid := '0';
+            v.hvalid_p1 := '0';
+          end if;
+
+          -- Last read data is entering the FIFO.
+          -- Needs to be at the end to overwrite hvalid and htrans.
+          if r.hvalid_p1 = '1' and r.hlast_p1 = '1' and
+            ahbmi.hresp /= HRESP_SPLIT and ahbmi.hresp /= HRESP_RETRY then
+
+            v.hvalid := '0';
+
+            v.state := idle;
+            v.hbusreq := '0';
           end if;
         else -- not hready
           if ahbmi.hresp = HRESP_SPLIT or ahbmi.hresp = HRESP_RETRY then
@@ -1080,11 +1296,11 @@ begin
         end if;
 
       when unsupported_write =>
-        wready <= not r.bvalid;
+        wready_i := not r.bvalid;
 
         v.bresp := XRESP_SLVERR;
 
-        if wready = '1' and axisi.w.valid = '1' then
+        if wready_i = '1' and axisi.w.valid = '1' then
           if r.wp0.remaining_len > 0 then
             v.wp0.remaining_len := r.wp0.remaining_len - 1;
           else
@@ -1098,24 +1314,15 @@ begin
         end if;
 
       when unsupported_read =>
-        axiso.r.resp <= XRESP_SLVERR;
-        axiso.r.valid <= '1';
-        axiso.r.data <= (others => '0');
+        -- Assignment of read outputs are performed in the signal assignment segment.
 
         if axisi.r.ready = '1' then
-          if r.len > 1 then
-            axiso.r.last <= '0';
-          else
-            axiso.r.last <= '1';
-          end if;
-
           if r.len > 0 then
             v.len := r.len - to_unsigned(1, r.len'length);
           end if;
         end if;
 
         if r.len = 0 then
-          axiso.r.valid <= '0';
           v.state := idle;
         end if;
       when others => null;
@@ -1129,7 +1336,7 @@ begin
     ahbmo.hindex          <= hindex;
     ahbmo.hirq            <= (others => '0');
 
-    ahbmo.haddr           <= r.haddr;
+    ahbmo.haddr           <= r.haddr(ahbmo.haddr'length-1 downto 0);
     ahbmo.htrans          <= r.htrans;
     ahbmo.hprot           <= "0011";
     ahbmo.hburst          <= r.hburst;
@@ -1139,9 +1346,32 @@ begin
     ahbmo.hlock           <= r.hlock;
     ahbmo.hsize           <= r.hsize;
 
-    axiso.b.id            <= r.id;
-    axiso.r.id            <= r.id;
-    if r.state /= unsupported_read then
+    ahbmxa <= (others => '0');
+    if ext_awidth > 0 then
+      ahbmxa(ext_awidth-1 downto 0) <= r.haddr(aw-1 downto ahbmo.haddr'length);
+    end if;
+
+    axiso.b.id <= r.id(AXI_ID_WIDTH-1 downto 0);
+    axiso.r.id <= r.id(AXI_ID_WIDTH-1 downto 0);
+    axixso <= extaxi_miso_none;
+    if ext_idwidth > 0 then
+      axixso.b.id(ext_idwidth-1 downto 0) <= r.id(idw-1 downto AXI_ID_WIDTH);
+      axixso.r.id(ext_idwidth-1 downto 0) <= r.id(idw-1 downto AXI_ID_WIDTH);
+    end if;
+    if r.state = unsupported_read then
+      axiso.r.resp <= XRESP_SLVERR;
+      axiso.r.data <= (others => '0');
+      if r.len > 1 then
+        axiso.r.last <= '0';
+      else
+        axiso.r.last <= '1';
+      end if;
+      if r.len = 0 then
+        axiso.r.valid <= '0';
+      else
+        axiso.r.valid <= '1';
+      end if;
+    else
       axiso.r.last          <= mem_dout(mem_dout'high - 1);
       axiso.r.resp          <= resp_to_rresp(mem_dout(mem_dout'high));
       axiso.r.valid         <= not mem_empty;
@@ -1151,7 +1381,7 @@ begin
     axiso.aw.ready        <= awready;
     axiso.b.resp          <= r.bresp;
     axiso.b.valid         <= r.bvalid;
-    axiso.w.ready         <= wready;
+    axiso.w.ready         <= wready_i;
 
     -- FIFO
     if to_sl(axi_endian) /= ahbmi.endian then

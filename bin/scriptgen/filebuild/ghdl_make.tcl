@@ -21,7 +21,10 @@ proc append_file_ghdl_make {f finfo qpath} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

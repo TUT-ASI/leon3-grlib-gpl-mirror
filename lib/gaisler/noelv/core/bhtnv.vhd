@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ library techmap;
 use techmap.gencomp.all;
 use techmap.allmem.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.log2ext;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
@@ -48,7 +50,7 @@ entity bhtnv is
     predictor  : integer range 0 to 2;      -- Predictor
     ext_c      : integer range 0 to 1;      -- C Base Extension Set
     dissue     : integer range 0 to 1;      -- Dual issue
-    testen     : integer
+    scantest   : integer
     );
   port (
     clk          : in  std_ulogic;
@@ -56,6 +58,8 @@ entity bhtnv is
     holdn        : in  std_ulogic;
     bhti         : in  nv_bht_in_type;
     bhto         : out nv_bht_out_type;
+    testen       : in  std_ulogic;
+    testrst      : in  std_ulogic;
     testin       : in  std_logic_vector(TESTIN_WIDTH-1 downto 0)
     );
 end bhtnv;
@@ -99,6 +103,9 @@ architecture rtl of bhtnv is
   ----------------------------------------------------------------------------
   -- Constants
   ----------------------------------------------------------------------------
+  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant RESET_ALL    : boolean := true;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant OFFSET       : integer := 2 - ext_c * 1;
   constant BHTBITS      : integer := log2ext(nentries) + OFFSET;
@@ -106,8 +113,6 @@ architecture rtl of bhtnv is
   --constant PHTENTRIES   : integer := phtgen(nentries, hlength, predictor);
   --constant PHTBITS      : integer := phtbit(hlength, predictor, counterbits);
 
-  --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
-  constant RESET_ALL    : boolean := true;
 
   ----------------------------------------------------------------------------
   -- Types
@@ -149,10 +154,13 @@ architecture rtl of bhtnv is
   signal pht_rdata, pht_wdata : std_logic_vector((2 ** hlength) * 2 - 1 downto 0);
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin  -- rtl
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
-    phtable : syncram_2p generic map (tech, log2ext(nentries), (2 ** hlength) * 2, 0, 0, testen, 0, memtest_vlen)
+    phtable : syncram_2p generic map (tech, log2ext(nentries), (2 ** hlength) * 2, 0, 0, scantest, 0, memtest_vlen)
     port map (clk, pht_re, pht_raddr, pht_rdata, clk, pht_we, pht_waddr, pht_wdata, testin
                );
 
@@ -330,15 +338,27 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rstn = '0' then
-        r <= RES;
+  syncrregs : if not ASYNC_RESET generate
+    seq : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rstn = '0' then
+          r <= RES;
+        end if;
       end if;
-    end if;
+    end process;
+  end generate;
 
-  end process;
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;

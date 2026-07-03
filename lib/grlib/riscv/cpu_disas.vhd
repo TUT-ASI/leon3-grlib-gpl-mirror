@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -103,9 +103,9 @@ begin
         print_insn(
           iindex,                 -- Hart Index
           iway,                   -- Way Index
-          conv_integer(cycle),    -- Clock Cycles
-          conv_integer(instret),  -- Instruction Committed
-          conv_integer(dual),     -- Dual Issued Instruction Counter
+          cycle,                  -- Clock Cycles
+          instret,                -- Instruction Committed
+          dual,                   -- Dual Issued Instruction Counter
           ivalid,                 -- Valid Instruction
           pc,                     -- Program Counter
           rd,                     -- Destination Register
@@ -163,9 +163,9 @@ begin
           print_insn3(
             hndx    => iindex,                 -- Hart Index
             way     => iway,                   -- Way Index
-            cycle   => conv_integer(cycle),    -- Clock Cycles
-            instret => conv_integer(instret),  -- Instruction Committed
-            cdual   => conv_integer(dual),     -- Dual Issued Instruction Counter
+            cycle   => cycle,                  -- Clock Cycles
+            instret => instret,                -- Instruction Committed
+            cdual   => dual,                   -- Dual Issued Instruction Counter
             valid   => ivalid,                 -- Valid Instruction
             pc      => pc,                     -- Program Counter
             rd      => rd,                     -- Destination Register

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,12 +49,13 @@ package plic is
       pindex      : integer range 0 to NAPBSLV-1  := 0;
       paddr       : integer range 0 to 16#FFF#    := 0;
       pmask       : integer range 0 to 16#FFF#    := 16#FFF#;
-      nsources    : integer range 0 to 32         := NAHBIRQ;
+      nsources    : integer range 0 to 64         := NAHBIRQ;
       ncpu        : integer range 0 to 4096       := 4;
       priorities  : integer range 0 to 32         := 8;
       pendingbuff : integer range 0 to 32         := 1;
       irqtype     : integer range 0 to 1          := 1;
-      thrshld     : integer range 0 to 1          := 1
+      thrshld     : integer range 0 to 1          := 1;
+      scnatest    : integer                       := 0
       );
     port (
       rst         : in  std_ulogic;
@@ -68,20 +69,25 @@ package plic is
   component grplic_ahb
     generic (
       hindex      : integer range 0 to NAPBSLV-1      := 0;
+      hbaren      : integer range 0 to 1              := 0;
       haddr       : integer range 0 to 16#FFF#        := 0;
+      hbar        : integer range 0 to 3              := 0;
       hmask       : integer range 0 to 16#FFC#        := 16#FFC#;
       nsources    : integer range 0 to RISCV_SOURCES  := NAHBIRQ;
       ncpu        : integer range 0 to 4096           := 4;
       priorities  : integer range 0 to 128            := 8;
       pendingbuff : integer range 0 to 128            := 1;
-      irqtype     : integer range 0 to 1              := 1;
-      thrshld     : integer range 0 to 1              := 1
+      irqtypeconf : integer range 0 to 2              := 1;
+      thrshld     : integer range 0 to 1              := 1;
+      scantest    : integer                           := 0
       );
     port (
       rst         : in  std_ulogic;
       clk         : in  std_ulogic;
       ahbi        : in  ahb_slv_in_type;
       ahbo        : out ahb_slv_out_type;
+      irqtype     : in  std_logic_vector(nsources-1 downto 0) := (others =>'0');
+      softrstn    : in  std_ulogic                            := '0';
       irqo        : out std_logic_vector(ncpu*4-1 downto 0)
       );
   end component;
@@ -89,15 +95,20 @@ package plic is
   component plic_gateway
     generic (
       pendingbuff       : integer range 0 to 32 := 8;
-      irqtype           : integer range 0 to 1 := 0
+      irqtypeconf       : integer range 0 to 2  := 0;
+      scantest          : integer               := 0
       );
     port (
       rst       : in  std_ulogic;
       clk       : in  std_ulogic;
+      irqtype   : in  std_ulogic := '0';
       irqi      : in  std_ulogic;
       ip        : out std_ulogic;
       complete  : in  std_ulogic;
-      claim     : in  std_ulogic
+      claim     : in  std_ulogic;
+      softrstn  : in  std_ulogic := '1';
+      testen    : in  std_ulogic;
+      testrst   : in  std_ulogic
       );
   end component;
 

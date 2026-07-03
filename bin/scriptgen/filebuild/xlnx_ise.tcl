@@ -28,7 +28,10 @@ proc append_file_xlnx_ise {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+	        "vhdlnx" {
+		        return
+		}
 		"vhdlmtie" {
 			return
 		}

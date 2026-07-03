@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,12 +17,12 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
------------------------------------------------------------------------------   
+-----------------------------------------------------------------------------
 -- Entity:      ahb2axi4b
 -- File:        ahb2axi4b.vhd
 -- Author:      Alen Bardizbanyan - Cobham Gaisler AB
 -- Description: AMBA AHB to AXI4 bridge
------------------------------------------------------------------------------- 
+------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -41,28 +41,28 @@ use gaisler.axi.all;
 
 entity ahb2axi4b is
   generic (
-    hindex          : integer                              := 0;
-    aximid          : integer range 0 to 15                := 0;  --AXI master transaction ID
-    wbuffer_num     : integer range 1 to axi4_max_n(AXIDW) := 8;
-    rprefetch_num   : integer range 1 to axi4_max_n(AXIDW) := 8;
-    always_secure   : integer range 0 to 1                 := 1;  --0->not secure; 1->secure
-    ahb_endianness  : integer range 0 to 1                 := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-    endianness_mode : integer range 0 to 1                 := 0;  --0->BE(AHB)-to-BE(AXI)
+    hindex          : integer                               := 0;
+    aximid          : integer range 0 to 15                 := 0;  --AXI master transaction ID
+    wbuffer_num     : integer range 1 to axi4_max_n(AXIDW)  := 8;
+    rprefetch_num   : integer range 1 to axi4_max_n(AXIDW)  := 8;
+    always_secure   : integer range 0 to 1                  := 1;  --0->not secure; 1->secure
+    ahb_endianness  : integer range 0 to 1                  := GRLIB_ENDIAN;
+    endianness_mode : integer range 0 to 1                  := 0; --0->BE(AHB)-to-BE(AXI)
                                                                   --1->BE(AHB)-to-LE(AXI)
-    narrow_acc_mode : integer range 0 to 1                 := 0;  --0->each beat in narrow burst
+    narrow_acc_mode : integer range 0 to 1                  := 1; --0->each beat in narrow burst
                                                                   --treated as single access
                                                                   --1->narrow burst directly
-                                                                  --transalted to AXI
+                                                                  --translated to AXI
                                                                   --supported only in BE-to-BE
     -- scantest
-    scantest        : integer                              := 0;
+    scantest        : integer                               := 0;
     -- GRLIB plug&play configuration
-    vendor          : integer                              := VENDOR_GAISLER;
-    device          : integer                              := GAISLER_AHB2AXI;
-    bar0            : integer range 0 to 1073741823        := 0;
-    bar1            : integer range 0 to 1073741823        := 0;
-    bar2            : integer range 0 to 1073741823        := 0;
-    bar3            : integer range 0 to 1073741823        := 0
+    vendor          : integer                               := VENDOR_GAISLER;
+    device          : integer                               := GAISLER_AHB2AXI;
+    bar0            : integer range 0 to 1073741823         := 0;
+    bar1            : integer range 0 to 1073741823         := 0;
+    bar2            : integer range 0 to 1073741823         := 0;
+    bar3            : integer range 0 to 1073741823         := 0
     );
   port (
     rstn  : in  std_logic;
@@ -109,7 +109,7 @@ begin  -- rtl
       aximi => aximi,
       aximo => aximox);
 
- 
+
   aximo.b <= aximox.b;
   aximo.r <= aximox.r;
 
@@ -138,8 +138,8 @@ begin  -- rtl
   aximo.ar.cache <= aximox.ar.cache;
   aximo.ar.prot  <= aximox.ar.prot;
   aximo.ar.valid <= aximox.ar.valid;
-  aximo.ar.qos   <= (others => '0');    
+  aximo.ar.qos   <= (others => '0');
 
-  
+
 
 end rtl;

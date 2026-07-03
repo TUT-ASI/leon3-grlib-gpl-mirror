@@ -7,6 +7,9 @@ This directory contains a template design for the Certus-NX Versa Evaluation
 board (EVB). The EVB is limited in terms of logic resources on the FPGA but
 features DDR3 memory and quite some peripherals
 
+To be able to use the lattice ddr3 memory controller make sure that the 
+"IP Evaluation" box is enabled under Project > Active Strategy > Bitstream 
+setting, in radiant tool. Note that the bitstream will run for 2-4 hours. 
 
 = Design configuration =
 
@@ -76,7 +79,7 @@ GRLIB_LATTICE_RADIANT_SIM_DEVICE
 
 
 = Tested Software =
-For design building: Radiant 3.2
+For design building: Radiant 2023.1
 For simulation: ModelSim 10.7g
 
 

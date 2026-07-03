@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
 use grlib.stdlib.tost;
+use grlib.stdlib.log2;
 use grlib.stdlib.print;
 use grlib.stdlib.notx;
 
@@ -56,6 +57,9 @@ package utilnv is
   function cond(c : boolean;
                 t : integer;
                 f : integer) return integer;
+  function cond(c : boolean;
+                t : string;
+                f : string) return string;
   function is_set(v : integer) return boolean;
 
   function all_0(data : std_logic_vector) return boolean;
@@ -67,6 +71,7 @@ package utilnv is
   function all_0(data : std_logic_vector) return std_logic;
   function all_1(data : std_logic_vector) return std_logic;
   function single_1(data : std_logic_vector) return boolean;
+
   function to_bit(v : boolean) return std_ulogic;
   function to_bit(v : integer) return std_ulogic;
 
@@ -88,8 +93,9 @@ package utilnv is
   function set(src  : std_logic_vector; start : integer;
                data : std_logic_vector) return std_logic_vector;
   function set(data : std_logic_vector; n : integer) return std_logic_vector;
+
   function get(data  : std_logic_vector;
-               start : integer; bits : integer) return std_logic_vector;
+               start : natural; bits_in : natural) return std_logic_vector;
   function get(data  : std_logic_vector;
                start : integer; template : std_logic_vector) return std_logic_vector;
   function get(data  : unsigned;
@@ -115,8 +121,10 @@ package utilnv is
                     bits    : integer) return std_logic_vector;
   function get_left(data_in  : std_logic_vector;
                     template : std_logic_vector) return std_logic_vector;
+
   function lo_h(v : std_logic_vector) return std_logic_vector;
   function hi_h(v : std_logic_vector) return std_logic_vector;
+
   procedure uadd_range(src : std_logic_vector; addend : integer; dst : out std_logic_vector);
   function uadd(src : std_logic_vector; addend_in : integer) return std_logic_vector;
   function uadd(src : std_logic_vector; addend : std_logic_vector) return std_logic_vector;
@@ -131,6 +139,7 @@ package utilnv is
   function usubx(src : std_logic_vector; subtrahend : std_logic_vector) return std_logic_vector;
   function usubx(src : std_logic_vector; subtrahend : std_logic_vector) return unsigned;
   function usubx(src : unsigned; subtrahend : std_logic_vector) return unsigned;
+
   function u2slv(data : integer; bits : integer) return std_logic_vector;
   function u2vec(data : integer; bits : integer) return unsigned;
   function u2vec(data : integer; bits : integer) return std_logic_vector;
@@ -142,8 +151,10 @@ package utilnv is
   function s2vec(data : integer; bits : integer) return std_logic_vector;
   function s2vec(data : integer; template : signed) return signed;
   function s2vec(data : integer; template : std_logic_vector) return std_logic_vector;
+
   function notx(data : unsigned) return boolean;
   function notx(data : signed) return boolean;
+
   function u2i(data : std_logic_vector) return integer;
   function u2i(data : bit_vector) return integer;
   function u2i(data : unsigned) return integer;
@@ -153,16 +164,21 @@ package utilnv is
   function s2i(data : signed) return integer;
   function s2i(data : std_logic) return integer;
   function b2i(data : boolean) return integer;
+
   function sext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
   function sext(v : std_logic_vector; length : integer) return std_logic_vector;
   function sext(v : signed; template : std_logic_vector) return std_logic_vector;
   function sext(v : signed; length : integer) return std_logic_vector;
   function uext(v : std_logic_vector; template : std_logic_vector) return std_logic_vector;
-  function uext(v : std_logic_vector; length : integer) return std_logic_vector;
+  function uext(v : std_logic_vector; length : natural) return std_logic_vector;
   function uext(v : unsigned; template : std_logic_vector) return std_logic_vector;
   function uext(v : unsigned; length : integer) return std_logic_vector;
   function uext(v : unsigned; template : unsigned) return unsigned;
   function uext(v : unsigned; length : integer) return unsigned;
+
+  function reverse(op_in : std_logic_vector) return std_logic_vector;
+  function clz(op_in : std_logic_vector) return unsigned;
+
   function repl2w64(v : std_logic_vector) return std_logic_vector;
   function minimum(x : integer; y: integer) return integer;
   function maximum(x : integer; y: integer) return integer;
@@ -173,6 +189,8 @@ package utilnv is
   function fit0ext(s_in : std_logic_vector; d_in : std_logic_vector) return std_logic_vector;
   function fit0ext(s_in : std_logic_vector; length : integer) return std_logic_vector;
   function fit0ext(s_in : unsigned; d_in : std_logic_vector) return std_logic_vector;
+
+  function rand16(xs : std_logic_vector(15 downto 0)) return std_logic_vector;
 
 end;
 
@@ -209,6 +227,21 @@ package body utilnv is
     else
       return f;
     end if;
+  end;
+
+  function cond(c : boolean;
+                t : string;
+                f : string) return string is
+  begin
+-- pragma translate_off
+    if c then
+      return t;
+    else
+      return f;
+    end if;
+-- pragma translate_on
+
+    return "";
   end;
 
   function is_set(v : integer) return boolean is
@@ -484,13 +517,23 @@ package body utilnv is
 
 
   -- Zero-extend
-  function uext(v : std_logic_vector; length : integer) return std_logic_vector is
-    variable v_normal : std_logic_vector(v'length - 1 downto 0) := v;
+  -- Extending an empty value gives 0.
+  function uext(v : std_logic_vector; length : natural) return std_logic_vector is
+    -- Ensure ranges are never illegal
+    variable v_msb   : integer                            := cond(v'length /= 0, v'length - 1, 0);
+    variable v_lsb   : integer                            := cond(v'length /= 0, 0, 1);
+    variable ext_msb : integer                            := cond(length /= 0, length - 1, 0);
     -- Non-constant
-    variable ext      : std_logic_vector(length - 1 downto 0)   := (others => '0');
+    variable ext     : std_logic_vector(ext_msb downto 0) := (others => '0');
   begin
-    assert v'length <= length report "Value larger than given length" severity failure;
-    ext(v_normal'range) := v;
+    assert v'length <= length report "Value longer than given length" severity failure;
+
+    -- Take care of potential empty->empty
+    if length = 0 then
+      return std_logic_vector'("");
+    end if;
+
+    ext(v_msb downto v_lsb) := v;  -- Should be fine even if v is empty
 
     return ext;
   end;
@@ -603,6 +646,61 @@ package body utilnv is
   function s2vec(data : integer; template : std_logic_vector) return std_logic_vector is
   begin
     return s2vec(data, template'length);
+  end;
+
+  function reverse(op_in : std_logic_vector) return std_logic_vector is
+    variable op  : std_logic_vector(op_in'length - 1 downto 0) := op_in;
+    -- Non-constant
+    variable res : std_logic_vector(op'range);
+  begin
+    for i in 0 to op'high loop
+      res(i) := op(op'high - i);
+    end loop;
+
+    return res;
+  end;
+
+  function clz_orig(op_in : std_logic_vector) return unsigned is
+    variable op      : std_logic_vector(op_in'length - 1 downto 0) := op_in;
+    variable cnt_top : integer := log2(op'length);
+    -- Non-constant
+    variable cnt     : unsigned(cnt_top downto 0);
+  begin
+    if op'length = 1 then
+      cnt(0) := not op(0);
+    else
+      if not all_0(hi_h(op)) then
+        cnt := "0" & clz_orig(hi_h(op));
+      else
+        cnt := uaddx(clz_orig(lo_h(op)), u2vec(op'length / 2, cnt_top));
+      end if;
+    end if;
+
+    return cnt;
+  end;
+
+  -- Simple non-recursive count-leading-zeros
+  function clz_simple(op_in : std_logic_vector) return unsigned is
+    -- Non-constant
+    variable lead : unsigned(log2(op_in'length) downto 0) := (others => '0');
+  begin
+    for i in op_in'left downto op_in'right loop
+      if op_in(i) = '0' then
+        lead := lead + 1;
+      else
+        exit;
+      end if;
+    end loop;
+
+    return lead;
+  end;
+
+
+
+  function clz(op_in : std_logic_vector) return unsigned is
+  begin
+    return clz_orig(op_in);
+--    return clz_simple(op_in);
   end;
 
   procedure uadd_range(src : std_logic_vector; addend : integer; dst : out std_logic_vector) is
@@ -767,8 +865,15 @@ package body utilnv is
 
   -- Return bits from start in data, away from bit 0.
   function get(data  : std_logic_vector;
-               start : integer; bits : integer) return std_logic_vector is
+               start : natural; bits_in : natural) return std_logic_vector is
+    variable bits : integer := cond(bits_in /= 0, bits_in, 1);  -- Ensure ranges are never illegal
   begin
+    -- Take care of potential empty get
+    if bits_in = 0 then
+      return std_logic_vector'("");
+    end if;
+
+    -- Since bits cannot be 0, these are always well defined.
     if data'ascending then
       return data(start to start + bits - 1);
     else
@@ -795,6 +900,8 @@ package body utilnv is
   end;
 
   -- Return high bits from data.
+  -- Positive bits: that many bits from the high end and down
+  -- Negative bits: all bits except that many at the low end
   function get_hi(data : std_logic_vector;
                   bits : integer) return std_logic_vector is
   begin
@@ -822,6 +929,8 @@ package body utilnv is
   end;
 
   -- Return low bits from data.
+  -- Positive bits: that many bits from the low end and up
+  -- Negative bits: all bits except that many at the high end
   function get_lo(data : std_logic_vector;
                   bits : integer) return std_logic_vector is
   begin
@@ -1019,4 +1128,18 @@ package body utilnv is
     return fit0ext(std_logic_vector(s_in), d_in);
   end;
 
+  -- Based on Marsaglia xorshift
+  -- The selected shifts+xors give a full length period (65535) if xs /= 0.
+  -- Currently using the 7/9/8 triplet.
+  -- Other max period ones are 6/7/13, 7/9/13, 9/7/13
+  function rand16(xs : std_logic_vector(15 downto 0)) return std_logic_vector is
+    -- Non-constant
+    variable r : std_logic_vector(15 downto 0) := xs;
+  begin
+    r := r xor (r(8 downto 0) & "0000000");
+    r := r xor ("000000000" & r(15 downto 9));
+    r := r xor (r(7 downto 0) & "00000000");
+
+    return r;
+  end;
 end;

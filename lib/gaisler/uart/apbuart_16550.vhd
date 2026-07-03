@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 -- Entity:      uart
 -- File:        uart.vhd
 -- Authors:     Jiri Gaisler, Marko Isomaki and Francisco Bas
--- Description: Asynchronous UART implementing 16550 UART interface. 
---              This UART is based on the older APBUART which is modified 
+-- Description: Asynchronous UART implementing 16550 UART interface.
+--              This UART is based on the older APBUART which is modified
 --              to achieve a UART compliant with the 16550 UART interface
 --              for RISC-V platforms.
 ------------------------------------------------------------------------------
@@ -51,8 +51,9 @@ entity apbuart_16550 is
     pirq     : integer := 0;
     flow     : integer := 1;
     fifomode : integer := 1;
-    abits    : integer := 6;
-    sbits    : integer range 12 to 16 := 16);
+    abits    : integer := 8;
+    sbits    : integer range 12 to 16 := 16;
+    scantest : integer := 0);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -78,8 +79,8 @@ type fifo is array (0 to fifosize - 1) of std_logic_vector(7 downto 0);
 type fifoerr is array (0 to fifosize - 1) of std_logic_vector(2 downto 0);
 
 type uartregs is record
-  rxen          :  std_ulogic;  -- receiver enabled     
-  txen          :  std_ulogic;  -- transmitter enabled  
+  rxen          :  std_ulogic;  -- receiver enabled
+  txen          :  std_ulogic;  -- transmitter enabled
   rirqen        :  std_ulogic;  -- receiver irq enable
   tirqen        :  std_ulogic;  -- transmitter irq enable
   parsel        :  std_ulogic;  -- parity select
@@ -88,7 +89,7 @@ type uartregs is record
   debug         :  std_ulogic;  -- debug mode enable
   rsempty       :  std_ulogic;  -- receiver shift register empty (internal)
   tsempty       :  std_ulogic;  -- transmitter shift register empty
-  stop          :  std_ulogic;  -- 0: one stop bit, 1: two stop bits 
+  stop          :  std_ulogic;  -- 0: one stop bit, 1: two stop bits
   break         :  std_ulogic;  -- break detected
   ovf           :  std_ulogic;  -- receiver overflow
   parerr        :  std_ulogic;  -- parity error
@@ -122,15 +123,15 @@ type uartregs is record
   rxf           :  std_logic_vector(4 downto 0); --  rx data filtering buffer
   txd           :  std_ulogic;  -- transmitter data
   --
-  enfifo        :  std_ulogic;  -- enables FIFO mode 
+  enfifo        :  std_ulogic;  -- enables FIFO mode
   triglvl       :  std_logic_vector(1 downto 0); -- FIFO trigger level to rise an interrupt
   thempty       :  std_ulogic;  -- transmmiter holding register/FIFO empty
   timeoutcnt    :  std_logic_vector(5 downto 0); -- to rise timeout interrupt
-  dlab          :  std_ulogic;  
-  genbreak      :  std_ulogic;  -- generate break 
+  dlab          :  std_ulogic;
+  genbreak      :  std_ulogic;  -- generate break
   rlsirqen      :  std_ulogic;  -- receiver line status interrupt enable
   modirqen      :  std_ulogic;  -- modem interrupt enable
-  irqcause      :  std_logic_vector(1 downto 0);   
+  irqcause      :  std_logic_vector(1 downto 0);
   thirqpend     :  std_ulogic;
   irqtimeout    :  std_ulogic;
   scratch       :  std_logic_vector(7 downto 0); -- Scratch register
@@ -150,11 +151,12 @@ constant fifozero : fifo := (others => (others => '0'));
 constant fifoerrzero : fifoerr := (others => (others => '0'));
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 constant RES : uartregs :=
   (rxen => '1', txen => '1', rirqen => '0', tirqen => '0', parsel => '1',
    paren => '0', loopb => '0', debug => '0', rsempty => '1',
-   tsempty => '1', stop => '0', break => '0', 
+   tsempty => '1', stop => '0', break => '0',
    ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
    rts => '0', extclken => '0', extclk => '0', rhold => fifozero,
    rshift => (others => '0'), tshift => (others => '1'), thold => fifozero,
@@ -162,19 +164,23 @@ constant RES : uartregs :=
    txclk => (others => '0'), txtick => '0', rxstate => idle,
    rxclk => (others => '0'), rxdb => (others => '0'), dpar => '0',rxtick => '0',
    tick => '0', scaler => sbitszero, brate => sbitszero, rxf => (others => '0'),
-   txd => '1', 
+   txd => '1',
    rwaddr => addrzero, rraddr => addrzero, traddr => addrzero, twaddr => addrzero,
    rcnt => rcntzero, tcnt => rcntzero,
    -- 16550 signals
    enfifo => '0', triglvl => "00", dlab => '0', genbreak => '0', rlsirqen => '0',
    rfifoerr => fifoerrzero, pendfifoerr => '0', rshifterr => "000", irqcause => "00",
    thempty => '1', thirqpend => '0', irqtimeout => '0', timeoutcnt => (others => '0'),
-   scratch => (others => '0'), dcts => '0', irqpend => '0', modirqen => '0' 
+   scratch => (others => '0'), dcts => '0', irqpend => '0', modirqen => '0'
    );
 signal r, rin : uartregs;
+signal arst   : std_ulogic;
 
 
 begin
+  arst        <= apbi.testrst when (ASYNC_RESET and scantest/=0 and apbi.testen/='0') else
+                 rst when ASYNC_RESET else '1';
+
   uartop : process(rst, r, apbi, uarti )
   variable rdata : std_logic_vector(31 downto 0);
   variable scaler : std_logic_vector(sbits-1 downto 0);
@@ -187,8 +193,8 @@ begin
   variable tfull : std_ulogic;
   variable dready : std_ulogic;
   variable thempty : std_ulogic;
-  variable clrrfifo : std_ulogic; 
-  variable clrtfifo : std_ulogic; 
+  variable clrrfifo : std_ulogic;
+  variable clrtfifo : std_ulogic;
   variable rtrigfull : std_ulogic;
   variable lvlmask : std_logic_vector(log2x(fifosize) downto 0);
   variable maxtimeout : std_logic_vector(5 downto 0);
@@ -204,11 +210,11 @@ begin
     v := r; irq := (others => '0'); irq(pirq) := r.irq;
     v.irq := '0'; v.txtick := '0'; v.rxtick := '0'; v.tick := '0';
     rdata := (others => '0'); v.rxdb(1) := r.rxdb(0);
-    dready := '0'; thempty := '1'; 
+    dready := '0'; thempty := '1';
     v.ctsn := r.ctsn(0) & uarti.ctsn;
     paddress := (others => '0');
     paddress(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
-    clrrfifo := '0'; clrtfifo := '0';  
+    clrrfifo := '0'; clrtfifo := '0';
     rtrigfull := '0';
     v.irqcause := "00"; v.irqtimeout := '0';
 
@@ -258,7 +264,7 @@ begin
     end if;
 
     if (r.enfifo and r.rirqen and r.rxtick) = '1' and dready = '1' then
-      if r.timeoutcnt /= maxtimeout then 
+      if r.timeoutcnt /= maxtimeout then
         v.timeoutcnt := r.timeoutcnt + 1;
       end if;
     end if;
@@ -280,12 +286,12 @@ begin
 -- read/write registers
 
   if (apbi.psel(pindex) and apbi.penable and (not apbi.pwrite)) = '1' then
-    case conv_integer(paddress(5 downto 2)) is
-    when 0 => 
+    case conv_integer(paddress(7 downto 2)) is
+    when 0 =>
       if r.dlab = '0' then -- Receiver Buffer Register
         rdata(7 downto 0) := r.rhold(conv_integer(r.rraddr));
         v.rfifoerr(conv_integer(r.rraddr)) := "000";
-        if r.enfifo = '0' then 
+        if r.enfifo = '0' then
           v.rcnt(0) := '0';
         else
           if r.rcnt /= rcntzero then
@@ -293,10 +299,10 @@ begin
             v.timeoutcnt := (others => '0');
           end if;
         end if;
-      else                 -- Divisor Latch LS 
+      else                 -- Divisor Latch LS
         rdata(7 downto 0) := r.brate(7 downto 0);
       end if;
-    when 1 => 
+    when 1 =>
       if r.dlab = '0' then -- Interrupt Enable Register (IER)
          rdata(3 downto 0) := r.modirqen & r.rlsirqen & r.tirqen & r.rirqen;
       else                 -- Divisor Latch MS (DL)
@@ -313,35 +319,35 @@ begin
       end if;
     when 3 => -- Line Control Register (LCR)
       rdata(7) := r.dlab;
-      rdata(6) := r.genbreak;    
-      rdata(5) := '0';           
-      rdata(4) := not(r.parsel); 
-      rdata(3) := r.paren; 
+      rdata(6) := r.genbreak;
+      rdata(5) := '0';
+      rdata(4) := not(r.parsel);
+      rdata(3) := r.paren;
       rdata(2) := r.stop;
       rdata(1 downto 0) := "11";
-    when 4 => -- MODEM Control Register (MCR) 
+    when 4 => -- MODEM Control Register (MCR)
       rdata(4) := r.loopb;
       rdata(1) := r.rts;
     when 5 => -- Line Status Register (LSR)
-      if r.enfifo = '1' then  
+      if r.enfifo = '1' then
         rdata(7) := r.pendfifoerr;
       end if;
       rdata(6 downto 5) := (r.tsempty and thempty) & thempty;
-      rdata(4 downto 1) := r.break & r.frame & r.parerr & r.ovf; 
-      rdata(0) := dready; 
+      rdata(4 downto 1) := r.break & r.frame & r.parerr & r.ovf;
+      rdata(0) := dready;
       -- Clear errors when read
       v.break := '0'; v.frame := '0'; v.parerr := '0'; v.ovf := '0';
       v.rfifoerr(conv_integer(r.rraddr)) := "000";
       v.pendfifoerr := '0';
-    when 6 => -- MODEM Status Register 
+    when 6 => -- MODEM Status Register
       if r.loopb = '1' then
-        rdata(4) := r.rts; 
+        rdata(4) := r.rts;
       else
-        rdata(4) := not(r.ctsn(1)); 
+        rdata(4) := not(r.ctsn(1));
       end if;
       rdata(0) := r.dcts;
       v.dcts := '0';
-    when 7 => -- Scratch register      
+    when 7 => -- Scratch register
       rdata(7 downto 0) := r.scratch;
     when 8 => -- Custom control register
       rdata(2 downto 0) := r.extclken & r.txen & r.rxen;
@@ -362,18 +368,18 @@ begin
               v.tcnt := r.tcnt - 1;
           end if;
       end if;
-    when others => 
+    when others =>
     end case;
   end if;
 
   if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
-    case conv_integer(paddress(5 downto 2)) is
-    when 0 => 
+    case conv_integer(paddress(7 downto 2)) is
+    when 0 =>
       if r.dlab = '1' then -- Divisor Latch [LS] (DLL)
         v.brate(7 downto 0)  := apbi.pwdata(7 downto 0);
         v.scaler(7 downto 0) := apbi.pwdata(7 downto 0);
       end if;
-    when 1 => 
+    when 1 =>
       if r.dlab = '0' then -- Interrupt Enable Register (IER)
         v.modirqen := apbi.pwdata(3);
         v.rlsirqen := apbi.pwdata(2);
@@ -384,7 +390,7 @@ begin
         v.scaler(sbits-1 downto 8) := apbi.pwdata(sbits-8-1 downto 0);
       end if;
     when 2 => -- FIFO Control Register
-      v.triglvl := apbi.pwdata(7 downto 6);      
+      v.triglvl := apbi.pwdata(7 downto 6);
       clrtfifo  := apbi.pwdata(2);
       clrrfifo  := apbi.pwdata(1);
       if fifomode = 1 then
@@ -411,17 +417,17 @@ begin
       v.rxen     := apbi.pwdata(0);
     -- Custom receiver FIFO count and Custom transmitter FIFO count
     -- are read-only registers
-    when 11 => -- Debug mode register 
+    when 11 => -- Debug mode register
       v.debug    := apbi.pwdata(0);
-    when 12 => -- Debug register 
+    when 12 => -- Debug register
       -- Write RX fifo and generate irq
       if flow /= 0 then
         v.rhold(conv_integer(r.rwaddr)) := apbi.pwdata(7 downto 0);
-        if r.enfifo = '0' then 
+        if r.enfifo = '0' then
           v.rcnt(0) := '1';
-        else 
-          v.rwaddr := r.rwaddr + 1; 
-          v.rcnt := v.rcnt + 1; 
+        else
+          v.rwaddr := r.rwaddr + 1;
+          v.rcnt := v.rcnt + 1;
         end if;
         if r.debug = '1' then
             v.irq := v.irq or r.rirqen;
@@ -450,16 +456,12 @@ begin
 
 -- filter rx data
 
---    v.rxf := r.rxf(6 downto 0) & uarti.rxd;
---    if ((r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) & r.rxf(7) &
---       r.rxf(7)) = r.rxf(6 downto 0))
---    then v.rxdb(0) := r.rxf(7); end if;
 
     v.rxf(1 downto 0) := r.rxf(0) & uarti.rxd;  -- meta-stability filter
     if r.tick = '1' then
       v.rxf(4 downto 2) := r.rxf(3 downto 1);
     end if;
-    v.rxdb(0) := (r.rxf(4) and r.rxf(3)) or (r.rxf(4) and r.rxf(2)) or 
+    v.rxdb(0) := (r.rxf(4) and r.rxf(3)) or (r.rxf(4) and r.rxf(2)) or
                   (r.rxf(3) and r.rxf(2));
 
 
@@ -482,7 +484,7 @@ begin
     case r.txstate is
     when idle =>        -- idle and stopbit state
       if (r.txtick = '1') then v.tsempty := '1'; end if;
-      
+
       if (not r.debug and r.txen and (not thempty) and r.txtick) = '1' then
           v.txstate := data;
           v.tpar := r.parsel; v.tsempty := '0';
@@ -528,7 +530,7 @@ begin
 -- operation of thempty flag
 
     if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
-      if paddress(5 downto 2) = "0000" and r.dlab = '0' then
+      if paddress(7 downto 2) = "000000" and r.dlab = '0' then
         if r.enfifo = '0' then
           v.thold(0) := apbi.pwdata(7 downto 0); v.tcnt(0) := '1';
         else
@@ -568,7 +570,7 @@ begin
           else v.rwaddr := r.rwaddr + 1; v.rcnt := v.rcnt + 1; end if;
       end if;
       if (r.rxen and r.rxdb(1) and (not rxd)) = '1' then
-        v.rxstate := startbit; v.rshift := (others => '1'); v.rxclk := "1000"; 
+        v.rxstate := startbit; v.rshift := (others => '1'); v.rxclk := "1000";
         v.rxtick := '0';
       end if;
     when startbit =>    -- check validity of start bit
@@ -577,7 +579,7 @@ begin
           v.rshift := rxd & r.rshift(7 downto 1); v.rxstate := data;
           v.dpar := r.parsel;
           if v.rsempty = '0' then v.ovf := '1'; end if;
-          v.rsempty := '0'; 
+          v.rsempty := '0';
         else
           v.rxstate := idle;
         end if;
@@ -598,7 +600,7 @@ begin
     when stopbit =>     -- receive stop bit
       if r.rxtick = '1' then
         if rxd = '1' then
-          v.rshifterr(0) := r.dpar; v.rsempty := r.dpar; 
+          v.rshifterr(0) := r.dpar; v.rsempty := r.dpar;
         else
           if r.rshift = "00000000" then
             v.rshifterr(2) := '1'; -- break error
@@ -640,7 +642,7 @@ begin
     elsif r.thempty = '1' and v.thempty = '0' then
       v.thirqpend := '0';
     end if;
-    
+
     if r.thirqpend = '1' then
       v.irq := '1';
       v.irqcause := "01";
@@ -676,46 +678,31 @@ begin
 
 -- reset operation
 
-    if (not RESET_ALL) and (rst = '0') then
-    
--- Not reseted signals
+    if not ASYNC_RESET then
+      if (not RESET_ALL) and (rst = '0') then
 
-      --  (rirqen => '0', tirqen => '0', parsel => '1',
-      --   paren => '0', loopb => '0', debug => '0', 
-      --   tsempty => '1'
-      --    ctsn => (others => '0'),
-      --   rts => '0',  extclk => '0', rhold => fifozero,
-      --   rshift => (others => '0'), 
-      --   irq => '0',  tpar => '0', 
-      -- txtick => '0', 
-      --   rxdb => (others => '0'), dpar => '0',rxtick => '0',
-      --   tick => '0', scaler => sbitszero, brate => sbitszero, rxf => (others => '0'),
-      --   txd => '1', 
 
--- Reseted old signals
+        v.frame := RES.frame; v.rsempty := RES.rsempty;
+        v.parerr := RES.parerr; v.ovf := RES.ovf; v.break := RES.break;
+        v.tsempty := RES.tsempty; v.stop := RES.stop; v.txen := RES.txen; v.rxen := RES.rxen;
+        v.txstate := RES.txstate; v.rxstate := RES.rxstate; v.tshift(0) := RES.tshift(0);
+        v.extclken := RES.extclken; v.rts := RES.rts;
+        v.txclk := RES.txclk; v.rxclk := RES.rxclk;
+        v.rcnt := RES.rcnt; v.tcnt := RES.tcnt;
+        v.rwaddr := RES.rwaddr; v.twaddr := RES.twaddr;
+        v.rraddr := RES.rraddr; v.traddr := RES.traddr;
 
-      v.frame := RES.frame; v.rsempty := RES.rsempty;
-      v.parerr := RES.parerr; v.ovf := RES.ovf; v.break := RES.break;
-      v.tsempty := RES.tsempty; v.stop := RES.stop; v.txen := RES.txen; v.rxen := RES.rxen;
-      v.txstate := RES.txstate; v.rxstate := RES.rxstate; v.tshift(0) := RES.tshift(0);
-      v.extclken := RES.extclken; v.rts := RES.rts; 
-      v.txclk := RES.txclk; v.rxclk := RES.rxclk;
-      v.rcnt := RES.rcnt; v.tcnt := RES.tcnt;
-      v.rwaddr := RES.rwaddr; v.twaddr := RES.twaddr;
-      v.rraddr := RES.rraddr; v.traddr := RES.traddr;
 
-    
--- New signals
+        v.enfifo := RES.enfifo; v.triglvl := RES.triglvl; v.dlab := RES.dlab; v.genbreak := RES.genbreak; v.rlsirqen := RES.rlsirqen;
+        v.rfifoerr := RES.rfifoerr; v.pendfifoerr := RES.pendfifoerr; v.rshifterr := RES.rshifterr; v.irqcause := RES.irqcause;
+        v.scratch := RES.scratch;
+        v.thempty := RES.thempty; v.thirqpend := RES.thirqpend; v.irqtimeout := RES.irqtimeout; v.timeoutcnt := RES.timeoutcnt;
+        v.scratch := RES.scratch; v.dcts := RES.dcts; v.irqpend := RES.irqpend; v.modirqen := RES.modirqen;
 
-      v.enfifo := RES.enfifo; v.triglvl := RES.triglvl; v.dlab := RES.dlab; v.genbreak := RES.genbreak; v.rlsirqen := RES.rlsirqen;
-      v.rfifoerr := RES.rfifoerr; v.pendfifoerr := RES.pendfifoerr; v.rshifterr := RES.rshifterr; v.irqcause := RES.irqcause;  
-      v.scratch := RES.scratch;
-      v.thempty := RES.thempty; v.thirqpend := RES.thirqpend; v.irqtimeout := RES.irqtimeout; v.timeoutcnt := RES.timeoutcnt;
-      v.scratch := RES.scratch; v.dcts := RES.dcts; v.irqpend := RES.irqpend; v.modirqen := RES.modirqen;  
-
--- pragma translate_off
-      v := RES;
--- pragma translate_on
+  -- pragma translate_off
+        v := RES;
+  -- pragma translate_on
+      end if;
     end if;
 
 -- Clear FIFOs content
@@ -744,7 +731,7 @@ begin
 
 -- drive outputs
 
-    uarto.txd <= r.txd and not(r.genbreak); 
+    uarto.txd <= r.txd and not(r.genbreak);
     uarto.rtsn <= not(r.rts) or r.loopb;
     uarto.scaler <= (others => '0');
     uarto.scaler(sbits-1 downto 0) <= r.scaler;
@@ -753,23 +740,38 @@ begin
     uarto.txen <= r.txen; uarto.rxen <= r.rxen;
     uarto.flow <= std_logic(to_unsigned(flow, 1)(0));
     uarto.txtick <= r.txtick; uarto.rxtick <= r.rxtick;
-  
+
   end process;
 
   apbo.pconfig <= pconfig;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if RESET_ALL and rst = '0' then
-        r <= RES;
-        -- Sync. registers not reset
-        r.ctsn <= rin.ctsn;
-        r.rxf <= rin.rxf;
+  -- Synch reset
+  syncrregs : if not ASYNC_RESET generate
+    synch_regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rst = '0' then
+          r <= RES;
+          -- Sync. registers not reset
+          r.ctsn <= rin.ctsn;
+          r.rxf <= rin.rxf;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  -- Asynch reset
+  asyncrregs : if ASYNC_RESET generate
+    asynch_regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 -- pragma translate_off
     bootmsg : report_version

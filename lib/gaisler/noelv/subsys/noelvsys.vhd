@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ use grlib.config.all;
 use grlib.config_types.all;
 use grlib.devices.all;
 use grlib.stdlib.log2x;
+use grlib.stdlib.log2;
 use grlib.stdlib.conv_integer;
 use grlib.stdlib.conv_std_logic;
 use grlib.stdlib.notx;
@@ -46,12 +47,16 @@ library gaisler;
 use gaisler.uart.all;
 use gaisler.misc.all;
 use gaisler.noelv.all;
+use gaisler.l5nv_shared.all;
 use gaisler.plic.all;
 use gaisler.aplic.all;
 use gaisler.misc.grgpreg;
 -- pragma translate_off
 use gaisler.sim.htif_sim;
 -- pragma translate_on
+use gaisler.noelv_cfg_types.all;
+use gaisler.noelv_cpu_cfg.all;
+use gaisler.utilnv.all;
 
 
 entity noelvsys is
@@ -63,7 +68,6 @@ entity noelvsys is
     nextslv  : integer;
     nextapb  : integer;
     ndbgmst  : integer;
-    nintdom  : integer;
     neiid    : integer;
     cached   : integer;
     wbmask   : integer;
@@ -104,6 +108,8 @@ entity noelvsys is
     dsuen    : in  std_ulogic;
     dsubreak : in  std_ulogic;
     cpu0errn : out std_ulogic;
+    stoptime : out std_ulogic;
+    cpuerrn  : out std_logic_vector(ncpu - 1 downto 0);
     -- UART connection
     uarti    : in  uart_in_type;
     uarto    : out uart_out_type;
@@ -119,6 +125,9 @@ entity noelvsys is
     testoen  : in  std_ulogic := '1';
     testsig  : in  std_logic_vector(1 + GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
 
+   ;
+    -- One bit per cpu for now, cause can be 1 until more causes are added
+    nirq       : in std_logic_vector(NEXTNMIRQ*ncpu-1 downto 0) := (others => '0')
     );
 end;
 
@@ -193,53 +202,6 @@ architecture hier of noelvsys is
     end if;
   end function;
 
-  function set_IMSIC_addr(HADDR : integer) return std_logic_vector is
-    variable IMSIC_addr : std_logic_vector(31 downto 0);
-  begin
-    IMSIC_addr := std_logic_vector(to_unsigned(HADDR, 12)) & x"00000";
-    return IMSIC_addr;
-  end function;
-
-
-  function calc_sbase(
-    base      : std_logic_vector(31 downto 0);
-    ncpu      : integer;
-    groups    : integer;
-    H_EN      : integer range 0 to 1;
-    nvcpubits : integer)                         -- guest hart
-    return std_logic_vector is
-      variable addr      : std_logic_vector(31 downto 0);
-      variable ncpubits  : integer;
-      variable groupbits : integer;
-      variable bitnumber : integer;
-  begin
-    if groups = 0 then
-      ncpubits  := log2x(ncpu);
-      bitnumber := ncpubits + nvcpubits * H_EN + 12;
-    else
-      ncpubits  := log2x(ncpu / groups);
-      groupbits := log2x(groups);
-      bitnumber := ncpubits + nvcpubits * H_EN + groupbits + 12;
-    end if;
-    addr := base;
-    addr(bitnumber) := '1';
-    return addr;
-  end function;
-
-  function calc_ncpubits(
-    ncpu      : integer;
-    groups    : integer)
-    return integer is
-  begin
-    -- The number of bits needed to reference the harts
-    -- is different if cpus are grouped
-    if groups = 0 then
-      return log2x(ncpu);
-    else
-      return log2x(ncpu / groups);
-    end if;
-  end function;
-
 
   constant doms_per_branch : integer := 2;
   constant branches        : integer := ncpu;
@@ -247,25 +209,23 @@ architecture hier of noelvsys is
 
   type aplic_harts_config_type is array (0 to ndoms - 1) of std_logic_vector(0 to ncpu - 1);
 
+  -- This function returns the reset values for the custom APLIC Hart Mask Registers
+  -- The reset values set a configuration that most OSes/Hypervisors will expect.
+  -- OSes and hypervisors will work even if they are not aware of this configuration registers.
   function set_aplic_dom_harts_config(
-    ncpu : integer;
     ndom : integer
   ) return aplic_harts_config_type is
     variable out_config  : aplic_harts_config_type;
-    variable cpu_per_dom : integer := ncpu / ndom;
   begin
-    -- Default configuration
-    -- Assign all CPUs to root domain and m- and s-mode domain in first branch.
     for i in 0 to ndom-1 loop
       out_config(i) := (others => '0');
     end loop;
-    out_config(0) := (others => '1');   -- root domain
-    if ndom >= 2 then
-      out_config(1) := (others => '1'); -- m-mode domain
-    end if;
-    if ndom >= 3 then
-      out_config(2) := (others => '1'); -- s-mode domain
-    end if;
+    -- Root Domain (used by SBI)
+    out_config(0) := (others => '1');
+    -- M-mode Interrupt Domain
+    out_config(1) := (others => '0');
+    -- S-mode Interrupt Domain (Used by OS/Hypervisor)
+    out_config(2) := (others => '1');
     return out_config;
   end function;
 
@@ -326,10 +286,7 @@ architecture hier of noelvsys is
   signal cpuso     : ahb_slv_out_vector;
   signal irqi      : nv_irq_in_vector(0 to ncpu - 1);
   signal irqo      : nv_irq_out_vector(0 to ncpu - 1);
-  signal aplic_meip: std_logic_vector(0 to ncpu - 1);
-  signal aplic_seip: std_logic_vector(0 to ncpu - 1);
   signal imsic_ack : std_logic_vector(0 to ncpu - 1);
-  signal imsic_irq : imsic_irq_vector(0 to ncpu - 1);
   signal dbgi      : nv_debug_in_vector(0 to ncpu - 1);
   signal dbgo      : nv_debug_out_vector(0 to ncpu - 1);
   signal dsui      : nv_dm_in_type;
@@ -339,18 +296,15 @@ architecture hier of noelvsys is
   signal cpuapbo   : apb_slv_out_vector;
   signal gpti      : gptimer_in_type;
   signal gpto      : gptimer_out_type;
-  signal tstop     : std_ulogic;
+  signal lstoptime : std_ulogic;
+  signal ltsctrl, tsctrl : l5_tsc_ctrl_type;
+  signal tssetack  : std_ulogic;
+  signal tsc       : l5_tsc_async_vector(0 to ncpu+1);
+  signal timer     : std_logic_vector(62 downto 0);
   signal xuarto    : uart_out_type;
 
-  -- PLIC/IMSIC => CLINT
-  signal eip      : nv_irq_in_vector(0 to ncpu - 1);
-  signal old_eip  : nv_irq_in_vector(0 to ncpu-1);
-  signal plic_eip : std_logic_vector(ncpu * 4 - 1 downto 0);
-  -- Real Time Clock
-  signal rtc      : std_ulogic := '0';
-
   -- Trace
-  signal tpo      : nv_full_trace_vector(ncpu - 1 downto 0);
+  signal tpo      : nv_full_trace_vector(0 to ncpu - 1);
   signal eto      : nv_etrace_vector(ncpu - 1 downto 0);
 
   signal apbo_uart, apbo_gptime, apbo_etrace, apbo_iommu : apb_slv_out_type;
@@ -360,29 +314,27 @@ architecture hier of noelvsys is
   constant DUAL_PLIC : integer := conv_integer(conv_std_logic(AIA_SUPPORT*intcconf >= 2));
 
   -- AHB master index
-  constant APLIC_HMINDEX  : integer := ncpu + nextmst;
+  constant RVINTCTRL_HMINDEX : integer := ncpu + nextmst;
   constant AHBB_HMINDEX   : integer := ncpu + nextmst + 1;
   -- AHB slave index
   constant APBC_HINDEX    : integer := nextslv;
-  constant ACLINT_HINDEX  : integer := nextslv + 1;
-  constant IMSIC_HINDEX   : integer := nextslv + 2;
-  constant PLIC_HINDEX    : integer := nextslv + 3;
-  constant APLIC_HSINDEX  : integer := nextslv + 3+DUAL_PLIC;
-  constant DM_HINDEX      : integer := nextslv + 4+DUAL_PLIC; -- Used for PnP replacement
+  constant RVINTCTRL_HINDEX  : integer := nextslv + 1;
+  constant PB_HINDEX      : integer := nextslv + 2; -- Used for PnP replacement
+  constant DM_HINDEX      : integer := nextslv + 3; -- Used for PnP replacement
   -- AHB slave address
   constant AHBC_IOADDR    : integer := 16#FFF#; --16#FFE# + nodbus;
-  constant ACLINT_HADDR   : integer := 16#E00#;
-  constant ACLINT_HMASK   : integer := 16#FFF#;
-  constant IMSIC_HADDR    : integer := 16#A00#;
-  constant APLIC_HADDR    : integer := 16#FC0#;
-  constant PLIC_HADDR     : integer := 16#F80#;
-  constant PLIC_HMASK     : integer := 16#FC0#;
-  constant DM_HADDR       : integer := 16#FE0#;
+  constant ACLINT_HADDR   : integer := 16#B00#;
+  constant APLIC_HADDR    : integer := 16#F85#;
+  constant IMSIC_HADDR    : integer := 16#F86#;
+  constant PLIC_HADDR     : integer := 16#FC0#;
+  constant DM_HADDR       : integer := 16#E00#;
   constant DM_HMASK       : integer := 16#FF0#;
   constant AHBT_IOADDR    : integer := 16#000#;
   constant AHBT_IOMASK    : integer := 16#E00#;
   constant APBC_HADDR     : integer := 16#FF9#;
   constant APBC_HMASK     : integer := 16#FFF#;
+  constant PB_HADDR       : integer := 16#F84#;
+  constant PB_HMASK       : integer := 16#FFF#;
   -- APB slave index
   constant APBUART_PINDEX : integer := nextapb + 0;
   constant GPTIME_PINDEX  : integer := nextapb + 1;
@@ -402,38 +354,30 @@ architecture hier of noelvsys is
   constant WATCHDOG_HIRQ1 : integer := 1;
   constant WATCHDOG_HIRQ2 : integer := 2;
 
-  -- UART 16550
-  constant UART16550 : integer := 0;  -- Implement UART 16550 instead of Gaisler's UART
-
-  -- IMSIC
+  -- AIA_en = 0 => Only PLIC; AIA_en = 1 => IMSIC/APLIC; AIA_en = 2 => IMSIC/APLIC/PLIC
   constant AIA_en  : integer := config_interrupts(cfg, intcconf, AIA_SUPPORT);
   -- If AIA is enabled, then the core configuration includes the
   -- supervisor mode and the hypervisor extnesion
-  constant H_EN : integer := conv_integer(conv_std_logic(AIA_en /= 0));
-  constant S_EN : integer := conv_integer(conv_std_logic(AIA_en /= 0));
-
-  constant nintid  : nidentities_vector(0 to ncpu - 1)          := (others => neiid);
-  constant gnintid : nidentities_vector(0 to ncpu * GEILEN - 1) := (others => neiid);
+  constant cfg_s : cfg_setup_type := cfg_map(cfg);
+  constant cfg_c : nv_cpu_cfg_type := cfg_mask(
+                                        ci => cfg_a(cfg_s.typ),
+                                        cs => cfg_s,
+                                        AIA     => AIA_EN,
+                                        SMRNMI  => SMRNMI_SUPPORT,
+                                        DBLTRP  => DBLTRP_SUPPORT,
+                                        ZICFISS => ZICFISS_SUPPORT,
+                                        ZICFILP => ZICFILP_SUPPORT,
+                                        RV64    => boolean'pos(gaisler.noelv.XLEN = 64)
+                                      );
+  constant H_EN : integer := cfg_c.ext_h;
+  constant S_EN : integer := cfg_c.mode_s;
+  constant cfg_neiid : integer := cfg_c.neiid;
 
   -- APLIC
   constant groups   : integer := 0; -- In the future could be part of the system configuration
-  constant IMSIC_BADDR : std_logic_vector(31 downto 0) := set_IMSIC_addr(IMSIC_HADDR);
-
   -- 1 core:
-  constant aplic_domains_harts : aplic_harts_config_type := set_aplic_dom_harts_config(ncpu, ndoms);
+  constant aplic_domains_harts : aplic_harts_config_type := set_aplic_dom_harts_config(ndoms);
 
-  --
-  constant ncpubits    : integer := calc_ncpubits(ncpu, groups);
-  constant nvcpubits   : integer := log2x(GEILEN + 1);
-  constant groupbits   : integer := log2x(groups);
-  --
-  constant mbase_PPN : std_logic_vector(31 downto 0)  := x"000" & IMSIC_BADDR(31 downto 12); -- base_ppn is internally shifted 12 bits to the left
-  constant sbase_PPN : std_logic_vector(31 downto 0)  := x"000" & calc_sbase(IMSIC_BADDR, ncpu, groups, H_EN, nvcpubits)(31 downto 12);
-  constant mLHXS     : integer                        := 0;                           -- Machine Low Hart Index Shift = C - 12 (see specs)
-  constant sLHXS     : integer                        := nvcpubits * H_EN;            -- Supervisor Low Hart Index Shift = D - 12 (see specs)
-  constant HHXS      : integer                        := ncpubits + nvcpubits * H_EN - 12;  -- High Hart Index Shift = E - 24 (see specs)
-  constant LHXW      : integer                        := ncpubits;                    -- Low Hart Index Width = k (see specs)
-  constant HHXW      : integer                        := groupbits;                   -- High Hart Index Width = j (see specs)
 
 begin
 
@@ -448,7 +392,7 @@ begin
       split    => 1,
       debug    => 0,
       nahbm    => ncpu + nextmst + 2,
-      nahbs    => nextslv + 4 + DUAL_PLIC,
+      nahbs    => nextslv + 3,
       fpnpen   => 1,
       shadow   => 1,
       ahbtrace => ahbtrace,
@@ -482,7 +426,7 @@ begin
   end generate;
   -- Clear above 5 internal AHB slaves:
   -- aclint, imsic, (a)plic, dummy
-  cpuso(cpuso'high downto nextslv + 4 + DUAL_PLIC) <= (others => ahbs_none);
+  cpuso(cpuso'high downto nextslv + 3) <= (others => ahbs_none);
 
   ap0: apbctrl
     generic map (
@@ -540,9 +484,6 @@ begin
         tcmconf  => tcmconf,
         mulconf  => mulconf,
         intcconf => intcconf,
-        mnintid  => nintid(c),
-        snintid  => nintid(c),
-        gnintid  => gnintid(c),
         disas    => disas,
         pbaddr   => 16#90000#,
         cfg      => cfg,
@@ -552,6 +493,7 @@ begin
         clk    => clk,
         gclk   => gclk(c),
         rstn   => rstn,
+        tsc    => tsc(c),
         ahbi   => cpumi,
         ahbo   => cpumo(c),
         ahbsi  => cpusix,
@@ -562,13 +504,26 @@ begin
         dbgo   => dbgo(c),
         tpo    => tpo(c),
         cnt    => cnt(c),
-        pwrd   => pwrd(C)
+        pwrd   => pwrd(c)
       );
 
   end generate;
 
 
   cpu0errn <= not dbgo(0).error;
+  err_tstop : process (dbgo)
+    variable vstoptime   : std_ulogic;
+  begin
+    -- While all harts have stoptime=1 and are in Debug Mode,
+    -- mtime is allowed to stop incrementing.
+    vstoptime  := '1';
+    for i in 0 to ncpu-1 loop
+      vstoptime   := vstoptime and dbgo(i).stoptime;
+      cpuerrn(i)  <= not dbgo(i).error;
+    end loop;
+    lstoptime <= vstoptime;
+  end process;
+  stoptime <= lstoptime;
 
 
   ----------------------------------------------------------------------------
@@ -587,10 +542,15 @@ begin
     dmhmask   => DM_HMASK,
     pnpaddrhi => 16#FFF#,
     pnpaddrlo => 16#FFF#,
-    dmslvidx  => DM_HINDEX,
-    dmmstidx  => AHBB_HMINDEX,
+    dmslvidx  => 32, --DM_HINDEX,
+    dmmstidx  => 32,
+    -- Program buffer
+    pbslvidx  => PB_HINDEX,
+    pbhaddr   => PB_HADDR,
+    pbhmask   => PB_HMASK,
     -- Trace
     tbits     => 30,
+    itentr    => 64,
     --
     scantest  => 0,
     -- Pipelining
@@ -598,6 +558,7 @@ begin
   port map(
     clk      => clk,
     rstn     => rstn,
+    tsc      => tsc(ncpu+1),
     -- Debug-link interface
     dbgmi    => dbgmi,
     dbgmo    => dbgmo,
@@ -606,6 +567,10 @@ begin
     cbmo    => cpumo(AHBB_HMINDEX),
     cbsi    => cpusix,
     --
+    pbsi    => cpusix,
+    pbso    => cpuso(PB_HINDEX),
+    --
+    tpi     => tpo,
     dbgi    => dbgo,
     dbgo    => dbgi,
     dsui    => dsui,
@@ -646,54 +611,32 @@ begin
   ----------------------------------------------------------------------------
   -- Standard UART
   ----------------------------------------------------------------------------
-  uart_gen : if UART16550 = 0 generate
-    uart0: apbuart
-      generic map (
-        pindex   => APBUART_PINDEX,
-        paddr    => APBUART_PADDR,
-        pmask    => APBUART_PMASK,
-        console  => 1,
-        pirq     => 1,
-        parity   => 1,
-        flow     => 1,
-        fifosize => 8,
-        abits    => 8,
-        sbits    => 12
-        )
-      port map (
-        rst   => rstn,
-        clk   => clk,
-        apbi  => cpuapbix,
-        apbo  => apbo_uart,
-        uarti => uarti,
-        uarto => xuarto
-        );
-    uarto <= xuarto;
-  end generate;
-
-  uart16550_gen : if UART16550 = 1 generate
-    uart0: apbuart_16550
-      generic map (
-        pindex   => APBUART_PINDEX,
-        paddr    => APBUART_PADDR,
-        pmask    => APBUART_PMASK,
-        console  => 1,
-        pirq     => 1,
-        flow     => 1,
-        fifomode => 1,
-        abits    => 8,
-        sbits    => 12
-        )
-      port map (
-        rst   => rstn,
-        clk   => clk,
-        apbi  => cpuapbix,
-        apbo  => apbo_uart,
-        uarti => uarti,
-        uarto => xuarto
-        );
-    uarto <= xuarto;
-  end generate;
+  uart0: apbuart_dual
+    generic map (
+      pindex     => APBUART_PINDEX,
+      paddr      => APBUART_PADDR,
+      pmask      => APBUART_PMASK,
+      console    => 1,
+      pirq       => 1,
+      parity     => 1,
+      flow       => 1,
+      abits      => 8,
+      -- APBUART
+      fifosize   => 8,
+      sbits      => 12,
+      -- 16550 APBUART
+      fifomode   => 1,
+      sbits16550 => 12
+      )
+    port map (
+      rst   => rstn,
+      clk   => clk,
+      apbi  => cpuapbix,
+      apbo  => apbo_uart,
+      uarti => uarti,
+      uarto => xuarto
+      );
+  uarto <= xuarto;
 
 
 -- pragma translate_off
@@ -730,7 +673,7 @@ begin
       );
 
   gpti <= (
-    dhalt =>  dbgo(0).stoptime,
+    dhalt =>  lstoptime,
     extclk => '0',
     wdogen => '0',
     latchv => (others => '0'),
@@ -738,188 +681,112 @@ begin
     );
 
   ----------------------------------------------------------------------------
-  -- Interrupt controller
+  -- Time stamp counter generator
   ----------------------------------------------------------------------------
+  tscgen0: l5tscgen
+    generic map (
+      tech     => fabtech,
+      nsync    => 2,
+      nsinks   => ncpu+2,
+      npipe    => 4,
+      asyncset => 0
+      )
+    port map (
+      clk       => clk,
+      rstn      => rstn,
+      ctrl      => tsctrl,
+      tssetack  => tssetack,
+      tsc       => tsc
+      );
 
-    -- ACLINT -----------------------------------------------------------
-    aclint0 : aclint_ahb
-      generic map (
-        hindex    => ACLINT_HINDEX,
-        haddr     => ACLINT_HADDR,
-        hmask     => ACLINT_HMASK,
-        hirq1     => WATCHDOG_HIRQ1,
-        hirq2     => WATCHDOG_HIRQ2,
-        ncpu      => ncpu,
-        sswi      => S_EN
-        )
-      port map (
-        rst       => rstn,
-        clk       => clk,
-        rtc       => rtc,
-        ahbi      => cpusix,
-        ahbo      => cpuso(ACLINT_HINDEX),
-        halt      => dbgo(0).stoptime,
-        irqi      => eip,
-        irqo      => irqi
-        );
+  tsctrl.freeze <= lstoptime;
+  tsctrl.set    <= ltsctrl.set;
+  tsctrl.setval <= ltsctrl.setval;
 
-    rtc0 : process(clk)
-    begin
-      if rising_edge(clk) then
-        rtc <= not rtc;
-        if rstn = '0' then
-          rtc <= '0';
-        end if;
-      end if;
-    end process;
+  ----------------------------------------------------------------------------
+  -- ACLINT Time stamp sink
+  ----------------------------------------------------------------------------
+  esink: l5tscsink
+    generic map (
+      tech      => fabtech,
+      nsync     => 2,
+      tbits     => 63
+      )
+    port map (
+      clk       => clk,
+      rstn      => rstn,
+      tsc       => tsc(ncpu),
+      timer     => timer
+      );
 
-  aia_gen : if AIA_en /= 0 generate
-    -- IMSIC  ---------------------------------------------------------
-    imsic0 : imsic_ahb
-     generic map (
-       hindex            => IMSIC_HINDEX,
-       haddr             => IMSIC_HADDR,
-       ncpu              => ncpu,
-       GEILEN            => GEILEN,
-       groups            => groups,
-       S_EN              => S_EN,
-       H_EN              => H_EN,
-       mnidentities_vector   => nintid,
-       snidentities_vector   => nintid,
-       gnidentities_vector   => gnintid
-       )
-     port map (
-       rst        => rstn,
-       clk        => clk,
-       ahbi       => cpusix,
-       ahbo       => cpuso(IMSIC_HINDEX),
-       irq_ack    => imsic_ack,
-       irqo       => imsic_irq
-       );
-    imsic_ack_gen : for i in 0 to ncpu-1 generate
-      imsic_ack(i) <= '1';
-    end generate;
+  ----------------------------------------------------------------------------
+  -- Interrupt Controllers
+  ----------------------------------------------------------------------------
+  nv_intctrl0 : rv_intctrl_ahb
+   generic map(
+    -- AHB
+    hindex           => RVINTCTRL_HINDEX,
+    hmindex          => RVINTCTRL_HMINDEX,
+    -- GENERAL=>
+    ncpu             => ncpu,
+    S_EN             => S_EN,
+    H_EN             => H_EN,
+    GEILEN           => GEILEN,
+    nsources         => NAHBIRQ,
+    -- ACLINT
+    enable_aclint    => 1,
+    asyncset         => 0,
+    aclint_haddr     => ACLINT_HADDR,
+    aclint_ts        => 1,
+    hirq1            => WATCHDOG_HIRQ1,
+    hirq2            => WATCHDOG_HIRQ2,
+    sswi             => S_EN,
+    -- IMSIC
+    enable_imsic     => AIA_en,
+    imsic_haddr      => IMSIC_HADDR,
+    groups           => groups,
+    neiid            => cfg_neiid,
+    -- APLIC
+    enable_aplic     => AIA_en,
+    aplic_haddr      => APLIC_HADDR,
+    branches         => branches,
+    doms_per_branch  => doms_per_branch,
+    direct_delivery  => 1,
+    IPRIOLEN         => 8,
+    preset_active_harts => config_domain_harts(aplic_domains_harts),
+    -- PLIC
+    -- AIA_en=1 -> Disabled; AIA_en=0,2 ->Eenabled
+    enable_plic      => (AIA_en+1) mod 2,
+    plic_haddr       => PLIC_HADDR,
+    priorities       => 8,
+    pendingbuff      => 1,
+    irqtype          => 2,
+    thrshld          => 1
+    )
+  port map(
+    rstn        => rstn,
+    clk         => clk,
+    -- AHB
+    ahbi        => cpusix,
+    ahbo        => cpuso(RVINTCTRL_HINDEX),
+    ahbmi       => cpumi,
+    ahbmo       => cpumo(RVINTCTRL_HMINDEX),
+    -- ACLINT
+    timer       => timer,
+    ack         => tssetack,
+    ctrl        => ltsctrl,
+    -- IMSIC
+    irq_ack     => imsic_ack,
+    -- External RNMIs
+    rnmi_irq    => nirq,
+    -- Combined output
+    irqi        => irqi
+  );
 
+  imsic_ack_gen : for i in 0 to ncpu-1 generate
+    imsic_ack(i) <= '1';
+  end generate;
 
-    -- GRAPLIC ----------------------------------------------------------
-    aplic0 : graplic_ahb
-      generic map (
-        hmindex             => APLIC_HMINDEX,
-        hsindex             => APLIC_HSINDEX,
-        haddr               => APLIC_HADDR,
-        nsources            => NAHBIRQ-1,
-        ncpu                => ncpu,
-        branches            => branches,
-        doms_per_branch     => doms_per_branch,
-        endianness          => 0,
-        S_EN                => S_EN,
-        H_EN                => H_EN,
-        GEILEN              => GEILEN,
-        grouped_harts       => 0,
-        mmsiaddrcfg_fixed   => 1,
-        mbase_PPN           => mbase_PPN,
-        sbase_PPN           => sbase_PPN,
-        mLHXS               => mLHXS,
-        sLHXS               => sLHXS,
-        HHXS                => HHXS,
-        LHXW                => LHXW,
-        HHXW                => HHXW,
-        direct_delivery     => 1,
-        IPRIOLEN            => 8,
-        nEIID               => neiid,
-        preset_active_harts => config_domain_harts(aplic_domains_harts)
-        )
-      port map (
-        rstn      => rstn,
-        clk       => clk,
-        ahbmi     => cpumi,
-        ahbmo     => cpumo(APLIC_HMINDEX),
-        ahbsi     => cpusix,
-        ahbso     => cpuso(APLIC_HSINDEX),
-        meip      => aplic_meip,
-        seip      => aplic_seip
-        );
-  end generate aia_gen;
-
-
-  old_interrupt_gen : if AIA_en = 0 or AIA_en = 2 generate
-    -- PLIC -----------------------------------------------------------
-    grplic0 : grplic_ahb
-      generic map (
-        hindex            => PLIC_HINDEX,
-        haddr             => PLIC_HADDR,
-        hmask             => PLIC_HMASK,
-        nsources          => NAHBIRQ,
-        ncpu              => ncpu,
-        priorities        => 8,
-        pendingbuff       => 1,
-        irqtype           => 1,
-        thrshld           => 1
-        )
-      port map (
-        rst               => rstn,
-        clk               => clk,
-        ahbi              => cpusix,
-        ahbo              => cpuso(PLIC_HINDEX),
-        irqo              => plic_eip
-        );
-
-        -- Tie non implemented AHB outputs
-      no_aia : if AIA_en = 0 generate
-        cpuso(IMSIC_HINDEX)  <= ahbs_none;
-        cpumo(APLIC_HMINDEX) <= ahbm_none;
-        --cpuso(APLIC_HSINDEX) <= ahbs_none;
-      end generate;
-
-        -- IRQ Interface
-        eip_gen : for i in 0 to ncpu-1 generate
-          old_eip(i).meip     <= plic_eip(i * 4);
-          old_eip(i).seip     <= plic_eip(i * 4 + 1);
-          old_eip(i).ueip     <= plic_eip(i * 4 + 2);
-          old_eip(i).heip     <= plic_eip(i * 4 + 3);
-          old_eip(i).hgeip    <= (others => '0'); -- Only with APLIC
-          old_eip(i).mtip     <= '0';
-          old_eip(i).msip     <= '0';
-          old_eip(i).ssip     <= '0';
-          old_eip(i).stime    <= (others => '0');
-          old_eip(i).nmirq    <= (others => '0');
-        end generate eip_gen;
-  end generate old_interrupt_gen;
-
-
-  eip_select : process(imsic_irq, old_eip, aplic_meip, aplic_seip
-  ) is
-  begin
-    eip <= (others => nv_irq_in_none);
-    if AIA_en = 0 or AIA_en = 2 then
-      -- Old PLIC is implemented 
-      eip <= old_eip;
-    end if;
-    if AIA_en /= 0 then
-      -- AIA is implemented
-      for i in 0 to ncpu-1 loop
-        eip(i).imsic      <= imsic_irq(i);
-        eip(i).aplic_meip <= aplic_meip(i);
-        eip(i).aplic_seip <= aplic_seip(i);
-      end loop;
-    else
-      -- AIA is not implemented 
-      -- tie unused signals
-      for i in 0 to ncpu-1 loop
-        eip(i).imsic      <= imsic_irq_none;
-        eip(i).aplic_meip <= '0';
-        eip(i).aplic_seip <= '0';
-      end loop;
-    end if;
-    for i in 0 to ncpu-1 loop
-      eip(i).nmirq <= (others => '0');
-    end loop;
-  end process;
-
-
-    -- nirq_zero : for i in 0 to ncpu-1 generate
-    --   irqi(i).nmirq <= (others => '0');
-    -- end generate nirq_zero;
 
 
 
@@ -985,7 +852,7 @@ begin
                          grlib.devices.iptable(vendori).device_table(devicei));
     end loop;
     grlib.stdlib.print("noelvsys:   CPU bus slaves:");
-    for x in 0 to nextslv+4 loop --
+    for x in 0 to nextslv+2 loop --
       if is_x(cpuso(x).hconfig(0)) then
         grlib.stdlib.print("noelvsys:     WARNING: CPU bus slave " & grlib.stdlib.tost(x) & " seems undriven, check VHDL");
       end if;
@@ -1057,7 +924,7 @@ begin
           end if;
         end if;
         -- Regular slaves
-        for x in 0 to nextslv+4 loop
+        for x in 0 to nextslv+2 loop
           vendor  := cpuso(x).hconfig(0)(31 downto 24);
           vendori := to_integer(unsigned(vendor));
           device  := cpuso(x).hconfig(0)(23 downto 12);

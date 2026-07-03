@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ package canfd is
     -- CANOpen parameters
     en_canopen : std_ulogic;                    -- Enable CANOpen mode
     node_id    : std_logic_vector(6 downto 0);  -- Node ID for CANOpen communication
+    en_sepbus  : std_ulogic;                    -- Enable separate bus for CANOpen traffic
   end record;
 
   constant GRCANFD_CFG_NULL : grcanfd_defcfg_type := (
@@ -72,7 +73,8 @@ package canfd is
     nom_ph2    => (others => '0'),
     nom_sjw    => (others => '0'),
     en_canopen => '0',
-    node_id    => (others => '1')
+    node_id    => (others => '1'),
+    en_sepbus  => '0'
     );
 
   type grcanfd_bm_in_type is record

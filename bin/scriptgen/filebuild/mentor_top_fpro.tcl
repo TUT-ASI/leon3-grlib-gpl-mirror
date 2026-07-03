@@ -11,7 +11,10 @@ proc append_file_mentor_top_fpro {f finfo fpro_fs} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

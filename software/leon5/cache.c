@@ -1182,6 +1182,12 @@ static void tcmtest5_get_offs(int tcmsz, int tcmfrac, int *offs, int *noffs)
         }
 }
 
+static unsigned long do_swap(unsigned long *p, unsigned long wv)
+{
+        asm volatile("swap %0, %1" :"+m"(*p),"+r"(wv));
+        return wv;
+}
+
 void tcmtest5(void)
 {
         unsigned long leon5cfg, tcmcfg, ftcfg;
@@ -1195,7 +1201,7 @@ void tcmtest5(void)
         volatile unsigned char *cptr = (volatile unsigned char *)0x50000000;
         char pgtblbuf[4096];
         char *pgtblp;
-        unsigned long test_func_addr, a, test_var_addr;
+        unsigned long test_func_addr, a, test_var_addr, v1, v2;
         funcptr test_func;
         volatile unsigned long *testvarp;
         int do_fttest, cft, eitype, cemode, correxp;
@@ -1286,10 +1292,32 @@ void tcmtest5(void)
                                 i++;
                                 if ((sumode & 1)==0 && (sumode & 8)!=0) fail(17);
                                 if ((sumode & 1)!=0 && (sumode & 2)!=0) fail(18);
+                                /* restore permissions setting for atomic test */
+                                wsysreg(0x4C, 0x50000000 | 1 | (((sumode >> 1)&15)<<3) );
                         } else {
                                 /* trap not triggered */
                                 if ((sumode & 1)==0 && (sumode & 8)==0) fail(19);
                                 if ((sumode & 1)!=0 && (sumode & 2)==0) fail(20);
+                        }
+                        /* test atomic */
+                        if ((sumode & 1) != 0) systest_enter_user();
+                        v1 = do_swap(lptr, 0x55667788);
+                        v2 = do_swap(lptr, 0x11223344);
+                        if ((sumode & 1) != 0) systest_enter_supervisor();
+                        if (v1 != 0x11223344) fail(35);
+                        if (v2 != 0x55667788) fail(36);
+                        if (lda0x27(0) != 0x11223344) fail(37);
+                        if (tcmtest_dexc_ctr != i) {
+                                /* trap triggered */
+                                i++;
+                                if ((sumode & 1)==0 && (sumode & 16)!=0 && (sumode & 8)!=0) fail(38);
+                                if ((sumode & 1)!=0 && (sumode & 4)!=0 && (sumode & 2)!=0) fail(39);
+                                /* restore permissions setting for read test */
+                                wsysreg(0x4C, 0x50000000 | 1 | (((sumode >> 1)&15)<<3) );
+                        } else {
+                                /* trap not triggered */
+                                if ((sumode & 1)==0 && (sumode & 24)!=24) fail(40);
+                                if ((sumode & 1)!=0 && (sumode & 6)!=6) fail(41);
                         }
                 }
         }

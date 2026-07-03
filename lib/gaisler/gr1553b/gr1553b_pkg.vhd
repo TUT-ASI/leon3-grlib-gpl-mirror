@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ use ieee.std_logic_1164.all;
 library grlib;
 use grlib.amba.ahb_mst_in_type;
 use grlib.amba.ahb_mst_out_type;
+use grlib.amba.ahb_slv_in_type;
+use grlib.amba.ahb_slv_out_type;
 use grlib.amba.apb_slv_in_type;
 use grlib.amba.apb_slv_out_type;
 library techmap;
@@ -83,6 +85,7 @@ package gr1553b_pkg is
     rtaddr: std_logic_vector(4 downto 0);
     rtpar: std_logic;
     extctrl: gr1553b_extctrl_type;
+    rtlock: std_ulogic;
   end record;
 
   type gr1553b_auxout_type is record
@@ -109,7 +112,7 @@ package gr1553b_pkg is
 
   constant gr1553b_auxin_zero: gr1553b_auxin_type :=
     (extsync => '0', rtaddr => "11111", rtpar => '1',
-     extctrl => gr1553b_extctrl_zero);
+     extctrl => gr1553b_extctrl_zero, rtlock => '0');
 
   constant gr1553b_auxout_zero: gr1553b_auxout_type :=
     ('0','0','0','0','0','0','0',x"00");
@@ -133,13 +136,14 @@ package gr1553b_pkg is
       bc_rtbusmask: integer range 0 to 1 := 1;
       extra_regkeys: integer range 0 to 1 := 0;
       syncrst: integer range 0 to 2 := 1;
-      ahbendian: integer range 0 to 1 := 0;
+      ahbendian: integer range 0 to 2 := 2;
       bm_filters: integer range 0 to 1 := 1;
       codecfreq: integer := 20;
       sameclk: integer range 0 to 1 := 0;
       codecver: integer range 0 to 2 := 1;
       extctrlen: integer range 0 to 1 := 0;
-      databufen: integer range 0 to 1 := 0
+      databufen: integer range 0 to 1 := 0;
+      rtlocken: integer range 0 to 1 := 0
       );
     port(
       clk: in std_logic;
@@ -155,6 +159,59 @@ package gr1553b_pkg is
       txout: out gr1553b_txout_type;
       txout_fb: in gr1553b_txout_type;
       rxin: in gr1553b_rxin_type
+      );
+  end component;
+
+  -----------------------------------------------------------------------------
+  -- GR1553B core with embedded RAM
+  component gr1553b_lram is
+    generic (
+      -- AHB configuration
+      hmindex       : integer := 0;
+      pindex        : integer := 0;
+      paddr         : integer := 0;
+      pmask         : integer := 16#ffe#;
+      pirq          : integer := 0;
+      hsindex       : integer := 0;
+      hsaddr        : integer := 0;
+      hsmask        : integer := 16#fff#;
+      -- GR1553B configuration
+      bc_enable     : integer range 0 to 1 := 1;
+      rt_enable     : integer range 0 to 1 := 1;
+      bm_enable     : integer range 0 to 1 := 1;
+      bc_timer      : integer range 0 to 2 := 1;
+      bc_rtbusmask  : integer range 0 to 1 := 1;
+      extra_regkeys : integer range 0 to 1 := 0;
+      syncrst       : integer range 0 to 2 := 1;
+      bm_filters    : integer range 0 to 1 := 1;
+      codecfreq     : integer := 20;
+      sameclk       : integer range 0 to 1 := 0;
+      codecver      : integer range 0 to 2 := 1;
+      extctrlen     : integer range 0 to 1 := 0;
+      databufen     : integer range 0 to 1 := 0;
+      rtlocken      : integer range 0 to 1 := 0;
+      -- Memory configuratoin
+      memtech       : integer := 0;
+      ft            : integer := 0;
+      maccsz        : integer := 32;
+      scantest      : integer := 0
+      );
+    port (
+      clk       : in std_logic;
+      rst       : in std_logic;
+      ahbmi     : in ahb_mst_in_type;
+      ahbmo     : out ahb_mst_out_type;
+      ahbsi     : in ahb_slv_in_type;
+      ahbso     : out ahb_slv_out_type;
+      apbsi     : in apb_slv_in_type;
+      apbso     : out apb_slv_out_type;
+      auxin     : in gr1553b_auxin_type;
+      auxout    : out gr1553b_auxout_type;
+      codec_clk : in std_logic;
+      codec_rst : in std_logic;
+      txout     : out gr1553b_txout_type;
+      txout_fb  : in gr1553b_txout_type;
+      rxin      : in gr1553b_rxin_type
       );
   end component;
 

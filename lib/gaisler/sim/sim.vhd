@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,13 +46,13 @@ package sim is
 	tacc : integer := 10;		-- access time (ns)
     	fname : string := "ram.dat";	-- File to read from
     	clear : integer := 0);	-- Clear memory
-      port (  
+      port (
         a : in std_logic_vector(abits-1 downto 0);
         D : inout std_logic_vector(7 downto 0);
         CE1 : in std_logic;
         WE : in std_logic;
         OE : in std_logic);
-  end component;  
+  end component;
 
   component sram16
   generic (
@@ -62,7 +62,7 @@ package sim is
     tacc : integer := 10;		-- access time (ns)
     fname : string := "ram.dat";	-- File to read from
     clear : integer := 0);		-- Clear memory
-  port (  
+  port (
     a : in std_logic_vector(abits-1 downto 0);
     d : inout std_logic_vector(15 downto 0);
     lb : in std_logic;
@@ -70,20 +70,20 @@ package sim is
     ce : in std_logic;
     we : in std_ulogic;
     oe : in std_ulogic);
-  end component;     
+  end component;
 
   component sramft
       generic (index : integer := 0;		-- Byte lane (0 - 3)
 	       Abits: Positive := 10;		-- Default 10 address bits (1 Kbyte)
 	       tacc : integer := 10;		-- access time (ns)
 	       fname : string := "ram.dat");	-- File to read from
-      port (  
+      port (
         a : in std_logic_vector(abits-1 downto 0);
         D : inout std_logic_vector(7 downto 0);
         CE1 : in std_logic;
         WE : in std_logic;
         OE : in std_logic);
-  end component;  
+  end component;
 
   function buskeep(signal v : in std_logic_vector) return std_logic_vector;
   function buskeep(signal c : in std_logic) return std_logic;
@@ -166,8 +166,8 @@ package sim is
       fname: string;
       lddelay: time := (0 ns);
       ldguard: integer range 0 to 1 := 0;
-      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
-      speedbin: integer range 0 to 12 := 0;
+      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G 13:1866M
+      speedbin: integer range 0 to 13 := 0;
       density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
       pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
       changeendian: integer range 0 to 32 := 0;
@@ -221,14 +221,14 @@ package sim is
       mdio     : inout std_logic;
       tx_clk   : out std_logic;
       rx_clk   : out std_logic;
-      rxd      : out std_logic_vector(7 downto 0);   
-      rx_dv    : out std_logic; 
-      rx_er    : out std_logic; 
+      rxd      : out std_logic_vector(7 downto 0);
+      rx_dv    : out std_logic;
+      rx_er    : out std_logic;
       rx_col   : out std_logic;
       rx_crs   : out std_logic;
-      txd      : in std_logic_vector(7 downto 0);   
-      tx_en    : in std_logic; 
-      tx_er    : in std_logic; 
+      txd      : in std_logic_vector(7 downto 0);
+      tx_en    : in std_logic;
+      tx_er    : in std_logic;
       mdc      : in std_logic;
       gtx_clk  : in std_logic;
       extrxclk : in std_logic := '0'
@@ -300,14 +300,14 @@ package sim is
   procedure l4stat_subtest(subtest : integer);
 
   procedure call_subtest(vendorid, deviceid, subtest : integer);
-  
+
   component ahbrep
   generic (
     hindex  : integer := 0;
     haddr   : integer := 0;
     hmask   : integer := 16#fff#;
     halt    : integer := 1;
-    delay_stop : integer := 0); 
+    delay_stop : integer := 0);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -346,7 +346,7 @@ package sim is
       address     : in std_logic_vector(21 downto 0);
       data        : inout std_logic_vector(width-1 downto 0);
       csn         : in std_ulogic;
-      writen      : in std_ulogic; 		
+      writen      : in std_ulogic;
       state       : out std_logic_vector(1 downto 0);
       testdev     : out std_logic_vector(19 downto 0);
       subtest     : out std_logic_vector(7 downto 0));
@@ -374,7 +374,7 @@ package sim is
   end component;
 
   type grusb_dcl_debug_data is array (0 to 503) of std_logic_vector(7 downto 0);
-  
+
   component grusb_dclsim
     generic (
       functm  : integer range 0 to 1 := 0;
@@ -396,7 +396,7 @@ package sim is
       ddo    : out   grusb_dcl_debug_data;
       start  : in    std_ulogic := '1');
   end component;
-  
+
   component ulpi
     generic (
       LSDEV      : boolean := false -- Low-Speed device attached
@@ -505,7 +505,9 @@ package sim is
       io3 : inout std_logic;
       -- Test control inputs
       sd_cmd_timeout  : in std_ulogic := '0';
-      sd_data_timeout : in std_ulogic := '0'
+      sd_data_timeout : in std_ulogic := '0';
+      dyn_edac_encode    : in std_logic  := '0';
+      dyn_edac_error_inj : in std_logic_vector(39 downto 0) := (others => '0')
       );
   end component;
 
@@ -532,7 +534,7 @@ package sim is
 
   constant ramback_in_none: ramback_in_type :=
     ((others => '0'), (others => '0'), (others => '0'), '0', '0', '0');
-  
+
   type ramback_out_type is record
     addr: std_logic_vector(31 downto 0);
     dout: std_logic_vector(127 downto 0);
@@ -540,10 +542,10 @@ package sim is
   end record;
 
   constant ramback_out_none: ramback_out_type := ((others => '0'), (others => '0'), '0');
-  
+
   type ramback_in_array is array(natural range <>) of ramback_in_type;
   type ramback_out_array is array(natural range <>) of ramback_out_type;
-  
+
   component ramback
     generic (
       abits: integer := 16;
@@ -662,7 +664,7 @@ component spwtrace is
     signal   start : out std_ulogic;
     signal   done  : in  std_ulogic
     );
-  
+
   procedure grusb_dcl_write (
     signal   clk   : in  std_ulogic;
     signal   rw    : out std_ulogic;
@@ -675,7 +677,7 @@ component spwtrace is
     hindex      : integer := 0;
     haddr       : integer := 0;
     hmask       : integer := 16#fff#;
-    tech        : integer := DEFMEMTECH; 
+    tech        : integer := DEFMEMTECH;
     kbytes      : integer := 1;
     pipe        : integer := 0;
     maccsz      : integer := AHBDW;
@@ -713,7 +715,7 @@ component spwtrace is
     enabled : std_logic;
     entry_strobe : std_logic;
   end record;
-  
+
   type aximem_rac_type is record
     wait_for_valid : std_logic;
     entry_strobe : std_logic;
@@ -735,7 +737,7 @@ component spwtrace is
     wdc : aximem_wdc_type;
     rac : aximem_rac_type;
   end record;
-  
+
   constant aximem_error_type_def : aximem_error_type := (
     id => 0,
     dstype => '0',
@@ -754,12 +756,12 @@ component spwtrace is
     wait_for_valid => '0',
     entry_strobe => '0'
     );
-  
+
   constant aximem_wdc_type_def : aximem_wdc_type := (
     wait_for_valid => '0',
     entry_strobe => '0'
     );
-  
+
 
   constant aximem_conf_type_def : aximem_conf_type := (
     err => aximem_error_type_def,
@@ -767,7 +769,7 @@ component spwtrace is
     wdc => aximem_wdc_type_def,
     rac => aximem_rac_type_def
     );
-    
+
   component axixmem is
     generic (
       fname: string;
@@ -1197,7 +1199,7 @@ package body sim is
     end case;
 
   end;
-  
+
   procedure ehc_subtest(subtest : integer) is
   begin
 
@@ -1219,7 +1221,7 @@ package body sim is
     when 17 =>  print("  Testing watchdog functionality");
     when others => print("  sub-system test " & tost(subtest));
     end case;
-    
+
   end;
 
   procedure spimctrl_subtest(subtest : integer) is
@@ -1243,7 +1245,7 @@ package body sim is
     end case;
 
   end;
-  
+
   procedure apbps2_subtest(subtest : integer) is
   begin
 
@@ -1260,7 +1262,7 @@ package body sim is
 
     case subtest is
     when 1 => print("  Register interface");
-    when 2 => print("  Combined I2CMST/I2CSLV test"); 
+    when 2 => print("  Combined I2CMST/I2CSLV test");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 
@@ -1288,7 +1290,7 @@ package body sim is
 
     case subtest is
     when 1 => print("  IN, OUT and DIR registers");
-    when 2 => print("  Interrupt generation"); 
+    when 2 => print("  Interrupt generation");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 
@@ -1348,15 +1350,19 @@ package body sim is
   begin
 
     case subtest is
-    when 1 => print("  Hello world");
-    when 2 => print("  Hypervisor test");
-    when 3 => print("  AIA test");
-    when 4 => print("  Triggers test");
-    when 5 => print("  Atomics test");
-    when 6 => print("  PMP page-table test");
-    when 7 => print("  CFI test");
-    when 8 => print("  Calc test");
-    when 9 => print("  Forwarding test");
+      when 1  => print("systest_hello()");
+      when 2  => print("systest_hypervisor()");
+      when 3  => print("systest_aia()");
+      when 4  => print("systest_peripheral()");
+      when 5  => print("systest_interrupts()");
+      when 6  => print("systest_triggers()");
+      when 7  => print("systest_atomics()");
+      when 8  => print("systest_pmp_pagetable()");
+      when 9  => print("systest_cfi()");
+      when 10 => print("systest_calc()");
+      when 11 => print("systest_forward()");
+      when 12 => print("svadu_test()");
+      when 13 => print("systest_custom_noelv()");
     when others => print("  sub-system test " & tost(subtest));
     end case;
 
@@ -1373,12 +1379,12 @@ package body sim is
         when GAISLER_GPTIMER => gptimer_subtest(subtest);
         when GAISLER_LEON3DSU => dsu3_subtest(subtest);
         when GAISLER_SPW => spw_subtest(subtest);
-        when GAISLER_SPICTRL => spictrl_subtest(subtest); 
+        when GAISLER_SPICTRL => spictrl_subtest(subtest);
         when GAISLER_I2CMST => i2cmst_subtest(subtest);
         when GAISLER_UHCI => uhc_subtest(subtest);
-        when GAISLER_EHCI => ehc_subtest(subtest);                    
-        when GAISLER_IRQMP => irqmp_subtest(subtest);                    
-        when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);                      
+        when GAISLER_EHCI => ehc_subtest(subtest);
+        when GAISLER_IRQMP => irqmp_subtest(subtest);
+        when GAISLER_SPIMCTRL => spimctrl_subtest(subtest);
         when GAISLER_SVGACTRL => svgactrl_subtest(subtest);
         when GAISLER_APBPS2 => apbps2_subtest(subtest);
         when GAISLER_I2CSLV => i2cslv_subtest(subtest);
@@ -1405,11 +1411,11 @@ package body sim is
     end if;
   end;
 
-  
+
   -----------------------------------------------------------------------------
   -- Simple simulation models
   -----------------------------------------------------------------------------
-  
+
   -- Description: Simple "PS/2" device. When the device receives the data
   --              0xAA it will respond with the bytes 0x5A, 0xA5.
   --              The argument DELAY is the PS/2 clock period / 2
@@ -1421,14 +1427,14 @@ package body sim is
     variable d : std_logic_vector(9 downto 0);
   begin  -- ps2_device
     clk <= 'Z'; data <= 'Z';
-    
+
     loop
       -- Wait for host request-to-send
       wait until clk = '0';
       wait until data = '0';
       wait until clk /= '0';
       wait for DELAY;
-      
+
       -- Generate clock and shift in data
       for i in 0 to 9 loop
         wait for DELAY/2;
@@ -1438,11 +1444,11 @@ package body sim is
         d(i) := data;
         wait for DELAY/2;
       end loop;  -- i = 0
-      
+
       -- Acknowledge data
       data <= '0';
       wait for DELAY/2;
-      clk <= '0'; 
+      clk <= '0';
       wait for DELAY;
       clk <= 'Z'; data <= 'Z';
 
@@ -1454,16 +1460,16 @@ package body sim is
       if d(7 downto 0) /= conv_std_logic_vector(16#AA#, 8) then next; end if;
 
       wait for 2*DELAY;
-      
+
       -- Transmit two byte response
-      d(8) := '1'; d(7 downto 0) := conv_std_logic_vector(16#A5#, 8); 
+      d(8) := '1'; d(7 downto 0) := conv_std_logic_vector(16#A5#, 8);
       for i in 0 to 1 loop
         d(7 downto 0) := d(3 downto 0) & d(7 downto 4);
-        
+
         data <= '0'; clk <= '0';
         wait for DELAY;
         clk <= 'Z';
-        
+
         for j in 0 to 8 loop
           wait for DELAY/2;
           data <= d(j);
@@ -1487,7 +1493,7 @@ package body sim is
     end loop;
   end ps2_device;
 
-  
+
   procedure grusb_dcl_read (
     signal   clk   : in  std_ulogic;
     signal   rw    : out std_ulogic;
@@ -1515,7 +1521,6 @@ package body sim is
     start <= '0';
     wait until falling_edge(done);
   end grusb_dcl_write;
-  
+
 end;
 -- pragma translate_on
-

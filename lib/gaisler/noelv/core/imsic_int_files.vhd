@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,6 +41,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.conv_integer;
@@ -66,7 +68,8 @@ entity imsic_int_files is
     -- Each interrupt file can have a different number of external interrupt identities
     mnidentities : integer range 63 to 2047  := 63; 
     snidentities : integer range 63 to 2047  := 63; 
-    gnidentities : integer range 63 to 2047  := 63
+    gnidentities : integer range 63 to 2047  := 63;
+    scantest     : integer                   := 0
     );
   port (
     rst        : in  std_ulogic;
@@ -77,13 +80,16 @@ entity imsic_int_files is
     plic_seip  : in  std_ulogic;
     imsici     : in  imsic_in_type;
     imsico     : out imsic_out_type;
-    eip        : out nv_irq_in_type
+    eip        : out nv_irq_in_type;
+    testen     : in  std_ulogic;
+    testrst    : in  std_ulogic
     );
 end;
 
 
 architecture rtl of imsic_int_files is
-
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant nsyncreg : integer := 2; -- Number of retisters used to synchronize data_rdy
 
@@ -132,12 +138,14 @@ architecture rtl of imsic_int_files is
   signal guest_in  : guestIntFile_in_type;
   signal guest_out : guestIntFile_out_type;
   signal r, rin    : reg_type;
+  signal arst      : std_ulogic;
 
   -- Generic interrupt file
   component interrupt_file 
     generic (
       sources     : integer range 0 to 2047   := 2047; -- It must be a multiple of 64 -1: from 63 to 2047 
-      plic        : integer range 0 to 1      := 1     -- Set to 1 if there is a PLIC/APLIC in the system
+      plic        : integer range 0 to 1      := 1;    -- Set to 1 if there is a PLIC/APLIC in the system
+      scantest    : integer                   := 0
       );
     port (
       rst         : in  std_ulogic;
@@ -153,17 +161,22 @@ architecture rtl of imsic_int_files is
       topei_w     : in  std_ulogic;
       topei       : out std_logic_vector(XLEN-1 downto 0);
       plic_eip    : in  std_ulogic;
-      eipo        : out std_ulogic
+      eipo        : out std_ulogic;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic
       );
   end component;
 
 begin
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
   -- Machine Interrupt File
   machine_file : interrupt_file
   generic map(
     sources     => mnidentities,
-    plic        => plic
+    plic        => plic,
+    scantest    => scantest
     )
   port map(
     rst         => rst,
@@ -179,7 +192,9 @@ begin
     topei_w     => imsici.mtopei_w, 
     topei       => imsico.mtopei,
     plic_eip    => plic_meip,
-    eipo        => eip.meip
+    eipo        => eip.meip,
+    testen      => testen,
+    testrst     => testrst
     );
 
   -- Supervisor Interrupt File
@@ -187,7 +202,8 @@ begin
     supervisor_file : interrupt_file
     generic map(
       sources     => snidentities,
-      plic        => plic
+      plic        => plic,
+      scantest    => scantest
       )
     port map(
       rst         => rst,
@@ -203,7 +219,9 @@ begin
       topei_w     => imsici.stopei_w, 
       topei       => imsico.stopei,
       plic_eip    => plic_seip,
-      eipo        => eip.seip
+      eipo        => eip.seip,
+      testen      => testen,
+      testrst     => testrst
       );
   end generate supervisor_int_files;
 
@@ -235,8 +253,9 @@ begin
       guest_file : interrupt_file
       generic map(
         sources     => gnidentities,
-        plic        => 0 -- Guest interrupt files do not support eidelivery=0x40000000
-        )
+        plic        => 0, -- Guest interrupt files do not support eidelivery=0x40000000
+        scantest    => scantest
+      )
       port map(
         rst         => rst,
         clk         => clk,
@@ -251,19 +270,23 @@ begin
         topei_w     => guest_in.vstopei_w(i), 
         topei       => guest_out.vstopei(i),
         plic_eip    => '0',
-        eipo        => eip.hgeip(i)
+        eipo        => eip.hgeip(i),
+        testen      => testen,
+        testrst     => testrst
         );
     end generate guest_int_files_g_gen;
   end generate guest_int_files;
 
-  -- Not implemented outputs
-  eip.ueip    <= '0'; -- not implemented
-  eip.heip    <= '0'; -- not implemented
   -- These are added elsewhere
   eip.mtip    <= '0';
   eip.msip    <= '0';
   eip.ssip    <= '0';
   eip.stime   <= (others => '0');
+  -- AIA
+  eip.imsic      <= imsic_irq_none;
+  eip.aplic_meip <= '0';
+  eip.aplic_seip <= '0';
+  -- RNMI
   eip.nmirq   <= (others => '0');
 
   comb : process (r, irqi) is
@@ -311,15 +334,27 @@ begin
   end process;
 
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
 
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;

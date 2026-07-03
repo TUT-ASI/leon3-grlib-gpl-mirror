@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -272,27 +272,49 @@ begin
     odmi.wr     := r.ahb.hwrite;
     odmi.addr   := r.ahb.haddr;
     odmi.data   := wdata;
+    odmi.testen := ahbsi.testen;
+    odmi.testrst:= ahbsi.testrst;
     odmi2.wr    := r.ahb.hwrite;
     odmi2.addr  := r.ahb.haddr;
     odmi2.data  := wdata;
+    odmi2.testen := ahbsi.testen;
+    odmi2.testrst:= ahbsi.testrst;
     otri.wr     := r.ahb.hwrite;
     otri.addr   := r.ahb.haddr;
     otri.data   := wdata;
+    otri.testen := ahbsi.testen;
+    otri.testrst:= ahbsi.testrst;
     ol5iti.wr   := r.ahb.hwrite;
     ol5iti.addr := r.ahb.haddr;
     ol5iti.data := wdata;
+    ol5iti.testen := ahbsi.testen;
+    ol5iti.testrst:= ahbsi.testrst;
     ol5iui.wr   := r.ahb.hwrite;
     ol5iui.addr := r.ahb.haddr;
     ol5iui.data := wdata;
+    ol5iui.testen := ahbsi.testen;
+    ol5iui.testrst:= ahbsi.testrst;
     if r.ahb.hsel(1)='0' and r.ahb.hsel(0)='1' and r.ahb.hwrite='1' then
       v.ahb.hready := '0';
     end if;
     if (r.ahb.hsel(0) = '1' and r.ahb.hwrite = '0') or (r.ahb.hsel(1) = '1' and r.ahb.hwrite = '1') then
+      -- NOELV:
+      -- 0x.0000000 DM
+      -- 0x.0000400 IU tbuf register
+      -- 0x.0080000 IU tbuf data
+      -- 0x.0100000 AHB tbuf
+      -- LEON5:
+      -- 0x.0000000 DSU
+      -- 0x.0000100 reserved (IU tbuf register)
+      -- 0x.0000180 IU tbuf register
+      -- 0x.00002E0 SB interface (0x200 NOELV DM)
+      -- 0x.0080000 IU tbuf data
+      -- 0x.0100000 AHB tbuf
+      -- 0x....0000 LEON5 / DSU
       case hasel1 is
 
         when "000" =>  -- Debug module and AHB trace registers
-          --if (r.ahb.haddr(16) = '0' and l5mode='0') or (r.ahb.haddr(8)='0' and l5mode='1') then
-          if (r.ahb.haddr(16) = '0' and l5mode='0') then
+          if (r.ahb.haddr(10) = '0' and l5mode='0') then -- NOELV mode
             odmi2.sel(0) := '1';
             rdata       := dmo2.data;
             if dmo2.rdy='0' then
@@ -300,7 +322,7 @@ begin
             else
               v.ahb.hsel := "00";
             end if;
-          elsif (r.ahb.haddr(8)='0' and l5mode='1') then
+          elsif (r.ahb.haddr(8)='0' and l5mode='1') then -- LEON5 mode
             odmi.sel(0) := '1';
             rdata       := dmo.data;
             if dmo.rdy='0' then
@@ -308,8 +330,9 @@ begin
             else
               v.ahb.hsel := "00";
             end if;
-          elsif l5mode='1' and r.ahb.haddr(7)='1' then
-            -- (LEON5) Instruction trace buffer control registers
+          elsif (r.ahb.haddr(7)='1' and l5mode = '1') or  -- LEON5 mode
+                (r.ahb.haddr(10)='1' and r.ahb.haddr(7)='0' and l5mode = '0') then -- NOELV mode
+            -- Instruction trace buffer control registers
             ol5iti.sel(0) := '1';
             rdata       := l5ito.data;
             if l5ito.rdy='0' then
@@ -328,15 +351,13 @@ begin
             end if;
           end if;
 
-        when "001"  =>  -- (LEON5 only) IU tbuf data
-          if l5mode='1' then
-            ol5iti.sel(1) := '1';
-            rdata       := l5ito.data;
-            if l5ito.rdy='0' then
-              v.ahb.hready := '0';
-            else
-              v.ahb.hsel := "00";
-            end if;
+        when "001"  =>  -- IU tbuf data
+          ol5iti.sel(1) := '1';
+          rdata       := l5ito.data;
+          if l5ito.rdy='0' then
+            v.ahb.hready := '0';
+          else
+            v.ahb.hsel := "00";
           end if;
 
         when "010"  =>  -- AHB tbuf

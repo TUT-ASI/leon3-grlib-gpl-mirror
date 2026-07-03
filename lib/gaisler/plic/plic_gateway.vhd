@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -24,13 +24,15 @@
 -- Description: RISC-V PLIC Interrupt Gateway
 --
 --              It includes a RISC-V privilege spec 1.11 (WIP) compatible
---              PLIC Interrupt Gateway 
+--              PLIC Interrupt Gateway
 ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -41,19 +43,26 @@ use gaisler.plic.all;
 entity plic_gateway is
   generic (
     pendingbuff : integer range 0 to 128 := 8;
-    irqtype     : integer range 0 to 1 := 0 -- 0 for level, 1 for edge
+    irqtypeconf : integer range 0 to 2   := 0;
+    scantest    : integer                := 0
     );
   port (
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
+    irqtype     : in  std_ulogic := '0';
     irqi        : in  std_ulogic;
     ip          : out std_ulogic;
     claim       : in  std_ulogic;
-    complete    : in  std_ulogic
+    complete    : in  std_ulogic;
+    softrstn    : in  std_ulogic := '1';
+    testen      : in  std_ulogic;
+    testrst     : in  std_logic
     );
 end plic_gateway;
 
 architecture rtl of plic_gateway is
+
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant REVISION : integer := 0;
 
@@ -79,14 +88,28 @@ architecture rtl of plic_gateway is
   );
 
   signal r, rin         : reg_type;
+  signal arst           : std_ulogic;
 
 begin
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
-  comb : process (rst, r, irqi, claim, complete)
+  comb : process (r, irqi, claim, complete, irqtype)
     variable v          : reg_type;
+    variable lirqtype   : std_ulogic;
   begin
 
     v := r;
+
+    -- Set interrupt to be level-sensitive (0),
+    -- edge-triggered or to be configurable from ACLINT
+    if irqtypeconf = 0 then
+      lirqtype := '0';
+    elsif irqtypeconf = 1 then
+      lirqtype := '1';
+    else
+      lirqtype := irqtype;
+    end if;
 
     ---------------------------------------------------
     -- Interrupt Detection
@@ -118,9 +141,9 @@ begin
     -- Irq edge detection
     v.irqsync           := irqi;
 
-    
+
     -- Irq pending counter with edge-triggered interrupts
-    if (r.irqsync = '0' and irqi = '1') and 
+    if (r.irqsync = '0' and irqi = '1') and
        (r.decr = '1' and r.pending /= zeros) then
       -- pending should increase due to the new interrupt
       -- but decrease becasue one interrupt was claimed.
@@ -153,7 +176,7 @@ begin
     -- Wait for interrupt request
     if (r.irqo = '0' and r.claimed = '0') then
 
-      if (v.pending /= zeros and irqtype = 1) or (irqi = '1' and irqtype = 0) then
+      if (v.pending /= zeros and lirqtype = '1') or (irqi = '1' and lirqtype = '0') then
         v.irqo          := '1';
       end if;
 
@@ -177,18 +200,37 @@ begin
 
     -- Interrupt Output
     ip  <= r.irqo;
-    
+
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
+  -- Synch reset
+  syncrregs : if not ASYNC_RESET generate
+    synch_regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if (rst and softrstn) = '0' then
+          r <= RES_T;
+        end if;
+      end if;
+    end process;
+  end generate;
+
+
+  -- Asynch reset
+  asyncrregs : if ASYNC_RESET generate
+    asynch_regs : process(clk, rst)
+    begin
       if rst = '0' then
         r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+        if softrstn = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
 
 end rtl;
 

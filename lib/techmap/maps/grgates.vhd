@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -266,6 +266,37 @@ begin
     q <= not (i0 and i1);
   end generate;
 
+end;
+
+-- Convenience wrapper around grnand2 for guard gates, i0 is inverted,
+-- and i1 is shared for all vectors
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+
+entity grnand2gg is
+  generic (
+    tech : integer;
+    imp  : integer;
+    bits : integer
+    );
+  port (
+    i0b: in std_logic_vector(bits-1 downto 0);
+    i1: in  std_ulogic;
+    q : out std_logic_vector(bits-1 downto 0)
+    );
+end;
+
+architecture rtl of grnand2gg is
+  signal i0: std_logic_vector(bits-1 downto 0);
+begin
+  i0 <= not i0b;
+  gloop: for x in 0 to bits-1 generate
+    g: grnand2
+      generic map (tech => tech, imp => imp)
+      port map (i0 => i0(x), i1 => i1, q => q(x));
+  end generate;
 end;
 
 library ieee;

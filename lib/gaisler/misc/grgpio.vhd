@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 -- Author:	Jiri Gaisler - Gaisler Research
 -- Description:	Scalable general-purpose I/O port
 ------------------------------------------------------------------------------
-
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
@@ -44,9 +43,9 @@ entity grgpio is
     paddr    : integer := 0;
     pmask    : integer := 16#fff#;
     imask    : integer := 16#0000#;
-    nbits    : integer := 16;			-- GPIO bits
-    oepol    : integer := 0;                    -- Output enable polarity
-    syncrst  : integer := 0;                    -- Only synchronous reset
+    nbits    : integer := 16;			                                        -- GPIO bits
+    oepol    : integer := 0;                                              -- Output enable polarity
+    syncrst  : integer := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable);   -- '0' Sync rst; '1' Async rst
     bypass   : integer := 16#0000#;
     scantest : integer := 0;
     bpdir    : integer := 16#0000#;
@@ -419,8 +418,9 @@ begin
    end if;
 
 -- reset operation
-
-    if (not RESET_ALL) and (rst = '0') then
+      
+    -- if (not RESET_ALL) and (rst = '0') then
+    if (not RESET_ALL) and (syncrst = 0) and (rst = '0') then
       v.imask := RES.imask; v.bypass := RES.bypass;
       v.dir := RES.dir; v.dout := RES.dout;
       v.irqmap := RES.irqmap;
@@ -469,29 +469,44 @@ begin
   apbo.pconfig <= pconfig;
 
 -- registers
+  syncregs : if (syncrst = 0) generate
+    regs : process(clk, arst)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rst = '0' then
+          r <= RES;
+          -- Sync. registers din1 and din2 not reset
+          r.din1 <= rin.din1;
+          r.din2 <= rin.din2;
+        end if;
+      end if;
+      if (syncrst = 0 ) and (arst = '0') then
+        r.dir <= DIR_RESVAL(nbits-1 downto 0);
+        r.dout <= DOUT_RESVAL(nbits-1 downto 0);
+        if bypass /= 0 then
+          r.bypass <= BP_RESVAL(nbits-1 downto 0);
+        end if;
+        if inpen /= 0 then
+          r.inpen <= INPEN_RESVAL(nbits-1 downto 0);
+        end if;
+      end if;
+    end process;
+  end generate;
 
-  regs : process(clk, arst)
+  asyncregs : if (syncrst = 1) generate
+  regs: process(clk, arst)
   begin
-    if rising_edge(clk) then
+    if arst = '0' then
+      r <= RES;
+      -- Async. registers din1 and din2 not reset
+      r.din1 <= rin.din1;
+      r.din2 <= rin.din2;
+    elsif rising_edge(clk) then
       r <= rin;
-      if RESET_ALL and rst = '0' then
-        r <= RES;
-        -- Sync. registers din1 and din2 not reset
-        r.din1 <= rin.din1;
-        r.din2 <= rin.din2;
-      end if;
     end if;
-    if (syncrst = 0 ) and (arst = '0') then
-      r.dir <= DIR_RESVAL(nbits-1 downto 0);
-      r.dout <= DOUT_RESVAL(nbits-1 downto 0);
-      if bypass /= 0 then
-        r.bypass <= BP_RESVAL(nbits-1 downto 0);
-      end if;
-      if inpen /= 0 then
-        r.inpen <= INPEN_RESVAL(nbits-1 downto 0);
-      end if;
-    end if;
-  end process;
+  end process regs;
+  end generate;
 
 -- boot message
 

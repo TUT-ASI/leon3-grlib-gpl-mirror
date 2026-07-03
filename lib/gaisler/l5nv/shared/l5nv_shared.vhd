@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,8 @@ package l5nv_shared is
   ----------------------------------------------------------------------------
   -- Types and constants
   ----------------------------------------------------------------------------
-  constant REGW : integer := 32;
+  constant REGW         : integer := 32;
+  constant TRACE_WIDTH  : integer := 512;
 
   type zfudge_type is array(0 to 8) of integer;
   constant zfudge: zfudge_type := (
@@ -119,6 +120,46 @@ package l5nv_shared is
     );
   constant tracebuf_mbus_out_type_none : tracebuf_mbus_out_type :=
     (data => (others => '0'));
+
+  -- Inst trace-buffer -----------------------------------------------------------
+  type trace_port_out_type is record
+    tdata : std_logic_vector(TRACE_WIDTH-1 downto 0);
+  end record;
+
+  type trace_port_in_vector is array(natural range <>) of trace_port_out_type;
+
+  type trace_control_out_type is record
+    trace_upd   : std_logic;
+    addr_f      : std_logic_vector(3 downto 0);
+    addr_f_p    : std_logic_vector(3 downto 0);
+    inst_filter : std_logic_vector(3 downto 0);
+  end record;
+
+  constant trace_control_out_none : trace_control_out_type := (
+    '0', "0000", "0000", "0000"
+    );
+
+  type trace_control_out_vector is array(natural range <>) of trace_control_out_type;
+
+  type itracebuf_in_type5 is record
+    addr0            : std_logic_vector(11 downto 0);
+    addr1            : std_logic_vector(11 downto 0);
+    data0            : std_logic_vector(TRACE_WIDTH/2-1 downto 0);
+    data1            : std_logic_vector(TRACE_WIDTH/2-1 downto 0);
+    enable           : std_logic_vector(1 downto 0);
+    write            : std_logic_vector(1 downto 0);
+  end record;
+  constant itracebuf_in_type5_none : itracebuf_in_type5 := (
+    (others => '0'), (others => '0'), (others => '0'), (others => '0'), "00", "00"
+    );
+  type itracebuf_out_type5 is record
+    data            : std_logic_vector(TRACE_WIDTH-1 downto 0);
+  end record;
+  constant itracebuf_out_type5_none : itracebuf_out_type5 := (
+    data => (others => '0')
+    );
+  type itracebuf_in_type5_array is array(natural range <>) of itracebuf_in_type5;
+  type itracebuf_out_type5_array is array(natural range <>) of itracebuf_out_type5;
 
   -- L1-cache and busif
   constant TAGMAX: integer := 32;

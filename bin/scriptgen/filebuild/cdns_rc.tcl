@@ -11,7 +11,10 @@ proc append_file_cdns_rc {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

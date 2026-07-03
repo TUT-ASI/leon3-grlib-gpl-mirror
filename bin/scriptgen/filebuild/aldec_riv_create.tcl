@@ -32,7 +32,10 @@ proc append_file_aldec_riv_create {f finfo riv_fs riv_path} {
 			set f_real [dict get $finfo f_real]
 			append rwcdc "\ndesign.file.add $riv_path$f_real"
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			upvar $riv_fs rivfs
 			upvar riviera_ws_create_do_contents rwcdc

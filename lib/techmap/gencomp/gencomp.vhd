@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -309,7 +309,7 @@ constant ram_raw_latency : tech_ability_type := (easic45 => 1, others => 0);
 -- has_sram_ecc(tech) = 1 -> target tech has SECDED capabilities for SRAM
 constant has_sram_ecc :  tech_ability_type :=
   (rtg4 => 1, virtex5 => 1, virtex6 => 1, artix7 => 1, kintex7 => 1, virtex7 => 1,
-   ultrascale => 1, ultrascalep => 1, polarfire => 1, nexus => 1, versal => 1, others => 0);
+   ultrascale => 1, ultrascalep => 1, polarfire => 1, nexus => 1, versal => 1,nx => 1, others => 0);
 
 -- Support for built in pipeline register in SRAM macro
 constant has_sram_pipe : tech_ability_type :=
@@ -748,7 +748,7 @@ constant TT_M010     : integer := 13;
   component syncramft
   generic (tech : integer := 0; abits : integer := 6; dbits : integer := 8;
 	ft : integer range 0 to 5 := 0; testen : integer := 0; custombits : integer := 1;
-        pipeline : integer range 0 to 255 := 0; rdhold : integer := 0; gatedwr : integer := 0 );
+        pipeline : integer range 0 to 255 := 0; rdhold : integer := 0; gatedwr : integer := 0);
   port (
     clk      : in std_ulogic;
     address  : in std_logic_vector((abits -1) downto 0);
@@ -2243,6 +2243,8 @@ component grand12 is generic( tech : integer := inferred; imp :  integer := 0);
   port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
 component grnand2 is generic (tech: integer := inferred; imp: integer := 0);
   port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
+component grnand2gg is generic (tech: integer := inferred; imp: integer := 0; bits: integer := 1);
+  port( i0b : in std_logic_vector(bits-1 downto 0); i1 : in std_ulogic; q : out std_logic_vector(bits-1 downto 0)); end component;
 component grand2 is generic (tech: integer := inferred; imp: integer := 0);
   port( i0, i1 : in std_ulogic; q : out std_ulogic); end component;
 

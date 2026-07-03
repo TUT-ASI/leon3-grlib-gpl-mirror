@@ -18,7 +18,7 @@ proc create_lattice_top_radiant_tcl {} {
 
 
 proc append_file_lattice_top_radiant_tcl {f finfo} {
-	global GRLIB_LATTICE_RADIANT GRLIB_LATTICE_RADIANT_PERFORMANCE PART PACKAGE ARCHITECTURE
+	global GRLIB_LATTICE_RADIANT GRLIB_LATTICE_RADIANT_PERFORMANCE PART PACKAGE ARCHITECTURE LATTICE_COM_IP_FOLDER
 	set i [dict get $finfo i]
 	set bn [dict get $finfo bn]
 	set q [dict get $finfo q]
@@ -27,6 +27,9 @@ proc append_file_lattice_top_radiant_tcl {f finfo} {
 		"vhdlp1735" {
 			upvar radiant_contents rc
 			append rc "\nprj_add_source $f -work $bn"
+			return
+		}
+		"vhdlnx" {
 			return
 		}
 		"vhdlmtie" {
@@ -73,6 +76,16 @@ proc append_file_lattice_top_radiant_tcl {f finfo} {
       upvar radiant_contents rc
 			append ri "\ntry {"
 			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip $GRLIB_LATTICE_RADIANT/ip/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE"
+		  append ri "\n} on error ipgenerr {"
+			append ri "\n\tputs \"IPGEN error caught:\n\$ipgenerr\"\n}"
+			append rc "\nprj_add_source lattice_ips/$fattr/$q/$q.ipx -work $bn"
+			return
+		}
+    "latticecomipcfg" {
+      upvar radiant_ips ri
+      upvar radiant_contents rc
+			append ri "\ntry {"
+			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip $LATTICE_COM_IP_FOLDER/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE"
 		  append ri "\n} on error ipgenerr {"
 			append ri "\n\tputs \"IPGEN error caught:\n\$ipgenerr\"\n}"
 			append rc "\nprj_add_source lattice_ips/$fattr/$q/$q.ipx -work $bn"

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -116,6 +116,9 @@ type ereg_type is record
 end record;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
 constant RRES : reg_type := (
   imask => (others => (others => '0')), ilevel => (others => '0'),
   ipend => (others => '0'), iforce => (others => (others => '0')),
@@ -420,7 +423,8 @@ begin
 
 -- reset
 
-    if (not RESET_ALL) and (rst = '0') then
+    if (not RESET_ALL) and (not ASYNC_RESET) and (rst = '0') then
+    -- if (not RESET_ALL) and (rst = '0') then
       v.imask := RRES.imask; v.iforce := RRES.iforce; v.ipend := RRES.ipend;
       if ncpu > 1 then
         v.ibroadcast := RRES.ibroadcast;
@@ -460,31 +464,63 @@ begin
   apbo.pconfig <= pconfig;
   apbo.pindex <= pindex;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if RESET_ALL and (rst = '0') then r <= RRES; end if;
-    end if;
-  end process;
-  
-  dor2regs : if eirq /= 0 generate
+  syncregs : if not ASYNC_RESET generate
     regs : process(clk)
     begin
       if rising_edge(clk) then
-        r2 <= r2in;
-        if RESET_ALL and (rst = '0') then r2 <= ERES; end if;
+        r <= rin;
+        if RESET_ALL and (rst = '0') then r <= RRES; end if;
       end if;
     end process;
+    
+    dor2regs : if eirq /= 0 generate
+      regs : process(clk)
+      begin
+        if rising_edge(clk) then
+          r2 <= r2in;
+          if RESET_ALL and (rst = '0') then r2 <= ERES; end if;
+        end if;
+      end process;
+    end generate;
+    nor2regs : if eirq = 0 generate
+  --    r2 <= ((others => "0000000000000000"), "0000000000000000", (others => "00000"));
+      r2.ipend <= (others => '0');
+      driveregs: for i in 0 to (ncpu-1) generate
+        r2.imask(i) <= (others => '0');
+        r2.irl(i) <= (others => '0');
+      end generate driveregs;  
+    end generate;
   end generate;
-  nor2regs : if eirq = 0 generate
---    r2 <= ((others => "0000000000000000"), "0000000000000000", (others => "00000"));
-    r2.ipend <= (others => '0');
-    driveregs: for i in 0 to (ncpu-1) generate
-      r2.imask(i) <= (others => '0');
-      r2.irl(i) <= (others => '0');
-    end generate driveregs;  
-  end generate;
+
+  asyncregs : if ASYNC_RESET generate
+    regs : process(clk,rst)
+    begin
+      if RESET_ALL and (rst = '0') then 
+        r <= RRES;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+    
+    dor2regs : if eirq /= 0 generate
+      regs : process(clk,rst)
+      begin
+        if RESET_ALL and (rst = '0') then
+           r2 <= ERES;
+        elsif rising_edge(clk) then
+          r2 <= r2in;
+        end if;
+      end process;
+    end generate;
+    nor2regs : if eirq = 0 generate
+  --    r2 <= ((others => "0000000000000000"), "0000000000000000", (others => "00000"));
+      r2.ipend <= (others => '0');
+      driveregs: for i in 0 to (ncpu-1) generate
+        r2.imask(i) <= (others => '0');
+        r2.irl(i) <= (others => '0');
+      end generate driveregs;  
+    end generate;
+  end generate;   
 
 -- pragma translate_off
     bootmsg : report_version

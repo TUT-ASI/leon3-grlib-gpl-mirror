@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,12 @@ use grlib.config_types.all;
 use grlib.config.all;
 library gaisler;
 use gaisler.uart.all;
+use gaisler.l5nv_shared.all;
 use gaisler.noelv_cfg.all;
+use gaisler.l5nv_shared.l5_tsc_ctrl_type;
+use gaisler.plic.all;
+use gaisler.aplic.all;
+
 
 package noelv is
 
@@ -48,17 +53,52 @@ package noelv is
 
   constant GEILEN               : integer := 16;
   constant HARTIDLEN            : integer := 4;
+  --constant TRACE_WIDTH          : integer := 512;
 
   constant AIA_SUPPORT          : integer := 1;   -- 0 = AIA support is disabled in GRLIB
   constant ZICFISS_SUPPORT      : integer := 1;   -- 0 = ZICFISS support is disabled in GRLIB
   constant ZICFILP_SUPPORT      : integer := 1;   -- 0 = ZICFILP support is disabled in GRLIB
   constant SMRNMI_SUPPORT       : integer := 1;   -- 0 = SMRNMI support is disabled in GRLIB
   constant DBLTRP_SUPPORT       : integer := 1;   -- 0 = Double trap extensions support is disabled in GRLIB
-  constant RDV_SUPPORT : integer := 1; -- 0 = disable extensions not supported in RISCV-DV
-
-  constant NNMIRQ               : integer := 6;   -- Number of Resumable Non-Maskable Interrupts
+  constant NEXTNMIRQ            : integer := 1;   -- Number of External Resumable Non-Maskable Interrupts
+  constant NLOCNMIRQ            : integer := 5;   -- Number of Local Resumable Non-Maskable Interrupts
+  constant NMCAUSELEN           : integer := NEXTNMIRQ + NLOCNMIRQ + 1;
+  constant PMPENTRIES           : integer := 16;
+  constant PMAENTRIES           : integer := 16;
 
   -- Types --------------------------------------------------------------------
+  subtype integer64 is integer range 0 to 63;
+  subtype integer32 is integer range 0 to 31;
+  subtype integer16 is integer range 0 to 15;
+  subtype integer4  is integer range 0 to 3;
+  subtype integer2  is integer range 0 to 1;
+
+  subtype word64 is std_logic_vector(63 downto 0);
+  subtype word32 is std_logic_vector(31 downto 0);
+  subtype word16 is std_logic_vector(15 downto 0);
+  subtype word8  is std_logic_vector( 7 downto 0);
+  subtype word5  is std_logic_vector( 4 downto 0);
+  subtype word4  is std_logic_vector( 3 downto 0);
+  subtype word3  is std_logic_vector( 2 downto 0);
+  subtype word2  is std_logic_vector( 1 downto 0);
+  subtype wordx  is std_logic_vector(XLEN - 1 downto 0);
+  subtype wordx1 is std_logic_vector(XLEN downto 0);
+  subtype word   is word32;
+
+  constant zerow8  : word8  := (others => '0');
+  constant zerow16 : word16 := (others => '0');
+  constant zerow64 : word64 := (others => '0');
+  constant zerox   : wordx  := (others => '0');
+  constant zerow   : word   := (others => '0');
+
+  type word64_arr is array (integer range <>) of word64;
+  type word32_arr is array (integer range <>) of word32;
+  type word16_arr is array (integer range <>) of word16;
+  type word8_arr  is array (integer range <>) of word8;
+  type word_arr   is array (integer range <>) of word;
+  type wordx_arr  is array (integer range <>) of wordx;
+
+  constant word64_arr_empty : word64_arr(0 to 1) := (others => zerow64);
 
 
 
@@ -91,7 +131,8 @@ package noelv is
 
 
 
-  subtype nv_nmirq_in_type is std_logic_vector(NNMIRQ-1 downto 0);
+  -- External RNMI type
+  subtype nv_extnmirq_in_type is std_logic_vector(NEXTNMIRQ-1 downto 0);
 
   -- Interrupt Bus ------------------------------------------------------------
   type nv_irq_in_type is record
@@ -100,16 +141,14 @@ package noelv is
     ssip        : std_ulogic; -- Supervisor Software Interrupt
     meip        : std_ulogic; -- Machine External Interrupt
     seip        : std_ulogic; -- Supervisor External Interrupt
-    ueip        : std_ulogic; -- User External Interrupt
-    heip        : std_ulogic; -- Reserved
     hgeip       : std_logic_vector(GEILEN downto 1); -- Hypervisor Guest External Interrupt
     stime       : std_logic_vector(63 downto 0);
     -- AIA signals
     imsic       : imsic_irq_type;       -- IMSIC interrupt signals
-    aplic_meip  : std_ulogic;           -- Machine External Interrupt form APLIC 
+    aplic_meip  : std_ulogic;           -- Machine External Interrupt form APLIC
     aplic_seip  : std_ulogic;           -- Supervisor External Interrupt form APLIC
     -- RNMI
-    nmirq       : nv_nmirq_in_type;     -- Resumable Non-Maskable interrutps
+    nmirq       : nv_extnmirq_in_type;  -- External Resumable Non-Maskable interrutp
   end record;
 
   type nv_irq_out_type is record
@@ -126,8 +165,6 @@ package noelv is
     ssip       => '0',
     meip       => '0',
     seip       => '0',
-    ueip       => '0',
-    heip       => '0',
     hgeip      => (others => '0'),
     stime      => (others => '0'),
     imsic      => imsic_irq_none,
@@ -154,24 +191,7 @@ package noelv is
 
   -- Perf Counters ---------------------------------------------------------------
 
-  type nv_counter_out_type is record
-    icnt     : std_logic_vector(1 downto 0);
-    icmiss   : std_logic;
-    itlbmiss : std_logic;
-    dcmiss   : std_logic;
-    dtlbmiss : std_logic;
-    bpmiss   : std_logic;
-    hold     : std_logic;
-    --single_issue  : std_logic;
-    --dual_issue    : std_logic;
-    hold_issue    : std_logic;
-    branch        : std_logic;
-    --load_dep      : std_logic;
-    --store_b2b     : std_logic;
-    --jalr          : std_logic;
-    --jal           : std_logic;
-    --dcache_flush  : std_logic;
-  end record;
+  subtype nv_counter_out_type is std_logic_vector(63 downto 0);
 
   type nv_counter_out_vector is array (natural range <>) of nv_counter_out_type;
 
@@ -191,7 +211,6 @@ package noelv is
     dsize       : std_logic_vector(2 downto 0);         -- Diagnostic Size Access
     daddr       : std_logic_vector(DBITS-1 downto 0);   -- Diagnostic Address
     ddata       : std_logic_vector(63 downto 0);        -- Diagnostic Data
-    pbdata      : std_logic_vector(63 downto 0);
   end record;
   constant nv_debug_in_none : nv_debug_in_type := (
     hartid      => (others => '0'),
@@ -207,8 +226,7 @@ package noelv is
     dwrite      => '0',
     dsize       => (others => '0'),
     daddr       => (others => '0'),
-    ddata       => (others => '0'),
-    pbdata      => (others => '0'));
+    ddata       => (others => '0'));
 
   type nv_debug_out_type is record
     dsu         : std_ulogic;                           -- DSU Enable
@@ -220,11 +238,9 @@ package noelv is
     dvalid      : std_ulogic;                           -- Diagnostic Valid
     ddata       : std_logic_vector(63 downto 0);        -- Diagnostic Data
     derr        : std_ulogic;
+    dhalterr    : std_ulogic;
     dexec_done  : std_ulogic;
     stoptime    : std_ulogic;
-    pbaddr      : std_logic_vector(4 downto 0);
-    istat       : nv_cstat_type;
-    dstat       : nv_cstat_type;
     mcycle      : std_logic_vector(63 downto 0);
     cap         : std_logic_vector(9 downto 0);
   end record;
@@ -239,11 +255,9 @@ package noelv is
     dvalid      => '0',
     ddata       => (others => '0'),
     derr        => '0',
+    dhalterr    => '0',
     dexec_done  => '0',
     stoptime    => '0',
-    pbaddr      => (others => '0'),
-    istat       => nv_cstat_none,
-    dstat       => nv_cstat_none,
     mcycle      => (others => '0'),
     cap         => (others => '0')
     );
@@ -251,10 +265,11 @@ package noelv is
   type nv_debug_in_vector  is array (natural range <>) of nv_debug_in_type;
   type nv_debug_out_vector is array (natural range <>) of nv_debug_out_type;
 
-  subtype trace_d_type is std_logic_vector(1023 downto 0);
+  subtype trace_d_type is std_logic_vector(2047 downto 0);
   type trace_d_vector is array (natural range<>) of trace_d_type;
 
   constant trace_d_none : trace_d_type := (others => '0');
+
 
 
 
@@ -274,6 +289,8 @@ package noelv is
     -- Block Retire
     iretire   : std_logic_vector(2 downto 0);
     ilastsize : std_logic_vector(0 downto 0);
+    -- Actions from triggers with trace actions
+    triggers  : std_logic_vector(1 downto 0);
   end record;
 
   constant nv_etrace_none : nv_etrace_type := (
@@ -287,7 +304,8 @@ package noelv is
     ctype     => (others => '0'),
     sijump    => (others => '0'),
     iretire   => (others => '0'),
-    ilastsize => (others => '0')
+    ilastsize => (others => '0'),
+    triggers  => (others => '0')
   );
 
   type nv_etrace_vector is array (natural range <>) of nv_etrace_type;
@@ -316,10 +334,12 @@ package noelv is
 
   type nv_full_trace_type is record
     eto     : nv_etrace_type;
+    tdata   : std_logic_vector(TRACE_WIDTH-1 downto 0);
   end record;
 
   constant nv_full_trace_none : nv_full_trace_type := (
-    eto     => nv_etrace_none
+    eto     => nv_etrace_none,
+    tdata   => (others => '0')
   );
 
   type nv_full_trace_vector is array (integer range <>) of nv_full_trace_type;
@@ -345,6 +365,21 @@ package noelv is
     ndmreset    => '0',
     pwd         => (others => '0')
     );
+
+  -- E-Trace communicators msg
+  --  *_i  : us_cmd/us_data (into ME)  + ds_ready (from comm)
+  --  *_o  : ds_cmd/ds_data (from ME)  + us_ready (from ME)
+  type etrace_msg_32_type is record
+    cmd   : std_logic_vector(2 downto 0);   -- US cmd on *_i, DS cmd on *_o
+    data  : std_logic_vector(31 downto 0);  -- US data on *_i, DS data on *_o
+    ready : std_logic;                      -- DS ready on *_i, US ready on *_o
+  end record;
+
+  constant etrace_msg_32_none : etrace_msg_32_type := (
+    cmd   => (others => '0'),
+    data  => (others => '0'),
+    ready => '0'
+  );
 
   -- Components ------------------------------------------------------------
   component cpucorenv
@@ -372,6 +407,7 @@ package noelv is
       clk         : in  std_ulogic;          -- Clock
       gclk        : in  std_ulogic;          -- Gated clock
       rstn        : in  std_ulogic;
+      tsc         : in  l5_tsc_async_type;
       ahbi        : in  ahb_mst_in_type;
       ahbo        : out ahb_mst_out_type;
       ahbsi       : in  ahb_slv_in_type;
@@ -401,9 +437,6 @@ package noelv is
       tcmconf  : integer;
       mulconf  : integer;
       intcconf : integer;
-      mnintid  : integer;
-      snintid  : integer;
-      gnintid  : integer;
       disas    : integer;
       pbaddr   : integer;
       cfg      : integer;
@@ -415,6 +448,7 @@ package noelv is
       clk    : in  std_ulogic;
       gclk   : in  std_ulogic;
       rstn   : in  std_ulogic;
+      tsc    : in  l5_tsc_async_type;
       ahbi   : in  ahb_mst_in_type;
       ahbo   : out ahb_mst_out_type;
       ahbsi  : in  ahb_slv_in_type;
@@ -438,8 +472,7 @@ package noelv is
       nextslv  : integer;
       nextapb  : integer;
       ndbgmst  : integer;
-      nintdom  : integer := 4;
-      neiid    : integer := 63;
+      neiid    : integer := 127;
       cached   : integer;
       wbmask   : integer;
       busw     : integer;
@@ -479,6 +512,8 @@ package noelv is
       dsuen    : in  std_ulogic;
       dsubreak : in  std_ulogic;
       cpu0errn : out std_ulogic;
+      stoptime : out std_ulogic;
+      cpuerrn  : out std_logic_vector(ncpu-1 downto 0);
       -- UART connection
       uarti    : in  uart_in_type;
       uarto    : out uart_out_type;
@@ -493,6 +528,8 @@ package noelv is
       scanen  : in  std_ulogic := '0';
       testoen : in  std_ulogic := '1';
       testsig : in  std_logic_vector(1+GRLIB_CONFIG_ARRAY(grlib_techmap_testin_extra) downto 0) := (others => '0')
+   ;
+    nirq : in std_logic_vector(ncpu-1 downto 0) := (others => '0')
       );
   end component;
 
@@ -512,8 +549,13 @@ package noelv is
       pnpaddrlo : integer;
       dmslvidx  : integer;
       dmmstidx  : integer;
+      -- Program buffer
+      pbslvidx  : integer;
+      pbhaddr   : integer := 16#F86#;
+      pbhmask   : integer := 16#FFF#;
       -- trace
       tbits     : integer;
+      itentr    : integer := 0;
       --
       scantest  : integer;
       -- Pipelining
@@ -522,6 +564,7 @@ package noelv is
     port (
       clk      : in  std_ulogic;
       rstn     : in  std_ulogic;
+      tsc      : in  l5_tsc_async_type;
       -- Debug-link interface
       dbgmi    : out ahb_mst_in_vector_type(ndbgmst-1 downto 0);
       dbgmo    : in  ahb_mst_out_vector_type(ndbgmst-1 downto 0);
@@ -529,7 +572,11 @@ package noelv is
       cbmi    : in  ahb_mst_in_type;
       cbmo    : out ahb_mst_out_type;
       cbsi    : in  ahb_slv_in_type;
-      --
+      -- Program buffer
+      pbsi    : in  ahb_slv_in_type;
+      pbso    : out ahb_slv_out_type;
+      -- 
+      tpi    : in  nv_full_trace_vector(0 to ncpu-1) := (others => nv_full_trace_none);
       dbgi   : in  nv_debug_out_vector(0 to ncpu-1);
       dbgo   : out nv_debug_in_vector(0 to ncpu-1);
       dsui   : in  nv_dm_in_type;
@@ -569,7 +616,8 @@ package noelv is
       pindex      : integer range 0 to NAPBSLV-1  := 0;
       paddr       : integer range 0 to 16#FFF#    := 0;
       pmask       : integer range 0 to 16#FFF#    := 16#FFF#;
-      ncpu        : integer range 0 to 4096       := 4
+      ncpu        : integer range 0 to 4096       := 4;
+      scantest    : integer                       := 0
       );
     port (
       rst         : in  std_ulogic;
@@ -588,7 +636,8 @@ package noelv is
       hindex      : integer range 0 to NAPBSLV-1  := 0;
       haddr       : integer range 0 to 16#FFF#    := 0;
       hmask       : integer range 0 to 16#FFF#    := 16#FFF#;
-      ncpu        : integer range 0 to 4096       := 4
+      ncpu        : integer range 0 to 4096       := 4;
+      scantest    : integer                       := 0
       );
     port (
       rst         : in  std_ulogic;
@@ -605,7 +654,9 @@ package noelv is
   component imsic_ahb
     generic (
       hindex          : integer range 0 to NAHBSLV-1  := 0;
+      hbaren          : integer range 0 to 1          := 0;
       haddr           : integer range 0 to 16#FFF#    := 0;
+      hbar            : integer range 0 to 3          := 0;
       ncpu            : integer range 0 to MAX_HARTS  := 0;
       GEILEN          : integer                       := 0;
       groups          : integer                       := 0;
@@ -613,14 +664,16 @@ package noelv is
       H_EN            : integer range 0 to 1          := 0;
       mnidentities_vector : nidentities_vector;
       snidentities_vector : nidentities_vector;
-      gnidentities_vector : nidentities_vector
+      gnidentities_vector : nidentities_vector;
+      scantest        : integer                       := 0
       );
     port (
       rst         : in  std_ulogic;
       clk         : in  std_ulogic;
       ahbi        : in  ahb_slv_in_type;
       ahbo        : out ahb_slv_out_type;
-      irq_ack     : in  std_logic_vector(0 to ncpu-1);
+      -- If no CDC is needed we can hardware this to 1
+      irq_ack     : in  std_logic_vector(0 to ncpu-1) := (others => '1');
       irqo        : out imsic_irq_vector(0 to ncpu-1)
       );
   end component;
@@ -628,7 +681,9 @@ package noelv is
   component aclint_ahb is
     generic (
       hindex  : integer range 0 to NAPBSLV-1  := 0;
+      hbaren  : integer range 0 to 1          := 0;
       haddr   : integer range 0 to 16#FFF#    := 0;
+      hbar    : integer range 0 to 3          := 0;
       hmask   : integer range 0 to 16#FFF#    := 16#FFF#;
       hirq1   : integer range 0 to NAHBSLV-1  := 0;
       hirq2   : integer range 0 to NAHBSLV-1  := 0;
@@ -639,7 +694,8 @@ package noelv is
       sswi    : integer range 0 to 1          := 1;
       -- Watchdog
       watchdog    : integer range 0 to 1      := 1;
-      wdtickbit   : integer range 0 to 63     := 4
+      wdtickbit   : integer range 0 to 63     := 4;
+      scantest    : integer                       := 0
       );
     port (
       rst         : in  std_ulogic;
@@ -648,10 +704,129 @@ package noelv is
       ahbi        : in  ahb_slv_in_type;
       ahbo        : out ahb_slv_out_type;
       halt        : in  std_ulogic;
-      irqi        : in  nv_irq_in_vector(0 to ncpu-1);
-      irqo        : out nv_irq_in_vector(0 to ncpu-1)
+      irqo        : out nv_irq_in_vector(0 to ncpu-1);
+      intcap      : in  std_logic_vector(63 downto 0) := (others => '0')
       );
   end component;
+
+  component aclint_ahb_ts is
+    generic (
+      hbaren      : integer range 0 to 1          := 0;  -- When set to 1 aclint is part of an ahb slave with several mem bars
+      hindex      : integer range 0 to NAHBSLV-1  := 0;
+      haddr       : integer range 0 to 16#FFF#    := 0;
+      hbar        : integer range 0 to 3          := 0;
+      hmask       : integer range 0 to 16#FFF#    := 16#FFF#;
+      hirq1       : integer range 0 to NAHBSLV-1  := 0;
+      hirq2       : integer range 0 to NAHBSLV-1  := 0;
+      ncpu        : integer range 0 to 4096       := 4;
+      mswi        : integer range 0 to 1          := 1;  -- Enables MSWI ACLINT's device (machine software interrupts)
+      mtimer      : integer range 0 to 1          := 1;  -- Enables MTIMER ACLINT's device (machine timer interrupts)
+      mtimebits   : integer range 33 to 64        := 63; -- Number of timer bits
+      asyncset    : integer range 0 to 1;
+      sswi        : integer range 0 to 1          := 1;  -- Enables SSWI ACLINT's device (supervisor software interrupts)
+      watchdog    : integer range 0 to 1          := 1;  -- Enables watchdog
+      wdtickbit   : integer range 0 to 63         := 4;  -- MTIME bit used for the watchdog tick
+      plicirqtreg : integer                       := 0;  -- Enable PLIC IRQ Type registers
+      plicrstreg  : integer                       := 0;  -- Enable PLIC reset bit
+      aplicrstreg : integer                       := 0;  -- Enable APLIC bit in softreset register
+      nsources    : integer range 0 to 1024       := 0;  -- Number of interrupt sources
+      plicirqtrst : integer range 0 to 1          := 0;  -- PLIC irq trigger type reste values (0 => level; 1 => edge)
+      scantest    : integer                       := 0
+      );
+    port (
+      rst   : in  std_ulogic;
+      clk   : in  std_ulogic;
+      timer : in  std_logic_vector(62 downto 0);
+      ahbi  : in  ahb_slv_in_type;
+      ahbo  : out ahb_slv_out_type;
+      irqo  : out nv_irq_in_vector(0 to ncpu-1);
+      ack   : in  std_ulogic;
+      ctrl  : out l5_tsc_ctrl_type;
+      intcap: in  std_logic_vector(63 downto 0) := (others => '0');
+      plicirqt  : out std_logic_vector(nsources-1 downto 0);
+      plicrstn  : out std_ulogic;
+      aplicrstn : out std_ulogic
+      );
+  end component;
+
+
+  constant no_intid  : nidentities_vector(0 to 0)          := (others => 0);
+  component rv_intctrl_ahb is
+    generic (
+      -- AHB
+      hindex      : integer range 0 to NAHBSLV-1  := 0;
+      haddr       : integer range 0 to 16#FFF#    := 0;
+      hmindex     : integer range 0 to NAHBMST-1  := 0;
+      scantest    : integer                       := 0;
+      -- GENERAL
+      ncpu        : integer range 0 to 32         := 4;  -- Limited to 32 by APLIC
+      S_EN        : integer range 0 to 1          := 0;  -- Set to 1 if supervisor mode is implemented
+      H_EN        : integer range 0 to 1          := 0;  -- Set to 1 if hipervisor extension is implemented
+      GEILEN      : integer                       := 0;  -- System virtual guest external interrupt number
+      nsources    : integer range 0 to RISCV_SOURCES := NAHBIRQ;
+      -- ACLINT
+      enable_aclint : integer                     := 0;
+      aclint_haddr: integer range 0 to 16#FFF#    := 0;  -- If not set ACLINT will be arranged contigous to PLIC
+      aclint_ts   : integer range 0 to 1          := 0;  -- Chose between a tsc generator or a rtc for time source
+      hirq1       : integer range 0 to NAHBSLV-1  := 0;
+      hirq2       : integer range 0 to NAHBSLV-1  := 0;
+      mswi        : integer range 0 to 1          := 1;  -- Enables MSWI ACLINT's device (machine software interrupts)
+      mtimer      : integer range 0 to 1          := 1;  -- Enables MTIMER ACLINT's device (machine timer interrupts)
+      mtimebits   : integer range 33 to 64        := 63; -- mtime number of bits
+      asyncset    : integer range 0 to 1          := 0;
+      sswi        : integer range 0 to 1          := 1;  -- Enables SSWI ACLINT's device (supervisor software interrupts)
+      watchdog    : integer range 0 to 1          := 1;  -- Enables watchdog
+      wdtickbit   : integer range 0 to 63         := 4;  -- MTIME bit used for the watchdog tick
+      -- IMSIC
+      enable_imsic : integer                      := 0;
+      imsic_haddr : integer range 0 to 16#FFF#    := 0;  -- If not set IMSIC will be arranged contigous to ACLINT
+      groups      : integer                       := 0;  -- Number of core groups (set to 0 if cores are not grouped)
+      neiid       : integer range 0 to 2047       := 63; -- external interrupt identities must be a multiple of 64 -1
+      -- APLIC
+      enable_aplic        : integer                        := 0;
+      aplic_haddr         : integer range 0 to 16#FFF#     := 0;           -- If not set APLIC will be arranged contigous to IMSIC
+      branches            : integer range 0 to 10          := 1;           -- Number of branches in the domain hirarchy
+      doms_per_branch     : integer range 0 to MAX_DOMAINS := 3;           -- Number of domains in each branch
+      endianness          : integer range 0 to 2           := 0;           -- 0 => little; 1 => big; 2 => bi
+      mmsiaddrcfg_fixed   : integer range 0 to 1           := 1;           -- If set to 1, registers mmsiaddrcfg/mmsiaddrcfgh/smsiaddrcfgh/smsiaddrcfgh are fixed
+                                                                           -- and cannot be accessed. Their values are set through generics mLHXS/sLHXS/HHXS/LHXW/HHXW
+      direct_delivery     : integer range 0 to 1           := 0;           -- If set to 0 direct delivery mode is not implemented 
+      IPRIOLEN            : integer range 1 to 8           := 8;           -- IPRIO has values between 1 and 2^IPRIOLEN (used when there is no IMSIC and the APLIC acts as interrupt controller)
+      leaf_domains        : std_logic_vector(MAX_DOMAINS-1 downto 0) := (others => '0'); -- Configures the leaf domains
+      -- Configures for each domain which cores are elegibles (through target registers) to forward the interrupts (Reset value)
+      preset_active_harts : preset_active_harts_type       := (others => (others => '0'));
+      -- PLIC
+      enable_plic : integer                       := 0;
+      plic_haddr  : integer range 0 to 16#FFF#    := 0;  -- If not set ACLINT will be instanciated in haddr
+      priorities  : integer range 0 to 128        := 8;
+      pendingbuff : integer range 0 to 128        := 1;
+      irqtype     : integer range 0 to 2          := 2;
+      irqtyperst  : integer range 0 to 1          := 1;
+      thrshld     : integer range 0 to 1          := 1
+    );
+    port (
+      rstn        : in  std_ulogic;
+      clk         : in  std_ulogic;
+      -- AHB
+      ahbi        : in  ahb_slv_in_type;
+      ahbo        : out ahb_slv_out_type;
+      ahbmi       : in  ahb_mst_in_type                        := ahbm_in_none;
+      ahbmo       : out ahb_mst_out_type;
+      -- ACLINT
+      timer       : in  std_logic_vector(mtimebits-1 downto 0) := (others => '0');
+      rtc         : in  std_ulogic                             := '0';
+      halt        : in  std_ulogic                             := '0';
+      ack         : in  std_ulogic                             := '0';
+      ctrl        : out l5_tsc_ctrl_type;
+      -- IMSIC
+      irq_ack     : in  std_logic_vector(0 to ncpu-1)          := (others => '1');
+      -- External RNMI
+      rnmi_irq    : in  std_logic_vector(0 to ncpu-1)          := (others => '0');
+      -- Combined output
+      irqi        : out nv_irq_in_vector(0 to ncpu-1)
+    );
+  end component;
+
 
   component dummy_pnp is
     generic (

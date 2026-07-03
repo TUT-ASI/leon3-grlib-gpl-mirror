@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ architecture rtl of unisim_iddr_reg is
   signal D_delay : std_ulogic;
    
 begin
-    KU : if (tech = kintexu) or (tech = virtexup) generate
+    KU : if (tech = kintexu) or (tech = virtexup) or (tech = versal) generate
 	    U0 : IDDRE1 generic map( IS_CB_INVERTED => '1')
 		    Port map(Q1 => Q1, Q2 => Q2, C => C1, CB => C1, D => D, R => R);
     end generate;
@@ -408,7 +408,7 @@ architecture rtl of unisim_oddr_reg is
   
 begin
 
-  KU : if (tech = kintexu) or (tech = virtexup) generate
+  KU : if (tech = kintexu) or (tech = virtexup) or (tech = versal) generate
 	  U0 : ODDRE1
 		  Port map(Q => Q, C => C1, D1 => D1, D2 => D2, SR => R);
   end generate;

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,9 +28,8 @@ use ieee.numeric_std.all;
 
 library grlib;
 use grlib.riscv.all;
-use grlib.stdlib.log2;
-use grlib.stdlib.tost;
 library gaisler;
+use gaisler.noelv.all;
 use gaisler.noelvtypes.all;
 use gaisler.utilnv.all;
 use gaisler.nvsupport.is_enabled;
@@ -38,6 +37,14 @@ use gaisler.nvsupport.is_enabled;
 --use DWARE.DW_dp_functions.DWF_dp_count_ones;
 
 package alunv is
+
+  subtype  noelvalu_t  is word32;
+  constant noelvalu_all : noelvalu_t := (others => '1');
+
+  -- Indices for noelvalu_t bits
+  -- Standard RISC-V options
+  constant alu_clz      : integer := 0;
+  constant alu_pop      : integer := 1;
 
   type alu_ctrl is record
     sel   : word2;         -- Operation
@@ -56,14 +63,39 @@ package alunv is
   constant EXE_Z        : word3 := "100";
   constant EXE_NZ       : word3 := "101";
   constant EXE_AND01    : word3 := "110";
+  constant EXE_MISC     : word3 := "111";
+  -- ctrlx 111     - create mask with single bit as ctrlx(2) (EXE_AND, BEXT)
+  --       011     -                                         (EXE_OR/XOR, BSET/BCLR)
+  --       110 010 - 16 bit sign/zero extension, op1(15) and ctrlx(2) (EXE_AND)
+  --       101     - 8 bit sign extension, op1(7) (EXE_AND)
+  --       100 000 - possibly invert op2 (xor with ctrlx(2)) (EXE_OR/XOR/AND)
+  --       001     - ctrl(2) 0 - clear op2 (EXE_AND, Zimop)
+  --                         1 - op2 all (op2_in == 0) = ctrl(0) (EXE_Z/NZ, Zicond)
+  -- EXE_AND/OR/XOR/ORCB do the obvious operations
+  -- EXE_AND01/Z/NZ do AND operation
+  -- EXE_AND01 (BEXT) sets result according to all_0(res)
+  -- EXE_ORCB
+  --   ctrlx 000 - standard OR-combine per byte
+  --   ctrlx 001 - OR-combine per nybble
+  -- EXE_MISC
+  --   ctrlx 000 - pick bits from half as for XPERM8 (RV64 only)
+  --   ctrlx 001 - pick bits from half as for XPERM4 (RV32 only)
 
   -- Shift Operation
   constant EXE_SLL      : word3 := "100";
   constant EXE_SLLW     : word3 := "000";
-  constant EXE_SRL      : word3 := "101";
+  constant EXE_SRL      : word3 := "101";  -- Also used for RORMIXI
   constant EXE_SRLW     : word3 := "001";
   constant EXE_SRA      : word3 := "111";
   constant EXE_SRAW     : word3 := "011";
+  constant EXE_COMPEXP  : word3 := "010";
+  constant EXE_ALIGN    : word3 := "110";  -- Turned into SLL/SLR later
+  -- ctrlx 001 - prepare low word for left shift (SLLI.UW)
+  --       010 - copy op1 top and bottom (ROT)
+  --       011 - prepare for rotation and mix (RORMIXI)
+  --       else  prepare for normal shifts (see above)
+  -- ctrl(1:0) - 00 Negative shift (SLL[W] and corresponding rotation)
+  -- ctrl(2)   - 0  W (except for COMPEXP, but does not matter there)
 
   -- Math Operation
   constant EXE_ADD      : word3 := "100";
@@ -72,16 +104,61 @@ package alunv is
   constant EXE_SUBW     : word3 := "001";
   constant EXE_SLTU     : word3 := "110";
   constant EXE_SLT      : word3 := "111";
+  constant EXE_CMPNU    : word3 := "010";
+  constant EXE_CMPN     : word3 := "011";
+  -- ADD*
+  --   ctrlx(0)   - unsigned 32 bit
+  --   ctrlx(2:1) - SHnADD <<n
+  -- SUB*/SLT*
+  --   invert + 1 (do subtract)
+  -- SLTU
+  --   less if borrow
+  --  otherwise
+  --   less if op1 negative and op2 not
+  --   or if result negative
+  -- CMPN*
+  --   ctrl(0)    - signed
+  --   ctrlx(2)   - 0/1 8/16 bit
+  --   less (per lane) if actually smaller (unsigned expanded to signed)
+  -- ADD*/SUB* (W - RV64)
+  --   ctrl(2)    - sign extended 32 bit result
+  -- SLT*/CMPN*
+  --   ctrlx(1)   - actually MIN/MAX
+  --   ctrlx(0)   - 0/1 MIN/MAX (qqq or the other way around?)
 
   -- Misc Operation
   constant EXE_BYPASS2  : word3 := "000";
   constant EXE_GREVI    : word3 := "001";
-  constant EXE_EXT      : word3 := "010";
+  constant EXE_MIX      : word3 := "010";
   constant EXE_COUNT    : word3 := "011";
   constant EXE_CLMUL    : word3 := "100";
   constant EXE_PACK     : word3 := "101";
-  constant EXE_SHFLI    : word3 := "110";
+  constant EXE_SHFLI    : word3 := "110";  -- Not only actual SHFLI
   constant EXE_XPERM    : word3 := "111";
+  -- (EXE_COUNT and ctrlx(2:1) = 01 (CTZ)) or (EXE_CLMUL and ctrlx /= R_CLMUL)
+  --   reverse both operands (to op1r)
+  -- EXE_GREVI ctrlx 001 - byte reverse
+  --                 010 - bit reverse bytes
+  -- EXE_PACK  ctrlx 001 - ba,21 -> 1a                   (PACK)
+  --                 011 - xxba,yy21 -> 001a             (PACKW)
+  --                 010 - xxxxxxxa,yyyyyyy1 -> 0000001a (PACKH)
+  --                 000 - ba 21 -> 2b                   (opposite of 001)
+  --                 100 - hgfedcba 87654321 -> 8h6f4d2b (opposite of 110)
+  --                 101 - dcba 4321 -> 4d2b             (opposite of 111)
+  --                 110 - hgfedcba 87654321 -> 7g5e3c1a (extension of 010)
+  --                 111 - dcba 4321 -> 3c1a             (extension of 011)
+  -- EXE_SHFLI ctrlx 000 - pick byte sign bits into LSBs (S2MASK.B)
+  --                 001 - pick half sign bits into LSBs (S2MASK.H)
+  --                 010 - bit deinterleave              (UNZIP)
+  --                 011 - bit interleave                (ZIP)
+  --                 100 - byte mask splat               (SPLAT.B)
+  --                 101 - half mask splat               (SPLAT.H)
+  -- EXE_PERM ctrlx(0) 0 - update permutation nybbles for byte operation (XPERM8 vs 4)
+  -- EXE_COUNT ctrlx __x - 1 W, move bottom word to top unless CTZ, bottom as 1's unless CPOP
+  --                 00x - CLZ
+  --                 01x - CTZ
+  --                 10x - CPOP
+  --                 11x - unused (interpreted as CLZ)
 
   -- Execute Stage Operation Types
   constant ALU_MATH     : word2 := "00";
@@ -95,53 +172,58 @@ package alunv is
 
 
   procedure alu_gen(active   : extension_type;
+                    options  : noelvalu_t;
                     inst     : word;
                     ctrl_out : out alu_ctrl);
 
+
   function alu_illegal(active  : extension_type;
+                       options : noelvalu_t;
                        inst_in : word) return boolean;
 
   procedure alu_execute(active  : extension_type;
+                        options : noelvalu_t;
                         op1     : wordx;
                         op2     : wordx;
                         ctrl    : alu_ctrl;
+                        inst    : word32;
                         res_out : out wordx);
 
-  function math_op(active : extension_type;
-                   op1_in : wordx;
-                   op2_in : wordx;
-                   ctrl   : word3;
-                   ctrlx  : word3) return wordx;
-  function logic_op(active : extension_type;
-                    op1_in : wordx;
-                    op2_in : wordx;
-                    ctrl   : word3;
-                    ctrlx  : word3) return wordx;
-  function misc_op(active : extension_type;
-                   op1_in : wordx;
-                   op2_in : wordx;
-                   ctrl   : word3;
-                   ctrlx  : word3) return wordx;
-  function shift_op(active : extension_type;
-                    op1    : wordx;
-                    op2    : wordx;
-                    ctrl   : word3;
-                    ctrlx  : word3) return wordx;
+  function math_op(active  : extension_type;
+                   options : noelvalu_t;
+                   op1_in  : wordx;
+                   op2_in  : wordx;
+                   ctrl_in : word3;
+                   ctrlx   : word3;
+                   inst    : word32) return wordx;
+  function logic_op(active  : extension_type;
+                    options : noelvalu_t;
+                    op1_in  : wordx;
+                    op2_in  : wordx;
+                    ctrl    : word3;
+                    ctrlx   : word3) return wordx;
+  function misc_op(active  : extension_type;
+                   options : noelvalu_t;
+                   op1_in  : wordx;
+                   op2_in  : wordx;
+                   ctrl    : word3;
+                   ctrlx   : word3;
+                   inst    : word32
+                  ) return wordx;
+  function shift_op(active   : extension_type;
+                    options  : noelvalu_t;
+                    op1      : wordx;
+                    op2      : wordx;
+                    ctrl_in  : word3;
+                    ctrlx_in : word3;
+                    inst     : word32) return wordx;
 
-  function reverse(op_in : std_logic_vector) return std_logic_vector;
-  function clz(op_in : std_logic_vector) return unsigned;
+  function pop(op_in : std_logic_vector; split : std_logic) return unsigned;
   function pop(op_in : std_logic_vector) return unsigned;
-  function clmul_div(op1 : wordx;
-                     op2 : wordx;
-                     n   : integer;
-                     pos : integer) return std_logic_vector;
   function clmul_hdiv(op1_in : std_logic_vector;
                       op2_in : std_logic_vector;
                       n      : integer;
                       pos    : integer) return std_logic_vector;
-  function clmul(op1 : wordx; op2 : wordx) return wordx;
-  function clmulr(op1 : wordx; op2 : wordx) return wordx;
-  function clmulh(op1 : wordx; op2 : wordx) return wordx;
   function shift64(op  : std_logic_vector(127 downto 0);
                    cnt : std_logic_vector(5 downto 0)) return word64;
   function shift32(op  : word64;
@@ -150,6 +232,20 @@ package alunv is
 end package;
 
 package body alunv is
+
+  -- NOEL-V ALU default enables
+  -- Also enables for some standard RISC-V extensions.
+  -- These are combined with provided options, so that
+  -- enables here can be overridden on calls, but
+  -- disables here cannot be overriden.
+  -- See noelvalu_t and alu_* above.
+
+  -- These two are mainly for testing, but could be
+  -- used to lower the complexity of some ALUs.
+  -- Note that they do not remove the instructions, only the implementation (alu_execute).
+  constant enable_clz       : boolean := true;   -- misc (count leading/trailing zeros)
+  constant enable_pop       : boolean := true;   -- misc (population count)
+
 
   -- Sign extend to 64 bit word.
   function to64(v : std_logic_vector) return word64 is
@@ -162,29 +258,24 @@ package body alunv is
     return ext;
   end;
 
+
   -- ALU record generation
   -- Selects the type of operation and the control bits for that operation.
   procedure alu_gen(active   : extension_type;
+                    options  : noelvalu_t;
                     inst     : word;
                     ctrl_out : out alu_ctrl) is
---    variable is_rv64 : boolean      := true;
---    variable is_rv32 : boolean      := not is_rv64;
---    variable ext_zba : integer      := 1;
---    variable ext_zbb : integer      := 1;
---    variable ext_zbc : integer      := 1;
---    variable ext_zbs : integer      := 1;
-    variable is_rv64      : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32      : boolean      := not is_rv64;
-    variable ext_zba      : boolean      := is_enabled(active, x_zba);
-    variable ext_zbb      : boolean      := is_enabled(active, x_zbb);
-    variable ext_zbc      : boolean      := is_enabled(active, x_zbc);
-    variable ext_zbs      : boolean      := is_enabled(active, x_zbs);
-    variable ext_zbkb     : boolean      := is_enabled(active, x_zbkb);
-    variable ext_zbkc     : boolean      := is_enabled(active, x_zbkc);
-    variable ext_zbkx     : boolean      := is_enabled(active, x_zbkx);
-    variable ext_zimop    : boolean      := is_enabled(active, x_zimop);
-    variable ext_zicond   : boolean      := is_enabled(active, x_zicond);
-    variable ext_noelvalu : boolean      := is_enabled(active, x_noelvalu);
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean := not is_rv64;
+    variable ext_zba      : boolean := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
+    variable ext_zbc      : boolean := is_enabled(active, x_zbc);
+    variable ext_zbs      : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkc     : boolean := is_enabled(active, x_zbkc);
+    variable ext_zbkx     : boolean := is_enabled(active, x_zbkx);
+    variable ext_zimop    : boolean := is_enabled(active, x_zimop);
+    variable ext_zicond   : boolean := is_enabled(active, x_zicond);
     variable op           : opcode_type  := inst(6 downto 0);
     variable funct3       : funct3_type  := inst(14 downto 12);
     variable funct7       : funct7_type  := inst(31 downto 25);
@@ -291,7 +382,7 @@ package body alunv is
                 if is_rv32 and ext_zbkb and op = OP_IMM then
                   sel   := ALU_MISC;
                   ctrl  := EXE_SHFLI;
-                  ctrlx := "001";
+                  ctrlx := "010";
                 end if;
               when others =>
                 case funct7 is
@@ -331,7 +422,7 @@ package body alunv is
                 if is_rv32 and ext_zbkb and op = OP_IMM then
                   sel   := ALU_MISC;
                   ctrl  := EXE_SHFLI;
-                  ctrlx := "010";
+                  ctrlx := "011";
                 end if;
               when others =>
                 null;
@@ -568,49 +659,6 @@ package body alunv is
           ctrl  := EXE_AND;
           ctrlx := "001";
         end if;
-      when OP_CUSTOM0 =>
-        if ext_noelvalu and funct7 = F7_BASE_RV64 then
-          case funct3 is
-            when "000" =>  -- Upper 32 bits (xpacku.w)
-              if is_rv64 then
-                sel   := ALU_MISC;
-                ctrl  := EXE_PACK;
-                ctrlx := "000";
-              end if;
-            when "001" =>  -- Upper 8 bits (xpacku.b)
-              sel     := ALU_MISC;
-              ctrl    := EXE_PACK;
-              if is_rv64 then
-                ctrlx := "100";
-              else
-                ctrlx := "101";
-              end if;
-            when "010" =>  -- Upper 16 bits (xpacku.h)
-              sel     := ALU_MISC;
-              ctrl    := EXE_PACK;
-              if is_rv64 then
-                ctrlx := "101";
-              else
-                ctrlx := "000";
-              end if;
-            when "011" =>  -- Lower 8 bits (xpack.b)
-              sel     := ALU_MISC;
-              ctrl    := EXE_PACK;
-              if is_rv64 then
-                ctrlx := "110";
-              else
-                ctrlx := "111";
-              end if;
-            when "100" =>  -- Lower 16 bits (xpack.h)
-              if is_rv64 then
-                sel   := ALU_MISC;
-                ctrl  := EXE_PACK;
-                ctrlx := "111";
-              end if;
-            when others =>
-              null;
-          end case;
-        end if;
       when others =>
     end case;
 
@@ -619,29 +667,23 @@ package body alunv is
     ctrl_out.ctrlx := ctrlx;
   end;
 
-  function alu_illegal(active   : extension_type;
-                       inst_in  : word) return boolean is
---    variable is_rv64 : boolean      := true;
---    variable is_rv32 : boolean      := not is_rv64;
---    variable ext_zba : integer      := 1;
---    variable ext_zbb : integer      := 1;
---    variable ext_zbc : integer      := 1;
---    variable ext_zbs : integer      := 1;
---    variable ext_m   : integer      := 1;
-    variable is_rv64      : boolean      := is_enabled(active, x_rv64);
-    variable is_rv32      : boolean      := not is_rv64;
-    variable ext_zba      : boolean      := is_enabled(active, x_zba);
-    variable ext_zbb      : boolean      := is_enabled(active, x_zbb);
-    variable ext_zbc      : boolean      := is_enabled(active, x_zbc);
-    variable ext_zbs      : boolean      := is_enabled(active, x_zbs);
-    variable ext_zbkb     : boolean      := is_enabled(active, x_zbkb);
-    variable ext_zbkc     : boolean      := is_enabled(active, x_zbkc);
-    variable ext_zbkx     : boolean      := is_enabled(active, x_zbkx);
-    variable ext_zimop    : integer      := is_enabled(active, x_zimop);
-    variable ext_zicond   : boolean      := is_enabled(active, x_zicond);
-    variable ext_m        : boolean      := is_enabled(active, x_m);
-    variable ext_noelvalu : boolean      := is_enabled(active, x_noelvalu);
+
+  function alu_illegal(active  : extension_type;
+                       options : noelvalu_t;
+                       inst_in : word) return boolean is
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean := not is_rv64;
+    variable ext_zba      : boolean := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
+    variable ext_zbc      : boolean := is_enabled(active, x_zbc);
+    variable ext_zbs      : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkc     : boolean := is_enabled(active, x_zbkc);
+    variable ext_zbkx     : boolean := is_enabled(active, x_zbkx);
+    variable ext_zicond   : boolean := is_enabled(active, x_zicond);
+    variable ext_m        : boolean := is_enabled(active, x_m);
     variable opcode       : opcode_type  := inst_in( 6 downto  0);
+    variable rfa2         : reg_t        := rs2(inst_in);
     variable funct3       : funct3_type  := inst_in(14 downto 12);
     variable funct7       : funct7_type  := inst_in(31 downto 25);
     variable funct12      : funct12_type := inst_in(31 downto 20);
@@ -754,16 +796,6 @@ package body alunv is
                 end if;
               when others => illegal := '1';
             end case;
---          when F7_MUL =>
---            if ext_m then
---              case funct3 is
---                when R_MUL | R_MULH | R_MULHSU | R_MULHU |
---                     R_DIV | R_DIVU | R_REM    | R_REMU => null;
---                when others => illegal := '1';
---              end case;
---            else
---              illegal := '1';
---            end if;
           when F7_BCLREXT =>  -- BCLR/BEXT
             if ext_zbs then
               case funct3 is
@@ -856,12 +888,12 @@ package body alunv is
               when others =>
                 case funct7 is
                   when F7_ADDSLLIUW | F7_SLLIUW_I64 =>
-                    if ext_zba and funct3 = R_SLL then
+                    if ext_zba then
                       illegal := '0';
                     end if;
                   when others =>
                     -- SLLIW with rd = x0 are custom HINTs.
-                    if funct7 = "0000000" or funct7 = "0100000" then -- shamt[4:0]
+                    if funct7 = "0000000" then -- shamt[4:0]
                       illegal := '0';
                     end if;
                 end case;
@@ -903,15 +935,6 @@ package body alunv is
                   -- SUBW/SRAW with rd = x0 are stanadrd HINTs.
                 when others => illegal := '1';
               end case;
---            when F7_MUL =>
---              if ext_m then
---                case funct3 is
---                  when R_MULW | R_DIVW | R_DIVUW | R_REMW | R_REMUW => null;
---                  when others => illegal := '1';
---                end case;
---              else
---                illegal := '1';
---              end if;
             -- This is the same as F7_PACK
             when F7_ADDSLLIUW =>  -- Note that this uses same funct7 as F12_ZEXT above!
               if ext_zba and funct3 = R_ADD then
@@ -947,16 +970,6 @@ package body alunv is
           illegal := '1';
         end if;
 
-      when OP_CUSTOM0 =>
-        if ext_noelvalu and funct7 = F7_BASE_RV64 then
-          case funct3 is
-            when "000" | "100"         => illegal := to_bit(is_rv32 or not ext_zbkb);
-            when "001" | "010" | "011" => illegal := to_bit(not ext_zbkb);
-            when others                => illegal := '1';
-          end case;
-        else
-          illegal := '1';
-        end if;
 
       when others =>
         illegal := '1';
@@ -965,37 +978,32 @@ package body alunv is
     return illegal = '1';
   end;
 
+
   -- Logic operation
-  function logic_op(active : extension_type;
-                    op1_in : wordx;
-                    op2_in : wordx;
-                    ctrl   : word3;
-                    ctrlx  : word3) return wordx is
---    variable ext_zba : integer := 1;
---    variable ext_zbb : integer := 1;
---    variable ext_zbc : integer := 1;
---    variable ext_zbs : integer := 1;
-    variable is_rv64    : boolean := is_enabled(active, x_rv64);
-    variable is_rv32    : boolean := not is_rv64;
-    variable ext_zba    : integer := is_enabled(active, x_zba);
-    variable ext_zbb    : integer := is_enabled(active, x_zbb);
-    variable ext_zbc    : integer := is_enabled(active, x_zbc);
-    variable ext_zbs    : integer := is_enabled(active, x_zbs);
-    variable ext_zbkb   : integer := is_enabled(active, x_zbkb);
-    variable ext_zbkc   : integer := is_enabled(active, x_zbkc);
-    variable ext_zbkx   : integer := is_enabled(active, x_zbkx);
-    variable ext_zimop  : integer := is_enabled(active, x_zimop);
-    variable ext_zicond : integer := is_enabled(active, x_zicond);
-    variable op1      : wordx   := op1_in;
-    variable op2      : wordx   := op2_in;
+  function logic_op(active  : extension_type;
+                    options : noelvalu_t;
+                    op1_in  : wordx;
+                    op2_in  : wordx;
+                    ctrl    : word3;
+                    ctrlx   : word3) return wordx is
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable is_rv32      : boolean := not is_rv64;
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
+    variable ext_zbs      : boolean := is_enabled(active, x_zbs);
+    variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
+    variable ext_zimop    : boolean := is_enabled(active, x_zimop);
+    variable ext_zicond   : boolean := is_enabled(active, x_zicond);
+    variable op1          : wordx   := op1_in;
+    variable op2          : wordx   := op2_in;
     -- Non-constant
-    variable res      : wordx   := (others => '-');
-    variable bits     : std_logic_vector(7 downto 0);
+    variable res          : wordx   := (others => '-');
+    variable bits         : word8;
+    variable index        : word8;
   begin
     case ctrlx is
       -- Used with EXE_OR/XOR (only 011), EXT_AND (only 111) and EXT_AND01 (only 011)
       when "111" | "011" =>  -- Bit set/clear/extract mask
-        if ext_zbs = 1 then
+        if ext_zbs then
           -- Prepare mask "backgrounds"
           op2  := (others => ctrlx(2));
           bits := (others => ctrlx(2));
@@ -1011,25 +1019,25 @@ package body alunv is
         end if;
       -- Used with EXE_AND
       when "110" | "010" =>  -- 16 bit sign/zero extension
-        if ext_zbb = 1 then
+        if ext_zbb then
           op1(op1'high downto 16) := (others => op1(15) and ctrlx(2));
           op2                     := (others => '1');
         end if;
       -- Used with EXE_AND
       when "101" =>          -- 8 bit sign extension
-        if ext_zbb = 1 then
+        if ext_zbb then
           op1(op1'high downto 8) := (others => op1(7));
           op2 := (others => '1');
         end if;
       -- Used with EXE_OR/XOR/AND (100 - negation)
       when "100" | "000" =>  -- Possible inversion
-        if ext_zbb = 1 or ext_zbkb = 1 then
+        if ext_zbb or ext_zbkb then
           op2 := op2 xor (wordx'range => ctrlx(2));
         end if;
       -- Used with EXE_Z/NZ and EXE_AND
       when others =>  -- "001"
         -- EXE_Z/NZ for conditional clear
-        if ext_zicond = 1 and ctrl(2) = '1' then
+        if ext_zicond and ctrl(2) = '1' then
           -- Only EXE_Z and EXE_NZ get here (ctrl(0) = 0/1).
           if all_0(op2_in) = ctrl(0) then
             op2 := (others => '1');
@@ -1037,190 +1045,88 @@ package body alunv is
             op2 := (others => '0');
           end if;
         -- EXE_AND for always clear
-        elsif ext_zimop = 1 then
+        elsif ext_zimop then
           op2 := (others => '0');
         end if;
     end case;
 
     case ctrl is
-      when EXE_XOR                  => res := op1 xor op2;
-      when EXE_OR                   => res := op1 or  op2;
+      when EXE_XOR =>
+        res := op1 xor op2;
+      when EXE_OR  =>
+        res := op1 or  op2;
       when EXE_AND | EXE_AND01 |
-           EXE_Z   | EXE_NZ         => res := op1 and op2;
+           EXE_Z   | EXE_NZ =>
+        res := op1 and op2;
+        -- BEXT?
+        if ext_zbs and ctrl = EXE_AND01 then
+          res := u2vec(not all_0(res), res);
+        end if;
       when EXE_ORCB  =>
-        if ext_zbb = 1 then
-          res := zerox;
+        if ext_zbb then
+          res                  := zerox;
           for i in 0 to op1_in'length / 8 - 1 loop
-            if not all_0(get(op1_in, i * 8, 8)) then
-              set(res, i * 8, x"ff");
-            end if;
+            bits := get(op1_in, i * 8, 8);
+            index(0)           := not all_0(lo_h(bits));
+            index(1)           := not all_0(hi_h(bits));
+            bits               := (others => index(0) or index(1));  -- Assume or.b (8 bit)
+            set(res, i * 8, bits);
           end loop;
         end if;
-      when others    => null;  -- res := (others => '-');
+      when others    =>  -- EXE_MISC
     end case;
 
-    -- BEXT?
-    if ext_zbs = 1 and ctrl = EXE_AND01 then
-      res := u2vec(not all_0(res), res);
-    end if;
-
     return res;
   end;
 
-  function reverse(op_in : std_logic_vector) return std_logic_vector is
-    variable op  : std_logic_vector(op_in'length - 1 downto 0) := op_in;
-    -- Non-constant
-    variable res : std_logic_vector(op'range);
-  begin
-    for i in 0 to op'high loop
-      res(i) := op(op'high - i);
-    end loop;
 
-    return res;
-  end;
-
-   function clz_orig(op_in : std_logic_vector) return unsigned is
-     variable op      : std_logic_vector(op_in'length - 1 downto 0) := op_in;
-     variable cnt_top : integer := log2(op'length);
-     -- Non-constant
-     variable cnt     : unsigned(cnt_top downto 0);
-   begin
-     if op'length = 1 then
-       cnt(0) := not op(0);
-     else
-       if not all_0(hi_h(op)) then
-         cnt := "0" & clz_orig(hi_h(op));
-       else
-         cnt := uaddx(clz_orig(lo_h(op)), u2vec(op'length / 2, cnt_top));
-       end if;
-     end if;
-
-     return cnt;
-   end;
-
-  -- Simple non-recursive count-leading-zeros
-  function clz_simple(op_in : std_logic_vector) return unsigned is
-    -- Non-constant
-    variable lead : unsigned(log2(op_in'length) downto 0) := (others => '0');
-  begin
-    for i in op_in'left downto op_in'right loop
-      if op_in(i) = '0' then
-        lead := lead + 1;
-      else
-        exit;
-      end if;
-    end loop;
-
-    return lead;
-  end;
-
-
-
-  function pop_orig(op_in : std_logic_vector) return unsigned is
-    variable op : std_logic_vector(op_in'length - 1 downto 0) := op_in;
-  begin
-    if op'length = 1 then
-      return u2vec(u2i(op(0)), 1);
-    else
-      return uaddx(pop_orig(hi_h(op)), pop_orig(lo_h(op)));
-    end if;
-  end;
-
-  function pop_loop(op_in : std_logic_vector) return unsigned is
-    variable cnt : word8 := (others => '0');
-  begin
-    for i in op_in'range loop
-      if op_in(i) = '1' then
-        cnt := uadd(cnt,  1);
-      end if;
-    end loop;
-
-    return unsigned(cnt);
-  end;
-
-
-  function pop_arr(op_in : std_logic_vector) return unsigned is
-    variable op     : word64                                := uext(op_in, 64);
-    -- Non-constant
---    variable v1     : std_logic_vector(16 * 3 - 1 downto 0) := (others => '0');
---    variable v2     : std_logic_vector( 8 * 4 - 1 downto 0) := (others => '0');
---    variable v3     : std_logic_vector( 4 * 5 - 1 downto 0) := (others => '0');
---    variable v4     : std_logic_vector( 2 * 6 - 1 downto 0) := (others => '0');
-    type v1_t is array (0 to 15) of std_logic_vector(2 downto 0);
-    type v2_t is array (0 to  7) of std_logic_vector(3 downto 0);
-    type v3_t is array (0 to  3) of std_logic_vector(4 downto 0);
-    type v4_t is array (0 to  1) of std_logic_vector(5 downto 0);
-    variable v1 : v1_t := (others => (others => '0'));
-    variable v2 : v2_t := (others => (others => '0'));
-    variable v3 : v3_t := (others => (others => '0'));
-    variable v4 : v4_t := (others => (others => '0'));
-    variable p2a, p2b : unsigned(3 downto 0);
-    variable p3a, p3b : unsigned(4 downto 0);
-    variable p4a, p4b : unsigned(5 downto 0);
-    variable p5a, p5b : unsigned(6 downto 0);
-    variable nybble : std_logic_vector(3 downto 0);
-  begin
-    for i in 0 to 15 loop
-      nybble := get(op, i * 4, 4);
+  function pop_bytes(op_in : std_logic_vector;
+                     split : std_logic) return word64 is
+    -- Population count for nybble
+    function bits4(nybble : word4) return word3 is
+    begin
       case nybble is
---        when "0000"                            => set(v1, i * 3, "000");  -- Not needed
---        when "1111"                            => set(v1, i * 3, "100");
---        when "0001" | "0010" | "0100" | "1000" => set(v1, i * 3, "001");
---        when "1110" | "1101" | "1011" | "0111" => set(v1, i * 3, "011");
---        when others                            => set(v1, i * 3, "010");
---        when "0000"                            => v1 := set(v1, i * 3, "000");  -- Not needed
---        when "1111"                            => v1 := set(v1, i * 3, "100");
---        when "0001" | "0010" | "0100" | "1000" => v1 := set(v1, i * 3, "001");
---        when "1110" | "1101" | "1011" | "0111" => v1 := set(v1, i * 3, "011");
---        when others                            => v1 := set(v1, i * 3, "010");
---        when "0000"                            => v1(i * 3 + 2 downto i * 3) := "000";  -- Not needed
---        when "1111"                            => v1(i * 3 + 2 downto i * 3) := "100";
---        when "0001" | "0010" | "0100" | "1000" => v1(i * 3 + 2 downto i * 3) := "001";
---        when "1110" | "1101" | "1011" | "0111" => v1(i * 3 + 2 downto i * 3) := "011";
---        when others                            => v1(i * 3 + 2 downto i * 3) := "010";
-        when "0000"                            => v1(i) := "000";  -- Not needed
-        when "1111"                            => v1(i) := "100";
-        when "0001" | "0010" | "0100" | "1000" => v1(i) := "001";
-        when "1110" | "1101" | "1011" | "0111" => v1(i) := "011";
-        when others                            => v1(i) := "010";
+      when "0000"                            => return "000";
+      when "1111"                            => return "100";
+      when "0001" | "0010" | "0100" | "1000" => return "001";
+      when "1110" | "1101" | "1011" | "0111" => return "011";
+      when others                            => return "010";
       end case;
+    end;
+
+    -- Population count for byte
+    function bits8(byte : word8) return word4 is
+      variable bits_hi  : word3 := bits4(hi_h(byte));
+      variable bits_lo  : word3 := bits4(lo_h(byte));
+    begin
+
+      return uaddx(bits_hi, bits_lo);
+    end;
+
+    variable op   : word64 := uext(op_in, 64);
+    -- Non-constant
+    variable ret  : word64 := zerow64;
+    variable pop8 : word8;
+  begin
+    for i in op'length / 8 - 1 downto 0 loop
+        pop8 := uext(bits8(get(op, i * 8, 8)), pop8);
+      set(ret, i * 8, pop8);
     end loop;
 
-    for i in 0 to 7 loop
---      set(v2, i * 4, uaddx(get(v1, i * 2 * 3, 3), get(v1, i * 2 * 3 + 3, 3)));
---      v2 := set(v2, i * 4, uaddx(get(v1, i * 2 * 3, 3), get(v1, i * 2 * 3 + 3, 3)));
---      v2(i * 4 + 3 downto i * 4) := uaddx(get(v1, i * 2 * 3, 3), get(v1, i * 2 * 3 + 3, 3));
-      p2a := unsigned('0' & v1(i * 2));
-      p2b := unsigned('0' & v1(i * 2 + 1));
---      v2(i * 4 + 3 downto i * 4) := uaddx(p2a, p2b);
---      v2(i * 4 + 3 downto i * 4) := std_logic_vector(p2a + p2b);
-      v2(i) := std_logic_vector(p2a + p2b);
-    end loop;
+    if split = '0' then
+      pop8   := get_lo(ret, 8);
+      for i in op'length / 8 - 1 downto 1 loop
+        pop8 := uadd(pop8, get(ret, i * 8, 8));
+      end loop;
+      ret    := uext(pop8, ret);
+    end if;
 
-    for i in 0 to 3 loop
---      set(v3, i * 5, uaddx(get(v2, i * 2 * 4, 4), get(v2, i * 2 * 4 + 4, 4)));
---      v3 := set(v3, i * 5, uaddx(get(v2, i * 2 * 4, 4), get(v2, i * 2 * 4 + 4, 4)));
---      v3(i * 5 + 4 downto i * 5) := uaddx(get(v2, i * 2 * 4, 4), get(v2, i * 2 * 4 + 4, 4));
-      p3a := unsigned('0' & v2(i * 2));
-      p3b := unsigned('0' & v2(i * 2 + 1));
-      v3(i) := std_logic_vector(p3a + p3b);
-    end loop;
-
-    for i in 0 to 1 loop
---      set(v4, i * 6, uaddx(get(v3, i * 2 * 5, 5), get(v3, i * 2 * 5 + 5, 5)));
---      v4 := set(v4, i * 6, uaddx(get(v3, i * 2 * 5, 5), get(v3, i * 2 * 5 + 5, 5)));
---      v4(i * 6 + 5 downto i * 6) := uaddx(get(v3, i * 2 * 5, 5), get(v3, i * 2 * 5 + 5, 5));
-      p4a := unsigned('0' & v3(i * 2));
-      p4b := unsigned('0' & v3(i * 2 + 1));
-      v4(i) := std_logic_vector(p4a + p4b);
-    end loop;
-
---    return uaddx(get(v4, 0, 6), get(v4, 6, 6));
-    p5a := unsigned('0' & v4(0));
-    p5b := unsigned('0' & v4(1));
-    return p5a + p5b;
+    return ret;
   end;
 
+
+  -- Terrible hardware implementation of population count,
+  -- converted from what was pretty good for software.
   function pop_add(op_in : std_logic_vector) return unsigned is
     variable op : word64 := uext(op_in, 64);
     variable v1, v2, v3, v4, v5, v6 : unsigned(63 downto 0);
@@ -1235,43 +1141,59 @@ package body alunv is
     return v6(6 downto 0);
   end;
 
+  function pop(op_in : std_logic_vector; split : std_logic) return unsigned is
+  begin
+    return unsigned(pop_bytes(op_in, split));    -- 83 LUT, 6 levels (fixed, else 88/7)
+  end;
+
   function pop(op_in : std_logic_vector) return unsigned is
   begin
---    return DWF_dp_count_ones(op_in);
-    return pop_add(op_in);       -- 153 LUT, 38 CARRY8, lots of levels
---    return pop_arr(op_in);     -- 88 LUT, probably 7 levels
---    return pop_loop(op_in);    -- 299, lots and lots of levels
---    return pop_orig(op_in);  -- 84 LUT, probably 7 levels
+--    return pop(op_in, '0');
+    return pop_add(op_in);
   end;
 
-  function clz(op_in : std_logic_vector) return unsigned is
-  begin
-    return clz_orig(op_in);
---    return clz_simple(op_in);
-  end;
-
-  function clmul_div(op1 : wordx;
-                     op2 : wordx;
-                     n   : integer;
-                     pos : integer) return std_logic_vector is
+  function clzx(op_in : std_logic_vector; split : std_logic) return unsigned is
+    variable op   : word64 := uext(op_in, 64);
     -- Non-constant
-    subtype x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
-    variable lo  : x2wordx;
-    variable hi  : x2wordx;
-    variable res : x2wordx := (others => '0');
+    variable ret  : word64 := zerow64;
+    variable clz8 : word8;
   begin
-    if n = 1 then
-      if op2(pos) = '1' then
-        set(res, pos, op1);
-      end if;
-    else
-      lo  := clmul_div(op1, op2, n / 2, pos);
-      hi  := clmul_div(op1, op2, n / 2, pos + n / 2);
-      res := lo xor hi;
+    for i in op_in'length / 8 - 1 downto 0 loop
+        clz8 := uext(clz(get(op, i * 8, 8)), clz8);
+      set(ret, i * 8, clz8);
+    end loop;
+
+    -- 166 with old impl 202 with new below
+    if split = '0' then
+        -- Check for empty bytes (bit 3 set means 8 zeros)
+        if op_in'length = 64 then
+          set(ret, 6 * 8, cond(ret(7 * 8 + 3) = '0', get(ret, 7 * 8, 8), uadd(get(ret, 7 * 8, 8), get(ret, 6 * 8, 8))));
+          set(ret, 7 * 8, zerow8);
+          set(ret, 4 * 8, cond(ret(5 * 8 + 3) = '0', get(ret, 5 * 8, 8), uadd(get(ret, 5 * 8, 8), get(ret, 4 * 8, 8))));
+          set(ret, 5 * 8, zerow8);
+        end if;
+        set(ret, 2 * 8, cond(ret(3 * 8 + 3) = '0', get(ret, 3 * 8, 8), uadd(get(ret, 3 * 8, 8), get(ret, 2 * 8, 8))));
+        set(ret, 3 * 8, zerow8);
+        set(ret, 0 * 8, cond(ret(1 * 8 + 3) = '0', get(ret, 1 * 8, 8), uadd(get(ret, 1 * 8, 8), get(ret, 0 * 8, 8))));
+        set(ret, 1 * 8, zerow8);
+
+        if op_in'length = 64 then
+          set(ret, 4 * 8, cond(ret(6 * 8 + 4) = '0', get(ret, 6 * 8, 8), uadd(get(ret, 6 * 8, 8), get(ret, 4 * 8, 8))));
+          set(ret, 6 * 8, zerow8);
+        end if;
+        set(ret, 0 * 8, cond(ret(2 * 8 + 4) = '0', get(ret, 2 * 8, 8), uadd(get(ret, 2 * 8, 8), get(ret, 0 * 8, 8))));
+        set(ret, 2 * 8, zerow8);
+
+        if op_in'length = 64 then
+          set(ret, 0 * 8, cond(ret(4 * 8 + 5) = '0', get(ret, 4 * 8, 8), uadd(get(ret, 4 * 8, 8), get(ret, 0 * 8, 8))));
+          set(ret, 4 * 8, zerow8);
+        end if;
+
     end if;
 
-    return res;
+    return unsigned(get_lo(ret, op_in'length));
   end;
+
 
   function clmul_hdiv(op1_in : std_logic_vector;
                       op2_in : std_logic_vector;
@@ -1299,175 +1221,18 @@ package body alunv is
     return res;
   end;
 
---  function clmul_hdiv1(op1_in : std_logic_vector;
---                       op2_in : std_logic_vector;
---                       pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable res : res_t := (others => '0');
---  begin
---    if op2(0) = '1' then
---      set(res, pos, op1(op1'length - pos - 1 downto 0));
---    end if;
---
---    return res;
---  end;
---
---  function clmul_hdiv2(op1_in : std_logic_vector;
---                       op2_in : std_logic_vector;
---                       pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv1(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv1(op1, hi_h(op2), pos + 1);
---    res := lo xor hi;
---
---    return res;
---  end;
---
---  function clmul_hdiv4(op1_in : std_logic_vector;
---                       op2_in : std_logic_vector;
---                       pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv2(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv2(op1, hi_h(op2), pos + 2);
---    res := lo xor hi;
---
---    return res;
---  end;
---
---  function clmul_hdiv8(op1_in : std_logic_vector;
---                       op2_in : std_logic_vector;
---                       pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv4(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv4(op1, hi_h(op2), pos + 4);
---    res := lo xor hi;
---
---    return res;
---  end;
---
---  function clmul_hdiv16(op1_in : std_logic_vector;
---                        op2_in : std_logic_vector;
---                        pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv8(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv8(op1, hi_h(op2), pos + 8);
---    res := lo xor hi;
---
---    return res;
---  end;
---
---  function clmul_hdiv32(op1_in : std_logic_vector;
---                        op2_in : std_logic_vector;
---                        pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv16(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv16(op1, hi_h(op2), pos + 16);
---    res := lo xor hi;
---
---    return res;
---  end;
---
---  function clmul_hdiv64(op1_in : std_logic_vector;
---                        op2_in : std_logic_vector;
---                        pos    : integer) return std_logic_vector is
---    -- Non-constant
---    subtype res_t is std_logic_vector(op1_in'length - 1 downto 0);
---    subtype op2_t is std_logic_vector(op2_in'length - 1 downto 0);
---    variable op1 : res_t := op1_in;
---    variable op2 : op2_t := op2_in;
---    variable lo  : res_t := (others => '0');
---    variable hi  : res_t := (others => '0');
---    variable res : res_t := (others => '0');
---  begin
---    lo  := clmul_hdiv32(op1, lo_h(op2), pos);
---    hi  := clmul_hdiv32(op1, hi_h(op2), pos + 32);
---    res := lo xor hi;
---
---    return res;
---  end;
 
-  function clmul(op1 : wordx; op2 : wordx) return wordx is
-    -- Non-constant
-    subtype x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
-    variable x2res : x2wordx := clmul_div(op1, op2, wordx'length, 0);
-    variable res   : wordx   := lo_h(x2res);
-    variable hres  : wordx   := clmul_hdiv(op1, op2, op1'length, 0);
-  begin
---    return res;
-    return hres;
-  end;
 
-  function clmulr(op1 : wordx; op2 : wordx) return wordx is
-    -- Non-constant
-    subtype x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
-    variable x2res : x2wordx := clmul_div(op1, op2, wordx'length, 0);
-    variable res   : wordx   := get(x2res, wordx'length - 1, wordx'length);
-    variable hres  : wordx   := reverse(clmul_hdiv(reverse(op1), reverse(op2), op1'length, 0));
-  begin
---    return res;
-    return hres;
-  end;
-
-  function clmulh(op1 : wordx; op2 : wordx) return wordx is
-    -- Non-constant
-    subtype x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
-    variable x2res : x2wordx := clmul_div(op1, op2, wordx'length, 0);
-    variable res   : wordx   := hi_h(x2res);
-    variable hres  : wordx   := '0' & clmulr(op1, op2)(wordx'high downto 1);
-  begin
---    return res;
-    return hres;
-  end;
-
-  function xperm4(data : wordx; sel : wordx; clear : wordx) return wordx is
+  function xperm4(
+                  data    : wordx;
+                  sel     : wordx;
+                  clear   : wordx) return wordx is
     -- Non-constant
     variable res      : wordx           := (others => '0');
     type     w4_arr  is array (integer range <>) of word4;
     variable nybbles  : w4_arr(0 to 15) := (others => x"0");
+    variable nybble   : word4;
+    variable nybbleh  : word4;
   begin
     -- Create all possible nybbles
     for i in 0 to data'length / 4 - 1 loop
@@ -1475,47 +1240,50 @@ package body alunv is
     end loop;
     -- Select nybbles
     for i in 0 to data'length / 4 - 1 loop
+      nybble     := nybbles(u2i(get(sel, i * 4, 4)));
+      nybbleh    := nybbles(u2i(get(sel, (i / 2) * 8 + 4, 4)));
       if clear(i) = '0' then
-        set(res, i * 4, nybbles(u2i(get(sel, i * 4, 4))));
+      else
+        nybble   := (others => '0');
       end if;
+      set(res, i * 4, nybble);
     end loop;
 
     return res;
   end;
 
   -- Misc operation
-  function misc_op(active : extension_type;
-                   op1_in : wordx;
-                   op2_in : wordx;
-                   ctrl   : word3;
-                   ctrlx  : word3) return wordx is
---    variable is_rv64 : boolean  := true;
---    variable ext_zba : integer  := 1;
---    variable ext_zbb : integer  := 1;
---    variable ext_zbc : integer  := 1;
---    variable ext_zbs : integer  := 1;
+  function misc_op(active  : extension_type;
+                   options : noelvalu_t;
+                   op1_in  : wordx;
+                   op2_in  : wordx;
+                   ctrl    : word3;
+                   ctrlx   : word3;
+                   inst    : word32
+                  ) return wordx is
     variable is_rv64      : boolean := is_enabled(active, x_rv64);
     variable is_rv32      : boolean := not is_rv64;
-    variable ext_zba      : boolean := is_enabled(active, x_zba);
     variable ext_zbb      : boolean := is_enabled(active, x_zbb);
     variable ext_zbc      : boolean := is_enabled(active, x_zbc);
-    variable ext_zbs      : boolean := is_enabled(active, x_zbs);
     variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
     variable ext_zbkc     : boolean := is_enabled(active, x_zbkc);
     variable ext_zbkx     : boolean := is_enabled(active, x_zbkx);
-    variable ext_noelvalu : boolean := is_enabled(active, x_noelvalu);
+    variable en_clz       : boolean := options(alu_clz)      = '1' and enable_clz and ext_zbb;
+    variable en_pop       : boolean := options(alu_pop)      = '1' and enable_pop and ext_zbb;
     -- Non-constant
     subtype  x2wordx is std_logic_vector(wordx'length * 2 - 1 downto 0);
     subtype  hwordx  is std_logic_vector(wordx'length / 2 - 1 downto 0);
---    variable x2res        : x2wordx := clmul_div(op1_in, op2_in, wordx'length, 0);
     variable hop1         : hwordx;
     variable op1r         : wordx   := op1_in;
     variable op2r         : wordx   := op2_in;
     variable res          : wordx   := (others => '-');  -- Default to whatever
+    variable split        : std_logic := '0';
+    variable splatv       : word16  := zerow16;
+    variable splatm       : word8   := zerow8;
   begin
     if (ext_zbb and ctrl = EXE_COUNT and ctrlx(2 downto 1) = "01") or  -- CTZ?
        ((ext_zbc or ext_zbkc) and
-        ctrl = EXE_CLMUL and ctrlx /= R_CLMUL) then                        -- Reverse clmul?
+        ctrl = EXE_CLMUL and ctrlx /= R_CLMUL) then                    -- Reverse clmul?
       op1r := reverse(op1_in);
       op2r := reverse(op2_in);  -- Irrelevant for CTZ
     end if;
@@ -1534,49 +1302,35 @@ package body alunv is
           end loop;
         end if;
       when EXE_PACK =>
-        if ext_zbkb then
-          case ctrlx is
-          when "001" =>      -- ba 21 ->
-              res := lo_h(op2_in) & lo_h(op1_in);
-          when "011" =>
-            if is_rv64 then
-              res := sext(get(op2_in, 0, 16) & get(op1_in, 0, 16), res);
+        if ext_zbkb
+           then
+          op1r := op1_in;
+          op2r := op2_in;
+          case ctrlx is      -- *pack* rd, rs1, rs2
+          when "001"    -- pack("xpack.w/h"): ba,21 -> 1a
+            =>
+            if ext_zbkb then
+              res := lo_h(op2r) & lo_h(op1r);
             end if;
-          when "010" =>
-            res := uext(get(op2_in, 0,  8) & get(op1_in, 0,  8), res);
+          when "011" |   -- packw: xxba,yy21 -> 001a
+               "010" =>  -- packh: xxxxxxxa,yyyyyyy1 -> 0000001a
+            if ctrlx = "011" then
+              if is_rv64 and ext_zbkb then
+                res := sext(get(op2r, 0, 16) & get(op1r, 0, 16), res);
+              end if;
+            else
+              if ext_zbkb then
+                res := uext(get(op2r, 0,  8) & get(op1r, 0,  8), res);
+              end if;
+            end if;
           when others =>
-            if ext_noelvalu then
-              case ctrlx is
-              when "000" =>  -- ba 21 ->
-                res := hi_h(op2_in) & hi_h(op1_in);
-              when "100" =>  -- hgfedcba 87654321 ->
-                if is_rv64 then
-                  res := hi_h(hi_h(hi_h(op2_in))) & hi_h(hi_h(hi_h(op1_in))) &
-                         hi_h(lo_h(hi_h(op2_in))) & hi_h(lo_h(hi_h(op1_in))) &
-                         hi_h(hi_h(lo_h(op2_in))) & hi_h(hi_h(lo_h(op1_in))) &
-                         hi_h(lo_h(lo_h(op2_in))) & hi_h(lo_h(lo_h(op1_in)));
-                end if;
-              when "101" =>  -- dcba 4321 ->
-                res := hi_h(hi_h(op2_in)) & hi_h(hi_h(op1_in)) &
-                       hi_h(lo_h(op2_in)) & hi_h(lo_h(op1_in));
-              when "110" =>  -- hgfedcba 87654321 ->
-                if is_rv64 then
-                  res := lo_h(hi_h(hi_h(op2_in))) & lo_h(hi_h(hi_h(op1_in))) &
-                         lo_h(lo_h(hi_h(op2_in))) & lo_h(lo_h(hi_h(op1_in))) &
-                         lo_h(hi_h(lo_h(op2_in))) & lo_h(hi_h(lo_h(op1_in))) &
-                         lo_h(lo_h(lo_h(op2_in))) & lo_h(lo_h(lo_h(op1_in)));
-                end if;
-              when "111" =>  -- dcba 4321 ->
-                res := lo_h(hi_h(op2_in)) & lo_h(hi_h(op1_in)) &
-                       lo_h(lo_h(op2_in)) & lo_h(lo_h(op1_in));
-              when others =>
-              end case;
-            end if;
           end case;
         end if;
       when EXE_SHFLI =>
-        if is_rv32 and ext_zbkb then
-          if ctrlx = "001" then
+        case ctrlx is
+        when "010" =>  -- unzip
+          if (is_rv32 and ext_zbkb)
+             then
             for i in 0 to op1_in'high loop
               if i mod 2 = 0 then
                 res(i / 2) := op1_in(i);
@@ -1584,7 +1338,10 @@ package body alunv is
                 res(res'length / 2 + i / 2) := op1_in(i);
               end if;
             end loop;
-          else
+          end if;
+        when "011" =>  -- zip
+          if (is_rv32 and ext_zbkb)
+             then
             for i in 0 to op1_in'high loop
               if i mod 2 = 0 then
                 res(i) := op1_in(i / 2);
@@ -1593,7 +1350,8 @@ package body alunv is
               end if;
             end loop;
           end if;
-        end if;
+        when others =>
+        end case;
       when EXE_XPERM =>
         if ext_zbkx then
           op1r := (others => '0');
@@ -1617,7 +1375,8 @@ package body alunv is
               end if;
             end loop;
           end if;
-          res := xperm4(op1_in, op2r, op1r);
+          res := xperm4(
+                        op1_in, op2r, op1r);
         end if;
       when EXE_COUNT =>
         if ext_zbb then
@@ -1635,14 +1394,13 @@ package body alunv is
             end if;
           end if;
           case ctrlx(2 downto 1) is
-            when "10"   => res := uext(pop(op1r), res);
-            when others => res := uext(clz(op1r), res);
+            when "10"   => if en_pop then res := fit0ext(pop( op1r, split), res); end if;
+            when others => if en_clz then res := fit0ext(clzx(op1r, split), res); end if;
           end case;
         end if;
       when EXE_CLMUL =>
         if ext_zbc or ext_zbkc then
           res := clmul_hdiv(op1r, op2r, op1r'length, 0);
---          res := clmul_hdiv64(op1r, op2r, 0);
           case ctrlx is
             when R_CLMUL  => null;
             when R_CLMULH => res := '0' & reverse(res)(res'high downto 1);
@@ -1659,37 +1417,44 @@ package body alunv is
     return res;
   end;
 
+
   -- Math operation
   -- ctrl(2)   -> size
   -- ctrl(1:0) -> op
   -- ctrl(0)   -> sgn for SLT and SLTU
-  function math_op(active : extension_type;
-                   op1_in : wordx;
-                   op2_in : wordx;
-                   ctrl   : word3;
-                   ctrlx  : word3) return wordx is
-    variable is_rv64  : boolean := is_enabled(active, x_rv64);
-    variable ext_zba  : boolean := is_enabled(active, x_zba);
-    variable ext_zbb  : boolean := is_enabled(active, x_zbb);
-    variable ext_zbc  : boolean := is_enabled(active, x_zbc);
-    variable ext_zbs  : boolean := is_enabled(active, x_zbs);
-    variable ext_zbkb : boolean := is_enabled(active, x_zbkb);
-    variable ext_zbkc : boolean := is_enabled(active, x_zbkc);
-    variable ext_zbkx : boolean := is_enabled(active, x_zbkx);
+  function math_op(active  : extension_type;
+                   options : noelvalu_t;
+                   op1_in  : wordx;
+                   op2_in  : wordx;
+                   ctrl_in : word3;
+                   ctrlx   : word3;
+                   inst    : word32) return wordx is
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable ext_zba      : boolean := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
     -- Non-constant
-    variable op1      : wordx1;  -- Manipulated from _in for efficiency.
-    variable op2      : wordx1;
-    subtype  wordx2  is std_logic_vector(wordx'high + 2 downto 0);
-    variable add_res  : wordx2;
-    variable less     : std_ulogic;
-    variable res      : wordx   := (others => '0');
-    variable tmp      : wordx;
+    variable op1          : wordx1;  -- Manipulated from _in for efficiency.
+    variable op2          : wordx1;
+    subtype  wordx2      is std_logic_vector(wordx'high + 2 downto 0);
+    variable add_res      : wordx2;
+--    variable less         : std_ulogic;
+    variable less         : word8;
+    variable equal        : word8;
+    variable res          : wordx   := (others => '0');
+    variable tmp          : wordx;
+    variable ctrl         : word3;
+    variable horizontal   : boolean := false;
+    variable sel          : word8   := (others => '0');
+    variable halfres      : word16  := (others => '0');
   begin
+    ctrl := ctrl_in;
+
     -- Select Operands
     op1 := op1_in & '1';
     op2 := op2_in & '0';
 
     if ext_zba and ctrl = EXE_ADD then
+      -- Limit to unsigned 32 bit?
       if ctrlx(0) = '1' then
         op1 := uext(op1_in(word'range), op1_in) & '1';
       end if;
@@ -1709,37 +1474,41 @@ package body alunv is
     end case;
 
     -- Compute Results
+
     add_res := uaddx(op1, op2);   -- Carry fixed at 1
+
     -- Unsigned - less if borrow
     if ctrl = EXE_SLTU then
-      less := not get_hi(add_res);
+      less := (others => not get_hi(add_res));
     -- Signed and different signs
     elsif get_hi(op1) /= get_hi(op2_in) then
-      less := get_hi(op1);
+      less := (others => get_hi(op1));
     else
-      less := add_res(add_res'high - 1);
+      less := (others => add_res(add_res'high - 1));
     end if;
+
 
     case ctrl(1 downto 0) is
-      when "00" | "01" => res := get(add_res, 1, res'length);  -- EXE_ADD | EXE_SUB
-      when others      => res := u2vec(u2i(less), res);        -- EXE_SLT | EXE_SLTU
+      when "00" | "01" =>   -- EXE_ADD | EXE_SUB
+        res := get(add_res, 1, res'length);
+        -- addw/subw?
+        if is_rv64 and ctrl(2) = '0' then
+          tmp              := res;
+          res              := (others => res(31));
+          res(31 downto 0) := tmp(31 downto 0);
+        end if;
+      when others =>        -- EXE_SLT | EXE_SLTU | EXE_CMPN | EXE_CMPNU
+        res := u2vec(u2i(less(0)), res);
+        -- MIN/MAX?
+        if (ext_zbb
+           ) and ctrlx(1) = '1' then
+            if (ctrlx(0) xor less(0)) = '1' then
+              res := op1_in;
+            else
+              res := op2_in;
+            end if;
+        end if;
     end case;
-
-    -- MIN/MAX?
-    if ext_zbb and (ctrl = EXE_SLT or ctrl = EXE_SLTU) and ctrlx(1) = '1' then
-      if (ctrlx(0) xor less) = '1' then
-        res := op1_in;
-      else
-        res := op2_in;
-      end if;
-    end if;
-
-    -- addw/subw?
-    if is_rv64 and ctrl(2) = '0' then
-      tmp              := res;
-      res              := (others => res(31));
-      res(31 downto 0) := tmp(31 downto 0);
-    end if;
 
     return res;
   end;
@@ -1750,36 +1519,8 @@ package body alunv is
     -- Non-constant
     variable shiftin : std_logic_vector(127 downto 0) := op;
   begin
---    case cnt(5 downto 4) is
---      when "00"   =>
---      when "01"   => shiftin(79 downto 0) := shiftin( 95 downto 16);
---      when "10"   => shiftin(79 downto 0) := shiftin(111 downto 32);
---      when others => shiftin(79 downto 0) := shiftin(127 downto 48);
---    end case;
---    case cnt(3 downto 2) is
---      when "00"   =>
---      when "01"   => shiftin(67 downto 0) := shiftin( 71 downto  4);
---      when "10"   => shiftin(67 downto 0) := shiftin( 75 downto  8);
---      when others => shiftin(67 downto 0) := shiftin( 79 downto 12);
---    end case;
---    case cnt(1 downto 0) is
---      when "00"   =>
---      when "01"   => shiftin(64 downto 0) := shiftin( 65 downto  1);
---      when "10"   => shiftin(64 downto 0) := shiftin( 66 downto  2);
---      when others => shiftin(64 downto 0) := shiftin( 67 downto  3);
---    end case;
---    if cnt(5) = '1' then shiftin(95 downto 0) := shiftin(127 downto 32); end if;
---    if cnt(4) = '1' then shiftin(79 downto 0) := shiftin( 95 downto 16); end if;
---    if cnt(3) = '1' then shiftin(71 downto 0) := shiftin( 79 downto  8); end if;
---    if cnt(2) = '1' then shiftin(67 downto 0) := shiftin( 71 downto  4); end if;
---    if cnt(1) = '1' then shiftin(65 downto 0) := shiftin( 67 downto  2); end if;
---    if cnt(0) = '1' then shiftin(63 downto 0) := shiftin( 64 downto  1); end if;
     -- This is the only implementation that DC recognizes as a shifter.
-    -- Actually more logic than one of the above, but implementation might be better.
     shiftin := std_logic_vector(shift_right(unsigned(shiftin), u2i(cnt)));
---    for i in 0 to 63 loop
---      shiftin(i) := shiftin(i + u2i(cnt));
---    end loop;
 
     return shiftin(63 downto 0);
   end;
@@ -1791,17 +1532,8 @@ package body alunv is
     variable shiftin : word64 := op;
     variable pad     : word;
   begin
---    if cnt(4) = '1' then shiftin(47 downto 0) := shiftin(63 downto 16); end if;
---    if cnt(3) = '1' then shiftin(39 downto 0) := shiftin(47 downto  8); end if;
---    if cnt(2) = '1' then shiftin(35 downto 0) := shiftin(39 downto  4); end if;
---    if cnt(1) = '1' then shiftin(33 downto 0) := shiftin(35 downto  2); end if;
---    if cnt(0) = '1' then shiftin(31 downto 0) := shiftin(32 downto  1); end if;
     -- This is the only implementation that DC recognizes as a shifter.
-    -- Actually more logic than the above, but implementation might be better.
     shiftin := std_logic_vector(shift_right(unsigned(shiftin), u2i(cnt)));
---    for i in 0 to 31 loop
---      shiftin(i) := shiftin(i + u2i(cnt));
---    end loop;
 
     pad                   := (others => shiftin(31));
     shiftin(63 downto 32) := pad;
@@ -1813,36 +1545,41 @@ package body alunv is
   -- ctrl(2) -> size
   -- ctrl(1) -> arithmetic
   -- ctrl(0) -> direction
-  function shift_op(active : extension_type;
-                    op1    : wordx;
-                    op2    : wordx;
-                    ctrl   : word3;
-                    ctrlx  : word3) return wordx is
---    variable is_rv64 : boolean := true;
---    variable ext_zba : integer := 1;
---    variable ext_zbb : integer := 1;
---    variable ext_zbc : integer := 1;
---    variable ext_zbs : integer := 1;
-    variable is_rv64   : boolean := is_enabled(active, x_rv64);
-    variable ext_zba   : boolean := is_enabled(active, x_zba);
-    variable ext_zbb   : boolean := is_enabled(active, x_zbb);
-    variable ext_zbc   : boolean := is_enabled(active, x_zbc);
-    variable ext_zbs   : boolean := is_enabled(active, x_zbs);
-    variable ext_zbkb  : boolean := is_enabled(active, x_zbkb);
-    variable ext_zbkc  : boolean := is_enabled(active, x_zbkc);
-    variable ext_zbkx  : boolean := is_enabled(active, x_zbkx);
+  function shift_op(active   : extension_type;
+                    options  : noelvalu_t;
+                    op1      : wordx;
+                    op2      : wordx;
+                    ctrl_in  : word3;
+                    ctrlx_in : word3;
+                    inst     : word32) return wordx is
+    variable is_rv64      : boolean := is_enabled(active, x_rv64);
+    variable ext_zba      : boolean := is_enabled(active, x_zba);
+    variable ext_zbb      : boolean := is_enabled(active, x_zbb);
+    variable ext_zbkb     : boolean := is_enabled(active, x_zbkb);
+    variable ext_zbkx     : boolean := is_enabled(active, x_zbkx);
     -- Non-constant
-    variable shiftin64 : std_logic_vector(127 downto 0) := (others => '0');
-    variable shiftin32 : word64                         := (others => '0');
-    variable cnt       : std_logic_vector(  5 downto 0) := op2(5 downto 0);
-    variable res32     : word64;
-    variable res64     : word64;
+    variable shiftin64    : std_logic_vector(127 downto 0) := (others => '0');
+    variable shiftin32    : word64                         := (others => '0');
+    variable cnt          : std_logic_vector(  5 downto 0) := op2(5 downto 0);
+    variable res32        : word64;
+    variable res64        : word64;
+    variable ctrl         : word3   := ctrl_in;
+    variable ctrlx        : word3   := ctrlx_in;
+    variable res          : wordx;
   begin
+      if ctrl(1 downto 0) = "00" then  -- SLL
+        cnt := not op2(5 downto 0);  -- Preshifted below for negation!
+      end if;
+    -- W operation?
+    if is_rv64 and ctrl(2) = '0' then
+      cnt(5) := '0';
+    end if;
+
     -- SLLI.UW?
     if is_rv64 and ext_zba and ctrlx = "001" then
+      -- Preshift for negation!
       set(shiftin64, 64 - 1, op1(word'range));
-      -- Always left
-      cnt := not op2(5 downto 0);  -- Preshifted above for negation!
+      -- Always left (noted as ctrl = EXE_SLL)
     -- Rotate?
     elsif (ext_zbb or ext_zbkb) and ctrlx = "010" then
       shiftin32     := op1(word'range) & op1(word'range);
@@ -1851,20 +1588,20 @@ package body alunv is
       end if;
       -- Left?
       if ctrl(1 downto 0) = "00" then
+        -- Preshift for negation!
         shiftin32 := shiftin32(0) & shiftin32(shiftin32'high downto 1);
         shiftin64 := shiftin64(0) & shiftin64(shiftin64'high downto 1);
-        cnt := not op2(5 downto 0);  -- Preshifted above for negation!
       end if;
     -- Normal shift
     else
       case ctrl(1 downto 0) is
         when "00" => -- SLL
           shiftin32   := (others => '0');
+          -- Preshift for negation!
           set(shiftin32, 32 - 1, op1(word'range));
           if is_rv64 then
             set(shiftin64, 64 - 1, op1);
           end if;
-          cnt         := not op2(5 downto 0);  -- Preshifted above for negation!
         when "11" => -- SRA
           shiftin32     := sext(op1(word'range), shiftin32);
           if is_rv64 then
@@ -1878,46 +1615,52 @@ package body alunv is
       end case;
     end if;
 
+    -- W operation?
     if is_rv64 and ctrl(2) = '0' then
       shiftin64 := shiftin32 & shiftin32;
-      cnt(5)    := '0';
     end if;
 
     res32 := shift32(shiftin32, cnt(4 downto 0));
     res64 := shift64(shiftin64, cnt);
 
-    if is_rv64 then
-      if ctrl(2) = '1' then
-        return res64(wordx'range);
+
+      if is_rv64 then
+        if ctrl(2) = '1' then
+          res := res64(wordx'range);
+        else
+          res := sext(res64(word'range), wordx'length);
+        end if;
       else
-        return sext(res64(word'range), wordx'length);
+        res := res32(wordx'range);
       end if;
-    else
-      return res32(wordx'range);
-    end if;
+
+    return res;
   end;
 
   -- ALU Execute
   procedure alu_execute(active  : extension_type;
+                        options : noelvalu_t;
                         op1     : wordx;
                         op2     : wordx;
                         ctrl    : alu_ctrl;
+                        inst    : word32;
                         res_out : out wordx) is
-    variable alu_math_res  : wordx := math_op( active, op1, op2, ctrl.ctrl, ctrl.ctrlx);
-    variable alu_shift_res : wordx := shift_op(active, op1, op2, ctrl.ctrl, ctrl.ctrlx);
-    variable alu_logic_res : wordx := logic_op(active, op1, op2, ctrl.ctrl, ctrl.ctrlx);
-    variable alu_misc_res  : wordx := misc_op( active, op1, op2, ctrl.ctrl, ctrl.ctrlx);
+    variable alu_math_res  : wordx;
+    variable alu_shift_res : wordx;
+    variable alu_logic_res : wordx;
+    variable alu_misc_res  : wordx;
     -- Non-constant
     variable res           : wordx := zerox;
   begin
     case ctrl.sel is
-      when ALU_MATH     => res := alu_math_res;
-      when ALU_SHIFT    => res := alu_shift_res;
-      when ALU_LOGIC    => res := alu_logic_res;
-      when others       => res := alu_misc_res;
+      when ALU_MATH  => res := math_op( active, options, op1, op2, ctrl.ctrl, ctrl.ctrlx, inst);
+      when ALU_SHIFT => res := shift_op(active, options, op1, op2, ctrl.ctrl, ctrl.ctrlx, inst);
+      when ALU_LOGIC => res := logic_op(active, options, op1, op2, ctrl.ctrl, ctrl.ctrlx);
+      when others    => res := misc_op( active, options, op1, op2, ctrl.ctrl, ctrl.ctrlx, inst
+                                      );
     end case;
 
-    res_out     := res;
+    res_out := res;
   end;
 
 end package body;

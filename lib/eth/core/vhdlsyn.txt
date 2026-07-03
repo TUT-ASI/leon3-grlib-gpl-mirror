@@ -11,3 +11,10 @@ greth_rx.vhd
 greth_gbitc.vhd
 grethc.vhd
 mdio_ctrl.vhd
+greth2_pkg.vhd
+eth2_edcl_ahb_mst.vhd
+eth2_ahb_mst_gbit.vhd
+greth2_gbit_rx.vhd
+greth2_gbit_tx.vhd
+greth2_gbit_gtx.vhd
+greth2c.vhd

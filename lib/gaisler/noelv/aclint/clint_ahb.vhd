@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -44,7 +46,8 @@ entity clint_ahb is
     hindex      : integer range 0 to NAHBSLV-1  := 0;
     haddr       : integer range 0 to 16#FFF#    := 0;
     hmask       : integer range 0 to 16#FFF#    := 16#FFF#;
-    ncpu        : integer range 0 to 4096       := 4
+    ncpu        : integer range 0 to 4096       := 4;
+    scantest    : integer                       := 0
     );
   port (
     rst         : in  std_ulogic;
@@ -59,6 +62,8 @@ entity clint_ahb is
 end;
 
 architecture rtl of clint_ahb is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant REVISION : integer := 0;
 
@@ -112,8 +117,11 @@ architecture rtl of clint_ahb is
   constant pipe     : boolean := true;
 
   signal r, rin     : reg_type;
+  signal arst           : std_ulogic;
 
 begin
+  arst        <= ahbi.testrst when (ASYNC_RESET and scantest/=0 and ahbi.testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
   comb : process (rst, rtc, r, ahbi, irqi, halt)
     variable v          : reg_type;
@@ -351,22 +359,33 @@ begin
       irqo(i).mtip           <= r.mtip(i);
       irqo(i).meip           <= irqi(i*4);
       irqo(i).seip           <= irqi(i*4+1);
-      irqo(i).ueip           <= irqi(i*4+2);
-      irqo(i).heip           <= irqi(i*4+3);
       irqo(i).stime          <= stime;
     end loop;
     
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;
 

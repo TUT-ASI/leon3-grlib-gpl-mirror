@@ -25,3 +25,4 @@ muxbe_lpddr2.vhd                       vhdlstd=93
 ddrmuxctrl.vhd
 ahb2avl_async.vhd
 ahb2avl_async_be.vhd
+ahb2lattice_ddr3_mc.vhd

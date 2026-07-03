@@ -16,7 +16,10 @@ proc append_file_lattice_diamond_top_ldf {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

@@ -11,7 +11,10 @@ proc append_file_mentor_vsim {f finfo} {
 	    upvar compile_vsim_contents cvc
 	    append cvc "\t$VCOM $VHDLOPT -$vhdlstd -work $bn $f\n"
 	    return
-	}		
+	}
+	"vhdlnx" {
+	    return
+	}
 	"vhdlmtie" {
 	    global VCOM VHDLOPT
 	    upvar compile_vsim_contents cvc
@@ -58,7 +61,7 @@ proc append_file_mentor_vsim {f finfo} {
 	    global VLOG
 	    set l [dict get $finfo l]
 	    if {[string equal $l "local"] && [string equal $bn "work"] } {
-		upvar make_vsim_contents mvc 
+		upvar make_vsim_contents mvc
 		append mvc "\t$VLOG -work $bn $f\n"
 	    } else {
 		upvar compile_vsim_contents cvc
@@ -80,7 +83,7 @@ proc append_file_mentor_vsim {f finfo} {
 	    global VCOM VHDLOPT
 	    set l [dict get $finfo l]
 	    if {[string equal $l "local"] && [string equal $bn "work"] } {
-		upvar make_vsim_contents mvc 
+		upvar make_vsim_contents mvc
 		append mvc "\t$VCOM $VHDLOPT -$vhdlstd -work $bn $f\n"
 	    } else {
 		upvar compile_vsim_contents cvc
@@ -92,7 +95,7 @@ proc append_file_mentor_vsim {f finfo} {
             global VLOG
             set l [dict get $finfo l]
             if {[string equal $l "local"] && [string equal $bn "work"] } {
-                upvar make_vsim_contents mvc 
+                upvar make_vsim_contents mvc
                 append mvc "\t$VLOG -work $bn $f\n"
             } else {
                 upvar compile_vsim_contents cvc
@@ -112,6 +115,12 @@ proc append_file_mentor_vsim {f finfo} {
 	    set q [dict get $finfo q]
 	    append cvc "\t$VLOG -sv -work nexus_sim lattice_ips/$fattr/$q/rtl/$q.v\n"
 	}
+  "latticecomipcfg" {
+	    global VLOG
+	    upvar compile_vsim_contents cvc
+	    set q [dict get $finfo q]
+	    append cvc "\t$VLOG -sv -work nexus_sim lattice_ips/$fattr/$q/rtl/$q.v\n"
+	}
     }
     return
 }
@@ -119,7 +128,7 @@ proc append_file_mentor_vsim {f finfo} {
 proc eof_mentor_vsim {} {
     global GRLIB
     upvar compile_vsim_contents cvc
-    upvar make_vsim_contents mvc 
+    upvar make_vsim_contents mvc
 
     set cvc [rmvlinebreak $cvc]
     set compfile [open "compile.vsim" w]

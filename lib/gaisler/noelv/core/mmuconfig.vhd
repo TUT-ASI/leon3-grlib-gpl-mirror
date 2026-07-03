@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ use grlib.stdlib.setx;
 use grlib.amba.hsize_word;
 use grlib.amba.hsize_dword;
 library gaisler;
+use gaisler.noelv.all;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.u2i;
 use gaisler.utilnv.u2vec;
@@ -45,9 +46,6 @@ use gaisler.utilnv.get_right;
 use gaisler.utilnv.maximum;
 use gaisler.noelvint.atp_type;
 use gaisler.noelvint.atp_none;
-use gaisler.noelvtypes.word16_arr;
-use gaisler.noelvtypes.zerow16;
-use gaisler.noelvtypes.integer64;
 
 package mmucacheconfig is
 
@@ -67,6 +65,8 @@ constant mstatus_mprv : integer := 17;  -- 1 - data access according to MPP
 constant mstatus_mpp  : std_logic_vector(12 downto 11) := "00"; -- 00 U, 01 S, 11 M
 
 subtype page_offset is std_logic_vector(11 downto 0);
+
+subtype vpn_arr is word16_arr(0 to 3);
 
 -- ##############################################################
 --     Sv32 virtual address [riscv-privileged: p.68, 4.3.1, Figure 4.13]
@@ -116,7 +116,7 @@ function va_size(what : va_type; index : integer) return integer;
 function is_riscv(what : va_type) return boolean;
 function is_valid_pte(what        : va_type;
                       data        : std_logic_vector;
-                      mask        : std_logic_vector;
+                      mask_in     : std_logic_vector;
                       ext_svpbmt  : boolean := false;
                       ext_svnapot : boolean := false
                      ) return boolean;
@@ -153,14 +153,14 @@ function to_hgatp(hgatp_prv : atp_type;
                   what      : va_type) return atp_type;
 function has_pt(what : va_type; atp : atp_type) return boolean;
 function pte_paddr(what : va_type; data : std_logic_vector) return std_logic_vector;
-function vpn_split(what : va_type; vaddr : std_logic_vector) return word16_arr;
+function vpn_split(what : va_type; vaddr : std_logic_vector) return vpn_arr;
 procedure pte_mark_modacc(what   : va_type;
                           data   : inout std_logic_vector; modified   : std_logic;
                           needwb : out std_logic;          needwblock : out std_logic);
 procedure virtual2physical(what : va_type; vaddr : std_logic_vector; mask : std_logic_vector;
                            paddr : inout std_logic_vector);
 function ft_acc_resolve(what : va_type; at : std_logic_vector(2 downto 0);
-                        data : std_logic_vector) return std_logic_vector;
+                        data : std_logic_vector; modified : std_logic) return std_logic_vector;
 
 
 --     Sv32 Supervisor Address Translation and Protection (satp) Register [riscv-privileged: p.63, 4.1.12, Figure 4.11]
@@ -445,11 +445,24 @@ package body mmucacheconfig is
 
   function is_valid_pte(what        : va_type;
                         data        : std_logic_vector;
-                        mask        : std_logic_vector;
+                        mask_in     : std_logic_vector;
                         ext_svpbmt  : boolean := false;
                         ext_svnapot : boolean := false
-                       ) return boolean is
+                        ) return boolean is
+    -- Need a temporary here to enforce bit numbering when extending PTE data to address.
+    variable datax  : std_logic_vector(data'length + 1 downto 0) := data & "00";
+    variable vpn    : vpn_arr := vpn_split(what, datax);
+    variable vpn_hi : integer := va_size(what) - 1;
+    variable mask   : word4   := (others => '1');
   begin
+    -- Extend incoming mask and ensure bit numbering aligns with vpn (0 is low part).
+    mask(mask_in'length - 1 downto 0) := mask_in;
+    -- Top VPN part will always be relevant, so no need to check that.
+    for i in 0 to vpn_hi - 1 loop
+      if mask(i) = '0' and not all_0(vpn(i)) then
+        return false;
+      end if;
+    end loop;
 
     -- Reserved top bits must be zero.
     if not all_0(data(rv_pte_resv'range)) then
@@ -844,16 +857,17 @@ package body mmucacheconfig is
   end;
 
   -- Create an array of the various VPN levels, to simplify synthesis.
-  function vpn_split(what : va_type; vaddr : std_logic_vector) return word16_arr is
-    variable va_step : integer            := va_size(what, 1);  -- On RISC-V, va_size(n) is the same for all n.
+  function vpn_split(what : va_type; vaddr : std_logic_vector) return vpn_arr is
+    variable va_step : integer   := va_size(what, 1);  -- On RISC-V, va_size(n) is the same for all n.
+    variable va_vpns : integer   := va_size(what);
     -- Non-constant
-    variable vpn     : word16_arr(0 to 3) := (others => zerow16);
-    variable pos     : integer64          := 12;
+    variable vpn     : vpn_arr   := (others => zerow16);
+    variable pos     : integer64 := 12;
   begin
-    for i in vpn'range loop
-      if pos + va_step <= vaddr'high + 1 then
-        vpn(i)(va_step - 1 downto 0) := get(vaddr, pos, va_step);
-      end if;
+    assert not vaddr'ascending report "Wrong bit order" severity failure;
+    for i in 0 to va_vpns - 1 loop
+      assert pos + va_step <= vaddr'high + 1 report "Too short virtual address" severity failure;
+      vpn(i)(va_step - 1 downto 0) := get(vaddr, pos, va_step);
       pos := pos + va_step;
     end loop;
 
@@ -900,24 +914,26 @@ package body mmucacheconfig is
   end;
 
   -- Convert virtual vaddr to physical paddr, using vmask to OR correct levels.
+  -- It must already be guaranteed that replaced low and unused high bits of paddr are zero.
   procedure virtual2physical(what  : va_type;
                              vaddr : std_logic_vector; mask : std_logic_vector;
                              paddr : inout std_logic_vector) is
-    --constant pa_tmp      : std_logic_vector := pa(what);       -- constant
+    variable va_step : integer := va_size(what, 1);  -- On RISC-V, va_size(n) is the same for all n.
     -- Non-constant
-    variable xpaddr      : std_logic_vector(pa_msb(what) downto 0) := (others => '0');
-    variable pos         : integer;
+    variable xpaddr  : std_logic_vector(pa_msb(what) downto 0) := (others => '0');
+    variable pos     : integer;
   begin
-    --     RISC-V requires high bits to equal MSB of VA.
+    assert mask'ascending report "Wrong mask order" severity failure;
     xpaddr(paddr'range) := paddr;
     -- Loop from low bits to high
     pos := 12;
-    for i in va_size(what) downto 1 loop
+    -- Top VPN part will always be mapped, so no need to copy that.
+    for i in va_size(what) downto 2 loop
       if mask(i) = '0' then
-        xpaddr(pos + va_size(what, i) - 1 downto pos) := xpaddr(pos + va_size(what, i) - 1 downto pos) or
-                                                          vaddr(pos + va_size(what, i) - 1 downto pos);
+        xpaddr(pos + va_step - 1 downto pos) := xpaddr(pos + va_step - 1 downto pos) or
+                                                vaddr(pos + va_step - 1 downto pos);
       end if;
-      pos := pos + va_size(what, i);
+      pos := pos + va_step;
     end loop;
 
     paddr := xpaddr(paddr'range);
@@ -930,7 +946,7 @@ package body mmucacheconfig is
   -- r(1)  - permission error
   -- r(2)  - MXR permission error (RISC-V)
   function ft_acc_resolve(what : va_type;
-                          at : std_logic_vector(2 downto 0); data : std_logic_vector)
+                          at : std_logic_vector(2 downto 0); data : std_logic_vector; modified : std_logic)
     return std_logic_vector is
     variable is_user  : boolean := at(0) = '0';
     variable is_exec  : boolean := at(1) = '1';
@@ -956,7 +972,7 @@ package body mmucacheconfig is
       err_sum     := '1';            -- SUM flag does not affect execute.
       err_mxr     := '1';            -- MXR is only OK for read.
     elsif is_write then
-      if data(rv_pte_w) = '0' then
+      if data(rv_pte_w) = '0' or modified = '0' then
         err_perm  := '1';
         err_sum   := '1';
       end if;

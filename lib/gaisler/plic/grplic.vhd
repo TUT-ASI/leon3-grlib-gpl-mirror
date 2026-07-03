@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -54,12 +56,13 @@ entity grplic is
     pindex      : integer range 0 to NAPBSLV-1  := 0;
     paddr       : integer range 0 to 16#FFF#    := 0;
     pmask       : integer range 0 to 16#FFF#    := 16#FFF#;
-    nsources    : integer range 0 to 32         := NAHBIRQ;
+    nsources    : integer range 0 to 64         := NAHBIRQ;
     ncpu        : integer range 0 to MAX_HARTS  := 4;
     priorities  : integer range 0 to 32         := 8;
     pendingbuff : integer range 0 to 32         := 1;
     irqtype     : integer range 0 to 1          := 1;
-    thrshld     : integer range 0 to 1          := 1
+    thrshld     : integer range 0 to 1          := 1;
+    scantest    : integer                       := 0
     );
   port (
     rst         : in  std_ulogic;
@@ -71,6 +74,8 @@ entity grplic is
 end grplic;
 
 architecture rtl of grplic is
+
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant REVISION : integer := 0;
 
@@ -119,6 +124,7 @@ architecture rtl of grplic is
     );
   
   signal r, rin         : reg_type;
+  signal arst           : std_ulogic;
 
   -- Gateways signals
   signal complete       : std_logic_vector(sources-1 downto 0);
@@ -137,6 +143,8 @@ architecture rtl of grplic is
   signal id             : id_type;
 
 begin
+  arst        <= apbi.testrst when (ASYNC_RESET and scantest/=0 and apbi.testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
   ---------------------------------------------------
   -- Gateways
@@ -147,7 +155,8 @@ begin
     gateway : plic_gateway
       generic map (
         pendingbuff     => pendingbuff,
-        irqtype         => irqtype
+        irqtypeconf     => irqtype,
+        scantest        => scantest
         )
       port map (
         rst             => rst,
@@ -155,7 +164,9 @@ begin
         irqi            => apbi.pirq(i-1),
         ip              => ip(i),
         complete        => complete(i),
-        claim           => claim(i)
+        claim           => claim(i),
+        testen          => apbi.testen,
+        testrst         => apbi.testrst
         );
   end generate;
 
@@ -205,7 +216,7 @@ begin
         );
   end generate;
 
-  comb : process (rst, r, apbi, ip, pr_out_array, id, irqreq)
+  comb : process (r, apbi, ip, id, irqreq)
     variable v          : reg_type;
     variable selhart    : integer range 0 to ntargets-1;
     variable selsrc     : integer range 0 to RISCV_SOURCES-1;
@@ -395,15 +406,31 @@ begin
     
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  -- Synch reset
+  syncrregs : if not ASYNC_RESET generate
+    synch_regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+
+  -- Asynch reset
+  asyncrregs : if ASYNC_RESET generate
+    asynch_regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end;
 

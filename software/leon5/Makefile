@@ -43,7 +43,7 @@ PROGS = grcanfd apbuart divtest multest regtest \
 	cgtest privtest privtest_asm mmudmap leon_tsc dpr_test mem_test grspwtdp \
 	rextest rextest_asm awptest \
 	grfpu_test5 fpu5 leon5_test base_test5 \
-	rextest rextest_asm awptest leon5asm
+	rextest rextest_asm awptest leon5asm greth2_api greth2
 
 FPROGS=$(shell for i in $(PROGS); do \
 			if [ -r $(GRLIB)/software/leon5/$$i.c -o -r $(GRLIB)/software/leon5/$$i.S ]; then \
@@ -55,6 +55,9 @@ FPROGS=$(shell for i in $(PROGS); do \
 		done; \
 		if [ -r $(GRLIB)/software/greth/greth_api.c ]; then \
 			echo greth_api; \
+		fi; \
+		if [ -r $(GRLIB)/software/greth2/greth2_api.c ]; then \
+			echo greth2_api; \
 		fi; \
 		if [ -r $(GRLIB)/software/l2c/l2capi.c ]; then \
 			echo l2capi; \
@@ -90,6 +93,9 @@ divtest.o: divtest.c
 	$(XCC) $(XCFLAGS) -mcpu=leon5 -c $<
 
 greth_api.o : $(GRLIB)/software/greth/greth_api.c
+	$(XCC) $(XCFLAGS) -c $<
+
+greth2_api.o : $(GRLIB)/software/greth2/greth2_api.c
 	$(XCC) $(XCFLAGS) -c $<
 
 cgtest.o : cgtest.c

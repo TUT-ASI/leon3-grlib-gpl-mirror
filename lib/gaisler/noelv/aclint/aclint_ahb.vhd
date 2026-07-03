@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,13 +45,17 @@
 -- bff8 mtime lo
 -- bffc mtime hi
 
-
 -- 10000 watchdog
+
+-- 18000 Interrupt Capability Low
+-- 18004 Interrupt Capability High
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.zero32;
@@ -65,7 +69,9 @@ use gaisler.noelv.all;
 entity aclint_ahb is
   generic (
     hindex      : integer range 0 to NAHBSLV-1  := 0;
+    hbaren      : integer range 0 to 1          := 0;  -- When set to 1 aclint is part of an ahb slave with several mem bars
     haddr       : integer range 0 to 16#FFF#    := 0;
+    hbar        : integer range 0 to 3          := 0;
     hmask       : integer range 0 to 16#FFF#    := 16#FFF#;
     hirq1       : integer range 0 to NAHBSLV-1  := 0;
     hirq2       : integer range 0 to NAHBSLV-1  := 0;
@@ -74,7 +80,8 @@ entity aclint_ahb is
     mtimer      : integer range 0 to 1          := 1;  -- Enables MTIMER ACLINT's device (machine timer interrupts)
     sswi        : integer range 0 to 1          := 1;  -- Enables SSWI ACLINT's device (supervisor software interrupts)
     watchdog    : integer range 0 to 1          := 1;  -- Enables watchdog
-    wdtickbit   : integer range 0 to 63         := 4   -- MTIME bit used for the watchdog tick
+    wdtickbit   : integer range 0 to 63         := 4;  -- MTIME bit used for the watchdog tick
+    scantest    : integer                       := 0
     );
   port (
     rst         : in  std_ulogic;
@@ -83,22 +90,24 @@ entity aclint_ahb is
     ahbi        : in  ahb_slv_in_type;
     ahbo        : out ahb_slv_out_type;
     halt        : in  std_ulogic;
-    irqi        : in  nv_irq_in_vector(0 to ncpu-1);
-    irqo        : out nv_irq_in_vector(0 to ncpu-1)
+    irqo        : out nv_irq_in_vector(0 to ncpu-1);
+    intcap      : in  std_logic_vector(63 downto 0) := (others => '0')
     );
 end;
 
 architecture rtl of aclint_ahb is
 
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
   constant REVISION : integer := 0;
 
+  -- If hbaren is set to 1 this output will be ignored
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_ACLINT, 0, REVISION, 0),
     4 => ahb_membar(haddr, '0', '0', hmask),
     others => zero32);
 
   constant MTIMEBITS    : integer := 64;
-  constant zeros        : std_logic_vector(MTIMEBITS-1 downto 0) := (others => '0');
 
   type mtimecmp_type is array (0 to ncpu-1) of std_logic_vector(MTIMEBITS-1 downto 0);
 
@@ -156,14 +165,18 @@ architecture rtl of aclint_ahb is
   constant pipe     : boolean := true;
 
   signal r, rin     : reg_type;
+  signal arst           : std_ulogic;
 
 begin
+  arst        <= ahbi.testrst when (ASYNC_RESET and scantest/=0 and ahbi.testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
-  comb : process (rst, rtc, r, ahbi, irqi, halt)
+  comb : process (rtc, r, ahbi, halt)
     variable v          : reg_type;
     variable ssip       : std_logic_vector(ncpu-1 downto 0);
     variable selcpu     : integer;
     variable selcmp     : integer;
+    variable hsel       : std_ulogic;
     variable hrdata     : std_logic_vector(63 downto 0);
     variable rdata      : std_logic_vector(63 downto 0);
     variable hwdata     : std_logic_vector(63 downto 0);
@@ -264,7 +277,14 @@ begin
     hwdata(31 downto  0) := ahbi.hwdata( 31           downto  0);
 
     -- Slave selected
-    if (ahbi.hready and ahbi.hsel(hindex) and ahbi.htrans(1)) = '1' then
+    -- If it belongs to a AHB slave with several memory bars we need to  check
+    -- it the memory bar is selected
+    if hbaren = 0 then
+      hsel :=  ahbi.hsel(hindex);
+    else
+      hsel :=  ahbi.hsel(hindex) and ahbi.hmbsel(hbar);
+    end if;
+    if (ahbi.hready and hsel and ahbi.htrans(1)) = '1' then
       v.hsel(0)  := '1';
       v.haddr    := ahbi.haddr;
       v.hsize    := ahbi.hsize;
@@ -327,6 +347,19 @@ begin
             rdata(2) := r.s1wto;
             rdata(3) := r.s2wto;
             rdata(13 downto 4) := r.wtocnt;
+          end if;
+        when "110" => -- Interrupt Capability
+          rdata := intcap;
+          if r.haddr(13 downto 3) = zero32(13 downto 3) then
+            -- Replicate data for 32-bit access either the low
+            -- or the high part of the register
+            if r.hsize = "010" then
+              if r.haddr(2) = '0' then  -- 0x18000 (Low)
+                rdata(63 downto 32) := intcap(31 downto 0);
+              else                      -- 0x18000 (High)
+                rdata(31 downto 0) := intcap(63 downto 32);
+              end if;
+            end if;
           end if;
         when others =>
       end case;
@@ -440,22 +473,10 @@ begin
 
     -- IRQ Interface
     irqo              <= (others => nv_irq_in_none);
-    for i in 0 to ncpu-1 loop
-      irqo(i).mtip        <= '0';
-      irqo(i).msip        <= '0';
-      irqo(i).ssip        <= '0';
-      irqo(i).meip        <= irqi(i).meip;
-      irqo(i).seip        <= irqi(i).seip;
-      irqo(i).ueip        <= irqi(i).ueip;
-      irqo(i).heip        <= irqi(i).heip;
-      irqo(i).hgeip       <= irqi(i).hgeip;
-      irqo(i).stime       <= stime;
-      irqo(i).imsic       <= irqi(i).imsic;
-      irqo(i).aplic_meip  <= irqi(i).aplic_meip;
-      irqo(i).aplic_seip  <= irqi(i).aplic_seip;
-      irqo(i).nmirq       <= irqi(i).nmirq;
-    end loop;
 
+    for i in 0 to ncpu-1 loop
+      irqo(i).stime       <= stime;
+    end loop;
     if mswi = 1 then
       for i in 0 to ncpu-1 loop
         irqo(i).msip           <= r.msip(i);
@@ -474,14 +495,29 @@ begin
 
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  -- Synch reset
+  syncrregs : if not ASYNC_RESET generate
+    synch_regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  -- Asynch reset
+  asyncrregs : if ASYNC_RESET generate
+    asynch_regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;

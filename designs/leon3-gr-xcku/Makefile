@@ -84,7 +84,7 @@ SKIP_SIM_TECHLIBS = 0
 
 LIBSKIP = pci pci/pcif core1553bbc core1553brm srio core1553brt idt gr1553 corePCIF \
 	tmtc openchip ihp spw gsi cypress hynix ge_1000baseX \
-	greth \
+	greth greth2 \
 	spansion secureip usb ddr grdmac mmuconfig \
 DIRSKIP = b1553 pci gr1553b/core pci/pcif leon2 leon2ft srio idt crypto satcan pci ambatest \
 	spacewire ascs slink eth libmmu \

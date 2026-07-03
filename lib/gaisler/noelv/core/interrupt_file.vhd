@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,12 +37,15 @@ library gaisler;
 use gaisler.noelv.xlen;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.log2x;
 
 entity interrupt_file is
   generic (
     sources     : integer range 0 to 2047   := 2047; -- It must be a multiple of 64 -1: from 63 to 2047 
-    plic        : integer range 0 to 1      := 1 
+    plic        : integer range 0 to 1      := 1;
+    scantest    : integer                   := 0
     );
   port (
     rst         : in  std_ulogic;
@@ -58,11 +61,15 @@ entity interrupt_file is
     topei_w     : in  std_ulogic;
     topei       : out std_logic_vector(XLEN-1 downto 0);
     plic_eip    : in  std_ulogic;
-    eipo        : out std_ulogic
+    eipo        : out std_ulogic;
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic
     );
 end;
 
 architecture rtl of interrupt_file is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant zerox : std_logic_vector(XLEN-1 downto 0) := (others => '0');
 
@@ -103,9 +110,12 @@ architecture rtl of interrupt_file is
     eipo        => '0'
     );
 
-    signal r, rin : reg_type;
+  signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
   comb : process (r, seteipnum, ireg_w, iselect, iregi, topei_w, ahbw, plic_eip)
     variable v             : reg_type;
@@ -286,14 +296,27 @@ begin
 
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end;

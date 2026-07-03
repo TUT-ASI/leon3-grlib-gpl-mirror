@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -126,7 +126,6 @@ begin  -- rtl
     variable bwhistory              : std_logic_vector(hlength-1 downto 0);
     variable pht0                   : std_logic_vector(MAX_PREDICTOR_BITS-1 downto 0);
     variable wdata                  : std_logic_vector(1 downto 0);
-    variable taken                  : std_logic;
     variable btb_taken              : std_logic;
     variable bhto_bhistory          : std_logic_vector(4 downto 0);
     variable bhto_phistory          : std_logic_vector(31 downto 0);
@@ -252,7 +251,6 @@ begin  -- rtl
     pht0(1) := phistory1(conv_integer(bhistory));
     pht0(0) := phistory0(conv_integer(bhistory));
 
-    taken := pht0(1);
 
     bhti_phistory_temp := bhti.phistory((2**hlength)*2-1 downto 0);
 
@@ -334,7 +332,7 @@ begin  -- rtl
     if diag_in.addr(11) = '1' then
       --pht table
       diag_out_rdata := (others=>'0');
-      diag_out_rdata(31 mod (2**hlength)*2 downto 0) := pht_rdata(31 mod (2**hlength)*2 downto 0);
+      diag_out_rdata(31 mod ((2**hlength)*2) downto 0) := pht_rdata(31 mod ((2**hlength)*2) downto 0);
     end if;
     diag_out.rdata <= diag_out_rdata;
     --

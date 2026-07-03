@@ -4,7 +4,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -98,7 +98,8 @@ package aplic is
     generic (
       nsources        : integer := 32;
       srcbits         : integer := 6;
-      prbits          : integer := 4
+      prbits          : integer := 4;
+      scantest        : integer := 0
       );
     port (
       rstn    : in  std_ulogic;
@@ -106,9 +107,12 @@ package aplic is
       ip      : in  std_logic_vector(nsources-1 downto 0);
       pr_in   : in  std_logic_vector((prbits*nsources)-1 downto 0);
       enable  : in  std_logic_vector(nsources-1 downto 0);
+      softrstn: in  std_ulogic;
       id      : out std_logic_vector(srcbits-1 downto 0);
       ip_out  : out std_logic;
-      pr_out  : out std_logic_vector(prbits-1 downto 0)
+      pr_out  : out std_logic_vector(prbits-1 downto 0);
+      testen  : in  std_ulogic;
+      testrst : in  std_ulogic
       );
   end component;
 
@@ -117,7 +121,9 @@ package aplic is
     generic (
       hmindex             : integer range 0 to NAHBMST-1   := 0;
       hsindex             : integer range 0 to NAHBSLV-1   := 0;
+      hbaren              : integer range 0 to 1           := 0;
       haddr               : integer range 0 to 16#FFF#     := 0;
+      hbar                : integer range 0 to 3           := 0;
       nsources            : integer range 1 to MAX_SOURCES := 1023;
       ncpu                : integer range 0 to MAX_HARTS   := 8;
       --ndomains            : integer range 0 to MAX_DOMAINS := 3;
@@ -140,7 +146,8 @@ package aplic is
       IPRIOLEN            : integer range 1 to 8           := 8; 
       nEIID               : integer range 1 to 2047        := 2047;
     leaf_domains          : std_logic_vector(MAX_DOMAINS-1 downto 0) := (others => '0'); -- Configures the leaf domains
-      preset_active_harts : preset_active_harts_type
+      preset_active_harts : preset_active_harts_type;
+      scantest            : integer := 0
       );
     port (
       rstn        : in  std_ulogic;
@@ -149,6 +156,7 @@ package aplic is
       ahbmo       : out ahb_mst_out_type;
       ahbsi       : in  ahb_slv_in_type;
       ahbso       : out ahb_slv_out_type;
+      softrstn    : in  std_ulogic := '1';
       meip        : out std_logic_vector(0 to ncpu-1);
       seip        : out std_logic_vector(0 to ncpu-1)
       );
@@ -216,8 +224,8 @@ package body aplic is
   end;
 
   -- This function set which domains are the leaf domains of the branch
-  -- By defect the last fomain of each branch is the leaf branch unless it is
-  -- especified different in the generic leaf_doms
+  -- By default the last domains of each branch are the leaf domains of the
+  -- branch unless it is especified different in the generic leaf_doms
   function set_leaf_doms(in_vec          : std_logic_vector;
                          branches        : integer;
                          doms_per_branch : integer) return std_logic_vector is 

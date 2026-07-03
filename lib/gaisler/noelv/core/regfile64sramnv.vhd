@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ library techmap;
 use techmap.gencomp.all;
 use techmap.allmem.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.log2x;
 use grlib.riscv.reg_t;
 library gaisler;
@@ -42,7 +44,7 @@ entity regfile64sramnv is
     tech        : integer;
     reg0write   : integer := 0;
     dissue      : integer := 1;
-    testen      : integer
+    scantest    : integer
     );
   port (
     clk      : in  std_ulogic;
@@ -66,12 +68,16 @@ entity regfile64sramnv is
     raddr4   : in  reg_t;
     re4      : in  std_ulogic;
     rdata4   : out std_logic_vector;
+    testen   : in  std_ulogic;
+    testrst  : in  std_ulogic;
     testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
     );
 begin
 end regfile64sramnv;
 
 architecture rtl of regfile64sramnv is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 
   constant abits : integer := reg_t'length;
@@ -134,48 +140,51 @@ architecture rtl of regfile64sramnv is
   signal re4_masked       : std_logic;
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin  -- rtl
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   -- Syncrams (WPORTS for each RPORTS)
 
 
     -- PORT1
-    x0 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+    x0 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
       port map (clk, re1_masked, raddr1, rdata10, clk, we1, waddr1, wdata1, testin
                 );
 
-    x1 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+    x1 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
       port map (clk, re1_masked, raddr1, rdata11, clk, we2, waddr2, wdata2, testin
                 );
 
     -- PORT2
     p2d: if dissue /= 0 generate
-      x2 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+      x2 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
         port map (clk, re2_masked, raddr2, rdata20, clk, we1, waddr1, wdata1, testin
                   );
 
-      x3 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+      x3 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
         port map (clk, re2_masked, raddr2, rdata21, clk, we2, waddr2, wdata2, testin
                   );
     end generate;
 
     -- PORT3
-    x4 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+    x4 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
       port map (clk, re3_masked, raddr3, rdata30, clk, we1, waddr1, wdata1, testin
                 );
 
-    x5 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+    x5 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
       port map (clk, re3_masked, raddr3, rdata31, clk, we2, waddr2, wdata2, testin
                 );
 
     -- PORT4
     p4d : if dissue /= 0 generate
-      x6 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+      x6 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
         port map (clk, re4_masked, raddr4, rdata40, clk, we1, waddr1, wdata1, testin
                   );
 
-      x7 : syncram_2p generic map (tech, abits, dbits, 0, 0, testen, 0, memtest_vlen, 0, 1)
+      x7 : syncram_2p generic map (tech, abits, dbits, 0, 0, scantest, 0, memtest_vlen, 0, 1)
         port map (clk, re4_masked, raddr4, rdata41, clk, we2, waddr2, wdata2, testin
                   );
     end generate;
@@ -486,13 +495,25 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk, rstn)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-    end if;
+  syncrregs : if not ASYNC_RESET generate
+    seq : process(clk, rstn)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
-  end process;
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= reg_type_rst;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 
 end rtl;

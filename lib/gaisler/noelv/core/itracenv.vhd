@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ use grlib.riscv.priv_lvl_type;
 use grlib.riscv.reg_t;
 library gaisler;
 use gaisler.noelvtypes.all;
-use gaisler.noelv.XLEN;
+use gaisler.noelv.all;
 use gaisler.noelvint.itrace_in_type;
 use gaisler.noelvint.itrace_in_none;
 use gaisler.noelvint.itrace_out_type;
@@ -62,6 +62,9 @@ use gaisler.noelvint.trace_info;
 use gaisler.noelvint.trace_addr;
 use gaisler.utilnv.all_0;
 use gaisler.utilnv.all_1;
+use gaisler.utilnv.get;
+use gaisler.utilnv.set;
+use gaisler.utilnv.fit0ext;
 use gaisler.utilnv.get_hi;
 use gaisler.utilnv.get_lo;
 use gaisler.utilnv.hi_h;
@@ -80,6 +83,7 @@ use gaisler.noelvtypes.to_cause;
 use gaisler.noelvtypes.cause2int;
 use gaisler.nvsupport.CAUSE_IRQ_RAS_HIGH_PRIO;
 use gaisler.nvsupport.CAUSE_IRQ_RAS_LOW_PRIO;
+use gaisler.nvsupport.has_noelv_rd;
 -- pragma translate_off
 use gaisler.nvsupport.is_fpu_rd;
 use gaisler.fputilnv.fpreg2st;
@@ -94,6 +98,8 @@ entity itracenv is
     dmen         : integer range 0 to 1;        -- Using RISC-V Debug Module
     tbuf         : integer;                     -- Trace buffer size in kB
     disas        : integer              := 0;   -- Disassembly to console
+    trace_time   : integer              := 1;   -- Use timestamp from trace
+    xtrace_info  : integer              := 0;   -- Trace extra information
     scantest     : integer;                     -- Scantest support
     fpu_lane     : integer range 0 to 1 := 0;   -- Lane where (non-memory) FPU instructions go
     csr_lane     : integer range 0 to 1 := 0;   -- Lane where CSRs are handled
@@ -118,8 +124,7 @@ architecture rtl of itracenv is
   constant memory_lane : integer := 0;
 
   -- Implementation Constants
---  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1
---                                     and GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 0;
+--  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
   constant RESET_ALL    : boolean := true;
   constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
@@ -176,12 +181,14 @@ architecture rtl of itracenv is
   constant trace_inst_lo       : std_logic_vector( 79 + 192 downto  64 + 192) := (others => '0');
   constant trace_cfi           : std_logic_vector( 80 + 192 downto  80 + 192) := (others => '0');
   -- Positions in complete data for extended (translation_off) trace
-  constant trace_csrw0         : std_logic_vector( 63 + 512 downto   0 + 512) := (others => '0');
-  constant trace_csrw1         : std_logic_vector(127 + 512 downto  64 + 512) := (others => '0');
-  constant trace_inst_lo0      : std_logic_vector(143 + 512 downto 128 + 512) := (others => '0');
-  constant trace_inst_lo1      : std_logic_vector(159 + 512 downto 144 + 512) := (others => '0');
-  constant trace_cfi0          : std_logic_vector(160 + 512 downto 160 + 512) := (others => '0');
-  constant trace_cfi1          : std_logic_vector(161 + 512 downto 161 + 512) := (others => '0');
+-- pragma translate_off
+  constant trace_csrw0         : std_logic_vector( 63 downto   0) := (others => '0');
+  constant trace_csrw1         : std_logic_vector(127 downto  64) := (others => '0');
+  constant trace_inst_lo0      : std_logic_vector(143 downto 128) := (others => '0');
+  constant trace_inst_lo1      : std_logic_vector(159 downto 144) := (others => '0');
+  constant trace_cfi0          : std_logic_vector(160 downto 160) := (others => '0');
+  constant trace_cfi1          : std_logic_vector(161 downto 161) := (others => '0');
+-- pragma translate_on
 
   type fpu_trace_buffer is record
     valid : std_ulogic;                -- FPU data awaiting trace
@@ -206,6 +213,9 @@ architecture rtl of itracenv is
     tcnt    : trace_addr;
     fptbuf  : fpu_trace_buffer;
 --    trace   : trace_type;
+    -- Trace active/inactive, controlled from
+    -- triggers defined in Sdtrig extension.
+    trigact : boolean;
   end record;
 
   constant itrace_none : itrace_regs := (
@@ -213,7 +223,8 @@ architecture rtl of itracenv is
     itraceo => itrace_out_none,
     fpo     => fpu5_out_none,
     tcnt    => (others => '0'),
-    fptbuf  => fpu_trace_none
+    fptbuf  => fpu_trace_none,
+    trigact => true
   );
 
   function cause_pack(cause_in : cause_type) return std_logic_vector is
@@ -252,6 +263,65 @@ architecture rtl of itracenv is
   signal arst : std_ulogic;
 
 -- pragma translate_off
+  procedure display_xinfo(xinfo : word64) is
+  begin
+    if all_0(xinfo) then
+      return;
+    end if;
+--    print("Info: " & tost(xinfo));
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_RAW)           = '1' then print("C RAW");            end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_RAW_SWAP)      = '1' then print("C RAW SWAP");       end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_WAW)           = '1' then print("C WAW");            end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_MEM_VS_LANE)   = '1' then print("C MEM VS LANE");    end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_CSR)           = '1' then print("C CSR");            end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_FPU)           = '1' then print("C FPU");            end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_ALONE)         = '1' then print("C ALONE");          end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_MULTICYCLE)    = '1' then print("C MULTICYCLE");     end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_SINGLE_UNIT)   = '1' then print("C SINGLE UNIT");    end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_EXCEPTION)     = '1' then print("C EXCEPTION");      end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_FLOW_LANE0)    = '1' then print("C FLOW LANE 0");    end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_SYSCALL_LANE0) = '1' then print("C SYSCALL LANE 0"); end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_LPAD_LANE)     = '1' then print("C LPAD LANE");      end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_MCODE)         = '1' then print("C MCODE");          end if;
+    if xinfo(gaisler.nvsupport.INFO_CONFLICT_SWAP)          = '1' then print("C SWAP");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_PAIR_RAW_LATE
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H PAIR RAW LATE");        end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_RAW_MEM_LATE
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H RAW MEM LATE");         end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_RAW_MULDIV
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H RAW MULDIV");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_NOT_LATE
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H HOLD not LATE");        end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_LD_VS_OTHER
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H HOLD LD VS OTHER");     end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_CSR_RAW_WAW
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H CSR RAW WAW");          end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_CSR_VS_MEM
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H CSR VS MEM");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_CSR_VS_IRQ
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H CSR VS IRQ");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_AWAITING_FLUSH
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H AWAITING FLUSH");       end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_FPU_VS_CSR
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H FPU VS CSR");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_FPU_BUSY
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H FPU BUSY");             end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_FPU_RS
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H FPU RS");               end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_FENCE
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H FENCE");                end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_STORE_BACK2BACK
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H STORE BACK TO BACK");   end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_MEM_VS_CBO
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H MEM VS CBO");           end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_STORE_VS_LATE_BRANCH
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H STORE VS LATE BRANCH"); end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_TLB_VS_LATE_BRANCH
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H TLB VS LATE BRANCH");   end if;
+    if xinfo(gaisler.nvsupport.INFO_HOLD_INSTR_VS_CSR
+             + gaisler.nvsupport.INFO_CONFLICT_ALLOC) = '1' then print("H INSTR VS CSR");         end if;
+  end;
+
   -- Types copied from iunv.
   constant lanes             : std_logic_vector(0 to 1 - single_issue) := (others => '0');
   subtype lanes_type        is std_logic_vector(lanes'high downto lanes'low);
@@ -266,6 +336,8 @@ architecture rtl of itracenv is
   signal hart           : word4;
   signal disas_en       : std_ulogic := '0';
   signal disas_iv       : lanes_type := (others => '0');
+  signal dis_xinfo      : word64     := zerow64;
+  signal dis_time       : word64     := zerow64;
   signal dis_mcycle     : word64     := zerow64;
   signal dis_minstret   : word64     := zerow64;
   signal dis_dual_issue : word64     := zerow64;
@@ -294,7 +366,7 @@ begin
 
   arst <= testrst when (ASYNC_RESET and scantest /= 0 and testen /= '0')  else
           rstn when ASYNC_RESET else '1';
-  
+
 -- pragma translate_off
   hart <= itracei.hartid(hart'range);
 -- pragma translate_on
@@ -307,6 +379,9 @@ begin
     variable info         : trace_info;
     variable fpu          : trace_fpu;
     variable odata        : trace_data;
+-- pragma translate_off
+    variable odata_sim    : trace_data_sim;
+-- pragma translate_on
     variable lane         : std_logic_vector(trace_lane0'length - 1
 -- pragma translate_off
 --                                             + trace_csrw'length + trace_inst_lo'length
@@ -330,6 +405,7 @@ begin
     variable trace        : trace_type;
     variable itrace_out   : itrace_out_type;
     variable dm_trace     : std_ulogic;
+    variable fpu_type     : word2;
     -- Filtering
     variable active       : boolean;
     variable trigger      : word2;
@@ -347,10 +423,15 @@ begin
     variable is_amo       : boolean;
     variable is_ld        : boolean;
     variable is_st        : boolean;
+    -- Triggers from Sdtrig
+    variable trigact      : boolean;
   begin
     v         := r;
 
     odata     := (others => '0');
+-- pragma translate_off
+    odata_sim := (others => '0');
+-- pragma translate_on
     lane      := (others => '0');
 
     write     := (others => '0');
@@ -372,7 +453,7 @@ begin
     holdn       := r_itracei.holdn;
     dm_tbufaddr := r_itracei.dm_tbufaddr;
     dm_trace    := r_itracei.dm_trace;
-    tpbuf_en    := r_itracei.tpbuf_en;
+    tpbuf_en    := trace.ctrl(6);
     case r_itracei.rstate is
     when "00"   => rstate := run;
     when "01"   => rstate := dhalt;
@@ -392,13 +473,14 @@ begin
     is_ld       := r_itracei.is_ld;
     is_st       := r_itracei.is_st;
 
+    trigact     := r.trigact;
     halt        := false;
 
     if pipeline_in = 0 then
       v.itracei := itrace_in_none;
     else
       v.itracei := itracei;
-      v.itracei.hartid  := (others => '0'); -- No need ot register this
+      v.itracei.hartid  := (others => '0');  -- No need to register this
     end if;
     if pipeline_fpu = 0 then
       v.fpo     := fpu5_out_none;
@@ -484,9 +566,9 @@ begin
         lane(trace_xdata_h'range)   := get_lo(info.lanes(0).xdata, 32);
         odata(trace_lane0'range)    := lane(trace_lane0'length - 1 downto 0);
 -- pragma translate_off
-        odata(trace_inst_lo0'range) := info.lanes(i).inst(15 downto 0);
-        odata(trace_csrw0'range)    := uext(info.lanes(i).xdata, 64);
-        odata(trace_cfi0'low)       := info.lanes(i).cfi;
+        odata_sim(trace_inst_lo0'range) := info.lanes(i).inst(15 downto 0);
+        odata_sim(trace_csrw0'range)    := uext(info.lanes(i).xdata, 64);
+        odata_sim(trace_cfi0'low)       := info.lanes(i).cfi;
 -- pragma translate_on
       else
 --        lane(trace_inst_xlo'range)  := get_lo(info.lanes(i).inst, 16);
@@ -494,9 +576,9 @@ begin
         lane(trace_xdata_h'range)   := get_hi(info.lanes(0).xdata, 32);
         odata(trace_lane1'range)    := lane(trace_lane0'length - 1 downto 0);
 -- pragma translate_off
-        odata(trace_inst_lo1'range) := info.lanes(i).inst(15 downto 0);
-        odata(trace_csrw1'range)    := uext(info.lanes(i).xdata, 64);
-        odata(trace_cfi1'low)       := info.lanes(i).cfi;
+        odata_sim(trace_inst_lo1'range) := info.lanes(i).inst(15 downto 0);
+        odata_sim(trace_csrw1'range)    := uext(info.lanes(i).xdata, 64);
+        odata_sim(trace_cfi1'low)       := info.lanes(i).cfi;
 -- pragma translate_on
       end if;
     end loop;
@@ -577,6 +659,27 @@ begin
       fpu.result                                  := fp.data;
     end if;
 
+    -- Triggers defined in Sdtrig implement actions 2 and 3 that
+    -- start and stop the trace respectively.
+    -- Trace starts on. When a trigger with action 2 (trace-on) is
+    -- set active trace stop until the trigger fires.
+    if r_itracei.trace_on = '1' then
+      trigact := true;
+    end if;
+    if not trigact then
+      enable                  := '0';
+      write                   := (others => '0');
+      v.tcnt                  := r.tcnt;
+      info.lanes(0).valid     := '0';  -- Invalidate instructions
+      info.lanes(1).valid     := '0';
+      info.lanes(0).exception := '0';
+      info.lanes(1).exception := '0';
+      fpu.available           := '0';  -- Invalidate FPU result
+    end if;
+    if r_itracei.trace_off = '1' then
+      trigact := false;
+    end if;
+
 
     -- DM addressing?
     -- Note that FPU data may come in from above (enable will then be '1'),
@@ -593,20 +696,51 @@ begin
     odata(trace_cause'range)      := cause_pack(info.cause);
     odata(trace_irq)              := info.cause.irq;
     odata(trace_swap)             := info.swap;
-    odata(trace_timestamp'range)  := info.timestamp;
+    odata(trace_timestamp'range)  := get_lo(info.timestamp, trace_timestamp'length);
     odata(trace_fpu_id'range)     := fpu.id;
     odata(trace_fpu_rd'range)     := fpu.rd;
     odata(trace_fpu_available)    := fpu.available;
     odata(trace_fpu_result'range) := fpu.result;
-    odata(trace_valid0)           := info.lanes(0).valid;
-    odata(trace_valid1)           := info.lanes(1).valid;
-    odata(trace_exception0)       := info.lanes(0).exception;
-    odata(trace_exception1)       := info.lanes(1).exception;
+    fpu_type := "11";                        -- Assume double precision
+    if all_1(hi_h(fpu.result)) then          -- Single precision or smaller?
+      fpu_type := "10";
+      if all_1(hi_h(lo_h(fpu.result))) then  -- Half precision?
+        fpu_type := "01";
+      end if;
+    end if;
+    -- When no FPU results, or if forced anyway, extend timestamp when required.
+    if (fpu.available = '0' or r_itracei.trace_extra(0) = '1') and
+       not all_0(get_hi(info.timestamp, -trace_timestamp'length)) then
+      odata(trace_tdelta) := '1';
+      set(odata, trace_fpu_result'high - 31, fit0ext(get_hi(info.timestamp, -trace_timestamp'length), 24));
+      set(odata, trace_fpu_result'high - 7, x"00");
+      if fpu.available = '1' then
+        set(odata, trace_fpu_result'high - 7, fpu_type);
+        if fpu_type = "11" then
+          set(odata, trace_fpu_result'low, hi_h(fpu.result));
+        end if;
+      end if;
+    -- Do information trace?
+    elsif xtrace_info >= 1 and r_itracei.trace_extra(1) = '1' and fpu.available = '0' then
+      odata(trace_tdelta) := '1';
+      set(odata, trace_fpu_result'low, get_lo(info.info, 56));
+      set(odata, trace_fpu_result'high - 7, "000001" & "00");
+    end if;
+    if write /= (write'range => '0') then
+      odata(trace_valid0)           := info.lanes(0).valid;
+      odata(trace_valid1)           := info.lanes(1).valid;
+      odata(trace_exception0)       := info.lanes(0).exception;
+      odata(trace_exception1)       := info.lanes(1).exception;
+    end if;
 
+    v.trigact := trigact;
 
     itrace_out.tcnt    := v.tcnt;
     itrace_out.taddr   := taddr;
     itrace_out.idata   := odata;
+-- pragma translate_off
+    itrace_out.idata_sim := odata_sim;
+-- pragma translate_on
     itrace_out.write   := write;
     itrace_out.enable  := enable;
 
@@ -635,12 +769,28 @@ begin
       variable ucinst : word;
       variable i      : integer;
       variable data   : trace_data;
+      variable data_sim : trace_data_sim;
       variable lane   : std_logic_vector(trace_lane0'length + trace_csrw0'length +
                                          trace_inst_lo0'length + trace_cfi0'length - 1 downto 0);
+      variable timestamp : word64;
     begin
       if rising_edge(clk) and rstn = '1' then
         data               := rin.itraceo.idata;
+        data_sim           := rin.itraceo.idata_sim;
+        dis_xinfo  <= (others => '0');
         dis_mcycle <= uadd(dis_mcycle, 1);
+        timestamp := dis_mcycle;
+        if trace_time = 1 then
+          timestamp := uext(data(trace_timestamp'range), dis_time);
+        end if;
+        if (trace_time = 1 or xtrace_info /= 0) and data(trace_tdelta) = '1' then
+          if all_0(get(data, trace_fpu_result'high - 5, 6)) then
+            set(timestamp, trace_timestamp'length, get(data, trace_fpu_result'high - 31, 24));
+          elsif get(data, trace_fpu_result'high - 5, 6) = "000001" then
+            dis_xinfo <= uext(get(data, trace_fpu_result'low, 56), dis_xinfo);
+          end if;
+        end if;
+        dis_time <= timestamp;
         if not (rin.itraceo.enable = '1' and all_1(rin.itraceo.write)) then
           disas_en         <= '0';
           disas_iv         <= (others => '0');
@@ -653,6 +803,14 @@ begin
           disas_en <= '1';
           if data(trace_fpu_available) = '1' then
             fpu            := data(trace_fpu_result'range);
+            if data(trace_tdelta) = '1' and all_0(get(data, trace_fpu_result'high - 5, 6)) then
+              case fpu(fpu'high - 6 downto fpu'high - 7) is
+              when "01"   => fpu(63 downto 16) := (others => '1');
+              when "10"   => fpu(63 downto 32) := (others => '1');
+              when "11"   => fpu := lo_h(fpu) & zerow;
+              when others => null;
+              end case;
+            end if;
             print("FPU " & tost(data(trace_fpu_id'range)) & " " &
                            fpreg2st(data(trace_fpu_rd'range)) & " = " &
                            tost(fpu) & " " & tost_float(fpu));
@@ -663,11 +821,11 @@ begin
             if data(trace_swap) = '1' then
               i            := lanes'high - j;
             end if;
-            lane           := data(trace_cfi0'range)  & data(trace_inst_lo0'range) &
-                              data(trace_csrw0'range) & data(trace_lane0'range);
+            lane           := data_sim(trace_cfi0'range)  & data_sim(trace_inst_lo0'range) &
+                              data_sim(trace_csrw0'range) & data(trace_lane0'range);
             if i = 1 then
-              lane         := data(trace_cfi1'range)  & data(trace_inst_lo1'range) &
-                              data(trace_csrw1'range) & data(trace_lane1'range);
+              lane         := data_sim(trace_cfi1'range)  & data_sim(trace_inst_lo1'range) &
+                              data_sim(trace_csrw1'range) & data(trace_lane1'range);
             end if;
             way(j)         <= u2vec(i, 3);
             disas_iv(j)    <= lane(trace_valid);
@@ -704,7 +862,7 @@ begin
 
             cfi(j)         <= lane(trace_cfi'low);
 
-            wren(j)        <= rd_gen(ucinst) and lane(trace_valid);
+            wren(j)        <= rd_gen(has_noelv_rd(ucinst), ucinst) and lane(trace_valid);
             wren_f(j)      <= to_bit(i = fpu_lane and is_fpu_rd(ucinst)) and lane(trace_valid);
 --            wcen(j)        <= to_bit(is_csr(ucinst)) and lane(trace_valid);
             trap(j)        <= lane(trace_exception);
@@ -734,6 +892,17 @@ begin
         end if;
       end if;
     end process;
+
+    x_gen: if xtrace_info > 1 generate
+      xinfo: process(clk) is
+      begin
+        if rising_edge(clk) then
+          if not all_0(disas_iv) or not all_0(trap) then
+            display_xinfo(dis_xinfo);
+          end if;
+        end if;
+      end process;
+    end generate;
 
     iw_gen: for i in lanes'range generate
       iw : entity grlib.cpu_disas
@@ -765,7 +934,7 @@ begin
           trap        => trap(i),
           cause       => cause,
           tval        => tval(i),
-          cycle       => dis_mcycle,
+          cycle       => dis_time,
           instret     => dis_minstret,
           dual        => dis_dual_issue,
           disas       => disas_en

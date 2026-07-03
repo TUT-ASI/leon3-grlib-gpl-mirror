@@ -37,7 +37,12 @@ proc append_file_nanoxplore_nanoxmap {f finfo} {
     switch $i {
 	"vhdlp1735" {
 	    return
-	}		
+	}
+	"vhdlnx" {
+	    upvar nanoxmap_contents vc
+	    append vc "\nproject.addFile('$bn','$f')"
+	    return
+	}
 	"vhdlmtie" {
 	    return
 	}

@@ -89,7 +89,7 @@
  * Processor            
  */
 #define CONFIG_NOELV 1
-#define CONFIG_PROC_NUM (1)
+#define CONFIG_PROC_NUM (2)
 #define CONFIG_NOELV_RV64 1
 #undef  CONFIG_NOELV_RV32
 #define CONFIG_NOELV_XLEN (64)
@@ -120,8 +120,8 @@
 /*
  * L2 Cache
  */
-#undef  CONFIG_L2_ENABLE
-#undef  CONFIG_L2_LITE
+#define CONFIG_L2_ENABLE 1
+#define CONFIG_L2_LITE 1
 #undef  CONFIG_L2_ASSO1
 #undef  CONFIG_L2_ASSO2
 #undef  CONFIG_L2_ASSO3

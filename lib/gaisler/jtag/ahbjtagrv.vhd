@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ entity ahbjtagrv is
     dinst_gr  : integer range 0 to 255 := 3;    -- inferred_tap GRMON instr2 command code
     ainst_rv  : integer range 0 to 255 := 16;   -- inferred_tap RISCV instr1 command code
     dinst_rv  : integer range 0 to 255 := 17;   -- inferred_tap RISCV instr2 command code
+    dm_base_rv: integer := 16#E0000#;
     scantest  : integer := 0;
     oepol     : integer := 1;
     tcknen    : integer := 0;
@@ -140,6 +141,10 @@ begin
       );
   end generate gen_ahbmst0;
 
+  gen_noahbmst0 : if not ((dtm_sel = 0) or (dtm_sel = 2)) generate
+    ahbo_gr <= ahbm_none;
+  end generate;
+
   -- AHB Master Interface for RISCV DTM
   gen_ahbmst1 : if (dtm_sel = 1) or (dtm_sel = 2) generate
     ahbmst1 : ahbmst 
@@ -153,6 +158,10 @@ begin
         rst, clk, dmai_rv, dmao_rv, ahbi_rv, ahbo_rv
       );
   end generate gen_ahbmst1;
+
+  gen_noahbmst1 : if not ((dtm_sel = 1) or (dtm_sel = 2)) generate
+    ahbo_rv <= ahbm_none;
+  end generate;
 
   -- TAP 
   tap0 : tap generic map (tech => tech, irlen => 6, idcode => idcode, 
@@ -201,7 +210,7 @@ begin
 
   -- RISCV DTM
   rvcom: if ( dtm_sel = 1 or dtm_sel = 2 ) generate
-    jtagcom1 : jtagcomrv generic map (gatetech => tech, isel => TAPSEL, ainst => ainst_rv, dinst => dinst_rv)
+    jtagcom1 : jtagcomrv generic map (gatetech => tech, isel => TAPSEL, ainst => ainst_rv, dinst => dinst_rv, dm_base => dm_base_rv)
       port map (rst, clk, ltapo, ltapi_rv, dmao_rv, dmai_rv, ltck, ltckn, ctrst);
   end generate;
 

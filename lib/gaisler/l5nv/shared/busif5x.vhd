@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -95,10 +95,8 @@ entity busif5x is
     bifi_maskwerr  : in  std_logic_vector(1 downto 0);
     bifi_wcomb     : in  std_ulogic;          -- potential write combining
     bifi_dlfway    : in  std_logic_vector(0 to 3);
-    -- NW FIXME: Atomic operation
     bifi_lr_set    : in  std_ulogic;
     bifi_lr_clr    : in  std_ulogic;
-    --bifi_lr_addr   : in std_logic_vector(sigaw-1 downto 0);
     bifi_snoopen   : in  std_ulogic;
     keeplock       : in  std_ulogic;
     rdbufw         : out std_logic_vector(15 downto 0);
@@ -358,9 +356,8 @@ architecture rtl of busif5x is
     dcerrmaskval   : std_ulogic;
     dcerrmask      : std_ulogic;
     dcignerr       : std_ulogic;
-    -- NW FIXME: added for NV Atomics
     lr_valid       : std_ulogic;
-    lr_addr        : std_logic_vector(abitso-1 downto 0);
+    lr_addr        : std_logic_vector(abitsi-1 downto 0);
   end record;
 
   constant RRES: busif5x_regs := (
@@ -510,14 +507,12 @@ begin
     bsetdone := '0';
     bsetstarted := '0';
 
-    -- NW FIXME: added for NV atomics
     --------------------------------------------------------------------------
     -- LR atomics 
     --------------------------------------------------------------------------
     -- Set the reservation 
     if bifi_lr_set = '1' then
       v.lr_valid := '1';
-      --v.lr_addr := bifi_lr_addr(v.lr_addr'range);
       v.lr_addr := bifi_stdata(v.lr_addr'range);
     end if;
     -- Clear the reservation
@@ -525,16 +520,13 @@ begin
       v.lr_valid := '0';
     end if;
     -- Snooping
-    -- NW FIXME: should this be added?  or r.ahb3_sntype=SNTYPE_RES1 then
-    if r.ahb3_sntype=SNTYPE_SNOOP then
-      --if r.ahb3_haddr(r.lr_addr'high downto DOFFSET_LOW) = 
-      --   r.lr_addr(r.lr_addr'high downto DOFFSET_LOW) then
-      if r.ahb3_haddr(31 downto DOFFSET_LOW) = 
-         r.lr_addr(31 downto DOFFSET_LOW) then
+    if r.ahb_phready='1' and r.ahb2_htrans="10" and r.ahb2_hwrite='1' and 
+       r.ahb2_nosnoop='0' then
+      if r.ahb2_haddr(r.lr_addr'high downto DOFFSET_LOW) = 
+         r.lr_addr(r.lr_addr'high downto DOFFSET_LOW) then
         v.lr_valid := '0';
       end if;
     end if;
-    
 
     --------------------------------------------------------------------------
     -- Snoop pipeline following AHB access/capture pipeline
@@ -716,6 +708,9 @@ begin
         v.dcerrmaskval := d32(26);
         v.dcerrmask    := d32(25);
         v.dcignerr     := d32(24);
+        for n in v.ahberracc'range loop
+          if d32(16+n)='1' then v.ahberracc(n) := '0'; end if;
+        end loop;
         if d32(3)='1' then v.ahboerrm := '0'; end if;
         if d32(2)='1' then v.ahberrm  := '0'; end if;
         if d32(1)='1' then v.ahboerr  := '0'; end if;
@@ -983,7 +978,7 @@ begin
     -- We block this while inside an access to avoid colliding with retry handling
     --   and overwriting the hwdata registers
     virready := ahbi_hready and v.ahb2_indiag;
-    if r.ahb_bifop=BIFOP_FFLUSH then virready := '1'; end if;
+    if (r.ahb2_inacc='0' and r.ahb_bifop=BIFOP_FFLUSH) then virready := '1'; end if;
     if (r.accfw/=r.accfa or r.bifready='0') and (r.ahb_bifop=BIFOP_DPASS or r.ahb_bifop=BIFOP_AREGW or r.ahb_bifop=BIFOP_AREGR) then
       if r.accfa=r.accfd then
         virready := '1';
@@ -1149,10 +1144,12 @@ begin
         if afent.bifop(0)='0' then
           -- DLine fetch from narrow area
           v.ahb_haddr(DLINE_HIGH downto 2) := v.burstctra(DLINE_HIGH-2 downto 0);
+          v.ahb_haddr(1 downto 0) := (others => '0');
           bctrmask(DLINE_HIGH-2 downto 0) := (others => '0');
         else
           -- ILine fetch from narrow area
           v.ahb_haddr(ILINE_HIGH downto 2) := v.burstctra(ILINE_HIGH-2 downto 0);
+          v.ahb_haddr(1 downto 0) := (others => '0');
           bctrmask(ILINE_HIGH-2 downto 0) := (others => '0');
         end if;
       end if;
@@ -1192,6 +1189,12 @@ begin
       dfent := r.accfifo(to_integer(unsigned(r.accfa)));
     else
       setx(dfent);
+    end if;
+    -- Ensure we don't activate muxing of 32-bit words for hwdata
+    -- for flush as way mask and unique msb:s are always in data
+    -- bits 11:0
+    if dfent.bifop=BIFOP_FLUSH or dfent.bifop=BIFOP_FFLUSH then
+      dfent.widebus := '1';
     end if;
     -- Burst counter masked for write combining logic
     vctra := r.burstctra(2 downto 0);
@@ -1518,7 +1521,6 @@ begin
     bifo_dtaguval(DTAG_HIGH-DTAG_LOW-1 downto 0) <= r.ahb4_dtaguval;
     bifo_dtagumsb    <= r.ahb4_dtagumsb;
     bifo_dtagutype   <= r.ahb4_dtagutype;
-    -- NW FIXME: added for NV atomic operations
     bifo_lr_valid    <= r.lr_valid;
     bifo_stpend  <= r.stpend;
     dtagsindex   <= osni.dtagsindex;

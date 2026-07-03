@@ -6,7 +6,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ library techmap;
 use techmap.gencomp.all;
 library gaisler;
 use gaisler.memctrl.all;
+use gaisler.l2cache.all;
 use gaisler.leon3.all;
 use gaisler.uart.all;
 use gaisler.misc.all;
@@ -57,6 +58,7 @@ entity leon3mp is
     dbguart    : integer := 1;--CFG_DUART;   -- Print UART on console
     pclow      : integer := CFG_PCLOW;
     simulation : boolean := false;
+    CFG_DDR3_MC: integer := 1;
     ramfile    : string  := "ram.srec"
     );
   port (
@@ -83,16 +85,23 @@ entity leon3mp is
     can_tx       : out   std_logic;
     can_rx       : in    std_logic;
     can_en       : out   std_logic;
-    -- Built-in JTAG interface
-    -- No location constraint is necessary on these pins, though it is
-    -- recommended for clarity. However, a clock constraint must be applied to
-    -- tck. Note that if the Reveal debug inserter is to be used then these
-    -- ports must be commented out and the AHBJTAG instantiation removed.
-    tck : in std_logic;
-    tms : in std_logic;
-    tdi : in std_logic;
-    tdo : out std_logic
-  );
+    -- DDR3 memory
+    ddr3_dq   : inout std_logic_vector(15 downto 0);
+    ddr3_dqs  : inout std_logic_vector(1 downto 0);
+    ddr3_dm   : out   std_logic_vector(1 downto 0);
+    --ddr3_nu -- not used because TDQS is disabled
+    -- DDR3 address/control
+    ddr3_addr   : out   std_logic_vector(12 downto 0);
+    ddr3_ba     : out   std_logic_vector(2 downto 0);
+    ddr3_cke    : out   std_logic_vector(0 downto 0);
+    ddr3_ck     : out   std_logic_vector(0 downto 0);
+    ddr3_csn    : out   std_logic_vector(0 downto 0);
+    ddr3_odt    : out   std_logic_vector(0 downto 0);
+    ddr3_casn   : out   std_logic;
+    ddr3_rasn   : out   std_logic;
+    ddr3_wen    : out   std_logic;
+    ddr3_resetn : out   std_logic
+    );
 end;
 
 architecture rtl of leon3mp is
@@ -106,6 +115,10 @@ architecture rtl of leon3mp is
   signal ahbso : ahb_slv_out_vector := (others => ahbs_none);
   signal ahbmi : ahb_mst_in_type;
   signal ahbmo : ahb_mst_out_vector := (others => ahbm_none);
+
+  -- Memory AHB Signals
+  signal mem_ahbsi : ahb_slv_in_type;
+  signal mem_ahbso : ahb_slv_out_type;
 
   signal cgi : clkgen_in_type;
   signal cgo : clkgen_out_type;
@@ -142,9 +155,10 @@ architecture rtl of leon3mp is
   signal gpio0i : gpio_in_type;
   signal gpio0o : gpio_out_type;
 
-  signal clkm, rstn         : std_ulogic;
-  signal rstraw             : std_logic;
-  signal lock               : std_logic;
+  signal clkm, clkm_ddr, clk_ddr_src, clk100, rstn, not_gsrn : std_ulogic;
+  signal tck, tms, tdi, tdo : std_ulogic;
+  signal rstraw, rst_ahbddr        : std_logic;
+  signal pll_lock, ddr_lock, lock  : std_logic;
 
   attribute keep                     : boolean;
   attribute keep of lock             : signal is true;
@@ -169,9 +183,11 @@ architecture rtl of leon3mp is
   constant hsidx_spimctrl   : integer := hsidx_apbctrl + 1;
   constant hsidx_ahbram     : integer := hsidx_spimctrl + CFG_SPIMCTRL;
   constant hsidx_ftahbram   : integer := hsidx_ahbram + CFG_AHBRAMEN;--CFG_FTAHBRAM_EN
-  constant hsidx_ahbrep     : integer := hsidx_ftahbram
+  constant hsidx_ddr3_mc    : integer := hsidx_ftahbram + CFG_FTAHBRAM_EN;
+  constant hsidx_l2c        : integer := hsidx_ddr3_mc + CFG_DDR3_MC;
+  constant hsidx_ahbrep     : integer := hsidx_l2c
                                         --pragma translate_off
-                                         + CFG_FTAHBRAM_EN
+                                         + CFG_L2_EN
                                          --pragma translate_on
                                          ;
   constant maxahbs          : integer := hsidx_ahbrep + 1; -- total number of ahbs, latest hsidx + 1
@@ -213,14 +229,85 @@ architecture rtl of leon3mp is
 
   component pll_125i_50o is
     port(
-        clki_i: in std_logic;
-        rstn_i: in std_logic;
-        clkop_o: out std_logic;
-        clkos_o: out std_logic;
-        clkos2_o: out std_logic;
-        lock_o: out std_logic
-        );
+      clki_i: in std_logic;
+      rstn_i: in std_logic;
+      clkop_o: out std_logic;
+      clkos_o: out std_logic;
+      clkos2_o: out std_logic;
+      lock_o: out std_logic
+      );
   end component;
+
+  component pll_100i_50o is
+    port(
+      clki_i: in std_logic;
+      rstn_i: in std_logic;
+      clkop_o: out std_logic;
+      clkos_o: out std_logic;
+      clkos2_o: out std_logic;
+      lock_o: out std_logic
+      );
+  end component;
+
+  component PCLKDIV
+    generic (
+      DIV_PCLKDIV : String := "X1";
+      GSR : String := "ENABLED";
+      TESTEN_PCLKDIV : String := "0";
+      TESTMODE_PCLKDIV : String := "0");
+    port(
+      CLKIN : IN std_logic := 'X';
+      LSRPDIV : IN std_logic := 'X';
+      PCLKDIVTESTINP2 : IN std_logic := 'X';
+      PCLKDIVTESTINP1 : IN std_logic := 'X';
+      PCLKDIVTESTINP0 : IN std_logic := 'X';
+      CLKOUT : OUT std_logic := 'X');
+  end component;
+
+
+  component ahb2lattice_ddr3_mc_top is
+    generic (
+    hindex : integer := 0;
+    haddr  : integer := 16#400#;
+    hmask  : integer := 16#F80#;
+    addr_w : integer := 26;
+    core_data_w : integer := 128);
+  port(
+    refclk   : in std_logic;
+    resetin  : in std_logic;
+
+    clkm     : in std_logic; -- clock from the top level
+    ddr_sclk : out std_logic; -- DDR mc sclk
+    rstn_ddr : in std_logic;
+    clocking_good_pll : out std_logic;
+
+    init_done : out std_logic;
+    init_err  : out std_logic;
+
+    ahbsi : in  ahb_slv_in_type;
+    ahbso : out ahb_slv_out_type;
+
+    -- Note that differential signals (such as DQS) are represented as a single
+    -- logical signal. (Which is very reasonable.)
+    -- DDR3 data
+    ddr3_dq   : inout std_logic_vector(15 downto 0);
+    ddr3_dqs  : inout std_logic_vector(1 downto 0);
+    ddr3_dm   : out   std_logic_vector(1 downto 0);
+    --ddr3_nu -- not used because TDQS is disabled
+
+    -- DDR3 address/control
+    ddr3_resetn : out   std_logic;
+    ddr3_ck     : out   std_logic_vector(0 downto 0);
+    ddr3_cke    : out   std_logic_vector(0 downto 0);
+    ddr3_rasn   : out   std_logic;
+    ddr3_casn   : out   std_logic;
+    ddr3_wen    : out   std_logic;
+    ddr3_csn    : out   std_logic_vector(0 downto 0);
+    ddr3_odt    : out   std_logic_vector(0 downto 0);
+    ddr3_addr   : out   std_logic_vector(12 downto 0);
+    ddr3_ba     : out   std_logic_vector(2 downto 0)
+  );
+end component;
 
 begin
 
@@ -233,10 +320,21 @@ begin
 
   cgi.pllctrl <= "00";
   cgi.pllrst <= rstraw;
+  not_gsrn <= not gsrn;
 
   rst0 : gaisler.misc.rstgen generic map (acthigh => 0)
     port map (gsrn, clkm, lock, rstn, rstraw);
   lock <= cgo.clklock;
+
+  -- clkm from DDR3 memory controller
+  -- clkm_from_ddr: if CFG_DDR3_MC = 1 and simulation = 0 generate
+  --   clkm <= clkm_ddr;
+  -- end generate;
+
+  -- clkm from PLL
+  -- clkm_from_pll: if CFG_DDR3_MC = 0 or simulation = 1 generate
+  --   clkm <= clkm_ddr_src;
+  -- end generate;
 
   --this instance is needed to provide the general reset in a lattice
   --simulation environment
@@ -250,14 +348,43 @@ begin
   --  generic map (fabtech, clock_mult, clock_div, 0, 0, 0, 0, 0, BOARD_FREQ, 0)
   --  port map (clk, gnd, clkm, open, open, open, open, cgi, cgo, open, open, open);
 
-  clkgen_ip : pll_125i_50o port map(
-    clki_i=>clk_in,
-    rstn_i=>gsrn,
-    clkop_o=>clkm,
-    clkos_o=>open,
-    clkos2_o=>open,
-    lock_o=>cgo.clklock
-    );
+  pll_clkm: if CFG_DDR3_MC = 0 generate
+    clkgen_ip : pll_100i_50o
+      port map(
+        clki_i=>clk_in,
+        rstn_i=>gsrn,
+        clkop_o=>clkm,
+        clkos_o=>clk100,
+        clkos2_o=>open,
+        lock_o=>cgo.clklock
+        );
+  end generate;
+
+  no_pll: if CFG_DDR3_MC = 1 generate
+    clk_ddr_src <= clk_in;
+    -- rst1 : gaisler.misc.rstgen generic map (acthigh => 0)
+    --   port map (gsrn, clkm_ddr, ddr_lock, rst_ahbddr, rstraw);
+
+
+    clkdiv_prim: PCLKDIV
+      generic map (
+        DIV_PCLKDIV => "X2",
+        GSR => "DISABLED")
+      port map(
+        CLKIN => clkm_ddr,
+        LSRPDIV => '0',--not_gsrn,
+        CLKOUT => clkm);
+    cgo.clklock <= ddr_lock;
+
+    -- clkgen_ip : pll_100i_50o port map(
+    --   clki_i=>clkm_ddr,
+    --   rstn_i=>gsrn,
+    --   clkop_o=>clkm,
+    --   clkos_o=>clk100,
+    --   clkos2_o=>open,
+    --   lock_o=>cgo.clklock
+    --   );
+  end generate;
 
 
 ----------------------------------------------------------------------
@@ -265,13 +392,14 @@ begin
 ----------------------------------------------------------------------
 
   ahb0 : ahbctrl
-    generic map (ioen => 1, nahbm => maxahbm, nahbs => maxahbs, devid => LEON_LATTICE_NEXUS)
+    generic map (ioen => 1, nahbm => maxahbm, nahbs => maxahbs,
+                 split => CFG_SPLIT, devid => LEON_LATTICE_NEXUS, fpnpen => 1)
     port map (rstn, clkm, ahbmi, ahbmo, ahbsi, ahbso);
 
 ----------------------------------------------------------------------
 ---  LEON3 processor and DSU -----------------------------------------
 ----------------------------------------------------------------------
-
+  leon0: if CFG_NCPU /= 0 generate
     leon : leon_dsu_stat_base
     generic map (
       leon => CFG_LEON, ncpu => ncpu, fabtech => fabtech, memtech => memtech,
@@ -305,6 +433,7 @@ begin
       dsu_ahbsi => ahbsi, dsu_ahbso => ahbso(hsidx_dsu),
       dsu_tahbmi => ahbmi, dsu_tahbsi => ahbsi,
       sysi => sysi, syso => syso);
+  end generate;
 
   sysi.dsu_enable <= '1';
   sysi.dsu_break <= '0';
@@ -370,7 +499,7 @@ begin
   -- end generate;
 
   -- On-chip RAM (volatile memory)
-  ocram : if CFG_FTAHBRAM_EN = 0 and CFG_AHBRAMEN = 1 and simulation = false generate
+  ocram : if CFG_FTAHBRAM_EN = 0 and CFG_DDR3_MC = 0 and CFG_AHBRAMEN = 1 and simulation = false generate
     ahbram0 : ahbram
       generic map (hindex => hsidx_ahbram, haddr => CFG_AHBRADDR, tech => CFG_MEMTECH,
                    kbytes => CFG_AHBRSZ, pipe => CFG_AHBRPIPE)
@@ -380,7 +509,7 @@ begin
     -- apbo(10) <= apb_none;
   end generate;
 
-  ftocram : if CFG_FTAHBRAM_EN = 1 and simulation = false generate
+  ftocram : if CFG_FTAHBRAM_EN = 1 and CFG_DDR3_MC = 0 and simulation = false generate
     ftahbram0 : ftahbram
       generic map (
         hindex    => hsidx_ftahbram, haddr => CFG_FTAHBRAM_ADDR,
@@ -405,6 +534,116 @@ begin
   --   aramo <= ahbram_out_none;
   -- end generate;
 
+  -- DDR3 memory controller
+  ddr3ram : if CFG_DDR3_MC = 1 and simulation = false generate
+    ddr3ram0 : ahb2lattice_ddr3_mc_top
+      generic map (
+        hindex => hsidx_ddr3_mc * (1 - CFG_L2_EN),
+        haddr => 16#400#,
+        hmask => 16#F80#,
+        addr_w => 26,
+        core_data_w => 128)
+      port map (
+        refclk => clk_ddr_src,--100MHz
+        resetin => rstn,
+        clkm => clkm,
+        ddr_sclk => clkm_ddr,
+        rstn_ddr => gsrn,
+        clocking_good_pll => ddr_lock,
+
+        init_done => led(2),
+        init_err  => led(3),
+
+        ahbsi => mem_ahbsi,--ahbsi,
+        ahbso => mem_ahbso,--ahbso(hsidx_ddr3_mc),
+
+        ddr3_dq     => ddr3_dq,
+        ddr3_dqs    => ddr3_dqs,
+        ddr3_dm     => ddr3_dm,
+        ddr3_addr   => ddr3_addr,
+        ddr3_ba     => ddr3_ba,
+        ddr3_cke    => ddr3_cke,
+        ddr3_ck     => ddr3_ck,
+        ddr3_csn    => ddr3_csn,
+        ddr3_odt    => ddr3_odt,
+        ddr3_casn   => ddr3_casn,
+        ddr3_rasn   => ddr3_rasn,
+        ddr3_wen    => ddr3_wen,
+        ddr3_resetn => ddr3_resetn);
+
+  end generate;
+
+  -----------------------------------------------------------------------------
+  -- L2 cache
+  -----------------------------------------------------------------------------
+  l2cen : if CFG_L2_EN /= 0 generate
+    l2cblock : block
+      signal mem_ahbsov : ahb_slv_out_vector := (others => ahbs_none);
+      signal mem_ahbmi  : ahb_mst_in_type;
+      signal mem_ahbmo  : ahb_mst_out_vector := (others => ahbm_none);
+      signal l2c_stato  : std_logic_vector(10 downto 0);
+    begin
+      l2c0 : l2c generic map (
+        hslvidx   => hsidx_l2c,
+        hmstidx   => 0,
+        cen       => CFG_L2_PEN,
+        haddr     => 16#400#, hmask => 16#c00#, ioaddr => 16#FF0#,
+        cached    => CFG_L2_MAP,
+        repl      => CFG_L2_RAN,
+        ways      => CFG_L2_WAYS,
+        linesize  => CFG_L2_LSZ,
+        waysize   => CFG_L2_SIZE,
+        memtech   => memtech,
+        hirq      => 2,
+        bbuswidth => AHBDW,
+        bioaddr   => 16#FFA#,
+        biomask   => 16#FFE#,
+        sbus      => 0,
+        mbus      => 1,
+        arch      => CFG_L2_SHARE,
+        ft        => CFG_L2_EDAC)
+        port map (rst    => rstn,
+                  clk    => clkm,
+                  ahbsi  => ahbsi,
+                  ahbso  => ahbso(hsidx_l2c),
+                  ahbmi  => mem_ahbmi,
+                  ahbmo  => mem_ahbmo(0),
+                  ahbsov => mem_ahbsov,
+                  sto => l2c_stato
+                  );
+
+      memahb0 : ahbctrl -- AHB arbiter/multiplexer
+        generic map (defmast => CFG_DEFMST, split => CFG_SPLIT,
+                     rrobin => CFG_RROBIN, ioaddr => 16#FFA#,
+                     ioen => 1, nahbm => 1, nahbs => 1, fpnpen => CFG_FPNPEN, ahbtrace => CFG_AHB_DTRACE)
+        port map (rstn, clkm, mem_ahbmi, mem_ahbmo, mem_ahbsi, mem_ahbsov);
+
+      mem_ahbsov(0) <= mem_ahbso;
+
+
+      perf.event(15 downto 7)   <= (others => '0');
+      perf.esource(15 downto 7) <= (others => (others => '0'));
+      perf.event(6)  <= l2c_stato(10);  -- Data uncorrectable error
+      perf.event(5)  <= l2c_stato(9);   -- Data correctable error
+      perf.event(4)  <= l2c_stato(8);   -- Tag uncorrectable error
+      perf.event(3)  <= l2c_stato(7);   -- Tag correctable error
+      perf.event(2)  <= l2c_stato(2);   -- Bus access
+      perf.event(1)  <= l2c_stato(1);   -- Miss
+      perf.event(0)  <= l2c_stato(0);   -- Hit
+      perf.esource(6 downto 3) <= (others => (others => '0'));
+      perf.esource(2 downto 0) <= (others => l2c_stato(6 downto 3));
+      perf.req       <= (others => '0');
+      perf.sel       <= (others => '0');
+      perf.latcnt    <= '0';
+
+    --perf.timer     <= dbgi(0).timer(31 downto 0);
+    end block l2cblock;
+  end generate l2cen;
+
+  nol2c : if CFG_L2_EN = 0 generate
+    perf      <= l3stat_in_none;
+  end generate;
+
 ----------------------------------------------------------------------
 ---  APB Bridge and various periherals -------------------------------
 ----------------------------------------------------------------------
@@ -417,7 +656,7 @@ begin
     uart1 : apbuart      -- UART 1
       generic map (pindex   => pidx_apbuart, paddr => paddr_apbuart, pirq => 2, console => dbguart)
       port map (rstn, clkm, apbi, apbo(pidx_apbuart), u1i, u1o);
-    u1i.rxd    <= rxduart;
+    u1i.rxd    <= '1';--rxduart;
     u1i.ctsn   <= '0';
     u1i.extclk <= '0';
 

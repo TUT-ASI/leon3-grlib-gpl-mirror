@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ use grlib.stdlib.tost_bits;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 library gaisler;
+use gaisler.noelv.all;
 use gaisler.noelvtypes.all;
 use gaisler.fputilnv.all;
 use gaisler.utilnv.log;
@@ -48,7 +49,8 @@ use gaisler.utilnv.to_bit;
 entity mulfp is
   generic (
     -- Extensions
-    fpulen    : integer range 0  to 128 := 64  -- Floating-point precision
+    fpulen    : integer range 0  to 128 := 64;  -- Floating-point precision
+    scantest  : integer                 := 0
   );
   port (
     clk           : in  std_ulogic;
@@ -60,7 +62,9 @@ entity mulfp is
     mant          : out std_logic_vector(55 downto 0);
     bottom        : out std_logic_vector(51 downto 0);
     lo0           : out std_logic_vector(0 downto 0);
-    done          : out std_ulogic
+    done          : out std_ulogic;
+    testen        : in  std_ulogic;
+    testrst       : in  std_ulogic
     -- Debug
     ; state_d     : out std_logic_vector(7 downto 0)
     ; data_d      : out std_logic_vector(56 * 2 - 2 - 1 downto 2 * 2)
@@ -68,6 +72,8 @@ entity mulfp is
 end;
 
 architecture rtl of mulfp is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant no_muladd : integer := 0;
 
@@ -149,8 +155,11 @@ architecture rtl of mulfp is
 
 
   signal r, rin : nanofpu_regs;
+  signal arst   : std_ulogic;
 
 begin
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   comb : process(r, rstn, multiply, sqrt, rddp, src)
     variable v        : nanofpu_regs;
@@ -542,7 +551,7 @@ begin
     state_d  <= std_logic_vector(to_unsigned(nanofpu_state'pos(v.s), state_d'length));
   end process;
 
-  srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 0 generate
+  srstregs: if not ASYNC_RESET generate
     regs : process(clk)
     begin
       if rising_edge(clk) then
@@ -555,10 +564,10 @@ begin
     end process;
   end generate srstregs;
 
-  arstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) /= 0 generate
-    regs: process(clk, rstn)
+  arstregs: if ASYNC_RESET generate
+    regs: process(clk, arst)
     begin
-      if rstn = '0' then
+      if arst = '0' then
         r <= RRES;
       elsif rising_edge(clk) then
         r <= rin;

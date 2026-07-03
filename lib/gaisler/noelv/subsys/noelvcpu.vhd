@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ use grlib.stdlib.all;
 library gaisler;
 use gaisler.noelv.all;
 use gaisler.noelv_cpu_cfg.all;
+use gaisler.l5nv_shared.l5_tsc_async_type;
 
 entity noelvcpu is
   generic (
@@ -48,9 +49,6 @@ entity noelvcpu is
     tcmconf  : integer;
     mulconf  : integer;
     intcconf : integer;
-    mnintid  : integer;
-    snintid  : integer;
-    gnintid  : integer;
     disas    : integer;
     pbaddr   : integer;
     cfg      : integer;
@@ -62,6 +60,7 @@ entity noelvcpu is
     clk       : in  std_ulogic;
     gclk      : in  std_ulogic;
     rstn      : in  std_ulogic;
+    tsc       : in  l5_tsc_async_type;
     ahbi      : in  ahb_mst_in_type;
     ahbo      : out ahb_mst_out_type;
     ahbsi     : in  ahb_slv_in_type;
@@ -104,6 +103,7 @@ begin
       clk             => clk,
       gclk            => gclk,
       rstn            => rstn,
+      tsc             => tsc,
       ahbi            => ahbi,
       ahbo            => ahbo,
       ahbsi           => ahbsi,
@@ -115,5 +115,6 @@ begin
       tpo             => tpo,
       cnt             => cnt,
       pwrd            => pwrd
+
       );
 end;

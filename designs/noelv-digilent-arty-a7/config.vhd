@@ -26,7 +26,7 @@ package config is
   constant CFG_NOELV : integer := 1;
   constant CFG_NOELV_XLEN : integer := (64);
   constant CFG_NCPU : integer := (1);
-  constant CFG_CFG : integer := (3)*256 + (1)*128 + (0)*2 + (0);
+  constant CFG_CFG : integer := (2)*256 + (1)*128 + (0)*2 + (1);
   constant CFG_NODBUS : integer := 1;
   constant CFG_DISAS : integer := 3*0;
 -- Interrupts

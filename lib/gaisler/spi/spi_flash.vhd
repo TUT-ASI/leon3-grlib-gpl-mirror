@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -58,8 +58,6 @@ use grlib.stdio.all;
 --use gaisler.sim.all;
 use gaisler.spi.all;-- package with fake commands used in dynamic_flash_spi
 
-
-
 entity spi_flash is
   
   generic (
@@ -81,9 +79,13 @@ entity spi_flash is
     csn : inout std_logic;
     io2 : inout std_logic;
     io3 : inout std_logic;
-    -- Test control inputs
+    -- Test control inputs for SD card (ftype=1)
     sd_cmd_timeout  : in std_ulogic := '0';
-    sd_data_timeout : in std_ulogic := '0'
+    sd_data_timeout : in std_ulogic := '0';
+    -- Test control inputs for Dynamic Simple SPI memory (ftype=5)
+    -- Only used in fault-tolerant GRLIB distributions.
+    dyn_edac_encode    : in std_logic  := '0';
+    dyn_edac_error_inj : in std_logic_vector(39 downto 0) := (others => '0')
     );
 
 end spi_flash;
@@ -425,7 +427,7 @@ architecture sim of spi_flash is
 
   
    -- purpose: SPI memory device that reads input from prom.srec
-  procedure spi_memory_model (
+   procedure spi_memory_model (
     constant dbg        : in    integer;
     constant readcmd    : in    integer;
     constant dummybyte  : in    boolean;
@@ -438,7 +440,9 @@ architecture sim of spi_flash is
     constant readinst : std_logic_vector(7 downto 0) :=
       conv_std_logic_vector(readcmd, 8);
     
-    variable received_command : std_ulogic := '0';
+    variable command_done     : std_ulogic := '0';
+    variable addr_bytes_left  : integer  := -1;
+    variable id_command       : std_ulogic := '0';
     variable respond          : std_ulogic := '0';
 
     variable response         : std_logic_vector(31 downto 0);
@@ -493,8 +497,8 @@ architecture sim of spi_flash is
     loop 
       if csn /= '0' then wait until csn = '0'; end if;
 
-      index := 0; command := (others => '0');
-      while received_command = '0' and csn = '0' loop
+      index := 0; command := (others => '0'); addr_bytes_left := -1; id_command := '0';
+      while command_done = '0' and csn = '0' loop
         wait until sck'event and sck = '1';
         indata := indata(6 downto 0) & di;
         index := index + 1;
@@ -504,15 +508,32 @@ architecture sim of spi_flash is
               Print(time'image(now) & ": spi_memory_model: received byte: " &
                   tost(indata));
           end if;
-          if ((dummybyte and command(39 downto 32) = readinst) or
-              (not dummybyte and command(31 downto 24) = readinst)) then
-            received_command := '1';
+
+          -- Update address byte counter
+          if addr_bytes_left > 0 then
+            addr_bytes_left := addr_bytes_left - 1;
+          end if;
+
+          -- Check for command / read command done
+          if addr_bytes_left = 0 then
+            command_done := '1';
+          elsif addr_bytes_left = -1 then
+            if indata = readinst then -- READ COMMAND
+              if dummybyte then
+                addr_bytes_left := 4;
+              else
+                addr_bytes_left := 3;
+              end if;
+            elsif indata = READSTATUSREG then -- STATUS REG COMMAND
+              command_done := '1';
+              id_command := '1';
+            end if;
           end if;
           index := 0;
         end if;
       end loop;
 
-      if received_command = '1' then
+      if command_done = '1' then
         response := (others => '0');
         if dummybyte then
           address := command(31 downto 8);
@@ -532,10 +553,17 @@ architecture sim of spi_flash is
         if memoffset /= 0 then
           address := address - memoffset;
         end if;
-        
-        index := 31 - conv_integer(address(1 downto 0)) * 8;
+        if id_command = '0' then
+          index := 31 - conv_integer(address(1 downto 0)) * 8;
+        else
+          index := 7;
+        end if;
         while csn = '0' loop
-          response := mem(conv_integer(address(23 downto 2)));
+          if id_command = '0' then
+            response := mem(conv_integer(address(23 downto 2)));
+          else
+            response(7 downto 0) := DEFAULTSTATUS;
+          end if;
           if dbg /= 0 then
             Print(time'image(now) & ": spi_memory_model: responding with data: " &
                   tost(response(index downto 0)));
@@ -558,7 +586,7 @@ architecture sim of spi_flash is
           di <= 'Z';
         end if;
         do <= 'Z';
-        received_command := '0';
+        command_done := '0';
       else
         do <= 'Z';
       end if;
@@ -567,7 +595,12 @@ architecture sim of spi_flash is
 
 
     -- purpose: Simple, incomplete, model of SPI Flash device with a dynamic
-    -- behaviour/mode based on the read command sent to it
+    -- behaviour/mode based on the read command sent to it. The data returned
+    -- on memory array read commands is the byte address of the containing
+    -- 32-bit word as a 32-bit big endian integer.
+    -- In GRLIB-FT releases, if dyn_edac_encode='1' then the data returned
+    -- changes to match the EDAC used by the SPIMCTRL, modifying the address
+    -- calculation and appending a checkbyte for every 32-bit word.
   procedure dynamic_spi_flash_model (
     constant dbg        : in    integer;
     constant readcmd    : in    integer;
@@ -581,14 +614,17 @@ architecture sim of spi_flash is
     signal   do         : inout std_ulogic;
     signal   io2        : inout std_ulogic;
     signal   io3        : inout std_ulogic;
-    signal   csn        : in    std_ulogic) is
-
-    
+    signal   csn        : in    std_ulogic;
+    signal dyn_edac_encode : in std_logic;
+    signal dyn_edac_error_inj : in std_logic_vector(39 downto 0)
+  ) is
 
     variable received_command : std_ulogic := '0';
     variable respond          : std_ulogic := '0';
 
-    variable response         : std_logic_vector(31 downto 0);
+    -- response has 40 bits instead of 32 to handle ECC byte
+    -- (only used in fault-tolerant GRLIB releases)
+    variable response         : std_logic_vector(39 downto 0);
     variable indata           : std_logic_vector(7 downto 0);
     variable indataint        : integer;
     variable readinst         : std_logic_vector(7 downto 0);
@@ -608,7 +644,6 @@ architecture sim of spi_flash is
     variable fakestatusreg    : std_logic_vector(7 downto 0);
     variable readingstatusreg : boolean := false;
     variable writingstatusreg : boolean := false;
-
 
   begin  -- dynamic_spi_flash_model
     spi := true;
@@ -816,6 +851,11 @@ architecture sim of spi_flash is
         response(23+deltaaddr4b downto 0) := command(23+deltaaddr4b downto 0);
         index := 31 - conv_integer(response(1 downto 0)) * 8;
         response(1 downto 0) := (others => '0');
+        if dbg /= 0 then
+          print(time'image(now) & ": dynamic_spi_flash_model: returning data " &
+                tost(response(index downto 0)) & " from index " & tost(index) &
+                " (new address)");
+        end if;
       end if;
       -- print("Response: " & tost(response));
 
@@ -839,6 +879,12 @@ architecture sim of spi_flash is
         end loop;
         index := 31;
         response := response + 4;
+        if dbg /= 0 then
+          print(time'image(now) & ": dynamic_spi_flash_model: returning data " &
+                tost(response(index downto 0)) & " from index " & tost(index) &
+                " (continued read)");
+        end if;
+
       end loop;
       if datamode = 2 or datamode = 4 then
         di <= 'Z'; io2 <= 'Z'; io3 <= 'Z';
@@ -917,6 +963,8 @@ begin  -- sim
       do         => do,
       csn        => csn);
     csn <= 'Z';
+    io2 <= 'Z';
+    io3 <= 'Z';
   end generate ftype4;
 
   ftype5: if ftype = 5 generate
@@ -934,7 +982,10 @@ begin  -- sim
       do         => do,
       io2        => io2,
       io3        => io3,
-      csn        => csn);
+      csn        => csn,
+      dyn_edac_encode => dyn_edac_encode,
+      dyn_edac_error_inj => dyn_edac_error_inj
+      );
   end generate ftype5;
   
   notsupported: if ftype > 5 generate

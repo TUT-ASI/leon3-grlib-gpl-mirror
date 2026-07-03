@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -100,11 +100,10 @@ package grethpkg is
     hburst	: std_logic_vector(2 downto 0); 	-- burst type
     hprot	: std_logic_vector(3 downto 0); 	-- protection control
     hwdata	: std_logic_vector(31 downto 0); 	-- write data bus
-    endian  : std_ulogic;
   end record;
 
   constant ahbc_mst_out_none : ahbc_mst_out_type :=
-    ('0', '0', "00", zero32, '0', "000", "000", "0000", zero32, '0');
+    ('0', '0', "00", zero32, '0', "000", "000", "0000", zero32);
   
   type apbc_slv_in_type is record
     psel	: std_ulogic;                           -- slave select

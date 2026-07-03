@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ package devices is
   constant VENDOR_MOVIDIA    : amba_vendor_type := 16#14#;
   constant VENDOR_L3T        : amba_vendor_type := 16#15#;
   constant VENDOR_ORBITA     : amba_vendor_type := 16#17#;
+  constant VENDOR_ULTRASOC   : amba_vendor_type := 16#1B#;
   constant VENDOR_SYNOPSYS   : amba_vendor_type := 16#21#;
   constant VENDOR_NASA       : amba_vendor_type := 16#22#;
   constant VENDOR_NIIET      : amba_vendor_type := 16#23#;
@@ -75,6 +76,7 @@ package devices is
   constant VENDOR_AAC        : amba_vendor_type := 16#AA#;
   constant VENDOR_UC_BERKELEY: amba_vendor_type := 16#AB#;
   constant VENDOR_ACTEL      : amba_vendor_type := 16#AC#;
+  constant VENDOR_BG         : amba_vendor_type := 16#AD#;
   constant VENDOR_APPLECORE  : amba_vendor_type := 16#AE#;
   constant VENDOR_C3E        : amba_vendor_type := 16#C3#;
   constant VENDOR_CBKPAN     : amba_vendor_type := 16#C8#;
@@ -82,6 +84,9 @@ package devices is
   constant VENDOR_CETON      : amba_vendor_type := 16#CB#;
   constant VENDOR_SSTL       : amba_vendor_type := 16#D6#;
   constant VENDOR_EMBEDDIT   : amba_vendor_type := 16#EA#;
+  constant VENDOR_BRAINCHIP  : amba_vendor_type := 16#F1#;
+  constant VENDOR_MAGICS     : amba_vendor_type := 16#F2#;
+  constant VENDOR_LEAT       : amba_vendor_type := 16#F3#;
   constant VENDOR_NASA_GSFC  : amba_vendor_type := 16#FC#;
   constant VENDOR_AZST       : amba_vendor_type := 16#FE#;
 
@@ -308,6 +313,36 @@ package devices is
   constant GAISLER_GRLSEDC       : amba_device_type := 16#0DE#;
   constant GAISLER_MDIO_CTRL     : amba_device_type := 16#0DF#;
   constant GAISLER_OTP_WRPR      : amba_device_type := 16#0E0#;
+  constant GAISLER_LATTICE_DDR3  : amba_device_type := 16#0E1#;
+  constant GAISLER_GR1553B_LRAM  : amba_device_type := 16#0E2#;
+  constant GAISLER_GRETH2        : amba_device_type := 16#0E5#;
+  constant GAISLER_GR765THS      : amba_device_type := 16#0E6#;
+  constant GAISLER_GR765EVCTRL   : amba_device_type := 16#0E7#;
+  constant GAISLER_GR765SMB      : amba_device_type := 16#0E8#;
+  constant GAISLER_RVINTCTRL     : amba_device_type := 16#0E9#;
+  constant GAISLER_RVDMEXT       : amba_device_type := 16#0EA#;
+  constant GAISLER_LATTICE_DDR4  : amba_device_type := 16#0EB#;
+  constant GAISLER_GRSCRUB2      : amba_device_type := 16#0EC#;
+  constant GAISLER_GR765PCIDMA   : amba_device_type := 16#0ED#;
+  constant GAISLER_GR765OTPIF    : amba_device_type := 16#0EE#;
+  constant GAISLER_GRHSM_DMA     : amba_device_type := 16#0EF#;  
+  constant GAISLER_DBGMST        : amba_device_type := 16#204#;
+  constant GAISLER_AHB_ERR_SHIM  : amba_device_type := 16#205#;
+
+-- Brainchip
+
+  constant BRAINCHIP_AKIDA       : amba_device_type := 16#001#;
+  constant BRAINCHIP_AXI2AHB     : amba_device_type := 16#002#;
+
+
+-- MAGICS
+
+  constant MAGICS_MOVIQ          : amba_device_type := 16#001#;
+
+
+-- LEAT
+
+  constant LEAT_SPLEAT           : amba_device_type := 16#001#;
 
 -- Sun Microsystems
 
@@ -415,6 +450,15 @@ package devices is
   constant ORBITA_USBDEV    : amba_device_type := 16#2BC#;
 
 
+-- UltraSoC (Siemens EDA) ids
+
+  constant ULTRASOC_ETRACE_AXI_COM   : amba_device_type := 16#001#;
+  constant ULTRASOC_ETRACE_SMB_COM   : amba_device_type := 16#002#;
+
+-- Synopsys device ids
+
+  constant SYNOPSYS_PCIE_CTRL : amba_device_type := 16#001#;
+
 -- Actel device ids
 
   constant ACTEL_COREMP7       : amba_device_type := 16#001#;
@@ -430,6 +474,13 @@ package devices is
   constant ACTEL_PFFDDR3       : amba_device_type := 16#00b#;
   constant ACTEL_PFFDDR4       : amba_device_type := 16#00c#;
 
+-- Beyond Gravity ids
+
+  constant BG_RIXCORE : amba_device_type := 16#001#;
+  constant BG_DIAGIF  : amba_device_type := 16#002#;
+  constant BG_WDOG    : amba_device_type := 16#003#;
+  constant BG_SPI     : amba_device_type := 16#004#;
+
 -- NASA device ids
 
   constant NASA_EP32 : amba_device_type := 16#001#;
@@ -437,6 +488,8 @@ package devices is
 -- ST device ids
 
   constant ST_MIPHY : amba_device_type := 16#001#;
+  constant ST_AIB   : amba_device_type := 16#002#;
+  constant ST_PMB   : amba_device_type := 16#003#;
 
 -- TTTECH device ids
 
@@ -517,6 +570,7 @@ package devices is
   constant DERISC_XILINX_KCU105  : system_device_type := 16#0289#;
   constant GAISLER_DDRTV         : system_device_type := 16#0290#;
   constant NOELV_SOC             : system_device_type := 16#0291#;
+  constant GAISLER_GR740MINI     : system_device_type := 16#0297#;
   constant ALTERA_DE2            : system_device_type := 16#0302#;
   constant ALTERA_DE4            : system_device_type := 16#0303#;
   constant ALTERA_S5GSDSP        : system_device_type := 16#0304#;
@@ -536,7 +590,6 @@ package devices is
   constant XILINX_SP601          : system_device_type := 16#0601#;
   constant XILINX_ML605          : system_device_type := 16#0605#;
   constant LEON_LATTICE_NEXUS    : system_device_type := 16#0800#;
-  constant GAISLER_GR740MINI     : system_device_type := 16#0801#;
   constant FRONTGRADE_SBC8       : system_device_type := 16#0802#;
   constant XILINX_AC701          : system_device_type := 16#A701#;
   constant XILINX_KC705          : system_device_type := 16#A705#;
@@ -769,6 +822,22 @@ package devices is
     GAISLER_MDIO_CTRL     => "Ethernet MDIO Controller        ",
     GAISLER_GRLSEDC       => "Lattice CRAM Scrubber           ",
     GAISLER_OTP_WRPR      => "OTP control wrapper             ",
+    GAISLER_LATTICE_DDR3  => "Lattice DDR3 memory controller  ",
+    GAISLER_GR1553B_LRAM  => "1553B Interface with local SRAM ",
+    GAISLER_GRETH2        => "Ethernet Gbit MAC 2             ",
+    GAISLER_GR765THS      => "GR765 Temp/Voltage sensor       ",
+    GAISLER_GR765EVCTRL   => "GR765 Event controller          ",
+    GAISLER_GR765SMB      => "GR765 System Management Block   ",
+    GAISLER_RVINTCTRL     => "RISC-V Interrupt Controllers    ",
+    GAISLER_RVDMEXT       => "NOELV Ext. DM                   ",
+    GAISLER_LATTICE_DDR4  => "Lattice DDR4 Memory Controller  ",
+    GAISLER_GRSCRUB2      => "GRSCRUB2 Multiple FPGA Scrubber ",
+    GAISLER_GR765PCIDMA   => "GR765 PCIe DMA unit             ",
+    GAISLER_GR765OTPIF    => "GR765 OTP Interface             ",
+    GAISLER_GRHSM_DMA     => "GRHSM DMA iInterface            ",
+    GAISLER_DBGMST        => "Bus Master Debug Interface      ",
+    GAISLER_AHB_ERR_SHIM  => "AHB Error Shim                  ",
+
     others                => "Unknown Device                  ");
 
   constant gaisler_lib : vendor_library_type := (
@@ -894,6 +963,46 @@ package devices is
     device_table => menta_device_table
     );
 
+
+  constant BRAINCHIP_DESC : vendor_description := "Brainchip               ";
+
+  constant brainchip_device_table : device_table_type := (
+    BRAINCHIP_AKIDA   => "Brainchip Akida Accelerator     ",
+    BRAINCHIP_AXI2AHB => "Brainchip AXI2AHB               ",
+    others            => "Unknown Device                  ");
+
+  constant brainchip_lib : vendor_library_type := (
+    vendorid     => VENDOR_BRAINCHIP,
+    vendordesc   => BRAINCHIP_DESC,
+    device_table => brainchip_device_table
+    );
+
+
+  constant MAGICS_DESC : vendor_description := "Magics                  ";
+
+  constant magics_device_table : device_table_type := (
+    MAGICS_MOVIQ   => "Magics MOVIQ Accelerator        ",
+    others         => "Unknown Device                  ");
+
+  constant magics_lib : vendor_library_type := (
+    vendorid     => VENDOR_MAGICS,
+    vendordesc   => MAGICS_DESC,
+    device_table => magics_device_table
+    );
+
+
+  constant LEAT_DESC : vendor_description := "LEAT                    ";
+
+  constant leat_device_table : device_table_type := (
+    LEAT_SPLEAT    => "LEAT SPLEAT Accelerator         ",
+    others         => "Unknown Device                  ");
+
+  constant leat_lib : vendor_library_type := (
+    vendorid     => VENDOR_LEAT,
+    vendordesc   => LEAT_DESC,
+    device_table => leat_device_table
+    );
+
   constant SUN_DESC : vendor_description := "Sun Microsystems        ";
 
   constant sun_device_table : device_table_type := (
@@ -972,7 +1081,8 @@ package devices is
   constant SYNOPSYS_DESC : vendor_description := "Synopsys Inc.           ";
 
   constant synopsys_device_table : device_table_type := (
-    others => "Unknown Device                  ");
+    SYNOPSYS_PCIE_CTRL => "PCI Express controller          ",
+    others             => "Unknown Device                  ");
 
   constant synopsys_lib : vendor_library_type := (
     vendorid     => VENDOR_SYNOPSYS,
@@ -1065,6 +1175,19 @@ package devices is
     );
 
 
+  constant ultrasoc_device_table : device_table_type := (
+    ULTRASOC_ETRACE_AXI_COM   => "E-Trace AXI Communicator        ",
+    ULTRASOC_ETRACE_SMB_COM   => "E-Trace SMB Communicator        ",
+    others                    => "Unknown Device                  ");
+
+  constant ULTRASOC_DESC : vendor_description := "Siemens EDA             ";
+
+  constant ultrasoc_lib : vendor_library_type := (
+    vendorid     => VENDOR_ULTRASOC,
+    vendordesc   => ULTRASOC_DESC,
+    device_table => ultrasoc_device_table
+    );
+
   constant orbita_device_table : device_table_type := (
     ORBITA_1553B     => "MIL-STD-1553B Controller        ",
     ORBITA_429       => "429 Interface                   ",
@@ -1115,6 +1238,19 @@ package devices is
     device_table => actel_device_table
     );
 
+  constant BG_DESC : vendor_description := "Beyond Gravity GmbH     ";
+
+  constant bg_device_table : device_table_type := (
+    BG_RIXCORE => "RIXCore SF GNSS Processor       ",
+    BG_DIAGIF  => "Diagnosis I/F                   ",
+    others     => "Unknown Device                  ");
+
+  constant bg_lib : vendor_library_type := (
+    vendorid     => VENDOR_BG,
+    vendordesc   => BG_DESC,
+    device_table => bg_device_table
+  );
+
   constant NASA_DESC : vendor_description := "NASA                    ";
 
   constant nasa_device_table : device_table_type := (
@@ -1131,6 +1267,8 @@ package devices is
 
   constant st_device_table : device_table_type := (
     ST_MIPHY => "MIPHY transceiver               ",
+    ST_AIB   => "AIB (die2die)                   ",
+    ST_PMB   => "Process monitor block           ",
     others   => "Unknown Device                  ");
 
   constant st_lib : vendor_library_type := (
@@ -1392,6 +1530,7 @@ package devices is
     VENDOR_SUN          => sun_lib,
     VENDOR_L3T          => l3t_lib,
     VENDOR_ORBITA       => orbita_lib,
+    VENDOR_ULTRASOC     => ultrasoc_lib,
     VENDOR_SYNOPSYS     => synopsys_lib,
     VENDOR_NASA         => nasa_lib,
     VENDOR_NIIET        => niiet_lib,
@@ -1410,6 +1549,7 @@ package devices is
     VENDOR_AAC          => aac_lib,
     VENDOR_UC_BERKELEY  => uc_berkeley_lib,
     VENDOR_ACTEL        => actel_lib,
+    VENDOR_BG           => bg_lib,
     VENDOR_APPLECORE    => applecore_lib,
     VENDOR_C3E          => c3e_lib,
     VENDOR_CBKPAN       => cbkpan_lib,
@@ -1419,6 +1559,9 @@ package devices is
     VENDOR_NASA_GSFC    => nasa_gsfc_lib,
     VENDOR_AZST         => azst_lib,
     VENDOR_TTTECH       => tttech_lib,
+    VENDOR_BRAINCHIP    => brainchip_lib,
+    VENDOR_MAGICS       => magics_lib,
+    VENDOR_LEAT         => leat_lib,
     others              => unknown_lib);
 
   type system_table_type is array (0 to 65535) of device_description;

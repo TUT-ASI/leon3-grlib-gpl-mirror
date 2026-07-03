@@ -24,7 +24,10 @@ proc append_file_snps_dc {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+	        "vhdlnx" {
+		        return
+		}
 		"vhdlmtie" {
 			return
 		}

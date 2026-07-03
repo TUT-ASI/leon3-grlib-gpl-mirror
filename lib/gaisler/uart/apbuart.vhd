@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,14 +22,14 @@
 -- File:        uart.vhd
 -- Authors:     Jiri Gaisler - Gaisler Research
 --              Marko Isomaki - Gaisler Research
--- Modified:    Amamr Shihabi - Frontgrade Gaisler AB
+-- Modified:    Ammar Shihabi - Frontgrade Gaisler AB
 -- Description: Asynchronous UART. Implements 8-bit data frame with one stop-bit 
 --              and a configurable break size for transmission and detection.
 -----------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
---use ieee.numeric_std.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
@@ -53,7 +53,8 @@ entity apbuart is
     flow     : integer := 1;
     fifosize : integer range 1 to 32 := 1;
     abits    : integer := 8;
-    sbits    : integer range 12 to 32 := 12);
+    sbits    : integer range 12 to 32 := 12;
+    dual     : integer range 0 to 1 := 0);
   port (
     rst    : in  std_ulogic;
     clk    : in  std_ulogic;
@@ -96,7 +97,7 @@ type uartregs is record
   breaksize     :  std_logic_vector(3 downto 0);  -- breaksize between 10 and 16
   tbreakstream  :  std_logic_vector(16 downto 0); -- tx breakstream 
   rbreakstream  :  std_logic_vector(16 downto 0); -- rx breakstream 
-  breakcounter  :  integer;     -- internal flag to the receiver operation
+  breakcounter  :  unsigned(4 downto 0);          -- internal flag to the receiver operation
   ovf           :  std_ulogic;  -- receiver overflow
   parerr        :  std_ulogic;  -- parity error
   frame         :  std_ulogic;  -- framing error
@@ -147,8 +148,8 @@ constant RES : uartregs :=
   (rxen => '0', txen => '0', rirqen => '0', tirqen => '0', parsel => '0',
    paren => '0', flow => '0', loopb => '0', debug => '0', rsempty => '1',
    tsempty => '1', stop => '0', tsemptyirqen => '0', break => '0', breakirqen => '0',
-   tbreakstream => (others => '1'), rbreakstream => (others => '1'), breaksize => "1001", 
-   tbreak => '0', breakcounter => 10, ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
+   tbreakstream => (others => '1'), rbreakstream => (others => '1'), breaksize => "1010", 
+   tbreak => '0', breakcounter => "01010", ovf => '0', parerr => '0', frame => '0', ctsn => (others => '0'),
    rtsn => '1', extclken => '0', extclk => '0', rhold => fifozero,
    rshift => (others => '0'), tshift => (others => '1'), thold => fifozero,
    irq => '0', irqpend => '0', delayirqen => '0', tpar => '0', txstate => idle,
@@ -284,8 +285,9 @@ begin
       end if;
     when "000101" =>
       rdata(0) := r.debug;
-    when "000110" => 
-      rdata(6 downto 0) := conv_std_logic_vector(flow, 1) &
+    when "000110" =>
+      rdata(7 downto 0) := conv_std_logic_vector(dual, 1) &
+                           conv_std_logic_vector(flow, 1) &
                            conv_std_logic_vector(fifosize, 6);  
     when others =>
       null;
@@ -302,10 +304,11 @@ begin
         v.break      := apbi.pwdata(3);
       when "000010" =>
         v.tbreak     := apbi.pwdata(20);
-        if apbi.pwdata(19 downto 16) > "1001" then
+        -- Ensure breaksize has a minimum value of 11 bits
+        if apbi.pwdata(19 downto 16) > "1010" then
           v.breaksize := apbi.pwdata(19 downto 16);
         else
-          v.breaksize := "1001";
+          v.breaksize := "1010";
         end if;
         v.stop         := apbi.pwdata(15);
         v.tsemptyirqen := apbi.pwdata(14);
@@ -501,7 +504,7 @@ begin
         if v.rsempty = '0' then v.ovf := '1'; end if;
         v.rsempty := '0'; v.rxtick := '0';
       end if;
-      v.breakcounter := 10;
+      v.breakcounter := "01010";
     when startbit =>    -- check validity of start bit
       if r.rxtick = '1' then
         if rxd = '0' then
@@ -523,6 +526,7 @@ begin
     when cparity =>     -- receive parity bit
       if r.rxtick = '1' then
         v.dpar := r.dpar xor rxd; v.rxstate := stopbit;
+        -- make parity bit part of break stream in case we go to breakstate after stopbit
         v.breakcounter := r.breakcounter + 1;
         v.rbreakstream(11) := '0';
       end if;
@@ -543,18 +547,11 @@ begin
             else v.rwaddr := r.rwaddr + 1; v.rcnt := v.rcnt + 1; end if;
           end if;
           v.rxstate := idle;
-        else
+        else -- rxd = '0'
           if r.rshift = "00000000" then
-            if r.breaksize = "1001" then  -- legacy break detected of 10 bits
-              v.break := '1';
-              v.irq   := v.irq or r.breakirqen;
-              v.rxstate := idle;
-              v.rsempty := '1';
-            else
-              v.rxstate := breakstate;
-              v.breakcounter := r.breakcounter + 1;
-              v.rbreakstream(10 downto 0) := "00000000000";
-            end if;
+            v.rxstate := breakstate;
+            v.breakcounter := r.breakcounter + 1;
+            v.rbreakstream(10 downto 0) := "00000000000";
           else
             v.frame := '1';
             v.rsempty    := '1';
@@ -562,22 +559,21 @@ begin
           end if;
         end if;
       end if;
-    when breakstate =>  -- break state for size larger than 10
+    when breakstate =>  -- break state
       if r.rxtick = '1' then
         if (rxd = '0') and (r.breakcounter <= conv_integer(r.breaksize)) then
           v.breakcounter := r.breakcounter + 1;
           v.rbreakstream := r.rbreakstream(15 downto 0) & '0';
-        else
-          v.breakcounter := 10;
-          v.rbreakstream  := (others => '1');
-          v.rsempty := '1';
-          v.rxstate := idle;
-          -- flag the break register, and generate an irq
+        else -- rxd = '1' or breakcounter is at least equal to breaksize 
+          -- check if break is valid and generate an irq
           if r.rbreakstream(conv_integer(r.breaksize)) = '0' then
             v.break := '1';  v.irq := v.irq or r.breakirqen;
           else
             v.frame := '1';
           end if;
+          v.rbreakstream  := (others => '1');
+          v.rsempty := '1';
+          v.rxstate := idle;
         end if;
       end if;
     end case;

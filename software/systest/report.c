@@ -2,6 +2,7 @@
 #include <bcc/ambapp.h>
 
 static const struct report_ops *the_ops = &report_ops_grtestmod;
+extern void *grtestmod;
 
 /*
  * The idea is to select a report backend dynamically. This allows for
@@ -38,6 +39,9 @@ int report_start(void)
     the_ops = &report_ops_stdio;
   } else {
     /* Could inform the backend about ahbrep_regs here. */
+#ifndef GRLIB_REPORTDEV_BASE
+    grtestmod = ahbrep_regs;
+#endif
   }
 #endif
 

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.notx;
 use grlib.riscv.reg_t;
 library gaisler;
@@ -38,7 +40,8 @@ entity regfile64dffnv is
     tech        : integer;
     wrfst       : integer;
     reg0write   : integer := 0;
-    forward     : integer := 1  -- Turn on internal forwarding
+    forward     : integer := 1; -- Turn on internal forwarding
+    scantest    : integer := 0
     );
   port (
     clk      : in  std_ulogic;
@@ -61,12 +64,16 @@ entity regfile64dffnv is
     rdata3   : out std_logic_vector;
     raddr4   : in  reg_t;
     re4      : in  std_ulogic;
-    rdata4   : out std_logic_vector
+    rdata4   : out std_logic_vector;
+    testen   : in  std_ulogic;
+    testrst  : in  std_ulogic
     );
 begin
 end regfile64dffnv;
 
 architecture rtl of regfile64dffnv is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   subtype data_t is std_logic_vector(wdata1'range);
 
@@ -85,10 +92,20 @@ architecture rtl of regfile64dffnv is
     raddr3  : reg_t;
     raddr4  : reg_t;
   end record;
+  constant reg_reset : reg_type := (
+    entry   => (others => (others => '0')),
+    raddr1  => (others => '0'),
+    raddr2  => (others => '0'),
+    raddr3  => (others => '0'),
+    raddr4  => (others => '0'));
+
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin  -- rtl
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   comb : process(r,
                  waddr1, we1, waddr2, we2,
@@ -217,13 +234,24 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-    end if;
+  syncrregs : if not ASYNC_RESET generate
+    seq : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
-  end process;
-
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= reg_reset;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;

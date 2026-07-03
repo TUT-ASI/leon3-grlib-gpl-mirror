@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -31,13 +31,7 @@ library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.amba.all;
-use grlib.stdlib.log2x;
-use grlib.stdlib.orv;
-use grlib.stdlib.notx;
-use grlib.stdlib.zero32;
-use grlib.stdlib.conv_std_logic;
-use grlib.stdlib.conv_integer;
-use grlib.stdlib."+";
+use grlib.stdlib.all;
 use grlib.devices.all;
 use grlib.stdlib.tost;
 library gaisler;
@@ -64,10 +58,13 @@ entity dmnvx is
     rstn   : in  std_ulogic;
     dmi    : in  dev_reg_in_type;
     dmo    : out dev_reg_out_type;
+    pbo    : in  dev_reg_out_type;
+    pbi    : out dev_reg_in_type;
     dbgi   : in  nv_debug_out_vector(0 to NHARTS-1);
     dbgo   : out nv_debug_in_vector(0 to NHARTS-1);
     dsui   : in  nv_dm_in_type;
-    dsuo   : out nv_dm_out_type
+    dsuo   : out nv_dm_out_type;
+    hartsel : out std_logic_vector(19 downto 0)
     );
 
 end;
@@ -88,7 +85,7 @@ architecture rtl of dmnvx is
   -- Debug Module
   constant HARTSELLEN   : integer               := log2x(nharts);
   constant IMPEBREAK    : std_ulogic            := '0';
-  constant DMVERSION    : std_logic_vector(3 downto 0) := "0010"; -- Version 0.14
+  constant DMVERSION    : std_logic_vector(3 downto 0) := "0011"; -- Version 1.0
 
   constant CMDERR_NONE          : std_logic_vector(2 downto 0) := "000";
   constant CMDERR_BUSY          : std_logic_vector(2 downto 0) := "001";
@@ -184,6 +181,7 @@ architecture rtl of dmnvx is
 
   type group_type is array (natural range <>) of std_logic_vector(NHARTS-1 downto 0);
 
+
   type reg_type is record
     -- DSU Interface
     dsuen       : std_logic_vector(2 downto 0);
@@ -202,10 +200,12 @@ architecture rtl of dmnvx is
     cmd         : abscommand_type;
     autoexec    : autoexec_type;
     busy        : std_ulogic;
+    relaxedpriv : std_ulogic;
     accerr      : std_ulogic;
     cmderr      : std_logic_vector(2 downto 0);
     unavailcnt  : std_logic_vector(UNAVAIL_H downto 0);
     haltonrst   : std_logic_vector(NHARTS-1 downto 0);
+    havereset   : std_logic_vector(NHARTS-1 downto 0);
     -- System Bus Access
     sbcontrol   : sbcontrol_type;
     psberror    : std_logic_vector(2 downto 0);   -- Precalculated sberror
@@ -216,7 +216,7 @@ architecture rtl of dmnvx is
     halted      : std_logic_vector(NHARTS-1 downto 0);
     resumeack   : std_logic_vector(NHARTS-1 downto 0);
     resumereq   : std_logic_vector(NHARTS-1 downto 0);
-    havereset   : std_logic_vector(NHARTS-1 downto 0);
+    resetcomp   : std_logic_vector(NHARTS-1 downto 0);
   end record;
 
   constant RES_T : reg_type := (
@@ -240,10 +240,12 @@ architecture rtl of dmnvx is
     cmd         => abscommand_reset,
     autoexec    => autoexec_reset,
     busy        => '0',
+    relaxedpriv => '0',
     accerr      => '0',
     cmderr      => (others => '0'),
     unavailcnt  => (others => '0'),
     haltonrst   => (others => '0'),
+    havereset   => (others => '0'),
     -- System Bus Access
     sbcontrol   => sbcontrol_reset,
     psberror    => (others => '0'),
@@ -254,15 +256,14 @@ architecture rtl of dmnvx is
     halted      => (others => '0'),
     resumeack   => (others => '0'),
     resumereq   => (others => '0'),
-    havereset   => (others => '0')
+    resetcomp   => (others => '0')
     );
 
   -- Signals ----------------------------------------------------------------
 
-  signal r, rin         : reg_type;
-  signal arst           : std_ulogic;
-  signal pbo            : nv_progbuf_out_vector(0 to NHARTS-1);
-  signal pbi            : nv_progbuf_in_vector(0 to NHARTS-1);
+  signal r, rin           : reg_type;
+  signal arst             : std_ulogic;
+  signal async_reset_hold : std_logic;
 
   -- Functions and Procedures -----------------------------------------------
 
@@ -271,7 +272,8 @@ begin
   arst        <= dmi.testrst when (ASYNC_RESET and scantest/=0 and dmi.testen/='0') else
                  rstn when ASYNC_RESET else '1';
 
-  comb : process (rstn, r, dmi, dbgi, dsui, pbo)
+  comb : process (rstn, r, dmi, dbgi, dsui, pbo
+                 )
     variable v                  : reg_type;
     -- Debug Module Registers
     variable dmstatus           : std_logic_vector(31 downto 0);
@@ -316,8 +318,10 @@ begin
     variable dvalid             : std_ulogic;
     variable drdata             : std_logic_vector(63 downto 0);
     variable derr               : std_ulogic;
+    variable dhalterr           : std_ulogic;
     variable dexec_done         : std_ulogic;
-    variable pbwrite            : std_logic_vector(NHARTS-1 downto 0);
+    variable pbwrite            : std_ulogic;
+    variable pbsel              : std_logic_vector(3 downto 0);
     -- Hatl groups
     variable clrghaltpend        : std_logic_vector(NHARTS-1 downto 0);
     variable clrgresumepend      : std_logic_vector(NHARTS-1 downto 0);
@@ -413,8 +417,10 @@ begin
                 if r.busy = '1' then
                   v.cmderr    := CMDERR_BUSY;
                   v.accerr    := '1';
-                elsif vwd(10 downto 8) = "111" then
-                  v.cmderr      := CMDERR_NONE;
+                else
+                  if vwd(10 downto 8) = "111" then
+                    v.cmderr      := CMDERR_NONE;
+                  end if;
                 end if;
               end if;
             when "0111" => -- Abstract Command
@@ -463,16 +469,17 @@ begin
             when others => null;
           end case; -- hasel3
         when "0010" => -- Program Buffer 0 - Program Buffer 15
+          pbsel(0) := '1';
           if notx(hasel3) then
             iregindex     := to_integer(unsigned(hasel3));
           else
             iregindex     := 0;
           end if;
           if iregindex < PROGBUFSIZE then
-            vrd       := pbo(ihartsel).data;
+            vrd       := pbo.data;
             if r.busy = '0' then
               if wr = '1' then
-                pbwrite(ihartsel) := '1';
+                pbwrite  := '1';
               end if;
               -- Automatically rerun abstract command when program buffer is accessed
               if r.autoexec.progbuf(iregindex) = '1' and r.cmderr = CMDERR_NONE then
@@ -627,8 +634,12 @@ begin
               null;
           end case; -- hasel3
         when "0100" => -- Halt Summary 0
-          -- This entire register is read-only
-          vrd(NHARTS-1 downto 0)      := r.halted;
+          case hasel3 is
+            when "0000" => -- Debug Module Control and Status 2 
+              -- This entire register is read-only
+              vrd(NHARTS-1 downto 0)      := r.halted;
+            when others => null;
+          end case;
         when others => null;
       end case; -- hasel2
       rdata := vrd;
@@ -648,7 +659,8 @@ begin
     v.control.clrresethaltreq := '0';
 
     -- Program buffer
-    pbwrite := (others => '0');
+    pbwrite := '0';
+    pbsel   := (others => '0');
 
     -- System Bus Access
     dmo.sbstart <= '0';
@@ -840,7 +852,11 @@ begin
       dm_reg_access(dmi.addr, dmi.wr, dmi.data, rdata);
     end if;
 
-    dmo.rdy   <= '1';
+    if dmi.addr(ADDR_H downto 6) = "0010" then -- Program buffer
+      dmo.rdy <= pbo.rdy;
+    else
+      dmo.rdy <= '1';
+    end if;
     dmo.data  <= rdata;
 
     ---------------------------------------------------------------------------------
@@ -871,7 +887,10 @@ begin
     for i in 0 to NHARTS-1 loop
       v.running(i)      := dbgi(i).running;
       v.halted(i)       := dbgi(i).halted;
-      v.havereset(i)    := dbgi(i).havereset or r.havereset(i); -- sticky bit
+      v.resetcomp(i)    := dbgi(i).havereset;
+      if dbgi(i).havereset = '1' and r.resetcomp(i) = '0' then -- Set not rising-edge
+        v.havereset(i)    := '1'; -- sticky bit
+      end if;
     end loop;
 
     -- Filter dsu external signals and propagate to each harts
@@ -881,7 +900,10 @@ begin
     for i in 0 to NHARTS-1 loop
       v.en(i)           := r.dsuen(2) and dbgi(i).dsu;
     end loop;
-    v.break             := r.dsubr(2);
+    v.break             := r.dsubr(1) and not r.dsubr(2);
+    if r.break = '1' then
+      v.control.haltreq := '1';
+    end if;
 
     -- Generate halt signal
     haltreq             := (others => '0');
@@ -992,9 +1014,9 @@ begin
     -- Send an halt requesto to the selected hart in the following cases:
     -- * halt request from write to the DM register
     -- * halt request from asserting the dsu.break pin (check if it is compliants)
-    if r.break = '1' then
-      haltreq           := hartselmask and r.en;
-    end if;
+    --if r.break = '1' then
+    --  haltreq           := hartselmask and r.en;
+    --end if;
 
     -- HALTING
 
@@ -1016,6 +1038,7 @@ begin
     dvalid              := dbgi(ihartsel).dvalid;
     drdata              := dbgi(ihartsel).ddata;
     derr                := dbgi(ihartsel).derr;
+    dhalterr            := dbgi(ihartsel).dhalterr;
     dexec_done          := dbgi(ihartsel).dexec_done;
 
     -- COMMAND START
@@ -1028,10 +1051,6 @@ begin
       -- Only "Access Register Command" is supported
       if v.cmd.cmdtype /= CMDTYPE_REG then
         v.cmderr        := CMDERR_NOTSUPPORTED;
-      end if;
-      -- Halt/Resume
-      if r.halted(ihartsel) = '0' then
-        v.cmderr        := CMDERR_HALTRESUME;
       end if;
       -- Other
       if v.cmd.cmdtype = CMDTYPE_REG then
@@ -1046,6 +1065,10 @@ begin
           v.busy      := '0';
         end if;
       end if;
+      if r.cmd.valid = '0' and v.cmderr /= CMDERR_NONE then
+        v.cmd.valid := '0';
+        v.busy      := '0';
+      end if;
     end if;
 
     dwrite      := '0';
@@ -1056,7 +1079,7 @@ begin
     dsize       := (others => '0');
 
     -- Mask denable with cmderr in case of errors detected
-    if r.cmd.valid = '1' and r.halted(ihartsel) = '1' and r.cmderr = CMDERR_NONE then
+    if r.cmd.valid = '1' then
       case r.cmd.cmdtype is
         when CMDTYPE_REG =>
           -- Access Register Command
@@ -1092,12 +1115,18 @@ begin
           -- Deassert cmdvalid and busy
           v.cmd.valid    := '0';
           -- Do not clear busy until prog buffer done
-          if r.cmd.postexec = '0' then
+          -- If the hart is running we can't execute progbuff
+          if r.cmd.postexec = '0' or dhalterr = '1' then
             v.busy        := '0';
           end if;
           -- Assert error in case
-          if derr = '1' and v.accerr = '0' then
-            v.cmderr      := CMDERR_EXCEPTION;
+          if (derr or dhalterr) = '1' and v.accerr = '0' then
+            if derr = '1' then
+              v.cmderr      := CMDERR_EXCEPTION;
+            end if;
+            if dhalterr = '1' then
+              v.cmderr      := CMDERR_HALTRESUME;
+            end if;
           else
             -- Write back read values
             case r.cmd.cmdtype is
@@ -1183,7 +1212,8 @@ begin
     -- No other mechanism should exist that may result in resetting the Debug Module after
     -- power up, including the platform’s system reset or Debug Transport reset signals.
     dmactive            := v.control.dmactive;
-    if r.control.dmactive = '0' then
+    if r.control.dmactive = '0' 
+    then
       --v.dsuen           := (others => '0');
       --v.dsubr           := (others => '0');
       v.break           := '0';
@@ -1226,6 +1256,12 @@ begin
     dsuo.ndmreset       <= not r.control.ndmreset;
     dsuo.pwd            <= (others => '0');
 
+    -- Output hartsel to be used for itrace
+    hartsel_hi_lo                        := (others => '0');
+    hartsel_hi_lo(HARTSELLEN-1 downto 0) := r.control.hartsel;
+    hartsel             <= hartsel_hi_lo;
+    
+
     for i in 0 to NHARTS-1 loop
       dbgo(i).hartid    <= std_logic_vector(to_unsigned(i, HARTIDLEN));
       dbgo(i).dsuen     <= r.en(i);             -- DSU Enable
@@ -1233,63 +1269,74 @@ begin
       dbgo(i).haltgroup <= r.ghaltpend(i);                   -- Halt Group Request
       dbgo(i).resume    <= resumereq(i) or r.gresumepend(i); -- Resume Request
       dbgo(i).reset     <= hartreset(i);        -- Reset Request
-      dbgo(i).haltonrst <= r.haltonrst(i);      -- Halt-on-reset
-      dbgo(i).freeze    <= '0';                 -- Hold CPU
+      dbgo(i).haltonrst <= r.haltonrst(i)       -- Halt-on-reset
+                           ;
+      dbgo(i).freeze    <= '0'
+                          ;
       dbgo(i).denable   <= denable(i);          -- Command Enable
       dbgo(i).dcmd      <= dcmd;                -- Command Type
       dbgo(i).dwrite    <= dwrite;              -- Write Enable
       dbgo(i).dsize     <= dsize;               -- Access Size
       dbgo(i).daddr     <= daddr;               -- Address
       dbgo(i).ddata     <= ddata;               -- Data
-
-      -- Program execution
-      pbi(i).eaddr      <= dbgi(i).pbaddr;
-      dbgo(i).pbdata    <= pbo(i).edata;
-      -- Program read/write
-      pbi(i).addr       <= dmi.addr(6 downto 2);
-      pbi(i).write      <= pbwrite(i);
-      pbi(i).data       <= dmi.data;
     end loop;
+    
+    -- Program read/write
+    pbi.sel       <= pbsel;
+    pbi.addr      <= dmi.addr;
+    pbi.wr        <= pbwrite;
+    pbi.data      <= dmi.data;
+    pbi.testrst   <= dmi.testrst;
+    pbi.testen    <= dmi.testen;
+    -- Not used
+    pbi.sbfinish  <= '0';
+    pbi.sberror   <= '0';
+    pbi.sbdvalid  <= '0';
+    pbi.sbrdata   <= (others => '0');
 
   end process;
 
-  regs : process(clk, rin, rstn)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rstn = '0' then
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rstn = '0' then
+          r <= RES_T;
+          r.hgroups(0) <= (others => '1');
+          r.rgroups(0) <= (others => '1');
+          for i in 0 to NHARTS-1 loop
+            r.haltonrst(i) <= r.dsubr(2)
+                              ;
+          end loop;
+          -- sync regs
+          r.dsubr <= rin.dsubr;
+          r.dsuen <= rin.dsuen;
+          async_reset_hold  <= '0';
+        end if;
+      end if;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
         r <= RES_T;
         r.hgroups(0) <= (others => '1');
         r.rgroups(0) <= (others => '1');
-        for i in 0 to NHARTS-1 loop
-          r.haltonrst(i) <= r.dsubr(2);
-        end loop;
-        -- sync regs
-        r.dsubr <= rin.dsubr;
-        r.dsuen <= rin.dsuen;
+        async_reset_hold  <= '0';
+      elsif rising_edge(clk) then
+        r <= rin;
+        if (async_reset_hold = '0') then
+          for i in 0 to NHARTS-1 loop
+            r.haltonrst(i) <= dsui.break
+                              ;
+          end loop;
+          async_reset_hold  <= '1';
+        end if;
       end if;
-    end if;
-  end process;
-
-  -- Program buffer -------------------------------------------------------------
-  pbgen : if progbufsize /= 0 generate
-    x : for i in 0 to NHARTS-1 generate
-      pb0 : progbuf
-        generic map (
-          size  => progbufsize)
-        port map (
-          clk   => clk,
-          rstn  => rstn,
-          pbi   => pbi(i),
-          pbo   => pbo(i));
-    end generate;
+    end process;
   end generate;
-
-  nopbgen : if progbufsize = 0 generate
-    x : for i in 0 to NHARTS-1 generate
-      pbo(i) <= nv_progbuf_out_none;
-    end generate;
-  end generate;
-
 end;
 

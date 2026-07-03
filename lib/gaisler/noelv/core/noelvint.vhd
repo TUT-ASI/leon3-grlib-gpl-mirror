@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -66,8 +66,19 @@ package noelvint is
     dsnoop    : std_ulogic;
     iflush    : std_ulogic;
     dflush    : std_ulogic;
-    dcs       : std_logic_vector(1 downto 0);
-    ics       : std_logic_vector(1 downto 0);
+    pma_cache : std_ulogic;
+    force_ic  : std_ulogic;
+    ics       : std_logic_vector(0 downto 0);
+    dcs       : std_logic_vector(0 downto 0);
+    wcomben   : std_ulogic;
+    wcombhinten : std_ulogic;
+    pma_cache_req : std_ulogic;
+    force_ic_req  : std_ulogic;
+    irepl     : word2;
+    drepl     : word2;
+    hpmru_old : std_ulogic;
+    pma_noprot : std_ulogic;
+    pmp_noprot : std_ulogic;
   end record;
   constant csr_out_cctrl_rst : csr_out_cctrl_type := (
     itcmwipe  => '0',
@@ -75,8 +86,19 @@ package noelvint is
     dsnoop    => '0',
     iflush    => '0',
     dflush    => '0',
-    dcs       => "00",
-    ics       => "00"
+    pma_cache => '0',
+    force_ic  => '0',
+    ics       => (others => '0'),
+    dcs       => (others => '0'),
+    wcomben   => '0',
+    wcombhinten => '0',
+    pma_cache_req => '0',
+    force_ic_req  => '0',
+    irepl     => (others => '0'),
+    drepl     => (others => '0'),
+    hpmru_old  => '0',
+    pma_noprot => '0',
+    pmp_noprot => '0'
   );
 
   type csr_in_cctrl_type is record
@@ -113,7 +135,7 @@ package noelvint is
     vs_adue       : std_ulogic; -- Hardware handling of accessed/modified bits in vsPT (svadu).
     h_ade         : std_ulogic; -- Exception for accessed/modified bits in hPT (custom).
     pma_fault_02  : std_ulogic; -- PMA fault for all address between 0 and 2G.
-    pma_fault_46  : std_ulogic; -- PMA fault for all address between 4G and 6G.
+    --pma_fault_46  : std_ulogic; -- PMA fault for all address between 4G and 6G.
     mmu_sptfault  : std_ulogic; -- Take page fault on any sPT walk.
     mmu_hptfault  : std_ulogic; -- Take page fault on any hPT walk.
     mmu_oldfence  : std_ulogic; -- Use old sfence/hfence mechanism.
@@ -125,6 +147,9 @@ package noelvint is
     mml           : std_ulogic;
     menvcfg_sse   : std_ulogic;
     henvcfg_sse   : std_ulogic;
+    menvcfg_pbmte : std_ulogic;
+    henvcfg_pbmte : std_ulogic;
+    sc_lr_range   : std_ulogic;
     cctrl         : csr_out_cctrl_type;
   end record;
 
@@ -137,7 +162,7 @@ package noelvint is
     vs_adue       => '0',
     h_ade         => '0',
     pma_fault_02  => '0',
-    pma_fault_46  => '0',
+    --pma_fault_46  => '0',
     mmu_sptfault  => '0',
     mmu_hptfault  => '0',
     mmu_oldfence  => '0',
@@ -149,17 +174,23 @@ package noelvint is
     mml           => '0',
     menvcfg_sse   => '0',
     henvcfg_sse   => '0',
+    menvcfg_pbmte => '0',
+    henvcfg_pbmte => '0',
+    sc_lr_range   => '0',
     cctrl        => csr_out_cctrl_rst
   );
 
+
   type nv_csr_in_type is record
-    cctrl       : csr_in_cctrl_type;
-    cconfig     : word64;
+    cctrl        : csr_in_cctrl_type;
+    cconfig      : word64;
+    tlbconfig    : word32;
   end record;
 
   constant nv_csr_in_type_none : nv_csr_in_type := (
     cctrl       => csr_in_cctrl_rst,
-    cconfig     => (others => '0')
+    cconfig     => (others => '0'),
+    tlbconfig   => (others => '0')
   );
 
   type trace_type is record
@@ -191,8 +222,7 @@ package noelvint is
 --    data        : word64;
     unissue     : std_ulogic;
     unissue_id  : fpu_id;
-    flush       : std_logic_vector(1 to 4);      --   Pipeline Flush
-    ctrl        : std_logic_vector(8 downto 0);  -- Debug control
+    ctrl        : std_logic_vector(11 downto 0);  -- Debug control
   end record;
 
   constant fpu5_in_none : fpu5_in_type := (
@@ -209,7 +239,6 @@ package noelvint is
 --    data        => (others => '0'),
     unissue     => '0',
     unissue_id  => (others => '0'),
-    flush       => (others => '0'),
     ctrl        => (others => '0')
     );
 
@@ -231,6 +260,7 @@ package noelvint is
     flags       : flags_t;
     mode        : std_logic_vector(2 downto 0);
     wb_id       : fpu_id;
+    rd_active   : std_ulogic;
     events      : word64;
   end record;
 
@@ -242,6 +272,7 @@ package noelvint is
     flags       => (others => '0'),
     mode        => (others => '0'),
     wb_id       => (others => '0'),
+    rd_active   => '0',
     events      => (others => '0')
     );
 
@@ -249,6 +280,7 @@ package noelvint is
     holdn       : std_ulogic;                    -- Issue interface
     ready       : std_ulogic;
     idle        : std_ulogic;
+    queue       : word2;
     now2int     : std_ulogic;                    -- Result to IU
     id2int      : fpu_id;                        --  These are muxed after the clock,
     data2int    : word64;                        --  to save a cycle when the IU
@@ -259,6 +291,7 @@ package noelvint is
     holdn       => '1',
     ready       => '1',
     idle        => '1',
+    queue       => "00",
     now2int     => '0',
     id2int      => (others => '0'),
     data2int    => (others => '0'),
@@ -325,30 +358,41 @@ package noelvint is
 
   type nv_icache_in_type is record
     rpc              : addr_type;                     -- raw address (npc)
-    fpc              : addr_type;                     -- latched address (fpc)
+    fpc              : addr_type;                     -- latched address (unused)
     dpc              : addr_type;                     -- latched address (dpc)
     nostream         : std_ulogic;                    -- Force no stream buffer use
-    rbranch          : std_ulogic;                    -- Instruction branch
-    fbranch          : std_ulogic;                    -- Instruction branch
+    rbranch          : std_ulogic;                    -- Instruction branch (unused)
+    fbranch          : std_ulogic;                    -- Instruction branch (unused)
     inull            : std_ulogic;                    -- instruction nullify
-    su               : std_ulogic;                    -- super-user
+    su               : std_ulogic;                    -- super-user (unused on NOEL-V)
     flush            : std_ulogic;                    -- flush icache
-    fline            : std_logic_vector(31 downto 3); -- flush line offset
-    pnull            : std_ulogic;
+    fline            : std_logic_vector(31 downto 3); -- flush line offset (unused)
+    pnull            : std_ulogic;                    -- (unused)
     nobpmiss         : std_ulogic;                    -- Predicted instruction, block hold
     iustall          : std_ulogic;
     parkreq          : std_ulogic;                    -- Cache controller park request
+    hold             : std_ulogic;
+    debug            : std_ulogic;                    -- Debug mode active
     vms              : std_logic_vector(2 downto 0);  -- [Virtualization mode, machine mode, supervisor mode]
   end record;
+
+  constant nv_icache_in_none : nv_icache_in_type := (
+    rpc => (others => '0'), fpc => (others => '0'), dpc => (others => '0'),
+    nostream => '0', rbranch => '0', fbranch => '0', inull => '0',
+    su => '0', flush => '0', fline => (others => '0'), pnull => '0',
+    nobpmiss => '0', iustall => '0', parkreq => '0',
+    hold => '0', debug => '0', vms => "000"
+  );
 
   type nv_icache_out_type is record
     --data        : nv_cdatatype;
     data        : cdatatype5;
     way         : std_logic_vector(log2(MAXWAYS) - 1 downto 0);
-    mexc        : std_ulogic;
+    mexc        : std_ulogic;  -- 1 when some kind of memory fault
     mexcdata    : std_logic_vector(7 downto 0);
-    exctype     : std_ulogic;
-    exchyper    : std_ulogic;
+    exctype     : std_ulogic;  -- 1 for PMP/PMA/bus error, 0 for page faults
+    swpt        : std_ulogic;
+    exchyper    : std_ulogic;  -- 1 when hypervisor (G stage) page fault
     addrhyper   : addr_type;
     typehyper   : std_logic_vector(1 downto 0);  -- 00 OK, 01 data RW, 10 PT R, 11 - PT W
     hold        : std_ulogic;
@@ -366,7 +410,7 @@ package noelvint is
 
   constant nv_icache_out_none : nv_icache_out_type := (
     (others => (others => '0')), (others => '0'), '0',
-    (others => '0'), '0', '0', (others => '0'),
+    (others => '0'), '0', '0', '0', (others => '0'),
     (others => '0'), '0', '0', '0',
     (others => '0'), '0', '0', '0',
     (others => '0'), '0', '0', '0'
@@ -411,10 +455,11 @@ package noelvint is
     trapackidata     : std_logic_vector(7 downto 0);
     --
     amo              : std_logic_vector(5 downto 0);
-    cbo              : std_logic_vector(2 downto 0);
+    cbo              : std_logic_vector(3 downto 0);
     bar              : std_logic_vector(2 downto 0);
     --iudiag_miso      : nv_intreg_miso_type;
     iudiag_miso      : l5_intreg_miso_type;
+    clrtrappend      : std_logic_vector(4 downto 0);
   end record;
 
   constant nv_dcache_in_none : nv_dcache_in_type := (
@@ -426,7 +471,8 @@ package noelvint is
     '0',
     '0', '0', '0',
     '0', x"00", (others => '0'), x"00",
-    "000000", "000", "000", l5_intreg_miso_none
+    "000000", "0000", "000", l5_intreg_miso_none,
+    (others => '0')
   );
 
   type iu_control_reg_type is record
@@ -459,9 +505,12 @@ package noelvint is
   type nv_dcache_out_type is record
     data        : cdatatype5;
     way         : std_logic_vector(log2(MAXWAYS) - 1 downto 0);
-    mexc        : std_ulogic;
-    exctype     : std_ulogic;
-    exchyper    : std_ulogic;
+    xdata       : word64;
+    xway        : std_ulogic;
+    mexc        : std_ulogic;  -- 1 when some kind of memory fault
+    exctype     : std_ulogic;  -- 1 for PMP/PMA/bus error, 0 for page faults
+    swpt        : std_ulogic;
+    exchyper    : std_ulogic;  -- 1 when hypervisor (G stage) page fault
     addrhyper   : addr_type;
     typehyper   : std_logic_vector(1 downto 0);  -- 00 OK, 01 data RW, 10 PT R, 11 - PT W
     hold        : std_ulogic;
@@ -477,15 +526,33 @@ package noelvint is
     iudiag_mosi : l5_intreg_mosi_type;
     iuctrl      : iu_control_reg_type;
     --
+    trappend   : std_logic_vector(4 downto 0);
   end record;
 
   constant nv_dcache_out_none : nv_dcache_out_type := (
-    (others => (others => '0')), (others => '0'), '0', '0', '0',
-    (others => '0'), "00", '0', '0',
-    '0', '0', (others => '0'),
-    '0', '0', '0', '0',
-    l5_intreg_mosi_none, iu_control_reg_default
-    );
+    data        => (others => (others => '0')),
+    way         => (others => '0'),
+    xdata       => (others => '0'),
+    xway        => '0',
+    mexc        => '0',
+    exctype     => '0',
+    swpt        => '0',
+    exchyper    => '0',
+    addrhyper   => (others => '0'),
+    typehyper   => "00",
+    hold        => '0',
+    mds         => '0',
+    dtrapet1    => '0',
+    dtrapet0    => '0',
+    dtraptt     => (others=> '0'),
+    werr        => '0',
+    cache       => '0',
+    wbhold      => '0',
+    badtag      => '0',
+    iudiag_mosi => l5_intreg_mosi_none,
+    iuctrl      => iu_control_reg_default,
+    trappend  => (others => '0')
+  );
 
 
   type nv_cram_in_type is record
@@ -641,7 +708,8 @@ package noelvint is
   );
 
   type trace_info is record
-    timestamp : word;
+    info      : word64;
+    timestamp : std_logic_vector(55 downto 0);
     swap      : std_ulogic;
     lanes     : trace_lanes(0 to 1);
     prv       : std_logic_vector(1 downto 0);
@@ -650,13 +718,15 @@ package noelvint is
   end record;
 
   constant trace_info_none : trace_info := (
-    timestamp => zerow,
+    info      => zerow64,
+    timestamp => (others => '0'),
     swap      => '0',
     lanes     => (others => trace_lane_none),
     prv       => "00",
     v         => '0',
     cause     => cause_res
   );
+
 
   type itrace_in_type is record
     hartid      : std_logic_vector(HARTIDLEN-1 downto 0);
@@ -668,8 +738,10 @@ package noelvint is
     dm_tbufaddr : trace_addr;
     dm_trace    : std_ulogic;
     trace       : trace_type;
-    tpbuf_en    : std_ulogic;
     info        : trace_info;
+    trace_extra : word2;
+    trace_on    : std_logic;
+    trace_off   : std_logic;
 
   end record;
 
@@ -683,8 +755,10 @@ package noelvint is
     dm_tbufaddr => (others => '0'),
     dm_trace    => '0',
     trace       => trace_rst,
-    tpbuf_en    => '0',
-    info        => trace_info_none
+    info        => trace_info_none,
+    trace_extra => (others => '0'),
+    trace_on    => '0',
+    trace_off   => '0'
   );
 
   type itrace_out_type is record
@@ -693,6 +767,9 @@ package noelvint is
     idata      : trace_data;
     write      : trace_sel;
     enable     : std_ulogic;
+-- pragma translate_off
+    idata_sim  : trace_data_sim;
+-- pragma translate_on
   end record;
 
   constant itrace_out_none : itrace_out_type := (
@@ -701,6 +778,9 @@ package noelvint is
     idata  => (others => '0'),
     write  => (others => '0'),
     enable => '0'
+-- pragma translate_off
+    , idata_sim => (others => '0')
+-- pragma translate_on
   );
 
   constant nv_trace_out_type_none : nv_trace_out_type := (
@@ -941,6 +1021,7 @@ package noelvint is
     generic (
       fabtech          : integer range 0  to NTECH;    -- fabtech
       memtech          : integer range 0  to NTECH;    -- memtech
+      cfg              : integer;
       -- Core
       physaddr         : integer range 32 to 56;       -- Physical Addressing
       addr_bits        : integer range 32 to 64;       -- Max bits required for an address
@@ -950,6 +1031,8 @@ package noelvint is
       perf_bits        : integer range 0  to 64;       -- Bits of performance counting
       illegalTval0     : integer range 0  to 1;        -- Zero TVAL on illegal instruction
       no_muladd        : integer range 0  to 1;        -- 1 - multiply-add not supported
+      div_hiperf       : integer range 0  to 1;        -- 1 - division with 2 bits per cycle
+      div_small        : integer range 0  to 1;        -- 1 - small division implementation
       single_issue     : integer range 0  to 1;        -- 1 - only one pipeline
       -- Caches
       iways            : integer range 1  to 8;        -- I$ Ways
@@ -964,19 +1047,17 @@ package noelvint is
       pmp_entries      : integer range 0  to 16;       -- Implemented PMP registers
       pmp_g            : integer range 0  to 10;       -- PMP grain is 2^(pmp_g + 2) bytes
       pma_entries      : integer range 0  to 16;       -- Implemented PMA entries
---      pma_addr         : word64_arr             := word64_arr_empty; -- PMA addresses
-     -- pma_data         : word64_arr             := word64_arr_empty; -- PMA configuration
       pma_masked       : integer range 0  to 1;        -- PMA done using masks
+      pma_readout      : integer range 0  to 1;        -- Make PMA configuration readable
       asidlen          : integer range 0  to 16;       -- Max 9 for Sv32
       vmidlen          : integer range 0  to 14;       -- Max 7 for Sv32
       -- Interrupts
       imsic            : integer range 0  to 1;        -- IMSIC implemented
-      -- RNMI
-      rnmi_iaddr       : integer;                      -- RNMI interrupt trap handler address
-      rnmi_xaddr       : integer;                      -- RNMI exception trap handler address
       -- Extensions
-      ext_noelv        : integer range 0  to 1;        -- NOEL-V Extensions
-      ext_noelvalu     : integer range 0  to 1;        -- NOEL-V ALU Extensions
+      ext_capability   : integer range 0  to 1;        -- NOEL-V capability CSRs available
+      ext_diagnostics  : integer range 0  to 1;        -- NOEL-V diagnostic instructions
+      ext_hwassert     : integer range 0  to 1;        -- NOEL-V Harware Asserts Enabled
+      ext_noelv        : integer range 0  to 1;        -- NOEL-V Extensions (not counting the above)
       ext_m            : integer range 0  to 1;        -- M Base Extension Set
       ext_a            : integer range 0  to 1;        -- A Base Extension Set
       ext_c            : integer range 0  to 1;        -- C Base Extension Set
@@ -990,7 +1071,8 @@ package noelvint is
       ext_zbkc         : integer range 0  to 1;        -- Zbkc Extension
       ext_zbkx         : integer range 0  to 1;        -- Zbkx Extension
       ext_sscofpmf     : integer range 0  to 1;        -- Sscofpmf Extension
-      ext_shlcofideleg : integer range 0  to 1;     -- Shlcofideleg Extension
+      ext_smcntrpmf    : integer range 0  to 1;        -- Smcntrpmf Extension
+      ext_shlcofideleg : integer range 0  to 1;        -- Shlcofideleg Extension
       ext_smcdeleg     : integer range 0  to 1;        -- Smcdleg Extension
       ext_sstc         : integer range 0  to 2;        -- Sctc Extension (2 : only time csr impl.)
       ext_smaia        : integer range 0  to 1;        -- Smaia Extension
@@ -1012,12 +1094,16 @@ package noelvint is
       ext_zfh          : integer range 0  to 1;        -- Zfh Extension
       ext_zfhmin       : integer range 0  to 1;        -- Zfhmin Extension
       ext_zfbfmin      : integer range 0  to 1;        -- Zfbfmin Extension
+      ext_svpbmt       : integer range 0  to 1;        -- Svpbmt Extension
+      ext_smpmpmt      : integer range 0  to 1;        -- Smpmpmt Extension (unratified)
+      ext_svnapot      : integer range 0  to 1;        -- Svnapot Extension
+      tlb_pmp          : integer range 0  to 1;        -- Do PMP via TLB
       mode_s           : integer range 0  to 1;        -- Supervisor Mode Support
       mode_u           : integer range 0  to 1;        -- User Mode Support
       dmen             : integer range 0  to 1;        -- Using RISC-V Debug Module
       fpulen           : integer range 0  to 128;      -- Floating-point precision
       fpuconf          : integer range 0  to 1;        -- 0 = nanoFPUnv, 1 = GRFPUnv
-      trigger          : integer range 0  to 4096;
+      trigger          : integer range 0  to 6176;
       -- Advanced Features
       late_branch      : integer range 0  to 1;        -- Late Branch Support
       late_alu         : integer range 0  to 1;        -- Late ALUs Support
@@ -1027,6 +1113,16 @@ package noelvint is
       tbuf             : integer;                      -- Trace buffer size in kB
       scantest         : integer;                      -- Scantest support
       rfreadhold       : integer range 0  to 1 := 0;   -- Register File Read Hold
+      -- Configuration for cctrl
+      svrsw60t59b      : boolean;                      -- Extension to ignore 60:59 in PTEs (Sv39 and up)
+      walk_fault       : boolean;                      -- Enabled fault on PT walk start.
+      walk_sw          : boolean;                      -- Only SW PT walk (using TLB diagnostics)
+      walk_pmp         : boolean;                      -- Do "page walk" and use TLBs for pure PMP/PMA (not yet working!)
+      enable_g         : integer range 0 to 1;         -- Enable handling of G (global) bit in page tables
+      pmp_mmuu_test    : integer range 0 to 1;         -- Enable PMP test via diagnostics
+      pma_mmuu_test    : integer range 0 to 1;         -- Enable PMA test via diagnostics
+      tlb_valid_r      : integer range 0 to 1;         -- Enable TLB valid setting via diagnostics
+      --
 --    dsuen_delay      : integer range 0  to 1 := 1;   -- Delay dbgi.dsuen (no UNOPTFLAT with Verilator)
 --      show_misa_x       : integer range 0  to 1 := 1;   -- Extensions visible in MISA X
 --      allow_x_ctrl      : integer range 0  to 1 := 1;   -- Allow X to be turned off
@@ -1071,7 +1167,7 @@ package noelvint is
       pma_data       : in  word64_arr(0 to PMAENTRIES - 1); -- PMA configuration
       csr_mmu        : out nv_csr_out_type;      -- CSR values for MMU
       mmu_csr        : in  nv_csr_in_type;       -- CSR values for MMU
-      perf           : in  std_logic_vector(31 downto 0);  -- Performance data
+      perf           : in  perf_type;            -- Performance data
       cap            : in  std_logic_vector(9  downto 0);  -- Trace capability
       tbo            : in  nv_trace_out_type;    -- Trace Unit Out Port
       eto            : out nv_etrace_type;       -- E-trace output
@@ -1103,7 +1199,7 @@ package noelvint is
       tech        : integer;
       reg0write   : integer := 0;
       dissue      : integer := 1;
-      testen      : integer
+      scantest    : integer
       );
     port (
       clk      : in  std_ulogic;
@@ -1127,6 +1223,8 @@ package noelvint is
       raddr4   : in  reg_t;
       re4      : in  std_ulogic;
       rdata4   : out std_logic_vector;
+      testen   : in  std_ulogic;
+      testrst  : in  std_ulogic;
       testin   : in  std_logic_vector(TESTIN_WIDTH-1 downto 0) := testin_none
       );
   end component;
@@ -1136,7 +1234,8 @@ package noelvint is
       tech        : integer;
       wrfst       : integer;
       reg0write   : integer := 0;
-      forward     : integer := 1  -- Turn on internal forwarding
+      forward     : integer := 1;  -- Turn on internal forwarding
+      scantest    : integer
       );
     port (
       clk      : in  std_ulogic;
@@ -1159,7 +1258,9 @@ package noelvint is
       rdata3   : out std_logic_vector;
       raddr4   : in  reg_t;
       re4      : in  std_ulogic;
-      rdata4   : out std_logic_vector
+      rdata4   : out std_logic_vector;
+      testen   : in  std_ulogic;
+      testrst  : in  std_ulogic
       );
   end component;
 
@@ -1222,21 +1323,36 @@ package noelvint is
       pma_masked : integer range 0 to   1;   -- PMA done using masks
       asidlen    : integer range 0 to  16;   -- Max 9 for Sv32
       vmidlen    : integer range 0 to  14;   -- Max 7 for Sv32
-      ext_noelv  : integer range 0 to   1;   -- NOEL-V Extensions
+      ext_diagnostics : integer range 0 to 1;  -- NOEL-V diagnostic instructions
       ext_a      : integer range 0 to   1;   -- Support for Atomic operations
       ext_h      : integer range 0 to   1;   -- Support for Hypervisor, needs tlb_pmp if any PMP.
       ext_smepmp : integer range 0 to   1;   -- Support for Smepmp extension
       ext_zicbom : integer range 0 to   1;   -- Support for Zicbom extension
       ext_svpbmt : integer range 0 to   1;   -- Support for Svpbmt Extension
+      ext_smpmpmt : integer range 0 to  1;   -- Support for (unratified) Smpmpmt Extension
       ext_svnapot : integer range 0 to  1;   -- Support for Svnapot Extension
       ext_zicfiss : integer range 0 to  1;   -- Zicfiss Extension
       tlb_pmp    : integer range 0 to   1;   -- Do PMP via TLB
+      diagsplit_tlb : integer range 0 to 1;  -- Split TLB diagnostics into two cycles
+      rnd_repl   : integer range 0 to   1;   -- Allow random way replacement policy
       --
       cached    : integer;
       wbmask    : integer;
       busw      : integer;
       cdataw    : integer;
       tlbrepl   : integer;
+
+      -- Configuration for cctrl
+      svrsw60t59b   : boolean;                    -- Extension to ignore 60:59 in PTEs (Sv39 and up)
+      walk_fault    : boolean;                    -- Enabled fault on PT walk start.
+      walk_sw       : boolean;                    -- Only SW PT walk (using TLB diagnostics)
+      walk_pmp      : boolean;                    -- Do "page walk" and use TLBs for pure PMP/PMA (not yet working!)
+      enable_g      : integer range 0 to 1;       -- Enable handling of G (global) bit in page tables
+      pmp_mmuu_test : integer range 0 to 1;       -- Enable PMP test via diagnostics
+      pma_mmuu_test : integer range 0 to 1;       -- Enable PMA test via diagnostics
+      tlb_valid_r   : integer range 0 to 1;       -- Enable TLB valid setting via diagnostics
+
+      pbaddr    : integer;                        -- Program buffer address
       addrbits  : integer := 32;
       iphysbits : integer := 32;
       dphysbits : integer := 32
@@ -1265,7 +1381,7 @@ package noelvint is
       freeze   : in  std_ulogic;
       bootword : in  std_logic_vector(31 downto 0);
       smpflush : in  std_logic_vector(1 downto 0);
-      perf     : out std_logic_vector(31 downto 0)
+      perf     : out perf_type
       );
   end component;
 
@@ -1277,7 +1393,8 @@ package noelvint is
       plic         : integer range 0 to 1      := 0;
       mnidentities : integer range 63 to 2047  := 63; 
       snidentities : integer range 63 to 2047  := 63; 
-      gnidentities : integer range 63 to 2047  := 63
+      gnidentities : integer range 63 to 2047  := 63;
+      scantest     : integer                   := 0
       );
     port (
       rst        : in  std_ulogic;
@@ -1288,7 +1405,9 @@ package noelvint is
       plic_seip  : in  std_ulogic;
       imsici     : in  imsic_in_type;
       imsico     : out imsic_out_type;
-      eip        : out nv_irq_in_type
+      eip        : out nv_irq_in_type;
+      testen     : in  std_ulogic;
+      testrst    : in  std_ulogic
       );
   end component;
 
@@ -1341,7 +1460,7 @@ package noelvint is
       predictor   : integer range 0  to 2         := 0;         -- Predictor
       ext_c       : integer range 0  to 1         := 1;         -- C Base Extension Set
       dissue      : integer range 0 to  1         := 1;          -- Dual issue
-      testen      : integer                       := 0
+      scantest    : integer                       := 0
       );
     port (
       clk         : in  std_ulogic;
@@ -1349,6 +1468,8 @@ package noelvint is
       holdn       : in  std_ulogic;
       bhti        : in  nv_bht_in_type;
       bhto        : out nv_bht_out_type;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic;
       testin       : in std_logic_vector(TESTIN_WIDTH-1 downto 0)
       );
   end component;
@@ -1358,13 +1479,16 @@ package noelvint is
       nentries    : integer range 8  to 128       := 32;        -- Number of Entries
       nsets       : integer range 1  to 8         := 1;         -- Associativity
       pcbits      : integer range 32 to 56        := 32;
-      ext_c       : integer range 0  to 1         := 0          -- C Base Extension Set
+      ext_c       : integer range 0  to 1         := 0;         -- C Base Extension Set
+      scantest    : integer                       := 0
       );
     port (
       clk         : in  std_ulogic;
       rstn        : in  std_ulogic;
       btbi        : in  nv_btb_in_type;
-      btbo        : out nv_btb_out_type
+      btbo        : out nv_btb_out_type;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic
       );
   end component;
 
@@ -1372,33 +1496,40 @@ package noelvint is
     generic (
       nentries : integer range 1 to 32;  -- Number of Entries
       pcbits   : integer range 32 to 56;
-      dissue   : integer range 0 to 1
+      dissue   : integer range 0 to 1;
+      scantest : integer              := 0
       );
     port (
       clk  : in  std_ulogic;
       rstn : in  std_ulogic;
       btbi : in  nv_btb_in_type;
-      btbo : out nv_btb_out_type
+      btbo : out nv_btb_out_type;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic
       );
   end component;
 
   component rasnv is
     generic (
       depth       : integer range 0  to 8         := 4;
-      pcbits      : integer range 32 to 56        := 32
+      pcbits      : integer range 32 to 56        := 32;
+      scantest    : integer                       := 0
       );
     port (
       clk         : in  std_ulogic;
       rstn        : in  std_ulogic;
       rasi        : in  nv_ras_in_type;
-      raso        : out nv_ras_out_type
+      raso        : out nv_ras_out_type;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic
       );
   end component;
 
   component nanofpunv is
     generic (
       fpulen    : integer range 0 to 128;
-      no_muladd : integer range 0 to 1
+      no_muladd : integer range 0 to 1;
+      scantest  : integer              := 0
     );
     port (
       clk         : in  std_ulogic;
@@ -1414,7 +1545,9 @@ package noelvint is
       ren         : out std_logic_vector(1 to 3);
       s1          : in  word64;
       s2          : in  word64;
-      s3          : in  word64
+      s3          : in  word64;
+      testen      : in  std_ulogic;
+      testrst     : in  std_ulogic
       );
   end component;
 

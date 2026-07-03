@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library grlib;
 use grlib.amba.all;
 use grlib.stdlib.all;
@@ -43,7 +44,8 @@ entity jtagcomrv is
     gatetech: integer := 0;
     isel   : integer range 0 to 1 := 0;
     ainst  : integer range 0 to 255 := 2;
-    dinst  : integer range 0 to 255 := 3);
+    dinst  : integer range 0 to 255 := 3;
+    dm_base: integer);
   port (
     rst  : in std_ulogic;
     clk  : in std_ulogic;
@@ -63,6 +65,7 @@ architecture rtl of jtagcomrv is
 
   constant ADDBITS : integer := 10;
   constant NOCMP : boolean := (isel /= 0);
+  constant DM_BASE_ADDR : std_logic_vector(31 downto 12) := std_logic_vector(to_unsigned(DM_BASE, 20));
 
   type tckpreg1_type is record          -- always reset
     stat       : std_logic_vector(1 downto 0);
@@ -290,7 +293,7 @@ begin
     --qual_areg <= (others => ar.qual_areg);
     --if ar.qual_areg='1' then av.areg:=not aregq; end if;
 
-    vdmai.address := x"fe000" & "000" & ar.dreg(33+7 downto 34) & "00";
+    vdmai.address := DM_BASE_ADDR & "000" & ar.dreg(33+7 downto 34) & "00";
     vdmai.wdata := ahbdrivedata(ar.dreg(33 downto 2));
     vdmai.start := '0'; vdmai.burst := '0';
     vdmai.write := ar.dreg(1) and not ar.dreg(0);

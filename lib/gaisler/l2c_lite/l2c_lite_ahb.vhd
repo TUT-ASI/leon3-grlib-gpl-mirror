@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -84,6 +84,8 @@ architecture rtl of l2c_lite_ahb is
         signal bmwr_size        : std_logic_vector(log2ext(max_size) - 1 downto 0);
         signal bmwr_req         : std_logic;
         signal bmwr_data        : std_logic_vector(bm_dw - 1 downto 0);
+        signal hrdata           : std_logic_vector(be_dw - 1 downto 0);
+        signal hwdata           : std_logic_vector(be_dw - 1 downto 0);
 
         signal ahbmi_bm : ahb_bmst_in_type;
         signal ahbmo_bm : ahb_bmst_out_type;
@@ -111,6 +113,8 @@ begin
         ahbmo.hindex  <= hmindex;
         ahbmo.hirq    <= (others => '0');
         ahbmo.hconfig <= (others => (others => '0'));
+        ahbmo.hwdata  <= ahbdrivedata(hwdata);
+        hrdata        <= ahbselectdata(ahbmi.hrdata, ahbmo_bm.haddr(4 downto 2), conv_std_logic_vector(log2(be_dw)-3, 3), ahbmi.endian)(be_dw-1 downto 0);
 
         ctrl : l2c_lite_core
         generic map(
@@ -176,8 +180,8 @@ begin
 		ahbmi => ahbmi_bm,
 		ahbmo => ahbmo_bm,
 
-		hrdata => ahbmi.hrdata,
-		hwdata => ahbmo.hwdata,
+		hrdata => hrdata,
+		hwdata => hwdata,
 
 		--FRONTEND
 		bmrd_addr        => bmrd_addr,

@@ -84,7 +84,7 @@ proc readfilelist {filename attributes} {
         set line [regsub {[ \t]*#.*} $line ""]
         # Only add the line if it is non-empty
         if {[regexp {\S+} $line] > 0} {
-            # Split each element into a list of two elements, one being the 
+            # Split each element into a list of two elements, one being the
             # file name and the other the attributes
             set linelist [regexp -all -inline {\S+} $line]
             set linelist [concat $linelist $attributes]
@@ -127,7 +127,8 @@ proc librarieslist {} {
 proc generatefilelists {filetree fileinfo} {
     global GRLIB EXTRALIBS DIRADD TECHLIBS XLIBSKIP GRLIB_LEON3_VERSION XDIRSKIP \
         FILEADD XFILESKIP GRLIB_CONFIG VHDLSYNFILES VHDLIPFILES VHDLOPTSYNFILES VHDLSIMFILES \
-        VERILOGSYNFILES VERILOGOPTSYNFILES VERILOGSIMFILES GRLIB_SIMULATOR TOP SIMTOP LATTICE_IP BOARD
+        VERILOGSYNFILES VERILOGOPTSYNFILES VERILOGSIMFILES GRLIB_SIMULATOR TOP SIMTOP BOARD \
+        LATTICE_IP LATTICE_COM_IP NOELV_CONFIG
     upvar $filetree ft
     upvar $fileinfo fi
 
@@ -153,6 +154,7 @@ proc generatefilelists {filetree fileinfo} {
 
     set GRLIB_real [file normalize $GRLIB]
     set GRLIB_CONFIG_real [file normalize $GRLIB_CONFIG]
+    set NOELV_CONFIG_real [file normalize $NOELV_CONFIG]
 
     foreach j [librarieslist] {
         set lname [lindex $j 0]
@@ -175,7 +177,7 @@ proc generatefilelists {filetree fileinfo} {
                     set flist {}
                     foreach i {vlogsyn vhdlsyn svlogsyn vhdlmtie vhdlsynpe vhdldce\
                                    vhdlcdse vhdlxile vhdlxise vhdlprec vhdlfpro\
-                                   vhdlp1735 vlogsim vhdlsim svlogsim } {
+                                   vhdlp1735 vhdlnx vlogsim vhdlsim svlogsim } {
                         set m $k/$realdir/$i
                         if {[file exists $m.txt]} {
                             foreach q [concat [readfilelist $m.txt $dattr] [converttuples $FILEADD $dattr]] {
@@ -191,6 +193,24 @@ proc generatefilelists {filetree fileinfo} {
                                     set f $GRLIB_CONFIG
                                     set f_real $GRLIB_CONFIG_real
                                     set grcfg $f
+                                }
+                                if {![string equal $NOELV_CONFIG "dummy"] && \
+                                    [string equal $bn "gaisler"] && \
+                                    [string equal $realdir "noelv/pkg"]} {
+                                    if {([string equal $NOELV_CONFIG "64"] || \
+                                        [string equal $NOELV_CONFIG "32"])} {
+                                        if {[string equal $fname "noelv_cfg.vhd"]} {
+                                            set f $k/$realdir/noelv_cfg_$NOELV_CONFIG.vhd
+                                            set f_real $k_real/$realdir/noelv_cfg_$NOELV_CONFIG.vhd
+                                        }
+                                    } else {
+                                        if {[string equal $fname "noelv_cfg.vhd"] || \
+                                            [string equal $fname "noelv_pma_cfg.vhd"] || \
+                                            [string equal $fname "noelv_cpu_cfg_custom.vhd"]} {
+                                          set f $NOELV_CONFIG_real/$fname
+                                          set f_real $f
+                                        }
+                                    }
                                 }
                                 if {[lsearch $XFILESKIP $fname] < 0  && [file exists $f]} {
                                     set conffiledict [dict create bn $bn f_real $f_real q $fname l $realdir i $i k $k fattr [join $fattr]]
@@ -290,6 +310,22 @@ proc generatefilelists {filetree fileinfo} {
         }
     }
 
+    foreach f $LATTICE_COM_IP  {
+	set info [regsub {[ \t]*#.*} $f ""]
+	set infolist [regexp -all -inline {\S+} $info]
+	#Lattice IPs downloaded from server. Example:
+	#latticesemi.com_ip_ddr3_mc_1.4.2/lattice_ddr3c -> fname=lattice_ddr3c ,
+	#fattr is for the folder IP path -> latticesemi.com_ip_ddr3_mc_1.4.2/
+	#the regex matches everything (.*) until the last occurrence of / (included)
+	regexp {.*\/} [lindex $infolist 0] fattr
+	set fname [lindex [split [lindex $infolist 0] "/"] end]
+				if {[file exists "$GRLIB/boards/$BOARD/lattice_ips/${fattr}${fname}.cfg"] } {
+            lappend flist $fname
+            set conffiledict [dict create bn "work" l "local" i "latticecomipcfg" q $fname fattr $fattr]
+            dict set fi $fname $conffiledict
+        }
+    }
+
     if {[dict exists $ft "$GRLIB/lib/work" ] } {
         set worklibdict [dict get $ft "$GRLIB/lib/work"]
     } else {
@@ -384,7 +420,7 @@ foreach envvar $envvars {
 set filetree [dict create]
 set fileinfo [dict create]
 set GRLIB  [file dirname $GRLIB/bin]
-generatefilelists filetree fileinfo 
+generatefilelists filetree fileinfo
 set filetree [mergefiletrees $filetree $extrafiletree]
 set fileinfo [mergefileinfos $fileinfo $extrafileinfo]
 

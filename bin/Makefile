@@ -1,5 +1,5 @@
-VER=$(VNAME)2025.2
-BID=4298
+VER=$(VNAME)2026.2
+BID=4300
 CC=gcc
 SED=sed
 
@@ -15,6 +15,9 @@ GRLIB_CONFIG = dummy
 endif
 ifeq ("$(GRLIB_SIMULATOR)","")
 GRLIB_SIMULATOR = ModelSim
+endif
+ifeq ("$(NOELV_CONFIG)","")
+NOELV_CONFIG = dummy
 endif
 
 
@@ -556,11 +559,20 @@ $(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl radiant-ips
 radiant-ips: $(TOP)_radiant_gen_ips.tcl
 	@for ip_cfg in ${LATTICE_IP}; do \
 		if [ ! -d "./lattice_ips/$${ip_cfg}" ]; then \
-			echo "Copying IP cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
+			echo "Copying IP (library) cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
 			mkdir -p lattice_ips/$${ip_cfg}; \
 			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
 		else \
-			echo "IP cfg $${ip_cfg} already in lattice_ips folder. We use that one."; \
+			echo "IP (library) cfg $${ip_cfg} already in lattice_ips folder. We use that one."; \
+		fi; \
+	done;
+	@for ip_cfg in ${LATTICE_COM_IP}; do \
+		if [ ! -d "./lattice_ips/$${ip_cfg}" ]; then \
+			echo "Copying IP (server) cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
+			mkdir -p lattice_ips/$${ip_cfg}; \
+			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
+		else \
+			echo "IP (server) cfg $${ip_cfg} already in lattice_ips folder. We use that one."; \
 		fi; \
 	done;
 	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiantc"; then \

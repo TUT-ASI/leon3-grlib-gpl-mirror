@@ -1,5 +1,8 @@
 dmnvint.vhd
 progbuf.vhd
+progbuf_ahb.vhd
 dmnvx.vhd
+itctrlnv.vhd
+itbufmemnv.vhd
 dmnv.vhd
 

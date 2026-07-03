@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -49,21 +51,27 @@ entity aplic_encoder is
   generic (
     nsources        : integer := 32;
     srcbits         : integer := 6;
-    prbits          : integer := 4
+    prbits          : integer := 4;
+    scantest        : integer := 0
     );
   port (
     rstn    : in  std_ulogic;
     clk     : in  std_ulogic;
-    ip      : in  std_logic_vector(nsources-1 downto 0);             -- IP bit for every source                                           
+    ip      : in  std_logic_vector(nsources-1 downto 0);             -- IP bit for every source
     pr_in   : in  std_logic_vector((prbits*nsources)-1 downto 0);    -- Each source's priority
-    enable  : in  std_logic_vector(nsources-1 downto 0);             -- Source enable signal 
+    enable  : in  std_logic_vector(nsources-1 downto 0);             -- Source enable signal
+    softrstn: in  std_ulogic;                                        -- Soft reset bit
     id      : out std_logic_vector(srcbits-1 downto 0);              -- Identity of the hart interrupt with the highest priority
     ip_out  : out std_logic;                                         -- 1 when there is an interrupt pending and enable for the hart
-    pr_out  : out std_logic_vector(prbits-1 downto 0)                -- Highest priority enable and pending interrupt                 
+    pr_out  : out std_logic_vector(prbits-1 downto 0);               -- Highest priority enable and pending interrupt                 
+    testen  : in  std_ulogic;
+    testrst : in  std_ulogic
     );
 end aplic_encoder;
 
 architecture rtl of aplic_encoder is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   -- To shorten the combinotional path the highest priority interrupt is caculated in two stages.
   -- The interrupt sources are set together in groups of 'lane_srcs' sources. The highest interrupt
@@ -95,6 +103,17 @@ architecture rtl of aplic_encoder is
     ip_out => '0'
   ); 
 
+  function softrst(rin : in reg_type) return reg_type is
+    variable rout : reg_type;
+  begin
+    rout := (
+             intpr  => (others => (others => '0')),
+             intid  => (others => (others => '0')),
+             ip_out => '0'
+            );
+    return rout;
+  end function softrst;
+
 
   -- From a input priority vector it computes the highest priority
   -- source identity and priority (being the lowest one the highest one)
@@ -117,11 +136,13 @@ architecture rtl of aplic_encoder is
   end PriorityEncoder;
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
-
-  comb : process (r, ip, pr_in, enable)
+  comb : process (r, ip, pr_in, enable, softrstn)
     variable v          : reg_type;
     variable pr_ip_mask : priority_vector(nsources-1 downto 0);
     variable highest_pri : std_logic_vector(prbits-1 downto 0);
@@ -174,27 +195,43 @@ begin
                     temp_id,      -- out : Intermediate identity
                     highest_pri); -- out : Intermediate priority
 
-    
-    
+
     -- Outpus:
     ip_out      <= r.ip_out;
     pr_out      <= highest_pri;
     id          <= r.intid(conv_integer(temp_id))+1;
 
+    -- Soft Reset
+    if softrstn = '0' then
+      v := softrst(v);
+    end if;
 
     rin <= v;
 
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rstn = '0' then
-        r <= RES_T;
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rstn = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;
 

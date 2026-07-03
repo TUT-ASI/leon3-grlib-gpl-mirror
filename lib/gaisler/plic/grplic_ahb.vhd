@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 --              An interrupt ID of 0 is reserved to mean “no interrupt”.
 --              Interrupts ID 1 to ID 32 areattached to the irq lines of the
 --              AHB bus. Source 1 in the GRPLIC is assigned to irq(1) of the
---              AHB bus. 
+--              AHB bus.
 --
 --              Implemented with 32-bit AHB slave interface to support 64 MB
 --              address range (Threshold/claim/complete has offset 0x200000 -
@@ -41,6 +41,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -51,28 +53,36 @@ use gaisler.plic.all;
 entity grplic_ahb is
   generic (
     hindex      : integer range 0 to NAHBSLV-1  := 0;
+    hbaren      : integer range 0 to 1          := 0;  -- When set to 1 plic is part of an ahb slave with several mem bars
     haddr       : integer range 0 to 16#FFF#    := 0;
+    hbar        : integer range 0 to 3          := 0;
     hmask       : integer range 0 to 16#FFC#    := 16#FFC#;
     nsources    : integer range 0 to RISCV_SOURCES := NAHBIRQ;
     ncpu        : integer range 0 to MAX_HARTS  := 4;
     priorities  : integer range 0 to 128        := 8;
     pendingbuff : integer range 0 to 128        := 1;
-    irqtype     : integer range 0 to 1          := 1;
-    thrshld     : integer range 0 to 1          := 1
+    irqtypeconf : integer range 0 to 2          := 1;
+    thrshld     : integer range 0 to 1          := 1;
+    scantest    : integer                       := 0
     );
   port (
     rst         : in  std_ulogic;
     clk         : in  std_ulogic;
     ahbi        : in  ahb_slv_in_type;
     ahbo        : out ahb_slv_out_type;
+    irqtype     : in  std_logic_vector(nsources-1 downto 0) := (others =>'0');
+    softrstn    : in  std_ulogic                            := '0';
     irqo        : out std_logic_vector(ncpu*4-1 downto 0)
     );
 end;
 
 architecture rtl of grplic_ahb is
 
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
   constant REVISION : integer := 0;
 
+  -- If hbaren is set to 1 this output will be ignored
   constant hconfig : ahb_config_type := (
     0 => ahb_device_reg ( VENDOR_GAISLER, GAISLER_GRPLIC, 0, REVISION, 0),
     4 => ahb_membar(haddr, '0', '0', hmask),
@@ -103,7 +113,7 @@ architecture rtl of grplic_ahb is
 
   -- Relative address for the Priority Threshold register blocks
   constant THR_BIT      : integer := 21;
-  
+
   type priority_in_type is array (0 to sources-1) of std_logic_vector(prbits-1 downto 0);
   type priority_out_type is array (0 to ntargets-1) of std_logic_vector(prbits-1 downto 0);
   type enable_type is array (0 to ntargets-1) of std_logic_vector(sources-1 downto 0);
@@ -150,8 +160,35 @@ architecture rtl of grplic_ahb is
     hwdata              => (others => '0'),
     hrdata              => (others => '0')
     );
-  
+
+  function softrst(rin : in reg_type) return reg_type is
+    variable rout : reg_type;
+  begin
+    rout := (
+             priorities          => (others => (others => '0')),
+             ipbits              => (others => '0'),
+             enable              => (others => (others => '0')),
+             threshold           => (others => (others => '0')),
+             max_id              => (others => (others => '0')),
+             claimed             => (others => (others => '0')),
+             claim               => (others => '0'),
+             complete            => (others => '0'),
+             meip                => (others => '0'),
+             -- Don't reset AHB registers
+             hsel                => rin.hsel  ,
+             hready              => rin.hready,
+             hwrite              => rin.hwrite,
+             hsize               => rin.hsize ,
+             haddr               => rin.haddr ,
+             hresp               => rin.hresp ,
+             hwdata              => rin.hwdata,
+             hrdata              => rin.hrdata
+            );
+    return rout;
+  end function softrst;
+
   signal r, rin         : reg_type;
+  signal arst           : std_ulogic;
 
   -- Gateways signals
   signal complete       : std_logic_vector(sources-1 downto 0);
@@ -170,6 +207,8 @@ architecture rtl of grplic_ahb is
   signal id             : id_type;
 
 begin
+  arst        <= ahbi.testrst when (ASYNC_RESET and scantest/=0 and ahbi.testen/='0') else
+                 rst when ASYNC_RESET else '1';
 
   ---------------------------------------------------
   -- Gateways
@@ -180,15 +219,19 @@ begin
     gateway : plic_gateway
       generic map (
         pendingbuff     => pendingbuff,
-        irqtype         => irqtype
+        irqtypeconf     => irqtypeconf
         )
       port map (
         rst             => rst,
         clk             => clk,
+        irqtype         => irqtype(i),
         irqi            => ahbi.hirq(i),
         ip              => ip(i),
         complete        => complete(i),
-        claim           => claim(i)
+        claim           => claim(i),
+        softrstn        => softrstn,
+        testen          => ahbi.testen,
+        testrst         => ahbi.testrst
         );
   end generate;
 
@@ -202,7 +245,7 @@ begin
   encoders : for i in 0 to ntargets-1 generate
     encoder : plic_encoder
       generic map (
-        nsources        => sources,  
+        nsources        => sources,
         ntargets        => ntargets,
         srcbits         => srcbits,
         prbits          => prbits
@@ -218,7 +261,7 @@ begin
 
   -- Unfold pr_in_array and enable
   pr_unfolding : for i in 0 to sources-1 generate
-    pr_array_unfol((i+1)*prbits-1 downto i*prbits)      <= pr_in_array(i); 
+    pr_array_unfol((i+1)*prbits-1 downto i*prbits)      <= pr_in_array(i);
   end generate;
 
   ---------------------------------------------------
@@ -238,7 +281,7 @@ begin
         );
   end generate;
 
-  comb : process (rst, r, ahbi, ip, pr_out_array, id, irqreq)
+  comb : process (r, ahbi, ip, id, irqreq, softrstn)
     variable v          : reg_type;
     variable selhart    : integer range 0 to ntargets-1;
     variable selsrc     : integer;
@@ -246,11 +289,11 @@ begin
     variable selen      : integer range 0 to ntargets-1;
     variable srcmaxid   : integer range 0 to sources-1;
     variable cmplsource : integer range 0 to 2**srcbits-1;
+    variable hsel       : std_ulogic;
     variable hrdata     : std_logic_vector(regw-1 downto 0);
     variable rdata      : std_logic_vector(regw-1 downto 0);
     variable hwdata     : std_logic_vector(regw-1 downto 0);
     variable wdata      : std_logic_vector(regw-1 downto 0);
-    variable offset     : std_logic_vector(15 downto 14);
   begin
 
     ---------------------------------------------------
@@ -259,7 +302,7 @@ begin
 
     -- Global interrupt sources are assigned small unsigned integer identifiers,
     -- beginning at the value 1. An interrupt ID of 0 is reserved to mean “no interrupt”.
-    
+
     -- Interrupt identifiers are also used to break ties when two or more interrupt sources have the
     -- same assigned priority. Smaller values of interrupt ID take precedence over larger values
     -- of interrupt ID.
@@ -270,13 +313,13 @@ begin
     -- ip(nsources)     -> ID N
 
     v := r;
-    
+
     v.hsel    := (others => '0');
     v.hready  := '1';
-    v.hresp   := HRESP_OKAY; 
+    v.hresp   := HRESP_OKAY;
 
     rdata       := (others => '0');
-    
+
     -- Claim and complete signals will be set only for 1 clock cycle
     v.claim     := (others => '0');
     v.complete  := (others => '0');
@@ -295,7 +338,7 @@ begin
 
     -- Sources 1 to nsources are implemented
     -- All other sources registers are tied to 0
-    
+
     -- base + 0x000000: Reserved (interrupt source 0 does not exist)
     -- base + 0x000004: Interrupt source 1 priority
     -- base + 0x000008: Interrupt source 2 priority
@@ -348,7 +391,14 @@ begin
     cmplsource  := to_integer(unsigned(r.hwdata(srcbits-1 downto 0)));
 
     -- Slave selected
-    if (ahbi.hready and ahbi.hsel(hindex) and ahbi.htrans(1)) = '1' then
+    -- If it belongs to a AHB slave with several memory bars we need to check
+    -- if the memory bar is selected
+    if hbaren = 0 then
+      hsel :=  ahbi.hsel(hindex);
+    else
+      hsel :=  ahbi.hsel(hindex) and ahbi.hmbsel(hbar);
+    end if;
+    if (ahbi.hready and hsel and ahbi.htrans(1)) = '1' then
       v.hsel(0)  := '1';
       v.haddr    := ahbi.haddr;
       v.hsize    := ahbi.hsize;
@@ -375,7 +425,7 @@ begin
     -- Read access
     if r.hsel(0) = '1' then
       if r.haddr(THR_BIT) = '0' then
-        if r.haddr(THR_BIT-1 downto 13) = zero32(THR_BIT-1 downto 13) then 
+        if r.haddr(THR_BIT-1 downto 13) = zero32(THR_BIT-1 downto 13) then
           if r.haddr(12) = '0' then -- priority register
             if selsrc <= sources-1 then
               rdata(prbits-1 downto 0)    := r.priorities(selsrc);
@@ -419,7 +469,7 @@ begin
                 rdata(prbits-1 downto 0)          := r.threshold(selhart);
               end if;
             else -- claim/complete register
-              rdata(srcbits-1 downto 0)           := r.max_id(selhart); 
+              rdata(srcbits-1 downto 0)           := r.max_id(selhart);
               -- Interrupt Claims
               -- Do not allow nested interrupts from the same hart
               if r.claimed(selhart)(srcmaxid) = '0' and r.hwrite = '0' then
@@ -435,8 +485,8 @@ begin
 
     -- Write access
     if r.hsel(1) = '1' and r.hwrite = '1' then
-      if r.haddr(THR_BIT) = '0' then 
-        if r.haddr(THR_BIT-1 downto 13) = zero32(THR_BIT-1 downto 13) then 
+      if r.haddr(THR_BIT) = '0' then
+        if r.haddr(THR_BIT-1 downto 13) = zero32(THR_BIT-1 downto 13) then
           if r.haddr(12) = '0' then -- priority register
             if selsrc <= sources-1 then
               v.priorities(selsrc)                := wdata(prbits-1 downto 0);
@@ -516,6 +566,11 @@ begin
     -- Hardwired priority for source 0
     v.priorities(0) := (others => '0');
 
+    -- Soft reset
+    if softrstn = '0' then
+      v := softrst(v);
+    end if;
+
     rin <= v;
 
     -- PLIC Signals
@@ -537,18 +592,33 @@ begin
     for i in 0 to ntargets-1 loop
       irqo(i)   <= r.meip(i);
     end loop;
-    
+
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rst = '0' then
-        r <= RES_T;
+  -- Synch reset
+  syncrregs : if not ASYNC_RESET generate
+    synch_regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rst = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  -- Asynch reset
+  asyncrregs : if ASYNC_RESET generate
+    asynch_regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end;
 

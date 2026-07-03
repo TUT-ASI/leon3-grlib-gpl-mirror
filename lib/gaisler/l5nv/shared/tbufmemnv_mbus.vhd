@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ architecture rtl of tbufmemnv_mbus is
 type enable_type is array (0 to nbus) of std_logic_vector(1 downto 0);
 signal enable : enable_type;
 
+
 begin
 
   mbus_trace_mem : for b in 0 to nbus generate
@@ -63,13 +64,15 @@ begin
     mem64 : for i in 0 to 4 generate -- 32x5 syncrams standard to cover 64-bit bus
       ram0 : syncram generic map (tech => tech, abits => addrbits, dbits => 32, testen => testen, custombits => memtest_vlen)
         port map ( clk, trace_in(b).addr(addrbits-1 downto 0), trace_in(b).data(((i*32)+31) downto (i*32)),
-                  trace_out(b).data(((i*32)+31) downto (i*32)), trace_in(b).enable, trace_in(b).write(i), testin);
+                  trace_out(b).data(((i*32)+31) downto (i*32)), trace_in(b).enable, trace_in(b).write(i), testin
+                );
     end generate;
 
     mem128 : if dwidth > 64 generate -- extra data buffer for 128-bit bus 
       ram0 : syncram64 generic map (tech => tech, abits => addrbits, testen => testen, custombits => memtest_vlen)
       port map ( clk, trace_in(b).addr(addrbits-1 downto 0), trace_in(b).data(223 downto 160),
-                trace_out(b).data(223 downto 160), enable(b), trace_in(b).write(6 downto 5), testin);
+                trace_out(b).data(223 downto 160), enable(b), trace_in(b).write(6 downto 5), testin
+              );
     end generate;
 
     nomem128 : if dwidth < 128 and proc = 0 generate -- no extra data buffer for 128-bit bus

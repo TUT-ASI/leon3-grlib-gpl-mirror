@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ use grlib.stdlib.tost_bits;
 use grlib.stdlib.notx;
 use grlib.stdlib.setx;
 library gaisler;
+use gaisler.noelv.all;
 use gaisler.noelvtypes.all;
 use gaisler.fputilnv.all;
 use gaisler.utilnv.log;
@@ -67,7 +68,8 @@ entity nanofpunv is
     fpulen    : integer range 0  to 128 := 64;  -- Floating-point precision
     -- Core
     no_muladd : integer range 0  to 1   := 0;   -- 1 - multiply-add not supported
-    extmul    : integer range 0  to 1   := 0    -- 1 - multiply done externally
+    extmul    : integer range 0  to 1   := 0;   -- 1 - multiply done externally
+    scantest  : integer                 := 0
     ; do_addsel : integer := 1
   );
   port (
@@ -88,11 +90,15 @@ entity nanofpunv is
     ren           : out std_logic_vector(1 to 3);
     s1            : in  word64;   -- All FPU register file data here
     s2            : in  word64;   -- Unused
-    s3            : in  word64    -- Unused (for muladd)
+    s3            : in  word64;   -- Unused (for muladd)
+    testen        : in  std_ulogic;
+    testrst       : in  std_ulogic
   );
 end;
 
 architecture rtl of nanofpunv is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   signal e_inst        : word;
   signal e_valid       : std_ulogic;
@@ -334,6 +340,7 @@ architecture rtl of nanofpunv is
 
 
   signal r, rin    : nanofpu_regs;
+  signal arst      : std_ulogic;
 
   -- For external multiplier
   signal multiply  : std_ulogic;
@@ -384,7 +391,8 @@ begin
   mulfp_gen: if extmul = 1 generate
     mulfp_i: entity gaisler.mulfp
       generic map (
-        fpulen => fpulen
+        fpulen => fpulen,
+        scantest => scantest
       )
       port map (
         clk      => clk,
@@ -396,10 +404,14 @@ begin
         mant     => mulmant,
         bottom   => mulbottom,
         lo0      => mullo0,
-        done     => muldone
+        done     => muldone,
+        testen   => testen,
+        testrst  => testrst
       );
   end generate;
 
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   comb : process(r, rstn, holdn,
                  e_inst, e_valid, e_nullify, csrfrm,
@@ -2715,7 +2727,7 @@ begin
 
   end process;
 
-  srstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 0 generate
+  srstregs: if not ASYNC_RESET generate
     regs : process(clk)
     begin
       if rising_edge(clk) then
@@ -2728,10 +2740,10 @@ begin
     end process;
   end generate srstregs;
 
-  arstregs: if GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) /= 0 generate
-    regs: process(clk, rstn)
+  arstregs: if ASYNC_RESET generate
+    regs: process(clk, arst)
     begin
-      if rstn = '0' then
+      if arst = '0' then
         r <= RRES;
       elsif rising_edge(clk) then
         r <= rin;

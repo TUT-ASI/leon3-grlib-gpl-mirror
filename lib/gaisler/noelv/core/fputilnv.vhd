@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ use grlib.riscv.all;
 use grlib.stdlib.tost;
 use grlib.stdlib.notx;
 library gaisler;
+use gaisler.noelv.all;
 use gaisler.noelvtypes.all;
 use gaisler.utilnv.u2vec;
 use gaisler.utilnv.s2vec;
@@ -249,7 +250,7 @@ package body fputilnv is
     variable ext_zfh     : boolean      := is_enabled(active, x_zfh);
     variable ext_zfhmin  : boolean      := is_enabled(active, x_zfhmin);
     variable ext_zfbfmin : boolean      := is_enabled(active, x_zfbfmin);
-    variable no_muladd   : boolean      := not is_enabled(active, x_muladd);
+    variable no_muladd   : boolean      := not is_enabled(active, x_fpu_muladd);
     variable opcode      : opcode_type  := opcode(inst_in);
     variable rfa2        : reg_t        := rs2(inst_in);
     variable funct3      : funct3_type  := funct3(inst_in);
@@ -334,7 +335,16 @@ package body fputilnv is
               when others                 => illegal := true;
             end case;
           -- Convert to/from integer
-          when R_FCVT_W_S | R_FCVT_S_W => -- R_FCVT_L_S, R_FCVT_S_L (and _D_ variants)
+          when R_FCVT_S_W => --  R_FCVT_S_L (and _D_ variants)
+            -- Only four modes available
+            if rfa2(4 downto 2) /= "000" then
+              illegal := true;
+            -- No L[U] for RV32.
+            elsif is_rv32 and rfa2(1) = '1' then
+              illegal := true;
+            end if;
+            illegal := illegal or illegal_rm;
+          when R_FCVT_W_S => -- R_FCVT_L_S (and _D_ variants)
             -- FCVTMOD.W.D
             if ext_d and ext_zfa and rfa2 = "01000" and
                funct3 = R_ZERO and fmt = "01" then
@@ -347,8 +357,35 @@ package body fputilnv is
               illegal := true;
             end if;
             illegal := illegal or illegal_rm;
-          -- Mainly moves to/from integer
-          when R_FMV_X_W | R_FMV_W_X => -- R_FCLASS (and _D_ variants)
+          -- Moves to integer
+          when R_FMV_X_W =>  -- (and _D_ variants)
+            case funct3 is
+              when "000" =>
+                -- The move instructions only work for 16/32 bit float on RV32.
+                if fmt = "10" then
+                  illegal_fmt := not (ext_zfhmin or ext_zfbfmin);
+                end if;
+                -- FMVH.X.D
+                if is_rv32 and ext_zfa and rfa2 = "00001" and funct7 = R_FMVH_X_D then
+                  null;
+                elsif rfa2 /= "00000" then
+                  illegal := true;
+                else
+                  illegal := illegal or illegal_fmt;
+                  if is_rv32 and fmt = "01" then
+                    illegal := true;
+                  end if;
+                end if;
+              -- FCLASS
+              when "001" =>
+                if rfa2 /= "00000" or (not ext_zfh and fmt = "10") then
+                  illegal := true;
+                end if;
+              when others =>
+                illegal := true;
+            end case;
+          -- Mainly moves from integer
+          when R_FMV_W_X => -- R_FCLASS (and _D_ variants)
             case funct3 is
               when "000" =>
                 -- The move instructions only work for 16/32 bit float on RV32.
@@ -356,20 +393,12 @@ package body fputilnv is
                   illegal_fmt := not (ext_zfhmin or ext_zfbfmin);
                 end if;
                 -- FLI.S/D/H
-                if ext_zfa and rfa2 = "00001" and funct5 = R_FMV_W_X then
+                if ext_zfa and rfa2 = "00001" then
                   illegal := illegal or illegal_fmt;
-                -- FMVH.X.D
-                elsif is_rv32 and ext_zfa and rfa2 = "00001" and funct7 = R_FMVH_X_D then
-                  null;
                 elsif rfa2 /= "00000" then
                   illegal := true;
                 else
                   illegal := illegal or illegal_fmt;
-                end if;
-              -- FCLASS
-              when "001" =>
-                if rfa2 /= "00000" or (not ext_zfh and fmt = "10") then
-                  illegal := true;
                 end if;
               when others =>
                 illegal := true;
@@ -390,13 +419,15 @@ package body fputilnv is
                 when others => illegal := true;
               end case;
             elsif rfa2(4 downto 2) = "000" then
+              -- Some of these are actually already covered by a general destination check
+              -- above, but are included here to make things clearer.
               case conversion is
-                when "0001" => null;
-                when "0100" => null;
-                when "0010" => illegal := illegal or not ext_zfhmin;
-                when "1000" => illegal := illegal or not ext_zfhmin;
-                when "0110" => illegal := illegal or not (ext_d and ext_zfhmin);
-                when "1001" => illegal := illegal or not (ext_d and ext_zfhmin);
+                when "0001" => illegal := illegal or not ext_d;                   -- D -> S
+                when "0100" => illegal := illegal or not ext_d;                   -- S -> D
+                when "0010" => illegal := illegal or not ext_zfhmin;              -- H -> S
+                when "1000" => illegal := illegal or not ext_zfhmin;              -- S -> H
+                when "0110" => illegal := illegal or not (ext_d and ext_zfhmin);  -- H -> D
+                when "1001" => illegal := illegal or not (ext_d and ext_zfhmin);  -- D -> H
                 when others => illegal := true;
               end case;
             else
@@ -405,7 +436,7 @@ package body fputilnv is
             illegal := illegal or illegal_rm;
           when others =>
             -- FMVP.D.X
-            if ext_zfa and funct7 = R_FMVP_D_X and funct3 = "000" then
+            if ext_zfa and ext_d and is_rv32 and funct7 = R_FMVP_D_X and funct3 = "000" then
               null;
             else
               illegal := true;
@@ -717,6 +748,9 @@ package body fputilnv is
         case funct5 is
           when R_FCVT_S_W |
                R_FMV_W_X         => vreg := '0';
+          when R_FMVP_5_X =>
+            -- Really only on RV32 with Zfa
+            vreg := '0';
           when others            =>
         end case;
       when others                => vreg := '0';
@@ -743,6 +777,9 @@ package body fputilnv is
                R_FCVT_W_S | R_FMV_X_W |  -- Latter includes R_FCLASS
                R_FCVT_S_D |              -- Includes R_FCVT_D_S
                R_FSQRT             => vreg := '0';
+          when R_FMVP_5_X =>
+            -- Really only on RV32 with Zfa
+            vreg := '0';
           when others              =>
         end case;
       when others                  => vreg := '0';

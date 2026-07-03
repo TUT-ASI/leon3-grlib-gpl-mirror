@@ -63,7 +63,7 @@ GRLIB_LATTICE_RADIANT_SIM_DEVICE
 
 
 = Tested Software =
-For design building: Radiant 3.2
+For design building: Radiant 2023.1
 For simulation: ModelSim 10.7g
 
 

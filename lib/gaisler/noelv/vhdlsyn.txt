@@ -1,4 +1,6 @@
 aclint/clint.vhd
 aclint/clint_ahb.vhd
 aclint/aclint_ahb.vhd
+aclint/aclint_ahb_ts.vhd
 imsic/imsic_ahb.vhd
+rv_intctrl/rv_intctrl_ahb.vhd

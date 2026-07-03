@@ -112,7 +112,12 @@ VHDLSYNFILES += $(CFG_DIR)/config.vhd
 VHDLSYNFILES += $(CFG_LOCAL_DIR)/config_local.vhd
 VHDLSYNFILES += $(CORE_DIR)/rev.vhd
 VHDLSYNFILES += $(CORE_DIR)/cfgmap.vhd
+ifeq ("$(NOELVSYS)","ADV")
+VHDLSYNFILES += $(CORE_DIR)/strslv2ahbslv.vhd
+VHDLSYNFILES += $(CORE_DIR)/noelvadvcore.vhd
+else
 VHDLSYNFILES += $(CORE_DIR)/noelvcore.vhd
+endif
 VHDLSYNFILES += $(BASE_DIR)/rtl/ahbrom.vhd
 VHDLSYNFILES += $(BASE_DIR)/rtl/ahbrom64.vhd
 VHDLSYNFILES += $(BASE_DIR)/rtl/ahbrom128.vhd

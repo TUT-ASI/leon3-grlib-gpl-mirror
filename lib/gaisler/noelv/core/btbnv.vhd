@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.log2ext;
 library gaisler;
 use gaisler.noelvint.nv_btb_in_type;
@@ -39,13 +41,16 @@ entity btbnv is
     nentries    : integer range 8  to 128;   -- Number of Entries
     nsets       : integer range 1  to 8;     -- Associativity
     pcbits      : integer range 32 to 56;
-    ext_c       : integer range 0  to 1      -- C Base Extension Set
+    ext_c       : integer range 0  to 1;     -- C Base Extension Set
+    scantest    : integer               := 0
     );
   port (
     clk         : in  std_ulogic;
     rstn        : in  std_ulogic;
     btbi        : in  nv_btb_in_type;
-    btbo        : out nv_btb_out_type
+    btbo        : out nv_btb_out_type;
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic
     );
 end btbnv;
 
@@ -67,6 +72,7 @@ architecture rtl of btbnv is
 
   --constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
   constant RESET_ALL    : boolean := true;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   ----------------------------------------------------------------------------
   -- Types
@@ -103,8 +109,11 @@ architecture rtl of btbnv is
     );
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin  -- rtl
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   comb : process(r, btbi, rstn)
     variable v          : reg_type;
@@ -302,16 +311,27 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk, rstn)
-  begin
-    if rising_edge(clk) then
-      if RESET_ALL and rstn = '0' then
+  syncrregs : if not ASYNC_RESET generate
+    seq : process(clk, rstn)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if RESET_ALL and rstn = '0' then
+          r <= RES;
+        end if;
+      end if;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst= '0' then
         r <= RES;
-      else
+      elsif rising_edge(clk) then
         r <= rin;
       end if;
-    end if;
-
-  end process;
+    end process;
+  end generate;
 
 end rtl;

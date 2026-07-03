@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@
 -- Entity:      axi4_resize
 -- File:        axi4_resize.vhd
 -- Author:      Carl Ehrenstrahle - Frontgrade Gaisler AB
--- Description: AXI4 Transaction width reducer
+-- Description: AXI4 Data Bus Resize
 -- Performs transaction level resizing to facilitate data width changes.
+-- Invasive changes are only performed if necessary.
 -- Only changes by a factor of 2^x is supported.
--- Upscaling is not supported nor recommended due to overrun issues.
 ------------------------------------------------------------------------------
 
 library ieee;
@@ -38,6 +38,7 @@ use grlib.stdlib.log2;
 
 entity axi4_resize is
   generic (
+    wl_addr   : positive range 12 to 64 := 32;
     wl_s_data : positive := 128;
     wl_m_data : positive := 32;
     wl_user : natural := 0;
@@ -49,7 +50,7 @@ entity axi4_resize is
 
     -- Slave ports
     s_axi4_awvalid : in std_logic;
-    s_axi4_awaddr : in std_logic_vector(31 downto 0);
+    s_axi4_awaddr : in std_logic_vector(wl_addr-1 downto 0);
     s_axi4_awsize : in std_logic_vector(2 downto 0);
     s_axi4_awburst : in std_logic_vector(1 downto 0);
     s_axi4_awlen : in std_logic_vector(7 downto 0);
@@ -75,7 +76,7 @@ entity axi4_resize is
     s_axi4_bready : in std_logic;
 
     s_axi4_arvalid : in std_logic;
-    s_axi4_araddr : in std_logic_vector(31 downto 0);
+    s_axi4_araddr : in std_logic_vector(wl_addr-1 downto 0);
     s_axi4_arsize : in std_logic_vector(2 downto 0);
     s_axi4_arburst : in std_logic_vector(1 downto 0);
     s_axi4_arlen : in std_logic_vector(7 downto 0);
@@ -97,7 +98,7 @@ entity axi4_resize is
 
     -- Master ports
     m_axi4_awvalid : out std_logic;
-    m_axi4_awaddr : out std_logic_vector(31 downto 0);
+    m_axi4_awaddr : out std_logic_vector(wl_addr-1 downto 0);
     m_axi4_awsize : out std_logic_vector(2 downto 0);
     m_axi4_awburst : out std_logic_vector(1 downto 0);
     m_axi4_awlen : out std_logic_vector(7 downto 0);
@@ -123,7 +124,7 @@ entity axi4_resize is
     m_axi4_bready : out std_logic;
 
     m_axi4_arvalid : out std_logic;
-    m_axi4_araddr : out std_logic_vector(31 downto 0);
+    m_axi4_araddr : out std_logic_vector(wl_addr-1 downto 0);
     m_axi4_arsize : out std_logic_vector(2 downto 0);
     m_axi4_arburst : out std_logic_vector(1 downto 0);
     m_axi4_arlen : out std_logic_vector(7 downto 0);
@@ -148,26 +149,69 @@ end entity;
 architecture rtl of axi4_resize is
   -- Returns the bit offset of the strobe matching the size and address offset.
   function get_strobe_offset(address : std_logic_vector;
-                             size : std_logic_vector;
+                             size : std_logic_vector(2 downto 0);
                              strb_width : positive) return natural is
     variable t : unsigned(log2(strb_width) - 1 downto 0);
   begin
     -- The intra-word width is decided by bus data width - the size.
-    t := resize(unsigned(address(log2(strb_width) - 1 downto
-                                 to_integer(unsigned(size)))),
-                t'length);
+    case size is
+      when "000" =>
+        if strb_width >= 2 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 0)), t'length);
+        else
+          t(0) := address(0);
+        end if;
+      when "001" =>
+        if strb_width >= 4 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 1)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "010" =>
+        if strb_width >= 8 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 2)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "011" =>
+        if strb_width >= 16 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 3)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "100" =>
+        if strb_width >= 32 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 4)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "101" =>
+        if strb_width >= 64 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 5)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "110" =>
+        if strb_width >= 128 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 6)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when "111" =>
+        if strb_width >= 256 then
+          t := resize(unsigned(address(log2(strb_width) - 1 downto 7)), t'length);
+        else
+          t := (others => '0');
+        end if;
+      when others =>
+        t := resize(unsigned(address(log2(strb_width) - 1 downto 0)), t'length);
+    end case;
     return to_integer(shift_left(t, to_integer(unsigned(size))));
   end function;
 
   constant ASYNC_RESET : boolean :=
     GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 begin
-  -- In case of upscaling the transaction, an odd number of beats can become even.
-  --       This will require masking of the strobe bits to not accidentally overflow the
-  --       last write.
-  --       Read transactions can never be scaled up due to the effect of reading too much.
-  --       A 1 byte read upscaled will potentially overrun the target buffer.
-  -- Conclusion: Never upscale, don't use a module to upscale, just connect the busses.
   s_eq_m : if wl_s_data = wl_m_data generate
   begin
     s_axi4_awready <= m_axi4_awready;
@@ -223,6 +267,13 @@ begin
     m_axi4_rready <= s_axi4_rready;
   end generate;
 
+  -- In case of upscaling the transaction, an odd number of beats can become even.
+  --       This will require masking of the strobe bits to not accidentally overflow the
+  --       last write.
+  --       Read transactions can never be scaled up due to the effect of reading too much.
+  --       A 1 byte read upscaled will potentially overrun the target buffer.
+  -- Conclusion: Don't upscale just connect the busses,
+  --             moving the data/strb to the right place.
   s_lt_m : if wl_s_data < wl_m_data generate
     type reg_t is record
       w_offset : integer range 0 to wl_m_data/wl_s_data - 1; -- Block offset inside vector
@@ -250,9 +301,9 @@ begin
   begin
     comb_p : process(r,
                      s_axi4_awvalid, s_axi4_awaddr, s_axi4_awsize, m_axi4_awready,
-                     s_axi4_wvalid, s_axi4_wdata, s_axi4_wstrb, m_axi4_wready,
+                     s_axi4_wvalid, s_axi4_wdata, s_axi4_wstrb, s_axi4_wlast, m_axi4_wready,
                      s_axi4_arvalid, s_axi4_araddr, s_axi4_arsize, m_axi4_arready,
-                     s_axi4_rready, m_axi4_rvalid, m_axi4_rdata
+                     s_axi4_rready, m_axi4_rvalid, m_axi4_rdata, m_axi4_rlast
                    )
 
       function get_block_offset(addr : std_logic_vector;
@@ -263,6 +314,8 @@ begin
       end function;
 
       variable v : reg_t;
+      variable tmp_strb : std_logic_vector(wl_m_data / 8 - 1 downto 0);
+      variable tmp_data : std_logic_vector(wl_m_data - 1 downto 0);
     begin
       v := r;
 
@@ -279,9 +332,10 @@ begin
       end loop;
 
       -- Move strobe to correct block.
-      m_axi4_wstrb <= (others => '0'); -- Make sure that vector is clean.
-      m_axi4_wstrb((r.w_offset + 1) * (wl_s_data / 8) - 1 downto
-                   r.w_offset * (wl_s_data / 8)) <= s_axi4_wstrb;
+      tmp_strb := (others => '0'); -- Needs to be zeroed.
+      tmp_strb(wl_s_data / 8 - 1 downto 0) := s_axi4_wstrb;
+      m_axi4_wstrb <=
+        std_logic_vector(shift_left(unsigned(tmp_strb), r.w_offset * (wl_s_data / 8)));
 
       if s_axi4_awvalid = '1' and m_axi4_awready = '1' and r.w_allow = '0' then
         v.w_beats_per_block := log2(wl_s_data / 8) - to_integer(unsigned(s_axi4_awsize));
@@ -313,8 +367,9 @@ begin
       s_axi4_rvalid <= m_axi4_rvalid and r.r_allow;
 
       -- Move read data from correct block.
-      s_axi4_rdata <= m_axi4_rdata((r.r_offset + 1) * wl_s_data - 1 downto
-                                   r.r_offset * wl_s_data);
+      tmp_data :=
+        std_logic_vector(shift_right(unsigned(m_axi4_rdata), r.r_offset * wl_s_data));
+      s_axi4_rdata <= tmp_data(wl_s_data - 1 downto 0);
 
       if s_axi4_arvalid = '1' and m_axi4_arready = '1' and r.r_allow = '0' then
         v.r_beats_per_block := log2(wl_s_data / 8) - to_integer(unsigned(s_axi4_arsize));
@@ -369,22 +424,16 @@ begin
       end process;
     end generate;
 
-    s_axi4_awready <= m_axi4_awready;
-    s_axi4_wready <= m_axi4_wready;
-
     s_axi4_bvalid <= m_axi4_bvalid;
     s_axi4_bresp <= m_axi4_bresp;
     s_axi4_bid <= m_axi4_bid;
     s_axi4_buser <= m_axi4_buser;
 
-    s_axi4_arready <= m_axi4_arready;
     s_axi4_rresp <= m_axi4_rresp;
     s_axi4_rid <= m_axi4_rid;
     s_axi4_rlast <= m_axi4_rlast;
-    s_axi4_rvalid <= m_axi4_rvalid;
 
     -- Master ports
-    m_axi4_awvalid <= s_axi4_awvalid;
     m_axi4_awaddr <= s_axi4_awaddr;
     m_axi4_awsize <= s_axi4_awsize;
     m_axi4_awburst <= s_axi4_awburst;
@@ -397,11 +446,9 @@ begin
     m_axi4_awid <= s_axi4_awid;
     m_axi4_awuser <= s_axi4_awuser;
     m_axi4_wlast <= s_axi4_wlast;
-    m_axi4_wvalid <= s_axi4_wvalid;
 
     m_axi4_bready <= s_axi4_bready;
 
-    m_axi4_arvalid <= s_axi4_arvalid;
     m_axi4_araddr <= s_axi4_araddr;
     m_axi4_arsize <= s_axi4_arsize;
     m_axi4_arburst <= s_axi4_arburst;
@@ -413,14 +460,17 @@ begin
     m_axi4_arlock <= s_axi4_arlock;
     m_axi4_arid <= s_axi4_arid;
     m_axi4_aruser <= s_axi4_aruser;
-
-    m_axi4_rready <= s_axi4_rready;
   end generate;
 
   s_gt_m : if wl_s_data > wl_m_data generate
     function to_sl(a : boolean) return std_logic is
     begin
       if a then return '1'; else return '0'; end if;
+    end function;
+
+    function max(a, b : integer) return integer is
+    begin
+      if a > b then return a; else return b; end if;
     end function;
 
     type state_t is (IDLE, RUNNING);
@@ -455,11 +505,11 @@ begin
       s_axi4_awready : std_logic;
       s_axi4_bvalid : std_logic;
       s_axi4_bresp : std_logic_vector(1 downto 0);
-      s_axi4_bid : std_logic_vector(wl_id - 1 downto 0);
-      s_axi4_buser : std_logic_vector(wl_user - 1 downto 0);
+      s_axi4_bid : std_logic_vector(max(1, wl_id) - 1 downto 0);
+      s_axi4_buser : std_logic_vector(max(1, wl_user) - 1 downto 0);
       ---- master write
       m_axi4_awvalid : std_logic;
-      m_axi4_awaddr : std_logic_vector(31 downto 0);
+      m_axi4_awaddr : std_logic_vector(wl_addr-1 downto 0);
       m_axi4_awsize : std_logic_vector(2 downto 0);
       m_axi4_awburst : std_logic_vector(1 downto 0);
       m_axi4_awlen : std_logic_vector(7 downto 0);
@@ -468,8 +518,8 @@ begin
       m_axi4_awqos : std_logic_vector(3 downto 0);
       m_axi4_awprot : std_logic_vector(2 downto 0);
       m_axi4_awlock : std_logic_vector(1 downto 0);
-      m_axi4_awid : std_logic_vector(wl_id - 1 downto 0);
-      m_axi4_awuser : std_logic_vector(wl_user - 1 downto 0);
+      m_axi4_awid : std_logic_vector(max(1, wl_id) - 1 downto 0);
+      m_axi4_awuser : std_logic_vector(max(1, wl_user) - 1 downto 0);
       m_axi4_wvalid : std_logic;
       m_axi4_wdata : std_logic_vector(wl_m_data - 1 downto 0);
       m_axi4_wstrb : std_logic_vector(wl_m_data / 8 - 1 downto 0);
@@ -480,10 +530,10 @@ begin
       s_axi4_rdata : std_logic_vector(wl_s_data - 1 downto 0);
       s_axi4_rlast : std_logic;
       s_axi4_rresp : std_logic_vector(1 downto 0);
-      s_axi4_rid : std_logic_vector(wl_id - 1 downto 0);
+      s_axi4_rid : std_logic_vector(max(1, wl_id) - 1 downto 0);
       ---- Master read
       m_axi4_arvalid : std_logic;
-      m_axi4_araddr : std_logic_vector(31 downto 0);
+      m_axi4_araddr : std_logic_vector(wl_addr-1 downto 0);
       m_axi4_arsize : std_logic_vector(2 downto 0);
       m_axi4_arburst : std_logic_vector(1 downto 0);
       m_axi4_arlen : std_logic_vector(7 downto 0);
@@ -492,8 +542,8 @@ begin
       m_axi4_arqos : std_logic_vector(3 downto 0);
       m_axi4_arprot : std_logic_vector(2 downto 0);
       m_axi4_arlock : std_logic_vector(1 downto 0);
-      m_axi4_arid : std_logic_vector(wl_id - 1 downto 0);
-      m_axi4_aruser : std_logic_vector(wl_user - 1 downto 0);
+      m_axi4_arid : std_logic_vector(max(1, wl_id) - 1 downto 0);
+      m_axi4_aruser : std_logic_vector(max(1, wl_user) - 1 downto 0);
     end record;
 
     constant reg_reset_c : reg_t := (
@@ -664,6 +714,53 @@ begin
         return to_integer(diff_factor);
       end function;
 
+      procedure drive_data_output(in_data : in std_logic_vector;
+                                  variable out_data : out std_logic_vector;
+                                  offset : in natural) is
+        variable vin : std_logic_vector(wl_s_data - 1 downto 0);
+        variable vout : std_logic_vector(wl_m_data - 1 downto 0);
+      begin
+        vin := std_logic_vector(shift_right(unsigned(in_data), 8 * offset));
+        vout := vin(wl_m_data - 1 downto 0);
+        out_data := std_logic_vector(shift_left(unsigned(vout),
+                                                8 * (offset mod (wl_m_data / 8))));
+      end procedure;
+
+      procedure drive_strb_output(in_strb : in std_logic_vector;
+                                  variable out_strb : out std_logic_vector;
+                                  offset : in natural;
+                                  byte_exp : in natural) is
+        variable vin : std_logic_vector(wl_s_data / 8 - 1 downto 0);
+        variable vout : std_logic_vector(wl_m_data / 8 - 1 downto 0);
+      begin
+        vout := (others => '0');
+        vin := std_logic_vector(shift_right(unsigned(in_strb), offset));
+        case byte_exp is
+          when 0 =>
+            vout(0) := vin(0);
+          when 1 =>
+            vout(1 downto 0) := vin(1 downto 0);
+          when 2 =>
+            vout(3 downto 0) := vin(3 downto 0);
+          when others =>
+            vout(0) := vin(0);
+        end case;
+        if wl_m_data >= 64 and byte_exp = 3 then
+          vout(7 downto 0) := vin(7 downto 0);
+        end if;
+        if wl_m_data >= 128 and byte_exp = 4 then
+          vout(15 downto 0) := vin(15 downto 0);
+        end if;
+        if wl_m_data >= 256 and byte_exp = 5 then
+          vout(31 downto 0) := vin(31 downto 0);
+        end if;
+        if wl_m_data >= 512 and byte_exp = 6 then
+          vout(63 downto 0) := vin(63 downto 0);
+        end if;
+        out_strb := std_logic_vector(shift_left(unsigned(vout),
+                                                offset mod (wl_m_data / 8)));
+      end procedure;
+
       variable v : reg_t;
 
       variable wready_input_i : std_logic;
@@ -671,6 +768,7 @@ begin
       variable rready_i : std_logic;
       variable n_wbeats : unsigned(15 downto 0);
       variable n_rbeats : unsigned(15 downto 0);
+      variable rindata_tmp : std_logic_vector(wl_m_data - 1 downto 0);
     begin
       v := r; -- Copy current state.
 
@@ -725,7 +823,11 @@ begin
 
             -- Copy input to output.
             v.m_axi4_awvalid := s_axi4_awvalid;
-            v.m_axi4_awaddr := s_axi4_awaddr;
+            -- Strip any unaligned address bits by shifting and reverse shifting.
+            v.m_axi4_awaddr := std_logic_vector(
+              shift_left(shift_right(unsigned(s_axi4_awaddr),
+                                     to_integer(unsigned(s_axi4_awsize))),
+                                     to_integer(unsigned(s_axi4_awsize))));
             v.m_axi4_awsize := transform_axsize(wl_s_data, wl_m_data, s_axi4_awsize);
             v.m_axi4_awburst := s_axi4_awburst;
             v.m_axi4_awcache := s_axi4_awcache;
@@ -733,8 +835,8 @@ begin
             v.m_axi4_awqos := s_axi4_awqos;
             v.m_axi4_awprot := s_axi4_awprot;
             v.m_axi4_awlock := s_axi4_awlock;
-            v.m_axi4_awid := s_axi4_awid;
-            v.m_axi4_awuser := s_axi4_awuser;
+            if wl_id > 0 then v.m_axi4_awid := s_axi4_awid; end if;
+            if wl_user > 0 then v.m_axi4_awuser := s_axi4_awuser; end if;
 
             v.s_axi4_bresp := (others => '0'); -- OKAY
 
@@ -758,8 +860,8 @@ begin
 
             if r.n_wtrans = 0 then
               v.s_axi4_bvalid := '1';
-              v.s_axi4_bid := m_axi4_bid;
-              v.s_axi4_buser := m_axi4_buser;
+              if wl_id > 0 then v.s_axi4_bid := m_axi4_bid; end if;
+              if wl_user > 0 then v.s_axi4_buser := m_axi4_buser; end if;
             else
               v.n_wtrans := r.n_wtrans - 1;
             end if;
@@ -844,17 +946,13 @@ begin
       -- Data output
       --------------------
       if wready_output_i = '1' then
-        v.m_axi4_wdata(8*((r.wbuf_offset mod (wl_m_data / 8)) +
-                          2**r.beat_bytes_exp) - 1 downto
-                       8*(r.wbuf_offset mod (wl_m_data / 8))) :=
-          r.wbuf_data(8*(r.wbuf_offset + 2**r.beat_bytes_exp) - 1 downto
-                      8*(r.wbuf_offset));
-        v.m_axi4_wstrb := (others => '0'); -- Clear old strobes.
-        v.m_axi4_wstrb(((r.wbuf_offset mod (wl_m_data / 8)) +
-                        2**r.beat_bytes_exp) - 1 downto
-                       (r.wbuf_offset mod (wl_m_data / 8))) :=
-          r.wbuf_strb((r.wbuf_offset + 2**r.beat_bytes_exp) - 1 downto
-                      (r.wbuf_offset));
+        drive_data_output(in_data => r.wbuf_data,
+                          out_data => v.m_axi4_wdata,
+                          offset => r.wbuf_offset);
+        drive_strb_output(in_strb => r.wbuf_strb,
+                          out_strb => v.m_axi4_wstrb,
+                          offset => r.wbuf_offset,
+                          byte_exp => r.beat_bytes_exp);
         v.m_axi4_wvalid := r.wbuf_dv;
         v.m_axi4_wlast := (to_sl(r.woutput_count = 0) and r.wbuf_last) or
                           r.inject_wlast;
@@ -906,7 +1004,11 @@ begin
 
             -- Copy input to output.
             v.m_axi4_arvalid := s_axi4_arvalid;
-            v.m_axi4_araddr := s_axi4_araddr;
+            -- Strip any unaligned address bits by shifting and reverse shifting.
+            v.m_axi4_araddr := std_logic_vector(
+              shift_left(shift_right(unsigned(s_axi4_araddr),
+                                     to_integer(unsigned(s_axi4_arsize))),
+                                     to_integer(unsigned(s_axi4_arsize))));
             v.m_axi4_arsize := transform_axsize(wl_s_data, wl_m_data, s_axi4_arsize);
             v.m_axi4_arburst := s_axi4_arburst;
             v.m_axi4_arcache := s_axi4_arcache;
@@ -914,8 +1016,8 @@ begin
             v.m_axi4_arqos := s_axi4_arqos;
             v.m_axi4_arprot := s_axi4_arprot;
             v.m_axi4_arlock := s_axi4_arlock;
-            v.m_axi4_arid := s_axi4_arid;
-            v.m_axi4_aruser := s_axi4_aruser;
+            if wl_id > 0 then v.m_axi4_arid := s_axi4_arid; end if;
+            if wl_user > 0 then v.m_axi4_aruser := s_axi4_aruser; end if;
 
             if s_axi4_arvalid = '1' then
               v.rstate := RUNNING;
@@ -967,17 +1069,22 @@ begin
       if rready_i = '1' then
         v.s_axi4_rvalid := m_axi4_rvalid and to_sl(r.rinput_count = 0);
         v.s_axi4_rlast := m_axi4_rlast and to_sl(r.n_rtrans = 0);
-        v.s_axi4_rdata(8*(r.rbuf_offset + 2**r.rinput_bytes_exp) - 1 downto
-                       8*r.rbuf_offset) :=
-          m_axi4_rdata(8*(r.rbuf_offset mod (wl_m_data / 8) +
-                          2**r.rinput_bytes_exp) - 1 downto
-                      8*(r.rbuf_offset mod (wl_m_data / 8)));
+
+        for i in 0 to wl_s_data / 8 - 1 loop
+          if i >= r.rbuf_offset then
+            if i < (r.rbuf_offset + 2**r.rinput_bytes_exp) then
+              v.s_axi4_rdata((i+1) * 8 - 1 downto i * 8) :=
+                m_axi4_rdata((((i+1) * 8 - 1) mod wl_m_data) downto
+                             (i * 8) mod wl_m_data);
+            end if;
+          end if;
+        end loop;
 
         -- Present last valid input read id as the read id for the data.
         -- This holds unless the read data streams has interleaved ids.
         -- The ids should not be interleaved since the bridge only issues
         -- one transaction at a time.
-        v.s_axi4_rid := m_axi4_rid;
+        if wl_id > 0 then v.s_axi4_rid := m_axi4_rid; end if;
 
         if m_axi4_rvalid = '1' then
           v.rbuf_offset := (r.rbuf_offset + 2**r.rinput_bytes_exp) mod (wl_s_data / 8);
@@ -1004,8 +1111,8 @@ begin
       s_axi4_wready <= wready_input_i;
       s_axi4_bvalid <= r.s_axi4_bvalid;
       s_axi4_bresp <= r.s_axi4_bresp;
-      s_axi4_bid <= r.s_axi4_bid;
-      s_axi4_buser <= r.s_axi4_buser;
+      if wl_id > 0 then s_axi4_bid <= r.s_axi4_bid; end if;
+      if wl_user > 0 then s_axi4_buser <= r.s_axi4_buser; end if;
       m_axi4_awvalid <= r.m_axi4_awvalid;
       m_axi4_awaddr <= r.m_axi4_awaddr;
       m_axi4_awsize <= r.m_axi4_awsize;
@@ -1016,8 +1123,8 @@ begin
       m_axi4_awqos <= r.m_axi4_awqos;
       m_axi4_awprot <= r.m_axi4_awprot;
       m_axi4_awlock <= r.m_axi4_awlock;
-      m_axi4_awid <= r.m_axi4_awid;
-      m_axi4_awuser <= r.m_axi4_awuser;
+      if wl_id > 0 then m_axi4_awid <= r.m_axi4_awid; end if;
+      if wl_user > 0 then m_axi4_awuser <= r.m_axi4_awuser; end if;
       m_axi4_wlast <= r.m_axi4_wlast;
       m_axi4_wvalid <= r.m_axi4_wvalid and not r.suppress_write_output;
       m_axi4_wdata <= r.m_axi4_wdata;
@@ -1028,7 +1135,7 @@ begin
       s_axi4_rvalid <= r.s_axi4_rvalid;
       s_axi4_rdata <= r.s_axi4_rdata;
       s_axi4_rlast <= r.s_axi4_rlast;
-      s_axi4_rid <= r.s_axi4_rid;
+      if wl_id > 0 then s_axi4_rid <= r.s_axi4_rid; end if;
       s_axi4_rresp <= r.s_axi4_rresp;
       m_axi4_arvalid <= r.m_axi4_arvalid;
       m_axi4_araddr <= r.m_axi4_araddr;
@@ -1040,8 +1147,8 @@ begin
       m_axi4_arqos <= r.m_axi4_arqos;
       m_axi4_arprot <= r.m_axi4_arprot;
       m_axi4_arlock <= r.m_axi4_arlock;
-      m_axi4_arid <= r.m_axi4_arid;
-      m_axi4_aruser <= r.m_axi4_aruser;
+      if wl_id > 0 then m_axi4_arid <= r.m_axi4_arid; end if;
+      if wl_user > 0 then m_axi4_aruser <= r.m_axi4_aruser; end if;
       m_axi4_rready <= rready_i;
     end process;
 

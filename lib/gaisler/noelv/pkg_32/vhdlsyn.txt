@@ -1,4 +1,7 @@
 ../pkg/noelv_cfg_32.vhd
 ../pkg/noelv.vhd
+../pkg/noelv_cfg_types.vhd
+../pkg/noelv_cpu_cfg_custom.vhd
 ../pkg/noelv_cpu_cfg.vhd
+../pkg/noelv_pma_cfg.vhd
 ../pkg/nvnlconfig.vhd

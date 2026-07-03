@@ -6,7 +6,7 @@ SIMTOP=testbench
 TECHLIBS = inferred
 
 LIBSKIP = synplify spw eth opencores esa fmf spansion gsi cypress micron
-DIRSKIP = i2c greth can memctrl l2cache/v2-pkg l2cache ambatest pci jtag spacewire usb ddr gr1553b spi leon4v0 hcan satcan
+DIRSKIP = i2c greth greth2 can memctrl l2cache/v2-pkg l2cache ambatest pci jtag spacewire usb ddr gr1553b spi leon4v0 hcan satcan
 
 CLEAN=local-clean
 

@@ -1,4 +1,7 @@
 axi.vhd
+register_slice.vhd
+axi4_register_slice.vhd
+arbiter_tree.vhd
 axicdc.vhd
 ahbm2axi.vhd
 ahbm2axi3.vhd
@@ -12,3 +15,9 @@ axis_buffer.vhd
 axis_gearbox.vhd
 axi4_resize.vhd
 axi2ahb.vhd
+axi4mux.vhd
+axi4mux_wrapper.vhd
+axi4demux.vhd
+axi4demux_wrapper.vhd
+axi2apb3.vhd
+axi2apb.vhd

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -325,20 +325,24 @@ architecture rtl of l2c_lite_core is
   end; -- data_mux
 
   function plru_update (iplru : std_logic_vector(0 to ways - 2); hit_index : integer) return std_logic_vector is
-    variable index : integer range 0 to ways - 1;
-    variable oplru : std_logic_vector(0 to ways - 2);
+    variable index      : integer range 0 to ways - 1;
+    variable prev_index : integer range 0 to ways - 1;
+    variable oplru      : std_logic_vector(0 to ways - 2);
   begin
     oplru := iplru;
     index := hit_index / 2 + (ways/2 - 1);
-    oplru(index) := conv_std_logic((hit_index rem 2) = 1);
+    oplru(index) := conv_std_logic((hit_index rem 2) = 0);
+
     for i in 1 to log2ext(ways - 1) loop
-      oplru(index) := conv_std_logic((index rem 2) = 0);
+      prev_index := index;
       if (index rem 2) = 0 then
         index := index/2 - 1;
       else
         index := index/2;
       end if;
+      oplru(index) := conv_std_logic((index rem 2) = 1);
     end loop;
+    
     return oplru;
   end plru_update;
 

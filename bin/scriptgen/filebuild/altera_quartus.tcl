@@ -21,7 +21,10 @@ proc append_file_altera_quartus {f finfo } {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

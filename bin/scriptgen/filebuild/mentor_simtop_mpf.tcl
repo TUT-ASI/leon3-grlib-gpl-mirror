@@ -17,7 +17,10 @@ proc append_file_mentor_simtop_mpf {f finfo nfiles} {
 			$nf dont_compile 0 cover_stmt 1 vhdl_use93 93\n"
 			incr nf
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			global SIMTOP
 			upvar SIMTOP_mpf_contents smc

@@ -43,7 +43,7 @@ DIRSKIP = b1553 pci/pcif leon2 leon2ft crypto satcan pci leon3ft ambatest ddr \
 	leon4v0 l2cache/v2 l2cache/v3 l2cache/str gr1553b iommu ascs slink pwm \
 	ge_1000baseX \
 	leon5v0 leon5v0/blockred grfpu5 noelv noelv/subsys riscv \
-	ftaddr hcan greth spacefibre usb nand \
+	ftaddr hcan greth greth2 spacefibre usb nand \
 	grdmac grdmac2 grscrub plic grfpc5 l2c_lite \
 	grrm socbridge axi mma lram
 FILESKIP = adapters/sgmii.vhd \

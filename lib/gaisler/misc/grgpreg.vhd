@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ entity grgpreg is
         pindex   : integer := 0;
         paddr    : integer := 0;
         pmask    : integer := 16#fff#;
+        info     : integer := 0;
         nbits    : integer range 1 to 64 := 16;
         rstval   : integer := 0;
         rstval2  : integer := 0;
@@ -95,6 +96,9 @@ begin
               if nbits > 32 then
                 readdata(nbits-33 downto 0) := r.reg(nbits-1 downto 32);
               end if;              
+            when "010" =>
+              -- For instance it can be used to determine the functionality
+              readdata := conv_std_logic_vector(info, 32);
             when others =>
         end case;
 

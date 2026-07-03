@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -235,10 +235,17 @@ package spi is
     io3         : std_ulogic;
     cd          : std_ulogic;
     rstaddrm    : std_ulogic;
+    rstreadcmd  : std_logic_vector(7 downto 0);
+    rstdbyte    : std_ulogic;
+    rstdsconf   : std_logic_vector(3 downto 0);
+    rstedacen   : std_ulogic;
+    rstedacuerr : std_ulogic;
+    rstedacaerr : std_ulogic;
+    rstoffset   : std_logic_vector(31 downto 0);
   end record;
-  constant spimctrl_in_none : spimctrl_in_type := (others => '0');
+  constant spimctrl_in_none : spimctrl_in_type :=
+    ('0', '0', '0', '0', '0', '0', X"03", '0', "0000", '0', '0', '0', X"00000000");
 
-  
   type spimctrl_out_type is record
     mosi        : std_ulogic;
     miso        : std_ulogic;
@@ -256,10 +263,13 @@ package spi is
 --    errorn      : std_ulogic;
     ready       : std_ulogic;
     initialized : std_ulogic;
+    cerror      : std_ulogic;
+    stat_cerror : std_ulogic;
+    stat_uerror : std_ulogic;
   end record;
 
   constant spimctrl_out_none : spimctrl_out_type :=
-    ('0', '0', '1', '1', '0', '1', '0', '0', '1', '1', '1', '1', '1', '0', '0');
+    ('0', '0', '1', '1', '0', '1', '0', '0', '1', '1', '1', '1', '1', '0', '0', '0', '0', '0');
 
   component spimctrl
     generic (
@@ -275,11 +285,11 @@ package spi is
       readcmd      : integer range 0 to 255 := 16#0B#;
       dummybyte    : integer range 0 to 1   := 1;
       dualoutput   : integer range 0 to 1   := 0;
-      scaler       : integer range 1 to 512 := 1;
-      altscaler    : integer range 1 to 512 := 1;
+      scaler       : integer range 1 to 16  := 1;
+      altscaler    : integer range 1 to 16  := 1;
       pwrupcnt     : integer := 0;
       maxahbaccsz  : integer range 0 to 256 := AHBDW;
-      offset       : integer := 0;
+      offset       : integer range 0 to 16#7FFFFFFF# := 0;
       quadoutput   : integer range 0 to 1   := 0;
       dualinput    : integer range 0 to 1   := 0;
       quadinput    : integer range 0 to 1   := 0;
@@ -292,7 +302,13 @@ package spi is
       allow_writes : integer range 0 to 1   := 0;
       xip_byte     : integer range 0 to 1   := 0;
       xip_polarity : integer range 0 to 1   := 1;
-      multiple_csn : integer range 0 to 1   := 0
+      multiple_csn : integer range 0 to 1   := 0;
+      dynoffset    : integer range 0 to 1   := 0;
+      dynoffsethi  : integer range 0 to 31  := 31;
+      dynoffsetlo  : integer range 0 to 31  := 16;
+      dynscalerlen : integer range 0 to 15  := 0;
+      edac         : integer range 0 to 1   := 0;
+      extrst       : integer range 0 to 1   := 0
       );
     port (
       rstn    : in  std_ulogic;
@@ -330,6 +346,171 @@ package spi is
   -- (Fake) status register default value
   constant DEFAULTSTATUS  : std_logic_vector(7 downto 0) := X"7B";-- int=123
 
+   type spi_ahb_dma_in_type is record
+      address : std_logic_vector(31 downto 0);
+      wdata   : std_logic_vector(31 downto 0);
+      start   : std_ulogic;
+      burst   : std_ulogic;
+      write   : std_ulogic;
+      busy    : std_ulogic;
+      idle    : std_ulogic;
+      irq     : std_ulogic;
+      size    : std_logic_vector(2 downto 0);
+   end record;
+
+   type spi_ahb_dma_out_type is record
+      start  : std_ulogic;
+      active : std_ulogic;
+      ready  : std_ulogic;
+      retry  : std_ulogic;
+      mexc   : std_ulogic;
+      haddr  : std_logic_vector(9 downto 0);
+      rdata  : std_logic_vector(31 downto 0);
+   end record;
+
+  component spiahbmst is
+    generic (
+      gCHPROT  : integer := 3;
+      gINCADDR : integer := 0);
+    port (
+      rstn    : in  std_ulogic;
+      clk     : in  std_ulogic;
+      dmai    : in  spi_ahb_dma_in_type;
+      dmao    : out spi_ahb_dma_out_type;
+      -- ahb input
+      hgrant  : in  std_ulogic;                      -- bus grant
+      hready  : in  std_ulogic;                      -- transfer done
+      hresp   : in  std_logic_vector(1 downto 0);    -- response type
+      hrdata  : in  std_logic_vector(31 downto 0);   -- read data bus
+      -- ahb output
+      hbusreq : out std_ulogic;                      -- bus request
+      hlock   : out std_ulogic;                      -- lock request
+      htrans  : out std_logic_vector(1 downto 0);    -- transfer type
+      haddr   : out std_logic_vector(31 downto 0);   -- address bus (byte)
+      hwrite  : out std_ulogic;                      -- read/write
+      hsize   : out std_logic_vector(2 downto 0);    -- transfer size
+      hburst  : out std_logic_vector(2 downto 0);    -- burst type
+      hprot   : out std_logic_vector(3 downto 0);    -- protection control
+      hwdata  : out std_logic_vector(31 downto 0));  -- write data bus
+  end component;
+
+  component spimaster is
+    generic (gSLVSEL : integer range 1 to 24 := 1);  -- Number of slave select signals
+    port (
+      rstn         : in  std_ulogic;
+      clk          : in  std_ulogic;
+      -- APB signals
+      apbi_psel    : in  std_ulogic;
+      apbi_penable : in  std_ulogic;
+      apbi_paddr   : in  std_logic_vector(31 downto 0);
+      apbi_pwrite  : in  std_ulogic;
+      apbi_pwdata  : in  std_logic_vector(31 downto 0);
+      apbo_prdata  : out std_logic_vector(31 downto 0);
+      apbo_pirq    : out std_ulogic;
+      -- SPI signals
+      miso         : in  std_ulogic;
+      mosi         : out std_ulogic;
+      sck          : out std_ulogic;
+      slvsel       : out std_logic_vector((gSLVSEL-1) downto 0));
+  end component;
+
+  component spislave is
+    generic (
+      gSPI2  : integer := 1;
+      gCONFW : integer := 16#400000#;
+      gCONFR : integer := 16#400000#;
+      gOEPOL : integer := 0);
+    port (
+      rstn         : in  std_ulogic;
+      clk          : in  std_ulogic;
+      -- ahb input
+      hgrant       : in  std_ulogic;                     -- bus grant
+      hready       : in  std_ulogic;                     -- transfer done
+      hresp        : in  std_logic_vector(1 downto 0);   -- response type
+      hrdata       : in  std_logic_vector(31 downto 0);  -- read data bus
+      -- ahb output
+      hbusreq      : out std_ulogic;                     -- bus request
+      hlock        : out std_ulogic;                     -- lock request
+      htrans       : out std_logic_vector(1 downto 0);   -- transfer type
+      haddr        : out std_logic_vector(31 downto 0);  -- address bus (byte)
+      hwrite       : out std_ulogic;                     -- read/write
+      hsize        : out std_logic_vector(2 downto 0);   -- transfer size
+      hburst       : out std_logic_vector(2 downto 0);   -- burst type
+      hprot        : out std_logic_vector(3 downto 0);   -- protection control
+      hwdata       : out std_logic_vector(31 downto 0);  -- write data bus
+      -- APB signals
+      apbi_psel    : in  std_ulogic;
+      apbi_penable : in  std_ulogic;
+      apbi_paddr   : in  std_logic_vector(31 downto 0);
+      apbi_pwrite  : in  std_ulogic;
+      apbi_pwdata  : in  std_logic_vector(31 downto 0);
+      apbo_prdata  : out std_logic_vector(31 downto 0);
+      apbo_pirq    : out std_ulogic;
+      -- SPI signals
+      miso_n       : out std_ulogic;
+      miso_en_n    : out std_ulogic;
+      mosi_n       : in  std_ulogic;
+      sck_n        : in  std_ulogic;
+      slvsel_n     : in  std_ulogic;
+      miso_r       : out std_ulogic;
+      miso_en_r    : out std_ulogic;
+      mosi_r       : in  std_ulogic;
+      sck_r        : in  std_ulogic;
+      slvsel_r     : in  std_ulogic);
+  end component;
+
+  component grspimaster is
+    generic (
+      gSLVSEL : integer range 1 to 24 := 1;
+      gPINDEX : integer               := 0;  -- APB bus index
+      gHINDEX : integer               := 0;
+      gPADDR  : integer               := 0;
+      gPMASK  : integer               := 16#fff#;
+      gPIRQ   : integer               := 1);
+    port (
+      rstn   : in  std_ulogic;
+      clk    : in  std_ulogic;
+      apbi   : in  apb_slv_in_type;
+      apbo   : out apb_slv_out_type;
+      -- SPI signals
+      miso   : in  std_ulogic;
+      mosi   : out std_ulogic;
+      sck    : out std_ulogic;
+      slvsel : out std_logic_vector((gSLVSEL-1) downto 0)
+     );
+  end component;
+
+  component grspislave is
+    generic (
+      gPINDEX : integer := 0;           -- APB bus index
+      gHINDEX : integer := 0;
+      gPADDR  : integer := 0;
+      gPMASK  : integer := 16#fff#;
+      gPIRQ   : integer := 1;
+      gSPI2   : integer := 1;
+      gCONFW  : integer := 16#400000#;
+      gCONFR  : integer := 16#400000#;
+      gOEPOL  : integer := 0);
+    port (
+      rstn      : in  std_ulogic;
+      clk       : in  std_ulogic;
+      ahbmi     : in  ahb_mst_in_type;
+      ahbmo     : out ahb_mst_out_type;
+      apbi      : in  apb_slv_in_type;
+      apbo      : out apb_slv_out_type;
+      -- SPI signals
+      miso_n    : out std_ulogic;
+      miso_en_n : out std_ulogic;
+      mosi_n    : in  std_ulogic;
+      sck_n     : in  std_ulogic;
+      slvsel_n  : in  std_ulogic;
+      miso_r    : out std_ulogic;
+      miso_en_r : out std_ulogic;
+      mosi_r    : in  std_ulogic;
+      sck_r     : in  std_ulogic;
+      slvsel_r  : in  std_ulogic
+      );
+  end component;
 
 end;
 

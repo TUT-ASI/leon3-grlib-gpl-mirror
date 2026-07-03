@@ -7,7 +7,10 @@ proc append_file_snps_synp {f finfo} {
 			global SYNPVHDL VHDLOPT
 			upvar compile_synp_contents csc
 			append csc "$SYNPVHDL $VHDLOPT$bn $f\n"
-		}		
+		}
+	        "vhdlnx" {
+		        return
+		}
 		"vhdlmtie" {
 		}
 		"vhdlsynpe" {

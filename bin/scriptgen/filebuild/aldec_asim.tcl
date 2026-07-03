@@ -12,7 +12,10 @@ proc append_file_aldec_asim {f finfo} {
             upvar compile_asim_contents cac
             append cac "\t$ACOM $VHDLOPT -$vhdlstd -work $bn $f\n"
             return
-        }               
+        }
+	"vhdlnx" {
+	    return
+	}
         "vhdlmtie" {
             return
         }

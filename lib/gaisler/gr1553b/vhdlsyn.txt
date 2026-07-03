@@ -2,3 +2,4 @@ gr1553b_pkg.vhd
 gr1553b_pads.vhd
 gr1553b_nlw.vhd
 gr1553b_stdlogic.vhd
+gr1553b_lram.vhd

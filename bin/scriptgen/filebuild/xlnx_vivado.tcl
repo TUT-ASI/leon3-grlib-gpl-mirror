@@ -34,7 +34,10 @@ proc append_file_xlnx_vivado {f finfo} {
 	switch $i {
 		"vhdlp1735" {
 			return
-		}		
+		}
+		"vhdlnx" {
+			return
+		}
 		"vhdlmtie" {
 			return
 		}

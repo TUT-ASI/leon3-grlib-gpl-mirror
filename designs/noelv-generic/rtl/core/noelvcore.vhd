@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -122,10 +122,10 @@ entity noelvcore is
     hssli         : in grhssl_in_type_vector(1 downto 0) := (others => GRHSSL_IN_NULL);
     hsslo         : out grhssl_out_type_vector(1 downto 0);
     --SpaceWire
-    spw_txd          : out std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0);
-    spw_txs          : out std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0);
-    spw_rxd          : in std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0) := (others => '0');
-    spw_rxs          : in std_logic_vector(CFG_SPWRTR_SPWPORTS-1 downto 0) := (others => '0');
+    spw_txd          : out std_logic_vector(CFG_SPWRTR_SPWPORTS*CFG_SPWRTR_SPWEN-CFG_SPWRTR_SPWEN downto 0);
+    spw_txs          : out std_logic_vector(CFG_SPWRTR_SPWPORTS*CFG_SPWRTR_SPWEN-CFG_SPWRTR_SPWEN downto 0);
+    spw_rxd          : in  std_logic_vector(CFG_SPWRTR_SPWPORTS*CFG_SPWRTR_SPWEN-CFG_SPWRTR_SPWEN downto 0) := (others => '0');
+    spw_rxs          : in  std_logic_vector(CFG_SPWRTR_SPWPORTS*CFG_SPWRTR_SPWEN-CFG_SPWRTR_SPWEN downto 0) := (others => '0');
     -- Debug JTAG
     trst          : in std_ulogic           := '1';
     tck           : in std_ulogic;
@@ -211,6 +211,9 @@ architecture rtl of noelvcore is
   signal apb1i            : apb_slv_in_type;
   signal apb1o            : apb_slv_out_vector;
 
+  -- External Non-Maskable Interrupts
+  signal nirq   : std_logic_vector(ncpu-1 downto 0);
+
   -- Memory
   signal axi3_aximo : axi3_mosi_type;
 
@@ -233,8 +236,11 @@ architecture rtl of noelvcore is
   signal cano0            : canfd_out_type;
   signal cani1            : canfd_in_type;
   signal cano1            : canfd_out_type;
-  signal grcanfd0_cfg     : grcanfd_defcfg_type;
-  signal grcanfd1_cfg     : grcanfd_defcfg_type;
+
+  -- GPREGs for External Interrupt tests
+  signal apbo_gpreg_irq   : apb_slv_out_type;
+  signal gpreg_irq        : std_logic_vector(NAHBIRQ-1 downto 0);
+
 
   type grcanfd_bit_time_reg_type is record
     nom_presc  : std_logic_vector(7 downto 0);  -- Prescaler
@@ -321,9 +327,9 @@ begin
       ncpu      => ncpu,
       nextmst   => nextmst,
       nextslv   => nextslv,
-      nextapb   => 10,
+      nextapb   => 10
+                   ,
       ndbgmst   => ndbgmst,
-      nintdom   => CFG_APLIC_NDOM,
       neiid     => CFG_NEIID,
       cached    => 0,
       wbmask    => CFG_LOCAL_WBMASK,
@@ -365,7 +371,9 @@ begin
       --dmreset   => dmreset,
       -- UART connection
       uarti     => u1i, -- : in  uart_in_type;
-      uarto     => u1o  -- : out uart_out_type
+      uarto     => u1o, -- : out uart_out_type
+      -- External Non-Maskable Interrupts
+      nirq      => nirq
       );
 
   uart_rtsn(0)  <= u1o.rtsn;
@@ -528,7 +536,7 @@ begin
           repl     => 0,
           haddr    => L2C_HADDR,
           hmask    => L2C_HMASK,
-          ioaddr   => L2C_IOADDR,
+          ioaddr   => L2C_LITE_IOADDR,
           cached   => CFG_L2_MAP,
           be_dw    => AHBDW)
         port map(
@@ -634,7 +642,7 @@ begin
             repl     => 0,
             haddr    => L2C_HADDR,
             hmask    => L2C_HMASK,
-            ioaddr   => L2C_IOADDR,
+            ioaddr   => L2C_LITE_IOADDR,
             bioaddr  => 16#FFD#,
             biomask  => 16#fff#,
             cached   => CFG_L2_MAP,
@@ -962,8 +970,6 @@ begin
     ahbmo(CANFD0_HMINDEX)  <= ahbmo_canfd0(0);
     ahbmi_canfd0(1)      <= dbgmi(CANFD0_DM_HMINDEX);
     dbgmo(CANFD0_DM_HMINDEX)  <= ahbmo_canfd0(1);
-
-    grcanfd0_cfg <= GRCANFD_CFG_NULL;
     
     grcanfd0 : grcanfd_ahb
       generic map(
@@ -1008,8 +1014,6 @@ begin
     ahbmo(CANFD1_HMINDEX)  <= ahbmo_canfd1(0) ;
     ahbmi_canfd1(1)      <= dbgmi(CANFD1_DM_HMINDEX);
     dbgmo(CANFD1_DM_HMINDEX)  <= ahbmo_canfd1(1);
-
-    grcanfd1_cfg <= GRCANFD_CFG_NULL;
     
     grcanfd1 : grcanfd_ahb
       generic map(
@@ -1050,6 +1054,7 @@ begin
 
     grcanfd_inputcfg0.en_codec   <=     '0';
     grcanfd_inputcfg0.en_canopen <=     '1';
+    grcanfd_inputcfg0.en_sepbus  <=     '1';
     grcanfd_inputcfg0.node_id(6 downto 0)    <= "0000000";
     grcanfd_inputcfg0.line_sel <= '0';
     grcanfd_inputcfg0.en_out0  <= '1';
@@ -1066,14 +1071,12 @@ begin
 
     grcanfd_inputcfg1.en_codec   <=     '0';
     grcanfd_inputcfg1.en_canopen <=     '1';
+    grcanfd_inputcfg1.en_sepbus  <=     '1';
     grcanfd_inputcfg1.node_id(6 downto 0)    <= "0000001";
     grcanfd_inputcfg1.line_sel <= '0';
     grcanfd_inputcfg1.en_out0  <= '1';
     grcanfd_inputcfg1.en_out1  <= '1';
 
-    bit_time_aux_index <= "00";
-
-    grcanfd_bit_time_aux         <= GRCANFD_BIT_TIME_DEF(to_integer(unsigned(bit_time_aux_index)));
 
     grcanfd_inputcfg1.nom_presc  <= grcanfd_bit_time_aux.nom_presc;
     grcanfd_inputcfg1.nom_ph1    <= grcanfd_bit_time_aux.nom_ph1;
@@ -1355,6 +1358,8 @@ begin
     ri.tests            <= (others => '0');
     ri.testinput        <= '0';
   end generate spwrtr;
+
+
 
 
 

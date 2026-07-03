@@ -1,0 +1,7 @@
+noelv_cfg.vhd
+noelv.vhd
+noelv_cfg_types.vhd
+noelv_cpu_cfg_custom.vhd
+noelv_cpu_cfg.vhd
+noelv_pma_cfg.vhd
+nvnlconfig.vhd

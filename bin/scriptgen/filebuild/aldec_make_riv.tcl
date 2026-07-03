@@ -13,7 +13,10 @@ proc append_file_aldec_make_riv {f finfo} {
     switch $i {
         "vhdlp1735" {
             return
-        }               
+        }
+	"vhdlnx" {
+	    return
+	}
         "vhdlmtie" {
             return
         }

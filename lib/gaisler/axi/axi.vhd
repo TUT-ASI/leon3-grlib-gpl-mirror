@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,13 +39,44 @@ use techmap.gencomp.memtest_vlen;
 
 package axi is
 
-  
+  -- Extension types to the AMBA package AXI types
+  type extaxi_ax_type is record
+    id    : std_logic_vector(AXI_ID_WIDTH-1 downto 0);
+    addr  : std_logic_vector(31 downto 0);
+  end record;
+  constant extaxi_ax_none : extaxi_ax_type := (id => (others => '0'), addr => (others => '0'));
+  type extaxi_x_type is record
+    id    : std_logic_vector(AXI_ID_WIDTH-1 downto 0);
+  end record;
+  constant extaxi_x_none : extaxi_x_type := (id => (others => '0'));
+  type extaxi_mosi_type is record
+    aw  : extaxi_ax_type;
+    w   : extaxi_x_type; -- only for AXI3
+    ar  : extaxi_ax_type;
+  end record;
+  type extaxi_mosi_vector_type is array(natural range <>) of extaxi_mosi_type;
+  type extaxi_miso_type is record
+    b   : extaxi_x_type;
+    r   : extaxi_x_type;
+  end record;
+  type extaxi_miso_vector_type is array(natural range <>) of extaxi_miso_type;
+
+  constant extaxi_mosi_none : extaxi_mosi_type := (
+    aw  => extaxi_ax_none,
+    w   => extaxi_x_none,
+    ar  => extaxi_ax_none
+  );
+  constant extaxi_miso_none : extaxi_miso_type := (
+    b   => extaxi_x_none,
+    r   => extaxi_x_none
+  );
+
   function axi4_max_n(width : in integer)
     return integer;
 
   function full_dwsize(size : in integer)
     return std_logic_vector;
-  
+
   function read_replicate (data_in : in std_logic_vector;
                            addr    : in std_logic_vector(log2(AXIDW/8)-1 downto 0);
                            hsize   : in std_logic_vector(2 downto 0))
@@ -57,14 +88,14 @@ package axi is
 
   function burst_type_translate(hburst : in std_logic_vector(2 downto 0))
     return std_logic_vector;
-  
+
   function burst_length_translate(hburst : in std_logic_vector(2 downto 0))
     return std_logic_vector;
 
   function byte_swap (data_in : std_logic_vector)
     return std_logic_vector;
 
-  function be_to_le_address(data_width : integer;          
+  function be_to_le_address(data_width : integer;
                             address_in : std_logic_vector(log2((AXIDW/8))-1 downto 0);
                             size       : std_logic_vector(2 downto 0))
     return std_logic_vector;
@@ -83,6 +114,173 @@ package axi is
                      data_width : integer) --constant
     return unsigned ;
 
+  function conv_byte_invariant(data    : std_logic_vector;
+                               endian  : std_logic;
+                               swap    : boolean := true)
+    return std_logic_vector;
+
+  function drive_rdata(
+    data : std_logic_vector;
+    addr : std_logic_vector;
+    size : std_logic_vector(2 downto 0))
+    return std_logic_vector;
+
+  function ax_pack(
+    axid     : std_logic_vector;
+    axaddr   : std_logic_vector;
+    axlen    : std_logic_vector(8-1 downto 0);
+    axsize   : std_logic_vector(3-1 downto 0);
+    axburst  : std_logic_vector(2-1 downto 0);
+    axlock   : std_logic;
+    axcache  : std_logic_vector(4-1 downto 0);
+    axprot   : std_logic_vector(3-1 downto 0);
+    axqos    : std_logic_vector(4-1 downto 0);
+    axregion : std_logic_vector(4-1 downto 0);
+    axuser   : std_logic_vector
+  ) return std_logic_vector;
+
+  function aw_pack(
+    aw      : axi4_aw_mosi_type;
+    xaw     : extaxi_ax_type := extaxi_ax_none;
+    awidth  : integer;
+    idwidth : integer
+  ) return std_logic_vector;
+
+  function ar_pack(
+    ar      : axi4_ar_mosi_type;
+    xar     : extaxi_ax_type := extaxi_ax_none;
+    awidth  : integer;
+    idwidth : integer
+  ) return std_logic_vector;
+
+  procedure ax_unpack(
+    signal ax       : in  std_logic_vector;
+    signal axid     : out std_logic_vector;
+    signal axaddr   : out std_logic_vector;
+    signal axlen    : out std_logic_vector(8-1 downto 0);
+    signal axsize   : out std_logic_vector(3-1 downto 0);
+    signal axburst  : out std_logic_vector(2-1 downto 0);
+    signal axlock   : out std_logic;
+    signal axcache  : out std_logic_vector(4-1 downto 0);
+    signal axprot   : out std_logic_vector(3-1 downto 0);
+    signal axqos    : out std_logic_vector(4-1 downto 0);
+    signal axregion : out std_logic_vector(4-1 downto 0);
+    signal axuser   : out std_logic_vector
+  );
+
+  procedure aw_unpack(
+    constant idwidth  : integer;
+    constant awidth   : integer;
+    signal aw         : in  std_logic_vector;
+    signal awvalid    : in  std_ulogic;
+    signal axiaw      : out axi4_aw_mosi_type;
+    signal axixaw     : out extaxi_ax_type
+  );
+
+  procedure ar_unpack(
+    constant idwidth  : integer;
+    constant awidth   : integer;
+    signal ar         : in  std_logic_vector;
+    signal arvalid    : in  std_ulogic;
+    signal axiar      : out axi4_ar_mosi_type;
+    signal axixar     : out extaxi_ax_type
+  );
+
+  function w_pack(
+    wdata : std_logic_vector;
+    wstrb : std_logic_vector;
+    wlast : std_logic;
+    wuser : std_logic_vector
+  ) return std_logic_vector;
+
+  function w_pack(
+    w       : axi4_w_mosi_type;
+    dwidth  : integer
+  ) return std_logic_vector;
+
+  procedure w_unpack(
+    signal w        : in  std_logic_vector;
+    signal wdata    : out std_logic_vector;
+    signal wstrb    : out std_logic_vector;
+    signal wlast    : out std_logic;
+    signal wuser    : out std_logic_vector
+  );
+
+  procedure w_unpack(
+    constant dwidth : integer;
+    signal w        : in  std_logic_vector;
+    signal wvalid   : in  std_ulogic;
+    signal axiw     : out axi4_w_mosi_type
+  );
+
+  function b_pack(
+    bid    : std_logic_vector;
+    bresp  : std_logic_vector(1 downto 0);
+    buser  : std_logic_vector
+  ) return std_logic_vector;
+
+  function b_pack(
+    b       : axi_b_somi_type;
+    xb      : extaxi_x_type := extaxi_x_none;
+    idwidth : integer
+  ) return std_logic_vector;
+
+  procedure b_unpack(
+    signal b      : in  std_logic_vector;
+    signal bid    : out std_logic_vector;
+    signal bresp  : out std_logic_vector(1 downto 0);
+    signal buser  : out std_logic_vector
+  );
+
+  procedure b_unpack(
+    constant idwidth : integer;
+    signal b      : in  std_logic_vector;
+    signal bvalid : in  std_ulogic;
+    signal axib   : out axi_b_somi_type;
+    signal axixb  : out extaxi_x_type
+  );
+
+  function r_pack(
+    rid    : std_logic_vector;
+    rdata  : std_logic_vector;
+    rresp  : std_logic_vector(1 downto 0);
+    rlast  : std_logic;
+    ruser  : std_logic_vector
+  ) return std_logic_vector;
+
+  function r_pack(
+    r       : axi_r_somi_type;
+    xr      : extaxi_x_type := extaxi_x_none;
+    idwidth : integer;
+    dwidth  : integer
+  ) return std_logic_vector;
+
+  procedure r_unpack(
+    signal r      : in  std_logic_vector;
+    signal rid    : out std_logic_vector;
+    signal rdata  : out std_logic_vector;
+    signal rresp  : out std_logic_vector(1 downto 0);
+    signal rlast  : out std_logic;
+    signal ruser  : out std_logic_vector
+  );
+
+  procedure r_unpack(
+    constant idwidth  : integer;
+    constant dwidth   : integer;
+    signal r      : in  std_logic_vector;
+    signal rvalid : in  std_ulogic;
+    signal axir   : out axi_r_somi_type;
+    signal axixr  : out extaxi_x_type
+  );
+
+  function any_set(
+    a : std_logic_vector
+  ) return std_ulogic;
+
+  function ctz(
+    a : std_logic_vector
+  ) return std_logic_vector;
+
   component axinullslv is
     port (
       clk: in std_ulogic;
@@ -90,6 +288,152 @@ package axi is
       axisi: in axi_mosi_type;
       axiso: out axi_somi_type
       );
+  end component;
+
+  component register_slice is
+    generic (
+      dwidth      : integer;
+      direction   : integer range 0 to 1 := 0;  -- 0: Registered output, 1: Registered input
+      reset_data  : integer range 0 to 1 := 0;  -- 0: Only reset handshake signals, 1: Reset handshake and xdata
+      bypass      : integer range 0 to 1 := 0
+    );
+    port (
+      clk       : in  std_ulogic;
+      rstn      : in  std_ulogic;
+
+      s_xdata   : in  std_logic_vector(dwidth-1 downto 0);
+      s_xvalid  : in  std_ulogic;
+      s_xready  : out std_ulogic;
+
+      m_xdata   : out std_logic_vector(dwidth-1 downto 0);
+      m_xvalid  : out std_ulogic;
+      m_xready  : in  std_ulogic
+  );
+  end component;
+
+
+  component axi4_register_slice is
+    generic (
+      awidth      : integer;
+      dwidth      : integer;
+      idwidth     : integer;
+      axuserwidth : integer;
+      wuserwidth  : integer;
+      buserwidth  : integer;
+      ruserwidth  : integer;
+      awdirection : integer range 0 to 1 := 0; -- 0: Registered output, 1: Registered input
+      wdirection  : integer range 0 to 1 := 0; -- 0: Registered output, 1: Registered input
+      bdirection  : integer range 0 to 1 := 0; -- 0: Registered output, 1: Registered input
+      ardirection : integer range 0 to 1 := 0; -- 0: Registered output, 1: Registered input
+      rdirection  : integer range 0 to 1 := 0; -- 0: Registered output, 1: Registered input
+      awbypass    : integer range 0 to 1 := 0;
+      wbypass     : integer range 0 to 1 := 0;
+      bbypass     : integer range 0 to 1 := 0;
+      arbypass    : integer range 0 to 1 := 0;
+      rbypass     : integer range 0 to 1 := 0
+    );
+    port (
+      aclk            : in  std_ulogic;
+      aresetn         : in  std_ulogic;
+
+      s_axi_awid      : in  std_logic_vector(idwidth-1 downto 0);
+      s_axi_awaddr    : in  std_logic_vector(awidth-1 downto 0);
+      s_axi_awlen     : in  std_logic_vector(8-1 downto 0);
+      s_axi_awsize    : in  std_logic_vector(3-1 downto 0);
+      s_axi_awburst   : in  std_logic_vector(2-1 downto 0);
+      s_axi_awlock    : in  std_logic;
+      s_axi_awcache   : in  std_logic_vector(4-1 downto 0);
+      s_axi_awprot    : in  std_logic_vector(3-1 downto 0);
+      s_axi_awqos     : in  std_logic_vector(4-1 downto 0);
+      s_axi_awregion  : in  std_logic_vector(4-1 downto 0);
+      s_axi_awuser    : in  std_logic_vector(axuserwidth-1 downto 0);
+      s_axi_awvalid   : in  std_logic;
+      s_axi_awready   : out std_logic;
+
+      s_axi_wdata     : in  std_logic_vector(dwidth-1 downto 0);
+      s_axi_wstrb     : in  std_logic_vector(dwidth/8-1 downto 0);
+      s_axi_wlast     : in  std_logic;
+      s_axi_wuser     : in  std_logic_vector(wuserwidth-1 downto 0);
+      s_axi_wvalid    : in  std_logic;
+      s_axi_wready    : out std_logic;
+
+      s_axi_bid       : out std_logic_vector(idwidth-1 downto 0);
+      s_axi_bresp     : out std_logic_vector(2-1 downto 0);
+      s_axi_buser     : out std_logic_vector(buserwidth-1 downto 0);
+      s_axi_bvalid    : out std_logic;
+      s_axi_bready    : in  std_logic;
+
+      s_axi_arid      : in  std_logic_vector(idwidth-1 downto 0);
+      s_axi_araddr    : in  std_logic_vector(awidth-1 downto 0);
+      s_axi_arlen     : in  std_logic_vector(8-1 downto 0);
+      s_axi_arsize    : in  std_logic_vector(3-1 downto 0);
+      s_axi_arburst   : in  std_logic_vector(2-1 downto 0);
+      s_axi_arlock    : in  std_logic;
+      s_axi_arcache   : in  std_logic_vector(4-1 downto 0);
+      s_axi_arprot    : in  std_logic_vector(3-1 downto 0);
+      s_axi_arqos     : in  std_logic_vector(4-1 downto 0);
+      s_axi_arregion  : in  std_logic_vector(4-1 downto 0);
+      s_axi_aruser    : in  std_logic_vector(axuserwidth-1 downto 0);
+      s_axi_arvalid   : in  std_logic;
+      s_axi_arready   : out std_logic;
+
+      s_axi_rid       : out std_logic_vector(idwidth-1 downto 0);
+      s_axi_rdata     : out std_logic_vector(dwidth-1 downto 0);
+      s_axi_rresp     : out std_logic_vector(2-1 downto 0);
+      s_axi_rlast     : out std_logic;
+      s_axi_ruser     : out std_logic_vector(buserwidth-1 downto 0);
+      s_axi_rvalid    : out std_logic;
+      s_axi_rready    : in  std_logic;
+
+      m_axi_awid      : out std_logic_vector(idwidth-1 downto 0);
+      m_axi_awaddr    : out std_logic_vector(awidth-1 downto 0);
+      m_axi_awlen     : out std_logic_vector(8-1 downto 0);
+      m_axi_awsize    : out std_logic_vector(3-1 downto 0);
+      m_axi_awburst   : out std_logic_vector(2-1 downto 0);
+      m_axi_awlock    : out std_logic;
+      m_axi_awcache   : out std_logic_vector(4-1 downto 0);
+      m_axi_awprot    : out std_logic_vector(3-1 downto 0);
+      m_axi_awqos     : out std_logic_vector(4-1 downto 0);
+      m_axi_awregion  : out std_logic_vector(4-1 downto 0);
+      m_axi_awuser    : out std_logic_vector(axuserwidth-1 downto 0);
+      m_axi_awvalid   : out std_logic;
+      m_axi_awready   : in  std_logic;
+
+      m_axi_wdata     : out std_logic_vector(dwidth-1 downto 0);
+      m_axi_wstrb     : out std_logic_vector(dwidth/8-1 downto 0);
+      m_axi_wlast     : out std_logic;
+      m_axi_wuser     : out std_logic_vector(wuserwidth-1 downto 0);
+      m_axi_wvalid    : out std_logic;
+      m_axi_wready    : in  std_logic;
+
+      m_axi_bid       : in  std_logic_vector(idwidth-1 downto 0);
+      m_axi_bresp     : in  std_logic_vector(2-1 downto 0);
+      m_axi_buser     : in  std_logic_vector(buserwidth-1 downto 0);
+      m_axi_bvalid    : in  std_logic;
+      m_axi_bready    : out std_logic;
+
+      m_axi_arid      : out std_logic_vector(idwidth-1 downto 0);
+      m_axi_araddr    : out std_logic_vector(awidth-1 downto 0);
+      m_axi_arlen     : out std_logic_vector(8-1 downto 0);
+      m_axi_arsize    : out std_logic_vector(3-1 downto 0);
+      m_axi_arburst   : out std_logic_vector(2-1 downto 0);
+      m_axi_arlock    : out std_logic;
+      m_axi_arcache   : out std_logic_vector(4-1 downto 0);
+      m_axi_arprot    : out std_logic_vector(3-1 downto 0);
+      m_axi_arqos     : out std_logic_vector(4-1 downto 0);
+      m_axi_arregion  : out std_logic_vector(4-1 downto 0);
+      m_axi_aruser    : out std_logic_vector(axuserwidth-1 downto 0);
+      m_axi_arvalid   : out std_logic;
+      m_axi_arready   : in  std_logic;
+
+      m_axi_rid       : in  std_logic_vector(idwidth-1 downto 0);
+      m_axi_rdata     : in  std_logic_vector(dwidth-1 downto 0);
+      m_axi_rresp     : in  std_logic_vector(2-1 downto 0);
+      m_axi_rlast     : in  std_logic;
+      m_axi_ruser     : in  std_logic_vector(ruserwidth-1 downto 0);
+      m_axi_rvalid    : in  std_logic;
+      m_axi_rready    : out std_logic
+    );
   end component;
 
     component axichancdc is
@@ -157,7 +501,7 @@ package axi is
       bar1      : integer range 0 to 1073741823 := 0;
       bar2      : integer range 0 to 1073741823 := 0;
       bar3      : integer range 0 to 1073741823 := 0
-      );                                    
+      );
     port (
       rst   : in  std_logic;
       clk   : in  std_logic;
@@ -165,7 +509,7 @@ package axi is
       ahbso : out ahb_slv_out_type;
       aximi : in  axi_somi_type;
       aximo : out axi_mosi_type
-      );  
+      );
   end component;
 
   component ahbm2axi
@@ -181,7 +525,7 @@ package axi is
                                                       --1->BE(AHB)-to-LE(AXI)
       -- scantest
       scantest      : integer                := 0
-      );                                    
+      );
     port (
       rst   : in  std_logic;
       clk   : in  std_logic;
@@ -189,7 +533,7 @@ package axi is
       ahbso : out ahb_slv_out_type;
       aximi : in  axi_somi_type;
       aximo : out axix_mosi_type
-      );  
+      );
   end component;
 
   component ahbm2axi3 is
@@ -243,14 +587,14 @@ package axi is
       rprefetch_num   : integer range 1 to 256        := 8;
       always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
       axi4            : integer range 0 to 1          := 0;
-      ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-      endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
-                                                             --1->BE(AHB)-to-LE(AXI)
-      narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
-                                                             --treated as single access
-                                                             --1->narrow burst directly
-                                                             --transalted to AXI
-                                                             --supported only in BE-to-BE
+      ahb_endianness  : integer range 0 to 1          := GRLIB_ENDIAN; -- Unused
+      endianness_mode : integer range 0 to 1          := 0; --0->BE(AHB)-to-BE(AXI)
+                                                            --1->BE(AHB)-to-LE(AXI)
+      narrow_acc_mode : integer range 0 to 1          := 1; --0->each beat in narrow burst
+                                                            --treated as single access
+                                                            --1->narrow burst directly
+                                                            --translated to AXI
+                                                            --supported only in BE-to-BE
       ostand_writes  : integer range 1 to 16          := 4;
       -- scantest
       scantest        : integer                       := 0;
@@ -269,7 +613,7 @@ package axi is
       ahbso : out ahb_slv_out_type;
       aximi : in  axi_somi_type;
       aximo : out axix_mosi_type
-      );  
+      );
   end component;
 
 
@@ -280,14 +624,14 @@ package axi is
       wbuffer_num     : integer range 1 to 16         := 8;
       rprefetch_num   : integer range 1 to 16         := 8;
       always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
-      ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-      endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
-                                                             --1->BE(AHB)-to-LE(AXI)
-      narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
-                                                             --treated as single access
-                                                             --1->narrow burst directly
-                                                             --transalted to AXI
-                                                             --supported only in BE-to-BE
+      ahb_endianness  : integer range 0 to 1          := GRLIB_ENDIAN;
+      endianness_mode : integer range 0 to 1          := 0; --0->BE(AHB)-to-BE(AXI)
+                                                            --1->BE(AHB)-to-LE(AXI)
+      narrow_acc_mode : integer range 0 to 1          := 1; --0->each beat in narrow burst
+                                                            --treated as single access
+                                                            --1->narrow burst directly
+                                                            --translated to AXI
+                                                            --supported only in BE-to-BE
       -- scantest
       scantest        : integer                       := 0;
       -- GRLIB plug&play configuration
@@ -310,28 +654,28 @@ package axi is
 
   component ahb2axi4b is
     generic (
-      hindex          : integer                              := 0;
-      aximid          : integer range 0 to 15                := 0;  --AXI master transaction ID
-      wbuffer_num     : integer range 1 to axi4_max_n(AXIDW) := 8;
-      rprefetch_num   : integer range 1 to axi4_max_n(AXIDW) := 8;
-      always_secure   : integer range 0 to 1                 := 1;  --0->not secure; 1->secure
-      ahb_endianness  : integer range 0 to 1                 := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-      endianness_mode : integer range 0 to 1                 := 0;  --0->BE(AHB)-to-BE(AXI)
+      hindex          : integer                               := 0;
+      aximid          : integer range 0 to 15                 := 0;  --AXI master transaction ID
+      wbuffer_num     : integer range 1 to axi4_max_n(AXIDW)  := 8;
+      rprefetch_num   : integer range 1 to axi4_max_n(AXIDW)  := 8;
+      always_secure   : integer range 0 to 1                  := 1;  --0->not secure; 1->secure
+      ahb_endianness  : integer range 0 to 1                  := GRLIB_ENDIAN;
+      endianness_mode : integer range 0 to 1                  := 0; --0->BE(AHB)-to-BE(AXI)
                                                                     --1->BE(AHB)-to-LE(AXI)
-      narrow_acc_mode : integer range 0 to 1                 := 0;  --0->each beat in narrow burst
+      narrow_acc_mode : integer range 0 to 1                  := 1; --0->each beat in narrow burst
                                                                     --treated as single access
                                                                     --1->narrow burst directly
-                                                                    --transalted to AXI
+                                                                    --translated to AXI
                                                                     --supported only in BE-to-BE
       -- scantest
-      scantest        : integer                              := 0;
+      scantest        : integer                               := 0;
       -- GRLIB plug&play configuration
-      vendor          : integer                              := VENDOR_GAISLER;
-      device          : integer                              := GAISLER_AHB2AXI;
-      bar0            : integer range 0 to 1073741823        := 0;
-      bar1            : integer range 0 to 1073741823        := 0;
-      bar2            : integer range 0 to 1073741823        := 0;
-      bar3            : integer range 0 to 1073741823        := 0
+      vendor          : integer                               := VENDOR_GAISLER;
+      device          : integer                               := GAISLER_AHB2AXI;
+      bar0            : integer range 0 to 1073741823         := 0;
+      bar1            : integer range 0 to 1073741823         := 0;
+      bar2            : integer range 0 to 1073741823         := 0;
+      bar3            : integer range 0 to 1073741823         := 0
       );
     port (
       rstn  : in  std_logic;
@@ -348,25 +692,32 @@ package axi is
       memtech     : integer               := 0;
       hindex      : integer               := 0;
       dbuffer     : integer range 4 to 256 := 4; -- Read data buffer depth
-      wordsize    : integer               := AHBDW;
+      wordsize    : integer               := AHBDW; -- Actual bus data width
       axi_endian  : integer range 0 to 1  := 0; -- 0: BE, 1: LE
       -- "Inverts" the addresses of accesses that are narrower than the bus width.
       -- E.g. a 16-bit access on a 32-bit bus. The address provided via AXI is 0x0.
       -- The resulting address would in this case become 0x2. This can be useful on big endian systems.
       sub_bus_width_address_inversion : integer range 0 to 1 := 0;
-      mask        : integer               := 0;
+      -- Allow bridge to make AHB burst writes if calculated hsize matches awsize.
+      speculative_bursts : integer range 0 to 1 := 0;
+      mask        : integer               := 16#000#;
       vendorid    : integer               := VENDOR_GAISLER;
-      deviceid    : integer               := 0;
+      deviceid    : integer               := GAISLER_AXI2AHB;
+      ext_awidth  : integer range 0 to 32 := 0; -- Extra address width above 32 bits using axixsi and ahbmxa
+      ext_idwidth : integer range 0 to 4  := 0; -- Extra idwidth above AXI_ID_WIDTH using axixsi/o
       scantest    : integer               := 0;
       memory_ft   : integer               := 0 -- Memory fault tolerance
-      );
+    );
     port(
       resetn  : in  std_ulogic;
       clk     : in  std_ulogic;
       axisi   : in  axi4_mosi_type;
+      axixsi  : in  extaxi_mosi_type := extaxi_mosi_none;
       axiso   : out axi_somi_type;
+      axixso  : out extaxi_miso_type;
       ahbmi   : in  ahb_mst_in_type;
-      ahbmo   : out ahb_mst_out_type
+      ahbmo   : out ahb_mst_out_type;
+      ahbmxa  : out std_logic_vector(31 downto 0)
     );
   end component;
 
@@ -411,6 +762,7 @@ package axi is
 
   component axi4_resize is
     generic (
+      wl_addr   : positive range 12 to 64 := 32;
       wl_s_data : positive := 128;
       wl_m_data : positive := 32;
       wl_user : natural := 0;
@@ -422,7 +774,7 @@ package axi is
 
       -- Slave ports
       s_axi4_awvalid : in std_logic;
-      s_axi4_awaddr : in std_logic_vector(31 downto 0);
+      s_axi4_awaddr : in std_logic_vector(wl_addr-1 downto 0);
       s_axi4_awsize : in std_logic_vector(2 downto 0);
       s_axi4_awburst : in std_logic_vector(1 downto 0);
       s_axi4_awlen : in std_logic_vector(7 downto 0);
@@ -448,7 +800,7 @@ package axi is
       s_axi4_bready : in std_logic;
 
       s_axi4_arvalid : in std_logic;
-      s_axi4_araddr : in std_logic_vector(31 downto 0);
+      s_axi4_araddr : in std_logic_vector(wl_addr-1 downto 0);
       s_axi4_arsize : in std_logic_vector(2 downto 0);
       s_axi4_arburst : in std_logic_vector(1 downto 0);
       s_axi4_arlen : in std_logic_vector(7 downto 0);
@@ -470,7 +822,7 @@ package axi is
 
       -- Master ports
       m_axi4_awvalid : out std_logic;
-      m_axi4_awaddr : out std_logic_vector(31 downto 0);
+      m_axi4_awaddr : out std_logic_vector(wl_addr-1 downto 0);
       m_axi4_awsize : out std_logic_vector(2 downto 0);
       m_axi4_awburst : out std_logic_vector(1 downto 0);
       m_axi4_awlen : out std_logic_vector(7 downto 0);
@@ -496,7 +848,7 @@ package axi is
       m_axi4_bready : out std_logic;
 
       m_axi4_arvalid : out std_logic;
-      m_axi4_araddr : out std_logic_vector(31 downto 0);
+      m_axi4_araddr : out std_logic_vector(wl_addr-1 downto 0);
       m_axi4_arsize : out std_logic_vector(2 downto 0);
       m_axi4_arburst : out std_logic_vector(1 downto 0);
       m_axi4_arlen : out std_logic_vector(7 downto 0);
@@ -517,6 +869,367 @@ package axi is
       m_axi4_rready : out std_logic
     );
   end component;
+
+  component arbiter_tree is
+    generic (
+      nreq      : integer;
+      dwidth    : integer;
+      arb_prio  : integer range 0 to 2; -- 0 -> iprio, 1 -> Rotate prio, 2 -> Round robin
+      arb_lock  : integer range 0 to 1  -- 0 -> Make arbiter decision on grant
+                                        -- 1 -> Make arbiter decision on first valid request
+    );
+    port (
+      clk     : in  std_ulogic;
+      rstn    : in  std_ulogic;
+      -- Subordinate
+      sprio   : in  std_logic_vector(log2x(nreq)-1 downto 0) := (others => '0');
+      sdata   : in  std_logic_vector(nreq*dwidth-1 downto 0);
+      sreq    : in  std_logic_vector(nreq-1 downto 0);
+      sgnt    : out std_logic_vector(nreq-1 downto 0);
+      -- Manager
+      msel    : out std_logic_vector(log2x(nreq)-1 downto 0);
+      mdata   : out std_logic_vector(dwidth-1 downto 0);
+      mreq    : out std_ulogic;
+      mgnt    : in  std_ulogic
+    );
+  end component;
+
+  component axi4mux is
+    generic (
+      memtech     : integer;
+      nsubports   : integer;
+      maxtrans    : integer;
+      awidth      : integer;
+      dwidth      : integer;
+      idwidth     : integer;
+      axuserwidth : integer;
+      wuserwidth  : integer;
+      buserwidth  : integer;
+      ruserwidth  : integer
+    );
+    port (
+      aclk            : in  std_ulogic;
+      aresetn         : in  std_ulogic;
+
+      -- Subordinates
+      s_axi_awid      : in  std_logic_vector(nsubports*idwidth-1 downto 0);
+      s_axi_awaddr    : in  std_logic_vector(nsubports*awidth-1 downto 0);
+      s_axi_awlen     : in  std_logic_vector(nsubports*8-1 downto 0);
+      s_axi_awsize    : in  std_logic_vector(nsubports*3-1 downto 0);
+      s_axi_awburst   : in  std_logic_vector(nsubports*2-1 downto 0);
+      s_axi_awlock    : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_awcache   : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_awprot    : in  std_logic_vector(nsubports*3-1 downto 0);
+      s_axi_awqos     : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_awregion  : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_awuser    : in  std_logic_vector(nsubports*axuserwidth-1 downto 0);
+      s_axi_awvalid   : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_awready   : out std_logic_vector(nsubports-1 downto 0);
+
+      s_axi_wdata     : in  std_logic_vector(nsubports*dwidth-1 downto 0);
+      s_axi_wstrb     : in  std_logic_vector(nsubports*dwidth/8-1 downto 0);
+      s_axi_wlast     : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_wuser     : in  std_logic_vector(nsubports*wuserwidth-1 downto 0);
+      s_axi_wvalid    : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_wready    : out std_logic_vector(nsubports-1 downto 0);
+
+      s_axi_bid       : out std_logic_vector(nsubports*idwidth-1 downto 0);
+      s_axi_bresp     : out std_logic_vector(nsubports*2-1 downto 0);
+      s_axi_buser     : out std_logic_vector(nsubports*buserwidth-1 downto 0);
+      s_axi_bvalid    : out std_logic_vector(nsubports-1 downto 0);
+      s_axi_bready    : in  std_logic_vector(nsubports-1 downto 0);
+
+      s_axi_arid      : in  std_logic_vector(nsubports*idwidth-1 downto 0);
+      s_axi_araddr    : in  std_logic_vector(nsubports*awidth-1 downto 0);
+      s_axi_arlen     : in  std_logic_vector(nsubports*8-1 downto 0);
+      s_axi_arsize    : in  std_logic_vector(nsubports*3-1 downto 0);
+      s_axi_arburst   : in  std_logic_vector(nsubports*2-1 downto 0);
+      s_axi_arlock    : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_arcache   : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_arprot    : in  std_logic_vector(nsubports*3-1 downto 0);
+      s_axi_arqos     : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_arregion  : in  std_logic_vector(nsubports*4-1 downto 0);
+      s_axi_aruser    : in  std_logic_vector(nsubports*axuserwidth-1 downto 0);
+      s_axi_arvalid   : in  std_logic_vector(nsubports-1 downto 0);
+      s_axi_arready   : out std_logic_vector(nsubports-1 downto 0);
+
+      s_axi_rid       : out std_logic_vector(nsubports*idwidth-1 downto 0);
+      s_axi_rdata     : out std_logic_vector(nsubports*dwidth-1 downto 0);
+      s_axi_rresp     : out std_logic_vector(nsubports*2-1 downto 0);
+      s_axi_rlast     : out std_logic_vector(nsubports-1 downto 0);
+      s_axi_ruser     : out std_logic_vector(nsubports*buserwidth-1 downto 0);
+      s_axi_rvalid    : out std_logic_vector(nsubports-1 downto 0);
+      s_axi_rready    : in  std_logic_vector(nsubports-1 downto 0);
+
+      -- Manager
+      m_axi_awid      : out std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
+      m_axi_awaddr    : out std_logic_vector(awidth-1 downto 0);
+      m_axi_awlen     : out std_logic_vector(8-1 downto 0);
+      m_axi_awsize    : out std_logic_vector(3-1 downto 0);
+      m_axi_awburst   : out std_logic_vector(2-1 downto 0);
+      m_axi_awlock    : out std_logic;
+      m_axi_awcache   : out std_logic_vector(4-1 downto 0);
+      m_axi_awprot    : out std_logic_vector(3-1 downto 0);
+      m_axi_awqos     : out std_logic_vector(4-1 downto 0);
+      m_axi_awregion  : out std_logic_vector(4-1 downto 0);
+      m_axi_awuser    : out std_logic_vector(axuserwidth-1 downto 0);
+      m_axi_awvalid   : out std_logic;
+      m_axi_awready   : in  std_logic;
+
+      m_axi_wdata     : out std_logic_vector(dwidth-1 downto 0);
+      m_axi_wstrb     : out std_logic_vector(dwidth/8-1 downto 0);
+      m_axi_wlast     : out std_logic;
+      m_axi_wuser     : out std_logic_vector(wuserwidth-1 downto 0);
+      m_axi_wvalid    : out std_logic;
+      m_axi_wready    : in  std_logic;
+
+      m_axi_bid       : in  std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
+      m_axi_bresp     : in  std_logic_vector(2-1 downto 0);
+      m_axi_buser     : in  std_logic_vector(buserwidth-1 downto 0);
+      m_axi_bvalid    : in  std_logic;
+      m_axi_bready    : out std_logic;
+
+      m_axi_arid      : out std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
+      m_axi_araddr    : out std_logic_vector(awidth-1 downto 0);
+      m_axi_arlen     : out std_logic_vector(8-1 downto 0);
+      m_axi_arsize    : out std_logic_vector(3-1 downto 0);
+      m_axi_arburst   : out std_logic_vector(2-1 downto 0);
+      m_axi_arlock    : out std_logic;
+      m_axi_arcache   : out std_logic_vector(4-1 downto 0);
+      m_axi_arprot    : out std_logic_vector(3-1 downto 0);
+      m_axi_arqos     : out std_logic_vector(4-1 downto 0);
+      m_axi_arregion  : out std_logic_vector(4-1 downto 0);
+      m_axi_aruser    : out std_logic_vector(axuserwidth-1 downto 0);
+      m_axi_arvalid   : out std_logic;
+      m_axi_arready   : in  std_logic;
+
+      m_axi_rid       : in  std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
+      m_axi_rdata     : in  std_logic_vector(dwidth-1 downto 0);
+      m_axi_rresp     : in  std_logic_vector(2-1 downto 0);
+      m_axi_rlast     : in  std_logic;
+      m_axi_ruser     : in  std_logic_vector(buserwidth-1 downto 0);
+      m_axi_rvalid    : in  std_logic;
+      m_axi_rready    : out std_logic
+    );
+  end component;
+
+  component axi4mux_wrapper is
+    generic (
+      memtech       : integer;
+      nsubports     : integer;
+      maxtrans      : integer;
+      idwidth_used  : integer range 0 to AXI_ID_WIDTH;
+      awidth        : integer range 12 to 64 := 32;
+      dwidth        : integer range 8 to AXIDW := AXIDW
+    );
+    port (
+      aclk        : in  std_ulogic;
+      aresetn     : in  std_ulogic;
+
+      -- Subordinates
+      axisi       : in  axi4_mosi_vector_type(0 to nsubports-1);
+      axixsi      : in  extaxi_mosi_vector_type(0 to nsubports-1) := (others => extaxi_mosi_none);
+      axiso       : out axi_somi_vector_type(0 to nsubports-1);
+      axixso      : out extaxi_miso_vector_type(0 to nsubports-1);
+
+      -- Manager
+      aximo       : out axi4_mosi_type;
+      axixmo      : out extaxi_mosi_type;
+      aximi       : in  axi_somi_type;
+      axixmi      : in  extaxi_miso_type := extaxi_miso_none
+    );
+  end component;
+
+  component axi4demux is
+    generic (
+      nmanports   : integer;
+      maxtrans    : integer;
+      awidth      : integer;
+      dwidth      : integer;
+      idwidth     : integer;
+      axuserwidth : integer;
+      wuserwidth  : integer;
+      buserwidth  : integer;
+      ruserwidth  : integer
+    );
+    port (
+      aclk            : in  std_ulogic;
+      aresetn         : in  std_ulogic;
+
+      -- Subordinates
+      s_axi_awsel     : in  std_logic_vector(log2x(nmanports)-1 downto 0);
+      s_axi_awid      : in  std_logic_vector(idwidth-1 downto 0);
+      s_axi_awaddr    : in  std_logic_vector(awidth-1 downto 0);
+      s_axi_awlen     : in  std_logic_vector(8-1 downto 0);
+      s_axi_awsize    : in  std_logic_vector(3-1 downto 0);
+      s_axi_awburst   : in  std_logic_vector(2-1 downto 0);
+      s_axi_awlock    : in  std_logic;
+      s_axi_awcache   : in  std_logic_vector(4-1 downto 0);
+      s_axi_awprot    : in  std_logic_vector(3-1 downto 0);
+      s_axi_awqos     : in  std_logic_vector(4-1 downto 0);
+      s_axi_awregion  : in  std_logic_vector(4-1 downto 0);
+      s_axi_awuser    : in  std_logic_vector(axuserwidth-1 downto 0);
+      s_axi_awvalid   : in  std_logic;
+      s_axi_awready   : out std_logic;
+
+      s_axi_wdata     : in  std_logic_vector(dwidth-1 downto 0);
+      s_axi_wstrb     : in  std_logic_vector(dwidth/8-1 downto 0);
+      s_axi_wlast     : in  std_logic;
+      s_axi_wuser     : in  std_logic_vector(wuserwidth-1 downto 0);
+      s_axi_wvalid    : in  std_logic;
+      s_axi_wready    : out std_logic;
+
+      s_axi_bid       : out std_logic_vector(idwidth-1 downto 0);
+      s_axi_bresp     : out std_logic_vector(2-1 downto 0);
+      s_axi_buser     : out std_logic_vector(buserwidth-1 downto 0);
+      s_axi_bvalid    : out std_logic;
+      s_axi_bready    : in  std_logic;
+
+      s_axi_arsel     : in  std_logic_vector(log2x(nmanports)-1 downto 0);
+      s_axi_arid      : in  std_logic_vector(idwidth-1 downto 0);
+      s_axi_araddr    : in  std_logic_vector(awidth-1 downto 0);
+      s_axi_arlen     : in  std_logic_vector(8-1 downto 0);
+      s_axi_arsize    : in  std_logic_vector(3-1 downto 0);
+      s_axi_arburst   : in  std_logic_vector(2-1 downto 0);
+      s_axi_arlock    : in  std_logic;
+      s_axi_arcache   : in  std_logic_vector(4-1 downto 0);
+      s_axi_arprot    : in  std_logic_vector(3-1 downto 0);
+      s_axi_arqos     : in  std_logic_vector(4-1 downto 0);
+      s_axi_arregion  : in  std_logic_vector(4-1 downto 0);
+      s_axi_aruser    : in  std_logic_vector(axuserwidth-1 downto 0);
+      s_axi_arvalid   : in  std_logic;
+      s_axi_arready   : out std_logic;
+
+      s_axi_rid       : out std_logic_vector(idwidth-1 downto 0);
+      s_axi_rdata     : out std_logic_vector(dwidth-1 downto 0);
+      s_axi_rresp     : out std_logic_vector(2-1 downto 0);
+      s_axi_rlast     : out std_logic;
+      s_axi_ruser     : out std_logic_vector(buserwidth-1 downto 0);
+      s_axi_rvalid    : out std_logic;
+      s_axi_rready    : in  std_logic;
+
+      -- Managers
+      m_axi_awid      : out std_logic_vector(nmanports*idwidth-1 downto 0);
+      m_axi_awaddr    : out std_logic_vector(nmanports*awidth-1 downto 0);
+      m_axi_awlen     : out std_logic_vector(nmanports*8-1 downto 0);
+      m_axi_awsize    : out std_logic_vector(nmanports*3-1 downto 0);
+      m_axi_awburst   : out std_logic_vector(nmanports*2-1 downto 0);
+      m_axi_awlock    : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_awcache   : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_awprot    : out std_logic_vector(nmanports*3-1 downto 0);
+      m_axi_awqos     : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_awregion  : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_awuser    : out std_logic_vector(nmanports*axuserwidth-1 downto 0);
+      m_axi_awvalid   : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_awready   : in  std_logic_vector(nmanports-1 downto 0);
+
+      m_axi_wdata     : out std_logic_vector(nmanports*dwidth-1 downto 0);
+      m_axi_wstrb     : out std_logic_vector(nmanports*dwidth/8-1 downto 0);
+      m_axi_wlast     : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_wuser     : out std_logic_vector(nmanports*wuserwidth-1 downto 0);
+      m_axi_wvalid    : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_wready    : in  std_logic_vector(nmanports-1 downto 0);
+
+      m_axi_bid       : in  std_logic_vector(nmanports*idwidth-1 downto 0);
+      m_axi_bresp     : in  std_logic_vector(nmanports*2-1 downto 0);
+      m_axi_buser     : in  std_logic_vector(nmanports*buserwidth-1 downto 0);
+      m_axi_bvalid    : in  std_logic_vector(nmanports-1 downto 0);
+      m_axi_bready    : out std_logic_vector(nmanports-1 downto 0);
+
+      m_axi_arid      : out std_logic_vector(nmanports*idwidth-1 downto 0);
+      m_axi_araddr    : out std_logic_vector(nmanports*awidth-1 downto 0);
+      m_axi_arlen     : out std_logic_vector(nmanports*8-1 downto 0);
+      m_axi_arsize    : out std_logic_vector(nmanports*3-1 downto 0);
+      m_axi_arburst   : out std_logic_vector(nmanports*2-1 downto 0);
+      m_axi_arlock    : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_arcache   : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_arprot    : out std_logic_vector(nmanports*3-1 downto 0);
+      m_axi_arqos     : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_arregion  : out std_logic_vector(nmanports*4-1 downto 0);
+      m_axi_aruser    : out std_logic_vector(nmanports*axuserwidth-1 downto 0);
+      m_axi_arvalid   : out std_logic_vector(nmanports-1 downto 0);
+      m_axi_arready   : in  std_logic_vector(nmanports-1 downto 0);
+
+      m_axi_rid       : in  std_logic_vector(nmanports*idwidth-1 downto 0);
+      m_axi_rdata     : in  std_logic_vector(nmanports*dwidth-1 downto 0);
+      m_axi_rresp     : in  std_logic_vector(nmanports*2-1 downto 0);
+      m_axi_rlast     : in  std_logic_vector(nmanports-1 downto 0);
+      m_axi_ruser     : in  std_logic_vector(nmanports*ruserwidth-1 downto 0);
+      m_axi_rvalid    : in  std_logic_vector(nmanports-1 downto 0);
+      m_axi_rready    : out std_logic_vector(nmanports-1 downto 0)
+    );
+  end component;
+
+  component axi4demux_wrapper is
+    generic (
+      nmanports   : integer;
+      maxtrans    : integer;
+      idwidth     : integer range 0 to 2*AXI_ID_WIDTH;
+      awidth      : integer range 12 to 64 := 32;
+      dwidth      : integer range 8 to AXIDW := AXIDW
+    );
+    port (
+      aclk        : in  std_ulogic;
+      aresetn     : in  std_ulogic;
+
+      -- Subordinates
+      s_axi_awsel : in  std_logic_vector(log2x(nmanports)-1 downto 0);
+      s_axi_arsel : in  std_logic_vector(log2x(nmanports)-1 downto 0);
+      axisi       : in  axi4_mosi_type;
+      axixsi      : in  extaxi_mosi_type := extaxi_mosi_none;
+      axiso       : out axi_somi_type;
+      axixso      : out extaxi_miso_type;
+
+      -- Manager
+      aximo       : out axi4_mosi_vector_type(0 to nmanports-1);
+      axixmo      : out extaxi_mosi_vector_type(0 to nmanports-1);
+      aximi       : in  axi_somi_vector_type(0 to nmanports-1);
+      axixmi      : in  extaxi_miso_vector_type(0 to nmanports-1) := (others => extaxi_miso_none)
+    );
+  end component;
+
+  component axi2apb is
+    generic (
+      nslaves   : integer range 1 to NAPBSLV := NAPBSLV;
+      idwidth   : integer range 0 to 2*AXI_ID_WIDTH := AXI_ID_WIDTH;
+      dwidth    : integer range 32 to AXIDW := AXIDW
+    );
+    port (
+      aclk      : in  std_ulogic;
+      aresetn   : in  std_ulogic;
+      -- AXI slave port
+      axisi     : in  axi4_mosi_type;
+      axixsi    : in  extaxi_mosi_type;
+      axiso     : out axi_somi_type;
+      axixso    : out extaxi_miso_type;
+      -- APB
+      apbi      : out apb_slv_in_vector;
+      apbo      : in  apb_slv_out_vector;
+      apbendian : in  std_ulogic := '0' -- '0' big endian, '1' little endian
+    );
+  end component;
+
+  component axi2apb3 is
+    generic (
+      nslaves   : integer range 1 to NAPBSLV := NAPBSLV;
+      idwidth   : integer range 0 to 2*AXI_ID_WIDTH := AXI_ID_WIDTH;
+      dwidth    : integer range 32 to AXIDW := AXIDW
+    );
+    port (
+      aclk      : in  std_ulogic;
+      aresetn   : in  std_ulogic;
+      -- AXI slave port
+      axisi     : in  axi4_mosi_type;
+      axixsi    : in  extaxi_mosi_type;
+      axiso     : out axi_somi_type;
+      axixso    : out extaxi_miso_type;
+      -- APB
+      apbi      : out apb3_slv_in_type;
+      apbo      : in  apb3_slv_out_vector;
+      apbendian : in  std_ulogic := '0' -- '0' big endian, '1' little endian
+    );
+  end component;
+
 end package axi;
 
 
@@ -578,7 +1291,7 @@ package body axi is
     return data;
   end subwidth_replicate;
 
-  ------------------------------------------------------------------------------   
+  ------------------------------------------------------------------------------
   --functions to avoid simulate warnings when AXIDW is 32
   function range_return (
     width : in integer
@@ -661,7 +1374,7 @@ package body axi is
     variable data_shifted : std_logic_vector(AXIDW-1 downto 0);
     variable data_out     : std_logic_vector(AXIDW-1 downto 0);
   begin
-    
+
     addr_i := to_integer(unsigned(addr(addr_range_high(AXIDW) downto addr_range_low(AXIDW))));
 
     data_shifted := data_in;
@@ -671,7 +1384,7 @@ package body axi is
           if (j-i) = addr_i then
             data_shifted((i+1)*32-1 downto i*32) := data_in((j+1)*32-1 downto j*32);
           end if;
-        end loop;  -- j      
+        end loop;  -- j
       end loop;  -- i
     end if;
 
@@ -726,7 +1439,7 @@ package body axi is
     ) return std_logic_vector is
     variable burst : std_logic_vector(1 downto 0);
   begin
-    
+
     case hburst is
       --incremental bursts
       when HBURST_SINGLE | HBURST_INCR | HBURST_INCR4 |
@@ -746,7 +1459,7 @@ package body axi is
     ) return std_logic_vector is
     variable len : std_logic_vector(3 downto 0);
   begin
-    
+
     case hburst is
       when HBURST_SINGLE =>
         len := "0000";
@@ -814,7 +1527,7 @@ package body axi is
     end case;
 
     return ret;
-   
+
   end decode_size;
 
   --function that translates a big-endian narrow access
@@ -830,7 +1543,7 @@ package body axi is
     variable max_add : unsigned(7 downto 0);
     variable temp    : unsigned(7 downto 0);
     variable ret     : unsigned(7 downto 0);
-  begin  
+  begin
 
     max_add := (others=>'0');
     max_add(log2(AXIDW/8)) := '1';
@@ -846,9 +1559,9 @@ package body axi is
     end if;
 
   end be_to_le_address;
- 
-    
-    
+
+
+
   --Big endian to little endian data bus conversion
   --First byte swap the entire data bus then byte swap
   --the sub-bytes depending on the size
@@ -884,16 +1597,16 @@ package body axi is
   begin
 
     ret := 1;
-    
+
     for i in 20 downto 0 loop
       if number >= 2**i then
         ret := 2**i;
         exit;
       end if;
     end loop;
-    
+
     return ret;
-    
+
   end power_of_two;
 
   function max_len(
@@ -919,11 +1632,425 @@ package body axi is
 
     size_temp := decode_size(size);
     return resize(size_temp, log2(data_width/8));
-    
+
   end size_incr;
 
+  function conv_byte_invariant(
+    data    : std_logic_vector;
+    endian  : std_logic;
+    swap    : boolean := true) return std_logic_vector is
+  begin
+    if endian = '0' and swap then
+      return byte_swap(data);
+    end if;
+    return data;
+  end function conv_byte_invariant;
 
+  function drive_rdata(
+    data : std_logic_vector;
+    addr : std_logic_vector;
+    size : std_logic_vector(2 downto 0))
+    return std_logic_vector is
+    constant DW : integer := data'length;
+    variable a : unsigned(log2(data'length/8)-1 downto 0);
+    variable d : std_logic_vector(DW-1 downto 0);
+    variable r : std_logic_vector(DW-1 downto 0);
+  begin
+    -- Align address
+    a := shift_right(unsigned(addr(addr'low+log2(data'length/8)-1 downto addr'low)), to_integer(unsigned(size)));
+    a := shift_left(a, to_integer(unsigned(size)));
+    -- Shift data
+    d := std_logic_vector(shift_right(unsigned(data), to_integer(a & "000")));
+    for i in 0 to log2(DW/8)-1 loop
+      if i = unsigned(size) then
+        -- Replicate data on the bus
+        for j in 0 to DW/2**(i+3)-1 loop
+          r((j+1)*2**(i+3)-1 downto j*2**(i+3)) := d(2**(i+3)-1 downto 0);
+        end loop;
+      end if;
+    end loop;
+    return r;
+  end function drive_rdata;
 
-  
+  function ax_pack(
+    axid     : std_logic_vector;
+    axaddr   : std_logic_vector;
+    axlen    : std_logic_vector(8-1 downto 0);
+    axsize   : std_logic_vector(3-1 downto 0);
+    axburst  : std_logic_vector(2-1 downto 0);
+    axlock   : std_logic;
+    axcache  : std_logic_vector(4-1 downto 0);
+    axprot   : std_logic_vector(3-1 downto 0);
+    axqos    : std_logic_vector(4-1 downto 0);
+    axregion : std_logic_vector(4-1 downto 0);
+    axuser   : std_logic_vector
+  ) return std_logic_vector is
+  begin
+    return axid &
+           axaddr &
+           axlen &
+           axsize &
+           axburst &
+           axlock &
+           axcache &
+           axprot &
+           axqos &
+           axregion &
+           axuser;
+  end function;
+
+  function aw_pack(
+    aw      : axi4_aw_mosi_type;
+    xaw     : extaxi_ax_type := extaxi_ax_none;
+    awidth  : integer;
+    idwidth : integer
+  ) return std_logic_vector is
+    variable id   : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable addr : std_logic_vector(63 downto 0);
+  begin
+    id    := xaw.id & aw.id;
+    addr  := xaw.addr & aw.addr;
+    return id(idwidth-1 downto 0) &
+           addr(awidth-1 downto 0) &
+           aw.len & aw.size & aw.burst & aw.lock &
+           aw.cache & aw.prot & aw.qos;
+  end function;
+
+  function ar_pack(
+    ar      : axi4_ar_mosi_type;
+    xar     : extaxi_ax_type := extaxi_ax_none;
+    awidth  : integer;
+    idwidth : integer
+  ) return std_logic_vector is
+    variable id   : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable addr : std_logic_vector(63 downto 0);
+  begin
+    id    := xar.id & ar.id;
+    addr  := xar.addr & ar.addr;
+    return id(idwidth-1 downto 0) &
+           addr(awidth-1 downto 0) &
+           ar.len & ar.size & ar.burst & ar.lock &
+           ar.cache & ar.prot & ar.qos;
+  end function;
+
+  procedure ax_unpack(
+    signal ax       : in  std_logic_vector;
+    signal axid     : out std_logic_vector;
+    signal axaddr   : out std_logic_vector;
+    signal axlen    : out std_logic_vector(8-1 downto 0);
+    signal axsize   : out std_logic_vector(3-1 downto 0);
+    signal axburst  : out std_logic_vector(2-1 downto 0);
+    signal axlock   : out std_logic;
+    signal axcache  : out std_logic_vector(4-1 downto 0);
+    signal axprot   : out std_logic_vector(3-1 downto 0);
+    signal axqos    : out std_logic_vector(4-1 downto 0);
+    signal axregion : out std_logic_vector(4-1 downto 0);
+    signal axuser   : out std_logic_vector
+  ) is
+    variable v : std_logic_vector(ax'length-1 downto 0);
+  begin
+    v := ax;
+    if axid'length > 0 then
+      axid <= v(axuser'length+axaddr'length+axid'length+29-1 downto axuser'length+axaddr'length+29);
+    end if;
+    axaddr    <= v(axuser'length+axaddr'length+29-1 downto axuser'length+29);
+    axlen     <= v(axuser'length+29-1 downto axuser'length+21);
+    axsize    <= v(axuser'length+21-1 downto axuser'length+18);
+    axburst   <= v(axuser'length+18-1 downto axuser'length+16);
+    axlock    <= v(axuser'length+16-1);
+    axcache   <= v(axuser'length+15-1 downto axuser'length+11);
+    axprot    <= v(axuser'length+11-1 downto axuser'length+8);
+    axqos     <= v(axuser'length+8-1 downto axuser'length+4);
+    axregion  <= v(axuser'length+4-1 downto axuser'length);
+    if axuser'length > 0 then
+      axuser <= v(axuser'length-1 downto 0);
+    end if;
+  end procedure;
+
+  procedure aw_unpack(
+    constant idwidth  : integer;
+    constant awidth   : integer;
+    signal aw         : in  std_logic_vector;
+    signal awvalid    : in  std_ulogic;
+    signal axiaw      : out axi4_aw_mosi_type;
+    signal axixaw     : out extaxi_ax_type
+  ) is
+    variable v    : std_logic_vector(aw'length-1 downto 0);
+    variable id   : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable addr : std_logic_vector(63 downto 0);
+  begin
+    v     := aw;
+    id    := (others => '0');
+    addr  := (others => '0');
+    if idwidth > 0 then
+      id(idwidth-1 downto 0) := v(25+awidth+idwidth-1 downto 25+awidth);
+    end if;
+    addr(awidth-1 downto 0) := v(25+awidth-1 downto 25);
+    axiaw.id    <= id(AXI_ID_WIDTH-1 downto 0);
+    axixaw.id   <= id(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+    axiaw.addr  <= addr(31 downto 0);
+    axixaw.addr <= addr(63 downto 32);
+    axiaw.len   <= v(25-1 downto 17);
+    axiaw.size  <= v(17-1 downto 14);
+    axiaw.burst <= v(14-1 downto 12);
+    axiaw.lock  <= v(11);
+    axiaw.cache <= v(11-1 downto 7);
+    axiaw.prot  <= v(7-1 downto 4);
+    axiaw.qos   <= v(4-1 downto 0);
+    axiaw.valid <= awvalid;
+  end procedure;
+
+  procedure ar_unpack(
+    constant idwidth  : integer;
+    constant awidth   : integer;
+    signal ar         : in  std_logic_vector;
+    signal arvalid    : in  std_ulogic;
+    signal axiar      : out axi4_ar_mosi_type;
+    signal axixar     : out extaxi_ax_type
+  ) is
+    variable v    : std_logic_vector(ar'length-1 downto 0);
+    variable id   : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable addr : std_logic_vector(63 downto 0);
+  begin
+    v     := ar;
+    id    := (others => '0');
+    addr  := (others => '0');
+    if idwidth > 0 then
+      id(idwidth-1 downto 0) := v(25+awidth+idwidth-1 downto 25+awidth);
+    end if;
+    addr(awidth-1 downto 0) := v(25+awidth-1 downto 25);
+    axiar.id    <= id(AXI_ID_WIDTH-1 downto 0);
+    axixar.id   <= id(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+    axiar.addr  <= addr(31 downto 0);
+    axixar.addr <= addr(63 downto 32);
+    axiar.len   <= v(25-1 downto 17);
+    axiar.size  <= v(17-1 downto 14);
+    axiar.burst <= v(14-1 downto 12);
+    axiar.lock  <= v(11);
+    axiar.cache <= v(11-1 downto 7);
+    axiar.prot  <= v(7-1 downto 4);
+    axiar.qos   <= v(4-1 downto 0);
+    axiar.valid <= arvalid;
+  end procedure;
+
+  function w_pack(
+    wdata : std_logic_vector;
+    wstrb : std_logic_vector;
+    wlast : std_logic;
+    wuser : std_logic_vector
+  ) return std_logic_vector is
+  begin
+    return wdata &
+           wstrb &
+           wlast &
+           wuser;
+  end function;
+
+  function w_pack(
+    w       : axi4_w_mosi_type;
+    dwidth  : integer
+  ) return std_logic_vector is
+  begin
+    return w.data(dwidth-1 downto 0) &
+           w.strb(dwidth/8-1 downto 0) &
+           w.last;
+  end function;
+
+  procedure w_unpack(
+    signal w        : in  std_logic_vector;
+    signal wdata    : out std_logic_vector;
+    signal wstrb    : out std_logic_vector;
+    signal wlast    : out std_logic;
+    signal wuser    : out std_logic_vector
+  ) is
+    variable v : std_logic_vector(w'length-1 downto 0);
+  begin
+    v := w;
+    wdata <= v(wuser'length+1+wstrb'length+wdata'length-1 downto wuser'length+1+wstrb'length);
+    wstrb <= v(wuser'length+1+wstrb'length-1 downto wuser'length+1);
+    wlast <= v(wuser'length);
+    if wuser'length > 0 then
+      wuser <= v(wuser'length-1 downto 0);
+    end if;
+  end procedure;
+
+  procedure w_unpack(
+    constant dwidth : integer;
+    signal w        : in  std_logic_vector;
+    signal wvalid   : in  std_ulogic;
+    signal axiw     : out axi4_w_mosi_type
+  ) is
+    variable v : std_logic_vector(w'length-1 downto 0);
+  begin
+    v := w;
+    axiw.data <= (others => '0');
+    axiw.data(dwidth-1 downto 0)  <= v(1+dwidth/8+dwidth-1 downto 1+dwidth/8);
+    axiw.strb                     <= v(1+dwidth/8-1 downto 1);
+    axiw.last                     <= v(0);
+    axiw.valid                    <= wvalid;
+  end procedure;
+
+  function b_pack(
+    bid    : std_logic_vector;
+    bresp  : std_logic_vector(1 downto 0);
+    buser  : std_logic_vector
+  ) return std_logic_vector is
+  begin
+    return bid &
+           bresp &
+           buser;
+  end function;
+
+  function b_pack(
+    b       : axi_b_somi_type;
+    xb      : extaxi_x_type := extaxi_x_none;
+    idwidth : integer
+  ) return std_logic_vector is
+    variable id   : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    id    := xb.id & b.id;
+    return id(idwidth-1 downto 0) & b.resp;
+  end function;
+
+  procedure b_unpack(
+    signal b      : in  std_logic_vector;
+    signal bid    : out std_logic_vector;
+    signal bresp  : out std_logic_vector(1 downto 0);
+    signal buser  : out std_logic_vector
+  ) is
+    variable v : std_logic_vector(b'length-1 downto 0);
+  begin
+    v := b;
+    if bid'length > 0 then
+      bid <= v(buser'length+2+bid'length-1 downto buser'length+2);
+    end if;
+    bresp <= v(buser'length+2-1 downto buser'length);
+    if buser'length > 0 then
+      buser <= v(buser'length-1 downto 0);
+    end if;
+  end procedure;
+
+  procedure b_unpack(
+    constant idwidth : integer;
+    signal b      : in  std_logic_vector;
+    signal bvalid : in  std_ulogic;
+    signal axib   : out axi_b_somi_type;
+    signal axixb  : out extaxi_x_type
+  ) is
+    variable v  : std_logic_vector(b'length-1 downto 0);
+    variable id : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    v := b;
+    id := (others => '0');
+    if idwidth > 0 then
+      id(idwidth-1 downto 0) := v(2+idwidth-1 downto 2);
+    end if;
+    axib.id     <= id(AXI_ID_WIDTH-1 downto 0);
+    axixb.id    <= id(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+    axib.resp   <= v(2-1 downto 0);
+    axib.valid  <= bvalid;
+  end procedure;
+
+  function r_pack(
+    rid    : std_logic_vector;
+    rdata  : std_logic_vector;
+    rresp  : std_logic_vector(1 downto 0);
+    rlast  : std_logic;
+    ruser  : std_logic_vector
+  ) return std_logic_vector is
+  begin
+    return rid &
+           rdata &
+           rresp &
+           rlast &
+           ruser;
+  end function;
+
+  function r_pack(
+    r       : axi_r_somi_type;
+    xr      : extaxi_x_type := extaxi_x_none;
+    idwidth : integer;
+    dwidth  : integer
+  ) return std_logic_vector is
+    variable id : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    id := xr.id & r.id;
+    return id(idwidth-1 downto 0) & r.data(dwidth-1 downto 0) & r.resp & r.last;
+  end function;
+
+  procedure r_unpack(
+    signal r      : in  std_logic_vector;
+    signal rid    : out std_logic_vector;
+    signal rdata  : out std_logic_vector;
+    signal rresp  : out std_logic_vector(1 downto 0);
+    signal rlast  : out std_logic;
+    signal ruser  : out std_logic_vector
+  ) is
+    variable v : std_logic_vector(r'length-1 downto 0);
+  begin
+    v := r;
+    if rid'length > 0 then
+      rid <= v(ruser'length+1+2+rdata'length+rid'length-1 downto ruser'length+1+2+rdata'length);
+    end if;
+    rdata <= v(ruser'length+1+2+rdata'length-1 downto ruser'length+1+2);
+    rresp <= v(ruser'length+1+2-1 downto ruser'length+1);
+    rlast <= v(ruser'length);
+    if ruser'length > 0 then
+      ruser <= v(ruser'length-1 downto 0);
+    end if;
+  end procedure;
+
+  procedure r_unpack(
+    constant idwidth  : integer;
+    constant dwidth   : integer;
+    signal r      : in  std_logic_vector;
+    signal rvalid : in  std_ulogic;
+    signal axir   : out axi_r_somi_type;
+    signal axixr  : out extaxi_x_type
+  ) is
+    variable v  : std_logic_vector(r'length-1 downto 0);
+    variable id : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    v := r;
+    id := (others => '0');
+    if idwidth > 0 then
+      id(idwidth-1 downto 0) := v(3+dwidth+idwidth-1 downto 3+dwidth);
+    end if;
+    axir.id     <= id(AXI_ID_WIDTH-1 downto 0);
+    axixr.id    <= id(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+    axir.data   <= (others => '0');
+    axir.data(dwidth-1 downto 0) <= v(3+dwidth-1 downto 3);
+    axir.resp   <= v(3-1 downto 1);
+    axir.last   <= v(0);
+    axir.valid  <= rvalid;
+  end procedure;
+
+  function any_set(
+    a : std_logic_vector
+  ) return std_ulogic is
+    variable v : std_ulogic;
+  begin
+    v := '0';
+    for i in a'range loop
+      v := v or a(i);
+    end loop;
+    return v;
+  end function;
+
+  function ctz(
+    a : std_logic_vector
+  ) return std_logic_vector is
+    variable v : unsigned(log2(a'length)-1 downto 0);
+  begin
+    v := (others => '0');
+    for i in a'low to a'high loop
+      if a(i) = '0' then
+        v := v + 1;
+      else
+        exit;
+      end if;
+    end loop;
+    return std_logic_vector(v);
+  end function;
 
 end axi;

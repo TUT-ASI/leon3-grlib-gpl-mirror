@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ use gaisler.l5nv_shared.all;
 use gaisler.busif5_types.all;
 use gaisler.noelvtypes.all;
 use gaisler.noelv.all;
+use gaisler.noelv_cfg_types.all;
 use gaisler.noelv_cpu_cfg.all;
 use gaisler.noelvint.all;
 use gaisler.utilnv.all;
@@ -71,6 +72,7 @@ entity cpucorenvb is
     clk         : in  std_ulogic;           -- CPU clock
     gclk        : in  std_ulogic;           -- Gated CPU clock
     rstn        : in  std_ulogic;
+    tsc         : in  l5_tsc_async_type;
     bifi        : out busif_in_type5;
     bifo        : in  busif_out_type5;
     ahbpnp      : in  ahb_slv_out_vector;
@@ -112,9 +114,8 @@ architecture rtl of cpucorenvb is
                                         DBLTRP  => DBLTRP_SUPPORT,
                                         ZICFISS => ZICFISS_SUPPORT,
                                         ZICFILP => ZICFILP_SUPPORT,
-                                        RV64    => boolean'pos(XLEN = 64),
-                                        RDV     => RDV_SUPPORT
-                                      ); 
+                                        RV64    => boolean'pos(XLEN = 64)
+                                      );
   constant iphys_bits  : integer := gaisler.utilnv.minimum(iphysbits, gaisler.mmucacheconfig.pa_msb(cfg_c.riscv_mmu)+1);
   constant dphys_bits  : integer := gaisler.utilnv.minimum(dphysbits, gaisler.mmucacheconfig.pa_msb(cfg_c.riscv_mmu)+1);
   constant iidxwidth    : integer := (log2(cfg_c.iwaysize) + 10) - (log2(cfg_c.ilinesize) + 2);
@@ -144,7 +145,8 @@ begin
       disas               => disas,
       scantest            => scantest,
       cgen                => cgen,
-      asyncif             => asyncif
+      asyncif             => asyncif,
+      tscen               => 1
     )
     port map(
       clk         => clk,
@@ -159,6 +161,7 @@ begin
       irqo        => irqo,
       dbgi        => dbgi,
       dbgo        => dbgo,
+      tsc         => tsc,
       tpo         => tpo,
       cnt         => cnt,
       pwrd        => pwrd,

@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,11 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
@@ -147,7 +150,8 @@ package misc is
       cntbits   : integer range 1 to 8 := 1; --errcnt size in bits
       ahbpipe   : integer range 0 to 1 := 0;
       testen    : integer := 0;
-      maccsz    : integer := AHBDW);
+      maccsz    : integer := AHBDW;
+      perscrub  : integer range 0 to 1 := 0);  --enable periodic scrubber
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -175,7 +179,8 @@ package misc is
       cntbits   : integer range 1 to 8 := 1;
       ahbpipe   : integer range 0 to 1 := 0;
       testen    : integer := 0;
-      maccsz    : integer := AHBDW);
+      maccsz    : integer := AHBDW;
+      psimpl    : integer range 0 to 1 := 0);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -183,7 +188,8 @@ package misc is
       ahbso    : out ahb_slv_out_type;
       apbi     : in  apb_slv_in_type;
       apbo     : out apb_slv_out_type;
-      aramo    : out ahbram_out_type
+      aramo    : out ahbram_out_type;
+      psregrd  : in  std_logic_vector(31 downto 0) := (others => '0')
     );
   end component;
 
@@ -199,7 +205,8 @@ package misc is
       pmask     : integer := 16#fff#;
       testen    : integer := 0;
       edacen    : integer range 1 to 3 := 1;
-      maccsz    : integer := AHBDW);
+      maccsz    : integer := AHBDW;
+      psimpl    : integer range 0 to 1 := 0);
     port (
       rst      : in  std_ulogic;
       clk      : in  std_ulogic;
@@ -207,8 +214,34 @@ package misc is
       ahbso    : out ahb_slv_out_type;
       apbi     : in  apb_slv_in_type;
       apbo     : out apb_slv_out_type;
-      aramo    : out ahbram_out_type
+      aramo    : out ahbram_out_type;
+      psregrd  : in  std_logic_vector(31 downto 0) := (others => '0');
+      cntacc   : in std_ulogic := '0'
     );
+  end component;
+
+  component ftahbramps is
+    generic (
+      hindex    : integer;
+      kbytes    : integer;
+      maccsz    : integer;
+      autoscrub : integer
+      );
+    port (
+      clk       : in  std_ulogic;
+      rstn      : in  std_ulogic;
+      esi       : in  ahb_slv_in_type;
+      eso       : out ahb_slv_out_type;
+      ece       : out std_ulogic;
+      isi       : out ahb_slv_in_type;
+      iso       : in  ahb_slv_out_type;
+      ice       : in  std_ulogic;
+      rega      : in  std_logic_vector(0 downto 0);
+      regwr     : in  std_ulogic;
+      regwd     : in  std_logic_vector(31 downto 0);
+      regrd     : out std_logic_vector(31 downto 0);
+      cntacc    : out std_ulogic
+      );
   end component;
 
   component ahbdpram
@@ -396,7 +429,7 @@ package misc is
     imask    : integer := 16#0000#;
     nbits    : integer := 16;			-- GPIO bits
     oepol    : integer := 0;                    -- Output enable polarity
-    syncrst  : integer := 0;
+    syncrst  : integer := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable);
     bypass   : integer := 16#0000#;
     scantest : integer := 0;
     bpdir    : integer := 16#0000#;
@@ -985,6 +1018,7 @@ package misc is
         pindex   : integer := 0;
         paddr    : integer := 0;
         pmask    : integer := 16#fff#;
+        info     : integer := 0;
         nbits    : integer range 1 to 64 := 16;
         rstval   : integer := 0;
         rstval2  : integer := 0;
@@ -1763,6 +1797,171 @@ package misc is
       );
   end component;
 
+  component ahbstepm is
+    generic (
+      hindex : integer
+      );
+    port (
+      mclk   : in  std_ulogic;
+      mrstn  : in  std_ulogic;
+      bclk   : in  std_ulogic;
+      brstn  : in  std_ulogic;
+      ahbmim : out ahb_mst_in_type;
+      ahbmom : in  ahb_mst_out_type;
+      ahbmib : in  ahb_mst_in_type;
+      ahbmob : out ahb_mst_out_type
+      );
+  end component;
+
+  component ahbsteps is
+    generic (
+      hindex : integer
+      );
+    port (
+      bclk   : in  std_ulogic;
+      brstn  : in  std_ulogic;
+      sclk   : in  std_ulogic;
+      srstn  : in  std_ulogic;
+      ahbsib : in  ahb_slv_in_type;
+      ahbsob : out ahb_slv_out_type;
+      ahbsis : out ahb_slv_in_type;
+      ahbsos : in  ahb_slv_out_type
+      );
+  end component;
+
+  component ahbstepsm is
+    generic (
+      hsindex : integer;
+      hmindex : integer;
+      irqdir  : integer
+      );
+    port (
+      sclk   : in  std_ulogic;
+      srstn  : in  std_ulogic;
+      mclk   : in  std_ulogic;
+      mrstn  : in  std_ulogic;
+      ahbsis : in  ahb_slv_in_type;
+      ahbsos : out ahb_slv_out_type;
+      ahbmim : in  ahb_mst_in_type;
+      ahbmom : out ahb_mst_out_type;
+      spnp   : in  ahb_config_type
+      );
+  end component;
+
+  component ahbmdivert is
+    generic (
+      baddr    : integer;
+      bmask    : integer;
+      boutaddr : integer;
+      boutmask : integer;
+      ahindex  : integer;
+      bhindex  : integer
+      );
+    port (
+      -- Global
+      clk      : in  std_ulogic;
+      rstn     : in  std_ulogic;
+      -- Master-side signals
+      mmi      : out ahb_mst_in_type;
+      mmo      : in  ahb_mst_out_type;
+      -- Main bus signals
+      ami      : in  ahb_mst_in_type;
+      amo      : out ahb_mst_out_type;
+      -- Second bus signals
+      bmi      : in  ahb_mst_in_type;
+      bmo      : out ahb_mst_out_type
+      );
+  end component;
+
+  component ahbprefetch is
+    generic (
+      regular_hindex : natural;
+      prefetch_hindex : natural;
+      n_words_to_prefetch : integer range 2 to 256 := 32; -- Must be power of 2.
+      buffer_time_to_live : positive := 256 -- Number of cycles a buffer will live.
+    );
+    port (
+      clk : in std_logic;
+      rstn : in std_logic;
+
+      enable : in std_logic; -- Enable prefetching
+
+      -- "Inverted" Master Port, input interface.
+      s_ahbmi : out ahb_mst_in_type;
+      s_ahbmo : in ahb_mst_out_type;
+
+      -- Regular AHB master port, output interface.
+      m_ahbmo : out ahb_mst_out_type;
+      m_ahbmi : in  ahb_mst_in_type;
+
+      -- Prefetching AHB port, output interface.
+      prefetch_ahbmo : out ahb_mst_out_type;
+      prefetch_ahbmi : in  ahb_mst_in_type
+    );
+  end component;
+
+  component dbgmst_be is
+    generic (
+      revision   : integer := 0;
+      bustype    : integer := 0; --0 = AHB, 1 = AXI (TODO)
+      max_size   : integer range 32 to 256  := 256;
+      dw         : integer range 32 to 128  := 32;  --bus master data width
+      addr_width : integer range 32 to 64   := 32;
+      pindex     : integer;
+      paddr      : integer;
+      pmask      : integer
+      );
+    port (
+      rstn             : in  std_ulogic;
+      clk              : in  std_ulogic;
+      apbsi            : in  apb_slv_in_type;
+      apbso            : out apb_slv_out_type;
+      --generic_bm signals
+      --Read Channel
+      bmrd_addr        : out std_logic_vector(addr_width-1 downto 0);
+      bmrd_size        : out std_logic_vector(log2(max_size)-1 downto 0);
+      bmrd_req         : out std_logic;
+      bmrd_req_granted : in  std_logic;
+      bmrd_data        : in  std_logic_vector(dw-1 downto 0);
+      bmrd_valid       : in  std_logic;
+      bmrd_done        : in  std_logic;
+      bmrd_error       : in  std_logic;
+      --Write Channel
+      bmwr_addr        : out std_logic_vector(addr_width-1 downto 0);
+      bmwr_size        : out std_logic_vector(log2(max_size)-1 downto 0);
+      bmwr_req         : out std_logic;
+      bmwr_req_granted : in  std_logic;
+      bmwr_data        : out std_logic_vector(dw-1 downto 0);
+      bmwr_full        : in  std_logic;
+      bmwr_done        : in  std_logic;
+      bmwr_error       : in  std_logic;
+      -- Misc
+      extaddr          : out std_logic_vector(31 downto 0);
+      exe              : out std_ulogic;
+      priv             : out std_ulogic
+    );
+  end component;
+  
+  component dbgmst_ahb is
+    generic (
+      dw         : integer range 32 to 128  := 32;  --bus master data width
+      max_size   : integer range 32 to 256  := 256;
+      pindex     : integer;
+      paddr      : integer;
+      pmask      : integer;
+      hmindex    : integer
+      );
+    port (
+      rstn    : in  std_ulogic;
+      clk     : in  std_ulogic;
+      apbsi   : in  apb_slv_in_type;
+      apbso   : out apb_slv_out_type;
+      ahbmi   : in  ahb_mst_in_type;
+      ahbmo   : out ahb_mst_out_type;
+      extaddr : out std_logic_vector(31 downto 0)
+    );
+  end component;
+  
   -----------------------------------------------------------------------------
   -- Function declarations
   -----------------------------------------------------------------------------

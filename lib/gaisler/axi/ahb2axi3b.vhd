@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,12 +17,12 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
------------------------------------------------------------------------------   
+-----------------------------------------------------------------------------
 -- Entity:      ahb2axi3b
 -- File:        ahb2axi3b.vhd
 -- Author:      Alen Bardizbanyan - Cobham Gaisler AB
 -- Description: AMBA AHB to AXI3 bridge
------------------------------------------------------------------------------- 
+------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -42,18 +42,18 @@ use gaisler.axi.all;
 entity ahb2axi3b is
   generic (
     hindex          : integer                       := 0;
-    aximid          : integer range 0 to 15         := 0;  --AXI master transaction ID
+    aximid          : integer range 0 to 15         := 0; --AXI master transaction ID
     wbuffer_num     : integer range 1 to 16         := 8;
     rprefetch_num   : integer range 1 to 16         := 8;
-    always_secure   : integer range 0 to 1          := 1;  --0->not secure; 1->secure
-    ahb_endianness  : integer range 0 to 1          := GRLIB_CONFIG_ARRAY(grlib_little_endian); 
-    endianness_mode : integer range 0 to 1          := 0;  --0->BE(AHB)-to-BE(AXI)
-                                                           --1->BE(AHB)-to-LE(AXI)
-    narrow_acc_mode : integer range 0 to 1          := 0;  --0->each beat in narrow burst
-                                                           --treated as single access
-                                                           --1->narrow burst directly
-                                                           --transalted to AXI
-                                                           --supported only in BE-to-BE
+    always_secure   : integer range 0 to 1          := 1; --0->not secure; 1->secure
+    ahb_endianness  : integer range 0 to 1          := GRLIB_ENDIAN;
+    endianness_mode : integer range 0 to 1          := 0; --0->BE(AHB)-to-BE(AXI)
+                                                          --1->BE(AHB)-to-LE(AXI)
+    narrow_acc_mode : integer range 0 to 1          := 1; --0->each beat in narrow burst
+                                                          --treated as single access
+                                                          --1->narrow burst directly
+                                                          --translated to AXI
+                                                          --supported only in BE-to-BE
     -- scantest
     scantest        : integer                       := 0;
     -- GRLIB plug&play configuration
@@ -133,6 +133,6 @@ begin  -- rtl
   aximo.ar.prot  <= aximox.ar.prot;
   aximo.ar.valid <= aximox.ar.valid;
 
-  
+
 
 end rtl;

@@ -25,7 +25,7 @@ package config is
 -- NOEL-V processor core
   constant CFG_NOELV : integer := 1;
   constant CFG_NOELV_XLEN : integer := (64);
-  constant CFG_NCPU : integer := (1);
+  constant CFG_NCPU : integer := (2);
   constant CFG_CFG : integer := (3)*256 + (0)*128 + (0)*2 + (0);
   constant CFG_NODBUS : integer := 1;
   constant CFG_DISAS : integer := 3*0;
@@ -33,8 +33,8 @@ package config is
   constant CFG_APLIC_NDOM : integer := (4);
   constant CFG_NEIID : integer := (63);
 -- L2 Cache
-  constant CFG_L2_EN : integer := 0;
-  constant CFG_L2_LITE : integer := 0;
+  constant CFG_L2_EN : integer := 1;
+  constant CFG_L2_LITE : integer := 1;
   constant CFG_L2_SIZE : integer := 64;
   constant CFG_L2_WAYS : integer := 4;
   constant CFG_L2_HPROT : integer := 0;

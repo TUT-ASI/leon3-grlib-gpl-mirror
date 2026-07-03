@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -45,8 +45,8 @@ entity ddr3ram is
     lddelay: time := (0 ns);
     ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
                                          -- loading RAM
-    -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
-    speedbin: integer range 0 to 12 := 0;
+    -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G 13:1866M
+    speedbin: integer range 0 to 13 := 0;
     density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
     pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
     changeendian: integer range 0 to 32 := 0;
@@ -131,12 +131,12 @@ architecture sim of ddr3ram is
   constant tMOD_ck: integer := 12;
   constant tMOD_t: time := 15 ns;
 
-  type timetab is array (0 to 12) of time;
-  -- 800E     800D     1066G    1066H      1066E     1333J  1333H    1333G  1333F    1600K     1600J    1600H     1600G
+  type timetab is array (0 to 13) of time;
+  -- 800E     800D     1066G    1066H      1066E     1333J  1333H    1333G  1333F    1600K     1600J    1600H     1600G     1866M
   constant tRAS : timetab :=
-    (37.5 ns, 37.5 ns, 37.5 ns, 37.5   ns, 37.5  ns, 36 ns, 36   ns, 36 ns, 36   ns, 35    ns, 35   ns, 35    ns, 35 ns);
+    (37.5 ns, 37.5 ns, 37.5 ns, 37.5   ns, 37.5  ns, 36 ns, 36   ns, 36 ns, 36   ns, 35    ns, 35   ns, 35    ns, 35 ns, 34    ns);
   constant tRP :  timetab :=
-    (15   ns, 12.5 ns, 15   ns, 13.125 ns, 11.25 ns, 15 ns, 13.5 ns, 12 ns, 10.5 ns, 13.75 ns, 12.5 ns, 11.25 ns, 10 ns);
+    (15   ns, 12.5 ns, 15   ns, 13.125 ns, 11.25 ns, 15 ns, 13.5 ns, 12 ns, 10.5 ns, 13.75 ns, 12.5 ns, 11.25 ns, 10 ns, 13.92 ns);
   constant tRCD:  timetab := tRP;
 
   type timetab2 is array(2 to 6) of time;
@@ -144,13 +144,14 @@ architecture sim of ddr3ram is
 
   constant address_zero : std_logic_vector(abits-1 downto 0) := (others=>'0');
 
-  function tRRD(tper: time; speedbin: integer range 0 to 12) return time is
+  function tRRD(tper: time; speedbin: integer range 0 to 13) return time is
     variable t: time;
   begin
     case speedbin is
       when 0 to 1  => t:=10 ns;
       when 2 to 4  => if pagesize<2 then t:=7.5 ns; else t:=10 ns; end if;
       when 5 to 12  => if pagesize<2 then t:=6 ns; else t:=7.5 ns; end if;
+      when 13 to 13  => if pagesize<2 then t:=5 ns; else t:=6 ns; end if;
     end case;
     if t < 4*tper then t:=4*tper; end if;
     return t;
@@ -846,4 +847,3 @@ begin
 end;
 
 -- pragma translate_on
-

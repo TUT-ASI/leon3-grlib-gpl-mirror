@@ -5,7 +5,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -419,7 +419,7 @@ begin
       rfconf   => 0,
       disas    => disas,
       ahbtrace => ahbtrace,
-      devid    => LEON5_XILINX_KCU105
+      devid    => 0
       )
     port map (
       clk      => clkm,

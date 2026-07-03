@@ -6,10 +6,13 @@ ahbdpram.vhd
 ahbtrace_mmb.vhd
 ahbtrace_mb.vhd
 ahbtrace.vhd
+dbgmst/dbgmst_be.vhd
+dbgmst/dbgmst_ahb.vhd
 ahbmst.vhd
 grgpio.vhd
 ftahbram1.vhd
 ftahbram2.vhd
+ftahbramps.vhd
 ftahbram.vhd
 ahbstat.vhd
 logan.vhd
@@ -55,3 +58,6 @@ ahbsmux.vhd
 ahbmmux.vhd
 grtachom.vhd
 grwatchdog.vhd
+ahbstep.vhd
+ahbmdivert.vhd
+ahbprefetch.vhd

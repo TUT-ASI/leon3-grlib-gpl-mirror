@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ package noelvcfgmap is
   constant L2C_CFG_HADDR_O  : integer := 16#010#; -- Offseet between the L2C cfg-area
   constant PLIC_HADDR       : integer := 16#F80#;
   constant PLIC_HMASK       : integer := 16#FC0#;
-  constant DM_HADDR         : integer := 16#FE0#;
+  constant DM_HADDR         : integer := 16#E00#;
   constant DM_HMASK         : integer := 16#FF0#;
   constant AHBC_IOADDR      : integer := 16#FFF#;
   constant APBC_HADDR       : integer := 16#FC0#;

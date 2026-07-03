@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -135,6 +135,8 @@ type registers2 is record
 end record;
 
 constant NMI : integer := 15;
+
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 function RESVAL_FUNC return registers is
@@ -501,7 +503,8 @@ begin
 
 -- reset operation
 
-    if (not RESET_ALL) and (rst = '0') then 
+    if (not RESET_ALL) and (not ASYNC_RESET) and (rst = '0') then
+    -- if (not RESET_ALL) and (rst = '0') then 
       for i in 1 to ntimers loop
         v.timers(i).enable := RESVAL.timers(i).enable;
         v.timers(i).irqen := RESVAL.timers(i).irqen;
@@ -564,18 +567,34 @@ begin
 
 -- registers
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin; r2 <= rin2;
-      if RESET_ALL and rst = '0' then
+  syncregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin; r2 <= rin2;
+        if RESET_ALL and rst = '0' then
+          r <= RESVAL; r2 <= RESVAL2;
+          if wdog /= 0 and ewdogen /= 0 then
+            r.timers(ntimers).enable <= gpti.wdogen;
+          end if;
+        end if;
+      end if;
+    end process;
+  end generate;
+
+  asyncregs : if ASYNC_RESET generate
+    regs : process(clk, rst)
+    begin
+      if rst = '0' then
         r <= RESVAL; r2 <= RESVAL2;
         if wdog /= 0 and ewdogen /= 0 then
           r.timers(ntimers).enable <= gpti.wdogen;
         end if;
+      elsif rising_edge(clk) then
+        r <= rin; r2 <= rin2;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
 
 -- boot message
 

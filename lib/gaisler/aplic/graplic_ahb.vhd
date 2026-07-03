@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.conv_integer;
@@ -46,16 +48,18 @@ entity graplic_ahb is
   generic (
     hmindex             : integer range 0 to NAHBMST-1   := 0;
     hsindex             : integer range 0 to NAHBSLV-1   := 0;
+    hbaren              : integer range 0 to 1           := 0;           -- When set to 1 aplic is part of an ahb slave with several mem bars
     haddr               : integer range 0 to 16#FFF#     := 0;
+    hbar                : integer range 0 to 3           := 0;
     nsources            : integer range 1 to MAX_SOURCES := 32;          -- Number of wired interrupt sources
     ncpu                : integer range 0 to MAX_HARTS   := 16;          -- Number of cpus in the system
     branches            : integer range 0 to 10          := 1;           -- Number of branches in the domain hirarchy
     doms_per_branch     : integer range 0 to MAX_DOMAINS := 3;           -- Number of domains in each branch
-    endianness          : integer range 0 to 2           := 2;           -- 0 => little; 1 => big; 2 => bi
+    endianness          : integer range 0 to 2           := 0;           -- 0 => little; 1 => big; 2 => bi
     S_EN                : integer range 0 to 1           := 1;           -- 0 => supervisor extension disable; 1 => supervisor extension enable
     H_EN                : integer range 0 to 1           := 1;           -- 0 => hipervisor extension disable; 1 => hipervisor extension enable
-    GEILEN              : integer                        := 8;           -- System virtual guest external interrupt number 
-    grouped_harts       : integer range 0 to 1           := 0;           -- If set to 1, harts are grouped 
+    GEILEN              : integer                        := 8;           -- System virtual guest external interrupt number
+    grouped_harts       : integer range 0 to 1           := 0;           -- If set to 1, harts are grouped
     mmsiaddrcfg_fixed   : integer range 0 to 1           := 1;           -- If set to 1, registers mmsiaddrcfg/mmsiaddrcfgh/smsiaddrcfgh/smsiaddrcfgh are fixed
                                                                          -- and cannot be accessed. Their values are set through generics mLHXS/sLHXS/HHXS/LHXW/HHXW
     mbase_PPN           : std_logic_vector(31 downto 0)  := x"00000000"; -- Set the imsic base address for machine mode interrupts (only if mmsiaddrcfg_fixed = 0)
@@ -65,11 +69,12 @@ entity graplic_ahb is
     HHXS                : integer                        := 0;           -- High Hart Index Shift = E - 24 (see specs)
     LHXW                : integer                        := 0;           -- Low Hart Index Width = k (see specs)
     HHXW                : integer                        := 0;           -- High Hart Index Width = j (see specs)
-    direct_delivery     : integer range 0 to 1           := 0;           -- If set to 0 direct delivery mode is not implemented 
+    direct_delivery     : integer range 0 to 1           := 0;           -- If set to 0 direct delivery mode is not implemented
     IPRIOLEN            : integer range 1 to 8           := 8;           -- IPRIO has values between 1 and 2^IPRIOLEN (used when there is no IMSIC and the APLIC acts as interrupt controller)
     nEIID               : integer range 1 to 2047        := 2047;        -- Number of External Interrupt identities (used when interrupts are forwarded to the IMSIC)
     leaf_domains        : std_logic_vector(MAX_DOMAINS-1 downto 0) := (others => '0'); -- Configures the leaf domains
-    preset_active_harts : preset_active_harts_type                       -- Configures for each domain which cores are elegibles (through target registers) to forward the interrupts (Reset value)
+    preset_active_harts : preset_active_harts_type;                      -- Configures for each domain which cores are elegibles (through target registers) to forward the interrupts (Reset value)
+    scantest            : integer                         := 0
     );
   port (
     rstn        : in  std_ulogic;
@@ -78,6 +83,7 @@ entity graplic_ahb is
     ahbmo       : out ahb_mst_out_type;
     ahbsi       : in  ahb_slv_in_type;
     ahbso       : out ahb_slv_out_type;
+    softrstn    : in  std_ulogic := '1';
     meip        : out std_logic_vector(0 to ncpu-1);  -- Machine external interrupt bits when direct delivery mode is active (DM=0)
     seip        : out std_logic_vector(0 to ncpu-1)   -- Supervisor external interrupt bits when direct delivery mode is active (DM=0)
     );
@@ -85,11 +91,13 @@ end;
 
 
 architecture rtl of graplic_ahb is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
 
   -- Total number of APLIC domains
   constant ndomains : integer := branches*doms_per_branch+1;
-  
+
   --------------------------------------------------------------------------------------------------
   -- Function definitions
   --------------------------------------------------------------------------------------------------
@@ -98,10 +106,10 @@ architecture rtl of graplic_ahb is
   -- It sets domaincfg.BE to 0 (little-endian) at reset when endianness is set to little endian (0)
   -- If it si set big endian or bi-endian, domaincfg.BE is set to 1 at reset (big-endian)
   function RES_BE(endianness : integer) return std_ulogic is
-  begin 
+  begin
     if endianness = 1 then
       return '1';
-    else 
+    else
       return '0';
     end if;
   end function;
@@ -109,7 +117,7 @@ architecture rtl of graplic_ahb is
   -- It converts 32 bits vectors from little to big endian or the other way around
   function change_endianness(input_vector : std_logic_vector(31 downto 0)) return std_logic_vector is
     variable output_vector : std_logic_vector(31 downto 0);
-  begin 
+  begin
     output_vector := input_vector(7 downto 0) & input_vector(15 downto 8) &
                      input_vector(23 downto 16) & input_vector(31 downto 24);
     return output_vector;
@@ -119,10 +127,10 @@ architecture rtl of graplic_ahb is
   -- mmsiaddrcfg and smsiaddrcfg are hardwire or not
   function RES_mmsiaddrcfg(fixed : integer) return mmsiaddrcfg_type is
     variable mmsiaddrcfg : mmsiaddrcfg_type;
-  begin 
-    if mmsiaddrcfg_fixed = 1 then
+  begin
+    if fixed = 1 then
       mmsiaddrcfg := (
-        base_ppn  => x"000" & mbase_ppn, 
+        base_ppn  => x"000" & mbase_ppn,
         L         => '1',
         HHXS      => std_logic_vector(to_signed(HHXS, 5)),
         LHXS      => std_logic_vector(to_unsigned(mLHXS, 3)),
@@ -146,8 +154,8 @@ architecture rtl of graplic_ahb is
   -- mmsiaddrcfg and smsiaddrcfg are hardwire or not
   function RES_smsiaddrcfg(fixed : integer) return smsiaddrcfg_type is
     variable smsiaddrcfg : smsiaddrcfg_type;
-  begin 
-    if mmsiaddrcfg_fixed = 1 then
+  begin
+    if fixed = 1 then
       smsiaddrcfg := (
         base_ppn  => x"000" & sbase_ppn, --a0000000", --std_logic_vector(to_unsigned(mbase_ppn, 44)),
         LHXS      => std_logic_vector(to_unsigned(sLHXS, 3))
@@ -163,7 +171,7 @@ architecture rtl of graplic_ahb is
 
 
   type active_harts_type is array (0 to ndomains-1) of std_logic_vector(ncpu-1 downto 0);
-  
+
   function RES_active_harts(in_array : preset_active_harts_type) return active_harts_type is
     variable out_array :  active_harts_type;
   begin
@@ -171,7 +179,7 @@ architecture rtl of graplic_ahb is
       out_array(i) := in_array(i)(ncpu-1 downto 0);
     end loop;
     return out_array;
-  end function; 
+  end function;
 
   function RES_domain_pmode(leaf_domains : std_logic_vector; S_EN : integer) return std_logic_vector is
     variable out_vec : std_logic_vector(0 to ndomains-1) := (others => '0');
@@ -182,10 +190,19 @@ architecture rtl of graplic_ahb is
     return out_vec;
   end function;
 
+  function mdevid_gen(hbaren : integer) return integer is
+  begin
+    if hbaren = 0 then
+      return GAISLER_GRAPLIC;
+    else
+      return GAISLER_RVINTCTRL;
+    end if;
+  end function;
+
 
 
   --------------------------------------------------------------------------------------------------
-  -- Type and constant definitions 
+  -- Type and constant definitions
   --------------------------------------------------------------------------------------------------
 
   constant dombits   : integer := log2x(ndomains);
@@ -199,8 +216,9 @@ architecture rtl of graplic_ahb is
   constant hmask : integer range 0 to 16#FFF# := bits2hmask(15+log2x(ndomains+1));
   constant REVISION : integer := 0;
 
+  -- If hbaren is set to 1 this output will be ignored
   constant hconfig : ahb_config_type := (
-    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRAPLIC, 0, REVISION, 0), 
+    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_GRAPLIC, 0, REVISION, 0),
     4 => ahb_membar(haddr, '0', '0', hmask),
     others => zero32);
 
@@ -283,7 +301,6 @@ architecture rtl of graplic_ahb is
 
 
   -- Priority Encoder types (For direct delivery mode)
-  type priority_in_type is array (nsources downto 1) of std_logic_vector(IPRIOLEN-1 downto 0);
   type priority_out_type is array (0 to ncpu*(1+S_EN)-1) of std_logic_vector(IPRIOLEN-1 downto 0);
   type enable_type is array (0 to ncpu*(1+S_EN)-1) of std_logic_vector(nsources downto 1);
   type id_type is array (0 to ncpu*(1+S_EN)-1) of std_logic_vector(srcbits-1 downto 0);
@@ -326,13 +343,13 @@ architecture rtl of graplic_ahb is
     src_active   : std_logic_vector(nsources downto 0);
     src_pmode    : std_logic_vector(nsources downto 0);
     src_dm       : std_logic_vector(nsources downto 0);
-    sourcecfg_SM : sourcecfg_SM_vector(nsources downto 0); 
+    sourcecfg_SM : sourcecfg_SM_vector(nsources downto 0);
     mmsiaddrcfg  : mmsiaddrcfg_type;
     smsiaddrcfg  : smsiaddrcfg_type;
     setip        : std_logic_vector(nsources downto 0);
     setie        : std_logic_vector(nsources downto 0);
     genmsi       : genmsi_vector(ndomains-1 downto 0);
-    target       : target_vector(nsources downto 1); 
+    target       : target_vector(nsources downto 1);
     m_idc        : idc_vector(ncpu-1 downto 0);
     s_idc        : idc_vector(ncpu-1 downto 0);
     -- Direct deliver mode
@@ -350,6 +367,7 @@ architecture rtl of graplic_ahb is
     domain_pmode : std_logic_vector(ndomains-1 downto 0); -- domains priviledge mode; 0 => machine mode; 1 => supervisor mode
     -- MSI forwarding
     MSI_active   : std_logic_vector(nsources downto 0);
+    MSI_masked   : std_logic_vector(nsources downto 0);
     -- AHB slave interface
     hsel        : std_logic_vector(1 downto 0);
     hready      : std_logic;
@@ -363,6 +381,7 @@ architecture rtl of graplic_ahb is
     hmaddr      : std_logic_vector(31 downto 0);
     hmdata      : std_logic_vector(31 downto 0);
     next_wdata  : std_logic_vector(31 downto 0);
+    msi_addr    : std_logic_vector(31 downto 0);
     domsi       : std_ulogic;
   end record;
 
@@ -399,6 +418,7 @@ architecture rtl of graplic_ahb is
     domain_pmode  => RES_domain_pmode(leaf_doms, S_EN), -- By default all the leaf domains are supervisor domains
                                                         -- if S_EN = 1
     MSI_active    => (others => '0'),
+    MSI_masked    => (others => '0'),
     -- AHB slave interface
     hsel        => (others => '0'),
     hready      => '0',
@@ -412,9 +432,65 @@ architecture rtl of graplic_ahb is
     hmaddr      => (others => '0'),
     hmdata      => (others => '0'),
     next_wdata  => (others => '0'),
-    --start       => '0'
+    msi_addr    => (others => '0'),
     domsi       => '0'
     );
+
+  -- Soft Reset function
+  function softrst(rin : in reg_type) return reg_type is
+    variable rout : reg_type;
+  begin
+    rout := (
+             -- Interrupt domains registers
+             domaincfg       => (others => RES_domaincfg),
+             child_index     => (others => (others => '0')),
+             sourcecfg       => (others => RES_sourcecfg),
+             src_active      => (others => '0'),
+             src_pmode       => (others => '0'),
+             src_dm          => (others => '0'),
+             sourcecfg_SM    => (others => (others => '0')),
+             mmsiaddrcfg     => RES_mmsiaddrcfg(mmsiaddrcfg_fixed),
+             smsiaddrcfg     => RES_smsiaddrcfg(mmsiaddrcfg_fixed),
+             setip           => (others => '0'),
+             setie           => (others => '0'),
+             genmsi          => rin.genmsi, -- If genmsi.busy is set keep it high
+             target          => RES_target(RES_active_harts(preset_active_harts)),
+             m_idc           => (others => RES_idc),
+             s_idc           => (others => RES_idc),
+             -- Direct delivery mode
+             hart            => (others => (others => RES_hart_type)),
+             -- Priority encoder
+             dm_id           => (others => (others => '0')),
+             dm_ip           => (others => '0'),
+             dm_pr_array     => (others => (others => '0')),
+             dm_enable       => (others => (others => '0')),
+             -- Interrupt source signals
+             src_inverted  => (others => '0'),
+             src_rectified => (others => '0'),
+             -- Domains harts configuration
+             active_harts  => RES_active_harts(preset_active_harts),
+             domain_pmode  => RES_domain_pmode(leaf_doms, S_EN),
+             MSI_active    => (others => '0'),
+             MSI_masked    => (others => '0'),
+             -- AHB slave interface
+             hsel        => rin.hsel  ,
+             hready      => rin.hready,
+             hwrite      => rin.hwrite,
+             hsize       => rin.hsize ,
+             haddr       => rin.haddr ,
+             hresp       => rin.hresp ,
+             hwdata      => rin.hwdata,
+             hrdata      => rin.hrdata,
+             -- AHB master interface
+             hmaddr      => rin.hmaddr    ,
+             hmdata      => rin.hmdata    ,
+             next_wdata  => rin.next_wdata,
+             -- MSI delivery
+             msi_addr    => rin.msi_addr,
+             domsi       => rin.domsi
+            );
+    return rout;
+  end function softrst;
 
   --------------------------------------------------------------------------------------------------
   -- Signals definition
@@ -426,7 +502,6 @@ architecture rtl of graplic_ahb is
 
   -- Priority Encoder signals for direct delivery mode
   signal pr_array_unfold  : std_logic_vector((IPRIOLEN*nsources)-1 downto 0);
-  signal dm_src_pri       : priority_in_type;
   signal dm_id            : id_type;
   signal dm_ip            : std_logic_vector(0 to ncpu*(1+S_EN)-1);
   signal dm_pr_array      : priority_out_type;
@@ -437,29 +512,33 @@ architecture rtl of graplic_ahb is
 
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin
-  
+  arst        <= ahbsi.testrst when (ASYNC_RESET and scantest/=0 and ahbsi.testen/='0') else
+                 rstn when ASYNC_RESET else '1';
+
 
   -- Generic AHB master interface
   ahbmst0 : ahbmst
     generic map (hindex => hmindex, hirq => 0, venid => VENDOR_GAISLER,
-                 devid => GAISLER_GRAPLIC, version => 0,
+                 devid => mdevid_gen(hbaren), version => 0,
                  chprot => 3, incaddr => 0)
     port map (rstn, clk, ami, amo, ahbmi, ahbmo);
 
 
   -- Priority Encoders
   -- They are used for direct delivery mode
-  -- Each hart has its own priority encoders 
+  -- Each hart has its own priority encoders
   -- one for machine mode and one for supervisor mode (if active)
   encoders : for i in 0 to S_EN generate
     encoders : for j in 0 to ncpu-1 generate
       encoder : aplic_encoder
         generic map (
-          nsources        => nsources,  
+          nsources        => nsources,
           srcbits         => srcbits,
-          prbits          => IPRIOLEN
+          prbits          => IPRIOLEN,
+          scantest        => scantest
           )
         port map (
           rstn            => rstn,
@@ -467,9 +546,12 @@ begin
           ip              => r.setip(nsources downto 1),  -- In:  IP bit for every source
           pr_in           => pr_array_unfold,             -- In:  Each source's priority
           enable          => r.dm_enable(i*ncpu+j),       -- In:  Source enable signal (for this particular hart)
+          softrstn        => softrstn,                    -- In:  Softreset from ACLINT
           id              => dm_id(i*ncpu+j),             -- Out: Identity of the hart interrupt with the highest priority
           ip_out          => dm_ip(i*ncpu+j),             -- Out: 1 when there is an interrupt pending and enable for the hart
-          pr_out          => dm_pr_array(i*ncpu+j)        -- Out: Highest priority enable and pending interrupt                 
+          pr_out          => dm_pr_array(i*ncpu+j),       -- Out: Highest priority enable and pending interrupt
+          testen          => ahbsi.testen,
+          testrst         => ahbsi.testrst
           );
     end generate;
   end generate;
@@ -479,9 +561,10 @@ begin
     pr_array_unfold(i*IPRIOLEN-1 downto (i-1)*IPRIOLEN)  <= r.target(i).iprio;
   end generate;
 
-  comb : process(r, ahbsi, amo, dm_ip, dm_id, dm_pr_array) is 
+  comb : process(r, ahbsi, amo, dm_ip, dm_id, dm_pr_array, softrstn) is
     variable v              : reg_type;
     variable irqi           : std_logic_vector(nsources downto 0);
+    variable hsel           : std_ulogic;
     variable hwdata         : std_logic_vector(31 downto 0);
     variable hrdata         : std_logic_vector(31 downto 0);
     variable wdata          : std_logic_vector(31 downto 0);
@@ -501,7 +584,6 @@ begin
     variable MSI_hart       : std_logic_vector(ncpubits-1 downto 0);
     variable MSI_guest_hart : std_logic_vector(nvcpubits-1 downto 0);
     variable next_wdata     : std_logic_vector(31 downto 0);
-    variable next_addr      : std_logic_vector(31 downto 0);
     variable hart_index     : integer range 0 to ncpu;
     variable MSI_domain     : integer range 0 to ndomains-1;
     variable active_domain  : integer range 0 to ndomains-1;
@@ -509,7 +591,7 @@ begin
     variable active_genmsi  : std_ulogic;
     variable ahbreq         : std_ulogic;
     variable triggered_src  : std_logic_vector(nsources downto 0);
-    variable supervisor_src : std_logic_vector(nsources downto 0); 
+    variable supervisor_src : std_logic_vector(nsources downto 0);
     variable LHXS_int       : integer;
     variable LHXW_int       : integer;
     variable HHXW_int       : integer;
@@ -518,18 +600,17 @@ begin
     variable shifted_mbase_ppn : std_logic_vector(31 downto 0);
     variable shifted_sbase_ppn : std_logic_vector(31 downto 0);
   begin
-    
 
 
     v := r;
 
     v.hsel    := (others => '0');
     v.hready  := '1';
-    v.hresp   := HRESP_OKAY; 
+    v.hresp   := HRESP_OKAY;
 
     rdata  := (others => '0');
     ahbreq := '0';
-    
+
     -------------------------------------------------------------------------------------------------------------
     -- Interrupt forwarding logic and AHB master interface ------------------------------------------------------
     -------------------------------------------------------------------------------------------------------------
@@ -542,18 +623,18 @@ begin
     -- to the domain as being NOT IMPLEMENTED.
     -- An interrupt source is inactive in the interrupt domain if either the source is delegated to a child
     -- domain (D = 1) or it is not delegated (D = 0) and SM is Inactive
-     
-    -- This code determines for each domain which of the interrupts sources are active/inactive, 
+
+    -- This code determines for each domain which of the interrupts sources are active/inactive,
     -- implmentid/not implmented. This information is needed since domain configuration fields will affect
-    -- only the domain active sources. Also the value of some registers depend on the state of the source within 
-    -- the domain. 
-    
+    -- only the domain active sources. Also the value of some registers depend on the state of the source within
+    -- the domain.
+
     -- This part of the code determines how the hierarchy of domains is handled and which hierarchies are allowed.
     -- This concrete implementation allowes the root domain to have as many childs as needed. The rest of the
-    -- domains can have only one child domain. This is translated in a domain hierarchy with an arbitray number of 
+    -- domains can have only one child domain. This is translated in a domain hierarchy with an arbitray number of
     -- branches each one with an arbitrary number of domains.
 
-    for j in 1 to nsources loop 
+    for j in 1 to nsources loop
       active_domain := 0;
       v.sourcecfg(0).active(j) := '0';
       for i in ndomains-1 downto 1 loop
@@ -577,7 +658,7 @@ begin
       if r.sourcecfg(0).D(j) = '0' then
         active_domain := 0;
       end if;
-      if r.sourcecfg_SM(j) /= "000" then -- It is not configured inactive 
+      if r.sourcecfg_SM(j) /= "000" then -- It is not configured inactive
         v.sourcecfg(active_domain).active(j) := '1';
       end if;
       for i in 1 to ndomains-1 loop
@@ -585,7 +666,7 @@ begin
         if i <= active_domain and unsigned(r.child_index(j)) = branch then
           v.sourcecfg(i).implemented(j) := '1';
         else
-          -- when source is not implemented in the domain sourcfg register is read-only 
+          -- when source is not implemented in the domain sourcfg register is read-only
           -- zero and remains zero even when the source is delegated from the parent
           v.sourcecfg(i).implemented(j) := '0';
           v.sourcecfg(i).D(j) := '0';
@@ -602,7 +683,7 @@ begin
 
     -- Determine for each source if it is active or not
     -- Determine for each source if it is configured as direct delivery mode or MSI
-    v.src_dm     := (others => '0'); 
+    v.src_dm     := (others => '0');
     v.src_active := (others =>'0');
     v.src_pmode  := (others =>'0');
     for i in 0 to ndomains-1 loop
@@ -633,8 +714,8 @@ begin
     end loop;
     v.setip := (others => '0');
     v.setie := (others => '0'); -- IE bits set to 1 only if source is active
-    triggered_src := (not r.src_rectified) and v.src_rectified; 
-    for j in 1 to nsources loop 
+    triggered_src := (not r.src_rectified) and v.src_rectified;
+    for j in 1 to nsources loop
       if r.src_active(j) = '1' then
         v.setie(j) := r.setie(j);
         case r.sourcecfg_SM(j) is
@@ -649,7 +730,7 @@ begin
           when others => -- r.sourcecfg_SM(j) = detached
             v.setip(j) := r.setip(j);
         end case;
-      else 
+      else
         v.setip(j) := '0';
         v.setie(j) := '0';
       end if;
@@ -665,7 +746,7 @@ begin
     if direct_delivery = 1 then
 
       -- If the interrupt controller for any hart is the APLIC configured in direct
-      -- delivery mode, that hart is active in only one domain. 
+      -- delivery mode, that hart is active in only one domain.
       -- Determine for each hart if the interrupt controller is the aplic configured
       -- in direct delivery mode and if so, which domain handles their interrupts
       v.hart := (others => (others => RES_hart_type));
@@ -686,7 +767,7 @@ begin
       end loop;
 
 
-      -- Compute the enable interrupt source signals (priority encoder input) 
+      -- Compute the enable interrupt source signals (priority encoder input)
       -- for each hart and each mode (machine/supervisor)
       for i in 0 to ncpu-1 loop
         for j in 0 to S_EN loop
@@ -701,7 +782,7 @@ begin
             end if;
           end loop;
         end loop;
-      end loop; 
+      end loop;
 
 
       -- priority enconcer outputs
@@ -748,14 +829,23 @@ begin
     -- For each source determine if it should be forwarde by an MSI if
     -- its IE and IP bits are set. Also for each source determine if it
     -- is delegated to a supervisor or machine mode domain.
-    supervisor_src := (others => '0'); 
+    supervisor_src := (others => '0');
     v.MSI_active := (others => '0');
+    v.MSI_masked := (others => '0');
     for i in 0 to ndomains-1 loop
       if r.domain_pmode(i) = '1' then
         supervisor_src := supervisor_src or r.sourcecfg(i).active;
       end if;
       if r.domaincfg(i).IE = '1' and r.domaincfg(i).DM = '1' then
-          v.MSI_active := v.MSI_active or r.sourcecfg(i).active; 
+          v.MSI_active := v.MSI_active or r.sourcecfg(i).active;
+      end if;
+      -- If hart_mask register is set to 0 that domain can't send MSIs
+      -- Target can't be set to an illegal value and to avoid that
+      -- active_harts register is checked. However, if all bits are set
+      -- to zero, the target default value is zero and we can't allow
+      -- the domain to forward interrupts to any domain in that case.
+      if r.active_harts(i) = (ncpu-1 downto 0 => '0') then
+        v.MSI_masked := v.MSI_masked or r.sourcecfg(i).active;
       end if;
     end loop;
 
@@ -764,16 +854,16 @@ begin
     MSI_pending := r.MSI_active and r.setip and r.setie;
     MSI_source  := 0;
     for i in nsources downto 1 loop
-      if MSI_pending(i) = '1' then
+      if MSI_pending(i) = '1' and r.MSI_masked(i) = '0' then
         MSI_source := i;
       end if;
     end loop;
 
-    -- Check if there is any extempore MSI pending (genmsi) 
+    -- Check if there is any extempore MSI pending (genmsi)
     MSI_domain := 0;
     active_genmsi := '0';
     for i in 0 to ndomains-1 loop
-      if r.genmsi(i).busy = '1' then
+      if r.genmsi(i).busy = '1' and r.active_harts(i) /= (ncpu-1 downto 0 => '0') then
         MSI_domain := i;
         active_genmsi := '1';
       end if;
@@ -781,7 +871,6 @@ begin
 
     -- If there is any pending interrupt to be signaled trhough MSI
     -- set domsi to 1 to and set the data and the address of the AHB transaction
-    next_addr  := (others => '0');
     next_wdata := (others => '0');
     MSI_pmode  := '0';
     MSI_hart   := (others => '0');
@@ -793,7 +882,7 @@ begin
       v.domsi := '1';
       if active_genmsi = '1' then
         MSI_hart := r.genmsi(MSI_domain).hart_index;
-        next_wdata(eiidbits-1 downto 0) := r.genmsi(MSI_domain).eiid; 
+        next_wdata(eiidbits-1 downto 0) := r.genmsi(MSI_domain).eiid;
         MSI_pmode := r.domain_pmode(MSI_domain);
       else
         MSI_hart := r.target(MSI_source).hart_index;
@@ -817,49 +906,49 @@ begin
       LHXW_int := to_integer(unsigned(r.mmsiaddrcfg.LHXW));
       shifted_mbase_ppn := std_logic_vector(shift_left(unsigned(r.mmsiaddrcfg.base_ppn(31 downto 0)),12));
       shifted_sbase_ppn := std_logic_vector(shift_left(unsigned(r.smsiaddrcfg.base_ppn(31 downto 0)),12));
-      if MSI_pmode = '0' or S_EN = 0 then -- machine mode domain 
+      if MSI_pmode = '0' or S_EN = 0 then -- machine mode domain
         LHXS_int := to_integer(unsigned(r.mmsiaddrcfg.LHXS));
         if grouped_harts = 0 then
           -- h = Hart_Index & (2^LHXW − 1)
           -- MSI_address = (Base_PPN | (h<<LHXS)) <<12
           ---------------------------------------------------------------------------------------------------------
           h := resize(unsigned(MSI_hart), 32);
-          next_addr := shifted_mbase_ppn or std_logic_vector(shift_left(h, 12+LHXS_int));
+          v.msi_addr := shifted_mbase_ppn or std_logic_vector(shift_left(h, 12+LHXS_int));
         else
           -- g = (Hart_Index>>LHXW) & (2^HHXW − 1)
           -- h = Hart_Index & (2^LHXW − 1)
           -- MSI_address = (Base PPN | (g<<(HHXS + 12)) | (h<<LHXS)) <<12
           ---------------------------------------------------------------------------------------------------------
-          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
+          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32);
           h := shift_left(h, 12+LHXS_int);
-          g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32); 
+          g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32);
           g := shift_left(g, 12+(12+HHXS_int));
-          next_addr := shifted_mbase_ppn or std_logic_vector(g) or std_logic_vector(h);
+          v.msi_addr := shifted_mbase_ppn or std_logic_vector(g) or std_logic_vector(h);
         end if;
-      else -- supervisor mode 
+      else -- supervisor mode
         LHXS_int := to_integer(unsigned(r.smsiaddrcfg.LHXS));
         if grouped_harts = 0 then
           -- h = machine-level hart index & (2 LHXW − 1)
-          -- MSI address = (Base PPN | ((h<<LHXS) | Guest Index)) <<12 
-          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
+          -- MSI address = (Base PPN | ((h<<LHXS) | Guest Index)) <<12
+          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32);
           h := shift_left(h, 12+LHXS_int);
           guest_index := shift_left(resize(unsigned(MSI_guest_hart), 32), 12);
-          next_addr := shifted_sbase_ppn  or std_logic_vector(h) or std_logic_vector(guest_index);
+          v.msi_addr := shifted_sbase_ppn  or std_logic_vector(h) or std_logic_vector(guest_index);
         else
           -- g = (machine-level hart index>>LHXW) & (2 HHXW − 1)
           -- h = machine-level hart index & (2 LHXW − 1)
-          -- MSI address = (Base PPN | ((g<<(HHXS + 12)) | (h<<LHXS) | Guest Index)) <<12 
-          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32); 
+          -- MSI address = (Base PPN | ((g<<(HHXS + 12)) | (h<<LHXS) | Guest Index)) <<12
+          h := resize(unsigned(MSI_hart), 32) and to_unsigned(2 ** LHXW_int-1, 32);
           h := shift_left(h, 12+LHXS_int);
-          g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32); 
+          g := shift_right(resize(unsigned(MSI_hart), 32), LHXW_int) and to_unsigned(2 ** HHXW_int-1, 32);
           g := shift_left(g, 12+(12+HHXS_int));
           guest_index := shift_left(resize(unsigned(MSI_guest_hart), 32), 12);
-          next_addr := shifted_sbase_ppn or std_logic_vector(g) or std_logic_vector(h) or std_logic_vector(guest_index);
+          v.msi_addr:= shifted_sbase_ppn or std_logic_vector(g) or std_logic_vector(h) or std_logic_vector(guest_index);
         end if;
       end if;
     end if;
 
-    -- When r.domsi = 1 perform the AHB write to the IMSIC 
+    -- When r.domsi = 1 perform the AHB write to the IMSIC
     if r.domsi = '1' then
       if amo.active = '1' then
         if amo.ready = '1' then
@@ -874,13 +963,13 @@ begin
         ahbreq := '1';
       end if;
     end if;
- 
-   
-    -- An MSI’s 32-bit data is always written in little-endian byte order, 
-    -- regardless of the BE field of the domain’s domaincfg register 
+
+
+    -- An MSI’s 32-bit data is always written in little-endian byte order,
+    -- regardless of the BE field of the domain’s domaincfg register
 
     -- Signal assignation to AHB master interface
-    ami.address   <= next_addr;
+    ami.address   <= r.msi_addr;
     ami.wdata     <= ahbdrivedata(next_wdata);
     ami.start     <= ahbreq;
     ami.burst     <= '0';
@@ -895,10 +984,10 @@ begin
   -- AHB slave interface
   ----------------------------------------------------------------------------
 
-  --  Registers of the first 16 KiB of an interrupt domain’s memory-mapped control region|
+  --  This is the memory map for each APLIC Domain
   ---------------------------------------------------------------------------------------|
   --  offset     size        register name                                               |
-  --                                                                                     |   
+  --                                                                                     |
   --  0x0000     4 bytes     domaincfg          |                                        |
   --  0x0004     4 bytes     sourcecfg[1]       |                                        |
   --  0x0008     4 bytes     sourcecfg[2]       |                                        |
@@ -935,36 +1024,36 @@ begin
   --  0x3008     4 bytes     target[2]          |                                        |
   --  ...                    ...                |                                        |
   --  0x3FFC     4 bytes     target[1023]       |                                        |
-  --                                                                                     |    
+  --                                                                                     |
   --  Interrupt delivery control (IDC) structures                                        |
   ---------------------------------------------------                                    |
-  --                                                                                     |    
+  --                                                                                     |
   --  offset     size        register name                                               |
-  --                                                                                     |    
+  --                                                                                     |
   -- HART 1                                     |                                        |
   --  0x4000     4 bytes     idelivery          |                                        |
   --  0x4004     4 bytes     iforce             |                                        |
   --  0x4008     4 bytes     ithreshold         |                                        |
   --  0x4018     4 bytes     topi               | => 16 KiB (Max. 512 harts per domain)  |
   --  0x401C     4 bytes     claimi             |    If idc is not implemented           |
-  --                                            |    (direct_delivery = 0), all the      |    
+  --                                            |    (direct_delivery = 0), all the      |
   -- HART 2                                     |    idc registers are read-only zero    |
   --  0x4020     4 bytes     idelivery          |                                        |
   --  0x4024     4 bytes     iforce             |                                        |
   --  0x4028     4 bytes     ithreshold         |                                        |
   --  0x4038     4 bytes     topi               |                                        |
   --  0x403C     4 bytes     claimi             |                                        |
-  --                                            |                                        |   
+  --                                            |                                        |
   -- .... untill the last phsycal hart                                                   |
   --
-  
+
   -- At the end of the last implemented domain there are several registers employed to configure to which
   -- hart each domain can forward interrupts to. Currently this configuration admits a maximum of 32 harts.
   -- If more harts are required a small modification is required.
   -- These registers offset start at address Hart_Mask_Offset=(0x8000*number_of_implemented_domains)
 
   --  offset     size        register name                                                 |
-  --                                                                                       |    
+  --                                                                                       |
   -- HMO+0x00    4 bytes     Hart Mask Domain[0]  |                                        |
   -- HMO+0x04    4 bytes     Hart Mask Domain[1]  |                                        |
   --  ...                    ...                  |                                        |
@@ -972,7 +1061,7 @@ begin
 
   -- Each bit of each register configures one core. If bit 0 (LSB) of Hart Mask Domain[0] register is set to
   -- 1, Domain 0 can configure interrupts to be forwarded to core 0.
-  -- It is important to configure each domain to be able to send interrupts to at least on core. If not,
+  -- It is important to configure each domain to be able to send interrupts to at least one core. If not,
   -- this domain will be able to send interrupts to core 0 even if it is not intended to.
   -- If the external interrupt controller of one hart is an APLIC domain configured as Direct Delivery Mode,
   -- only this domain should be able to send interrupts to the hart. It is responsibility of the software
@@ -982,9 +1071,9 @@ begin
   -- In the following diagram each square represents an APLIC domain and the number inside the square
   -- represents the domain number. APLIC domains are arranged contigously in the memory map. That is to
   -- say, the domain 0 is in the offset 0x00000000, the domain 1 is in the offset 0x00008000, the domain
-  -- 2 is in the offset 0x00010000, the domain 3 is in the offset 0x00018000 and so on. As mentioned before, 
+  -- 2 is in the offset 0x00010000, the domain 3 is in the offset 0x00018000 and so on.
   -- APLIC can be configured to have an arbitrary number of branches and an arbitrary number of domains per branch.
-  -- 
+  --
   --                                        |-----|
   --                                        |  0  |
   --                                        |--|--|
@@ -1008,11 +1097,17 @@ begin
   --                  |--|--|       |--|--|                        |--|--|
 
 
+  -- Last domain of each branch can be configured to be either a Supervisor Interrupt or a Machine Interrupt
+  -- domain. By default if the supervisor mode is enabled all leaf domains will be Supeverisor Interrupt
+  -- domains. By default the last domain of each branch is configured as the leaf domain but it is possible
+  -- to configure that to set asymetric branches.
 
 
-  -- Only naturally aligned 32-bit simple reads and writes are supported within an interrupt 
-  -- domain’s control region. Writes to read-only bytes are ignored. For other forms of accesses 
-  -- (other sizes, misaligned accesses, or AMOs), implementations should preferably report an 
+
+
+  -- Only naturally aligned 32-bit simple reads and writes are supported within an interrupt
+  -- domain’s control region. Writes to read-only bytes are ignored. For other forms of accesses
+  -- (other sizes, misaligned accesses, or AMOs), implementations should preferably report an
   -- access fault or bus error but must otherwise ignore the access.
 
     struct_off  := r.haddr(struct_off'range);
@@ -1026,7 +1121,14 @@ begin
     hwdata := ahbsi.hwdata(31 downto  0); -- Only 32 bits accesses are allowed
 
     -- Slave selected
-    if (ahbsi.hready and ahbsi.hsel(hsindex) and ahbsi.htrans(1)) = '1' then
+    -- If it belongs to a AHB slave with several memory bars we need to check
+    -- if the memory bar is selected
+    if hbaren = 0 then
+      hsel :=  ahbsi.hsel(hsindex);
+    else
+      hsel :=  ahbsi.hsel(hsindex) and ahbsi.hmbsel(hbar);
+    end if;
+    if (ahbsi.hready and hsel and ahbsi.htrans(1)) = '1' then
       v.hsel(0)  := '1';
       v.haddr    := ahbsi.haddr;
       v.hsize    := ahbsi.hsize;
@@ -1065,22 +1167,22 @@ begin
                 elsif endianness = 1 then -- big-endian
                   rdata(0) := '1'; -- read-only
                 else -- bi-endian
-                  rdata(0) := r.domaincfg(seldom).BE; 
+                  rdata(0) := r.domaincfg(seldom).BE;
                 end if;
               elsif selsrc <= nsources then -- sourcecfg[1] to sourcecfg[1024]
                 if r.sourcecfg(seldom).implemented(selsrc) = '1' then
                   if r.sourcecfg(seldom).D(selsrc) = '1' then
-                    rdata(10) := '1'; 
+                    rdata(10) := '1';
                     if seldom = 0 then
                       rdata(branch_bits-1 downto 0) := r.child_index(selsrc);
                     end if;
                   else
-                    rdata(10) := '0'; 
+                    rdata(10) := '0';
                     rdata(2 downto 0) := r.sourcecfg_SM(selsrc);
                   end if;
                 end if;
               end if;
-            when "01" => 
+            when "01" =>
               case r.haddr(11 downto 8) is
                 when x"B" => -- addrcfg
                   if seldom = 0 then -- Registers only implemented for the root domain
@@ -1155,9 +1257,9 @@ begin
               end case;
             when others => -- only "11" left
               if r.haddr(11 downto 2) = x"00" & "00" then -- genmsi (0x3000)
-                -- When the interrupt domain is configured in direct delivery mode 
+                -- When the interrupt domain is configured in direct delivery mode
                 -- (domaincfg.DM = 0), register genmsi is read-only zero
-                if r.domaincfg(seldom).DM = '1' then 
+                if r.domaincfg(seldom).DM = '1' then
                   rdata(18+ncpubits-1 downto 18) := r.genmsi(seldom).hart_index;
                   rdata(12)                      := r.genmsi(seldom).busy;
                   rdata(eiidbits-1 downto 0)     := r.genmsi(seldom).EIID;
@@ -1165,19 +1267,19 @@ begin
               elsif selsrc <= nsources then -- target[1] to target[1023]
                 if r.sourcecfg(seldom).active(selsrc) = '1' then
                   if r.domaincfg(seldom).DM = '0' then
-                    rdata(18+ncpubits-1 downto 18) := r.target(selsrc).hart_index; 
-                    rdata(IPRIOLEN-1 downto 0)   := r.target(selsrc).iprio; 
+                    rdata(18+ncpubits-1 downto 18) := r.target(selsrc).hart_index;
+                    rdata(IPRIOLEN-1 downto 0)   := r.target(selsrc).iprio;
                   else
-                    rdata(18+ncpubits-1 downto 18) := r.target(selsrc).hart_index; 
+                    rdata(18+ncpubits-1 downto 18) := r.target(selsrc).hart_index;
                     if H_EN = 1 and r.domain_pmode(seldom) = '1' then
-                      rdata(12+nvcpubits-1 downto 12) := r.target(selsrc).guest_index; 
+                      rdata(12+nvcpubits-1 downto 12) := r.target(selsrc).guest_index;
                     end if;
-                    rdata(eiidbits-1 downto 0)  := r.target(selsrc).EIID; 
+                    rdata(eiidbits-1 downto 0)  := r.target(selsrc).EIID;
                   end if;
                 end if;
               end if;
           end case;
-        elsif direct_delivery = 1 then -- Interrupt delivery control (IDC) structure 
+        elsif direct_delivery = 1 then -- Interrupt delivery control (IDC) structure
           if selhart < ncpu and r.active_harts(seldom)(selhart) = '1' then
             case r.haddr(4 downto 2) is
               when "000" =>  -- idelivery (0x00)
@@ -1259,24 +1361,24 @@ begin
                   v.domaincfg(seldom).DM := wdata(2);
                 end if;
                 if endianness = 2 then -- bi-endian system
-                  v.domaincfg(seldom).BE := wdata(0); 
+                  v.domaincfg(seldom).BE := wdata(0);
                 end if;
               elsif selsrc <= nsources then -- sourcecfg[1] to sourcecfg[1024]
                 if r.sourcecfg(seldom).implemented(selsrc) = '1' then -- source must be implemented in this domain
                   if wdata(10) = '1' then --D = 1
-                    v.sourcecfg(seldom).D(selsrc) := '1';                                                
+                    v.sourcecfg(seldom).D(selsrc) := '1';
                     if leaf_doms(seldom) = '1' then -- If it is a leaf domain and D = 1, the whole register is set to 0
                       v.sourcecfg_SM(selsrc) := (others => '0');
-                      v.sourcecfg(seldom).D(selsrc) := '0'; 
+                      v.sourcecfg(seldom).D(selsrc) := '0';
                     else
                       -- Any write to a sourcecfg register might (or might not) cause the corresponding interrupt-pending
                       -- bit to be set to one if the rectified input value is high (= 1) under the new source mode.
-                      v.sourcecfg(seldom).D(selsrc) := '1';                                                
+                      v.sourcecfg(seldom).D(selsrc) := '1';
                       if r.sourcecfg(seldom).D(selsrc) = '0' then
-                        -- If source i was not delegated to this domain and is then changed (at the parent domain) to become delegated 
+                        -- If source i was not delegated to this domain and is then changed (at the parent domain) to become delegated
                         -- to this domain, sourcecfg[i] remains zero until successfully written with a nonzero value.
                         v.sourcecfg_SM(selsrc) := (others => '0');
-                        v.sourcecfg(seldom+1).D(selsrc) := '0';                                                
+                        v.sourcecfg(seldom+1).D(selsrc) := '0';
                       end if;
                     end if;
                     -- If it is the root domain, the child_index field is writable
@@ -1285,26 +1387,26 @@ begin
                     end if;
                   else -- D = 0
                     v.src_inverted(selsrc) := '0';
-                    -- A write to a sourcecfg register will not by itself cause a pending bit to be cleared 
+                    -- A write to a sourcecfg register will not by itself cause a pending bit to be cleared
                     -- except when the source is made inactive.
                     if wdata(2 downto 0) = inactive then
                       v.setip(selsrc) := '0';
                       v.setie(selsrc) := '0';
-                    elsif wdata(2 downto 0) = edge0 or wdata(2 downto 0) = level0 then 
+                    elsif wdata(2 downto 0) = edge0 or wdata(2 downto 0) = level0 then
                       v.src_inverted(selsrc) := '1';
                     end if;
                     if wdata(2 downto 0) /= "010" and wdata(2 downto 0) /= "011" then
                       -- WARL register 010 and 011 are not allowed values
                       v.sourcecfg_SM(selsrc) := wdata(2 downto 0);
                     end if;
-                    v.sourcecfg(seldom).D(selsrc) := '0'; 
-                    -- If source i is changed from inactive to an active mode, target[i] becomes 
+                    v.sourcecfg(seldom).D(selsrc) := '0';
+                    -- If source i is changed from inactive to an active mode, target[i] becomes
                     -- an unspecified valid value
-                    if wdata(2 downto 0) /= "000" and wdata(2 downto 0) /= "010" and wdata(2 downto 0) /= "011" and 
+                    if wdata(2 downto 0) /= "000" and wdata(2 downto 0) /= "010" and wdata(2 downto 0) /= "011" and
                        r.sourcecfg_SM(selsrc) = "000" then
                       first_active_hart := 0;
                       for j in ncpu-1 downto 0 loop
-                        if r.active_harts(seldom)(j) = '1' then 
+                        if r.active_harts(seldom)(j) = '1' then
                           first_active_hart := j;
                         end if;
                       end loop;
@@ -1316,7 +1418,7 @@ begin
                   end if;
                 end if;
               end if;
-            when "01" => 
+            when "01" =>
               case r.haddr(11 downto 8) is
                 when x"B" => -- addrcfg
                   if seldom = 0 and r.mmsiaddrcfg.L = '0' then -- These registers are accesible only for the root domain and when L=0
@@ -1325,10 +1427,10 @@ begin
                         v.mmsiaddrcfg.base_ppn(31 downto 0) := wdata;
                       when x"C4" => -- mmsiaddrcfgh  (0x1BC4)
                         v.mmsiaddrcfg.L    := wdata(31);
-                        v.mmsiaddrcfg.HHXS := wdata(28 downto 24); 
-                        v.mmsiaddrcfg.LHXS := wdata(22 downto 20); 
-                        v.mmsiaddrcfg.HHXW := wdata(18 downto 16); 
-                        v.mmsiaddrcfg.LHXW := wdata(15 downto 12); 
+                        v.mmsiaddrcfg.HHXS := wdata(28 downto 24);
+                        v.mmsiaddrcfg.LHXS := wdata(22 downto 20);
+                        v.mmsiaddrcfg.HHXW := wdata(18 downto 16);
+                        v.mmsiaddrcfg.LHXW := wdata(15 downto 12);
                         v.mmsiaddrcfg.base_ppn(43 downto 32) := wdata(11 downto 0);
                       when x"C8" => -- smsiaddrcfg   (0x1BC8)
                         if unsigned(r.domain_pmode) /= 0 then -- There is at least one supervisor-level interrupt domain
@@ -1438,27 +1540,31 @@ begin
               end case;
             when others => -- only "11" left
               if r.haddr(11 downto 2) = x"00" & "00" then -- genmsi (0x3000)
-                -- When the interrupt domain is configured in direct delivery mode 
+                -- When the interrupt domain is configured in direct delivery mode
                 -- (domaincfg.DM = 0), register genmsi is read-only zero
                 -- While busy is true, writes are ignored
-                if r.domaincfg(seldom).DM = '1' and r.genmsi(seldom).busy = '0' then 
+                if r.domaincfg(seldom).DM = '1' and r.genmsi(seldom).busy = '0' then
                   -- Write only if the selected domain is configured to deliver the interrupt
                   -- to the especified hart
                   hart_index := conv_integer(wdata(18+ncpubits-1 downto 18));
-                  if r.active_harts(seldom)(hart_index) = '1' then
-                    v.genmsi(seldom).hart_index := wdata(18+ncpubits-1 downto 18);
-                    v.genmsi(seldom).busy       := '1';
-                    v.genmsi(seldom).EIID       := wdata(eiidbits-1 downto 0);
+                  if hart_index < ncpu then
+                    if r.active_harts(seldom)(hart_index) = '1' then
+                      v.genmsi(seldom).hart_index := conv_std_logic_vector(hart_index, ncpubits);
+                      v.genmsi(seldom).busy       := '1';
+                      v.genmsi(seldom).EIID       := wdata(eiidbits-1 downto 0);
+                    end if;
                   end if;
                 end if;
               elsif selsrc <= nsources then -- target[1] to target[1023]
+                hart_index := conv_integer(wdata(18+ncpubits-1 downto 18));
                 if r.sourcecfg(seldom).active(selsrc) = '1' then
-                  hart_index := conv_integer(wdata(18+ncpubits-1 downto 18));
                   if r.domaincfg(seldom).DM = '0' then
                     -- Write only if the selected domain is configured to deliver the interrupt
                     -- to the especified hart
-                    if r.active_harts(seldom)(hart_index) = '1' then
-                      v.target(selsrc).hart_index := wdata(18+ncpubits-1 downto 18);
+                    if hart_index < ncpu then
+                      if r.active_harts(seldom)(hart_index) = '1' then
+                        v.target(selsrc).hart_index := conv_std_logic_vector(hart_index, ncpubits);
+                      end if;
                     end if;
                     -- A write to a target register sets IPRIO equal to bits (IPRIOLEN − 1):0 of the 32-bit
                     -- value written, unless those bits are all zeros, in which case the priority number is set to 1 instead.
@@ -1470,14 +1576,16 @@ begin
                   else
                     -- Write only if the selected domain is configured to deliver the interrupt
                     -- to the especified hart
-                    if r.active_harts(seldom)(hart_index) = '1' then
-                      -- Write hart_index for machine-level interrupt domains and
-                      -- guest_guest index for supervisor-level interrupt domains
-                      v.target(selsrc).hart_index  := wdata(18+ncpubits-1 downto 18);
-                      if r.domain_pmode(seldom) = '1' and H_EN = 1 then 
-                        v.target(selsrc).guest_index := wdata(12+nvcpubits-1 downto 12);
-                      else
-                        v.target(selsrc).guest_index := (others => '0');
+                    if hart_index < ncpu then
+                      if r.active_harts(seldom)(hart_index) = '1' then
+                        -- Write hart_index for machine-level interrupt domains and
+                        -- guest_guest index for supervisor-level interrupt domains
+                        v.target(selsrc).hart_index  := conv_std_logic_vector(hart_index, ncpubits);
+                        if r.domain_pmode(seldom) = '1' and H_EN = 1 then
+                          v.target(selsrc).guest_index := wdata(12+nvcpubits-1 downto 12);
+                        else
+                          v.target(selsrc).guest_index := (others => '0');
+                        end if;
                       end if;
                     end if;
                     v.target(selsrc).EIID := wdata(eiidbits-1 downto 0);
@@ -1522,7 +1630,7 @@ begin
 
     -- Error response (only support 32-bit accesses)
     if pipe then
-      if r.hsel(0) = '1' then 
+      if r.hsel(0) = '1' then
         if r.hsize /= "010" then
           v.hready := '0';
           v.hresp  := HRESP_ERROR;
@@ -1550,7 +1658,7 @@ begin
     end if;
 
 
-    -- Signal assignation 
+    -- Signal assignation
 
     -- AHB Interface
     ahbso.hready         <= r.hready;
@@ -1567,19 +1675,37 @@ begin
     seip <= seip_tmp;
 
 
+    -- Soft Reset
+    if softrstn = '0' then
+      v := softrst(v);
+    end if;
+
     rin <= v;
 
   end process;
 
-  regs : process(clk)
-  begin
-    if rising_edge(clk) then
-      r <= rin;
-      if rstn = '0' then
-        r <= RES_T;
+  syncrregs : if not ASYNC_RESET generate
+    regs : process(clk)
+    begin
+      if rising_edge(clk) then
+        r <= rin;
+        if rstn = '0' then
+          r <= RES_T;
+        end if;
       end if;
-    end if;
-  end process;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= RES_T;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process;
+  end generate;
 
  -- pragma translate_off
    assert (H_EN = 1 and GEILEN /= 0) or (H_EN = 0 and GEILEN = 0)

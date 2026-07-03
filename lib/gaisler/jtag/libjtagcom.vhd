@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -92,7 +92,8 @@ package libjtagcom is
       gatetech: integer := 0;
       isel   : integer range 0 to 1 := 0;
       ainst  : integer range 0 to 255 := 2;
-      dinst  : integer range 0 to 255 := 3);
+      dinst  : integer range 0 to 255 := 3;
+      dm_base: integer := 16#E0000#);
     port (
       rst  : in std_ulogic;
       clk  : in std_ulogic;

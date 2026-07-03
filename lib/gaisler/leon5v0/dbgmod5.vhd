@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -1407,6 +1407,11 @@ begin
       end if;
     end loop;
     -- Forward SMP broadcast within configured SMP groups
+    for i in 0 to NCPU-1 loop
+      v.smp(i).ipiin := '0';
+      v.smp(i).tlbfin := '0';
+      v.smp(i).icfin := '0';
+    end loop;
     for i in 0 to NCPU-1 loop
       vgrphit := "000";
       for j in 0 to NCPU-1 loop

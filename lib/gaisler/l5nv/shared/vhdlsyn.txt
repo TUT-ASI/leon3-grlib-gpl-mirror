@@ -1,5 +1,6 @@
 busif5_types.vhd
 l5nv_shared.vhd
+l5nvnlconfig.vhd
 dmnv_ic_dmaport.vhd
 dmnv_ic_busport.vhd
 dmnv_ic_ebp.vhd

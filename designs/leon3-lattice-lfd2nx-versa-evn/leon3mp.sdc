@@ -45,4 +45,7 @@ create_clock -name {tck} -period 100 [get_ports tck]
 #
 # Other Constraints
 #
-
+#create_clock -name {clkm} -period 20 [get_nets clkm]
+create_clock -name {clk_in} -period 10 [get_nets clk_in]
+create_clock -name {clkm} -period 20 [get_nets clkm]
+create_clock -name {clkm_ddr} -period 10 [get_nets clkm_ddr]

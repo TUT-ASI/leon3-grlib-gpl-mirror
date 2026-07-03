@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ use grlib.amba.all;
 use grlib.config.all;
 use grlib.config_types.all;
 use grlib.stdlib.all;
+library gaisler;
+use gaisler.noelv.all;
 
 package dmnvint is
 
@@ -39,12 +41,16 @@ package dmnvint is
     eaddr     : std_logic_vector(4 downto 0);
     write     : std_logic;
     data      : std_logic_vector(31 downto 0);
+    testen    : std_ulogic;
+    testrst   : std_ulogic;
   end record;
   constant nv_progbuf_in_none : nv_progbuf_in_type := (
     addr      => (others => '0'),
     eaddr     => (others => '0'),
     write     => '0',
-    data      => (others => '0')
+    data      => (others => '0'),
+    testen    => '0',
+    testrst   => '0'
   );
 
   type nv_progbuf_out_type is record
@@ -60,12 +66,34 @@ package dmnvint is
   type nv_progbuf_in_vector  is array (natural range <>) of nv_progbuf_in_type;
   type nv_progbuf_out_vector is array (natural range <>) of nv_progbuf_out_type;
 
+--  -- Inst trace-buffer -----------------------------------------------------------
+--  type nv_itracebuf_in_type is record
+--    addr0            : std_logic_vector(11 downto 0);
+--    addr1            : std_logic_vector(11 downto 0);
+--    data0            : std_logic_vector(TRACE_WIDTH/2-1 downto 0);
+--    data1            : std_logic_vector(TRACE_WIDTH/2-1 downto 0);
+--    enable           : std_logic_vector(1 downto 0);
+--    write            : std_logic_vector(1 downto 0);
+--  end record;
+--  constant nv_itracebuf_in_type_none : nv_itracebuf_in_type := (
+--    (others => '0'), (others => '0'), (others => '0'), (others => '0'), "00", "00"
+--    );
+--  type nv_itracebuf_out_type is record
+--    data            : std_logic_vector(TRACE_WIDTH-1 downto 0);
+--  end record;
+--  constant nv_itracebuf_out_type_none : nv_itracebuf_out_type := (
+--    data => (others => '0')
+--    );
+--  type nv_itracebuf_in_type_array is array(natural range <>) of nv_itracebuf_in_type;
+--  type nv_itracebuf_out_type_array is array(natural range <>) of nv_itracebuf_out_type;
+
   -----------------------------------------------------------------------------
   -- Components
   -----------------------------------------------------------------------------
   component progbuf
     generic (
-      size : integer range 0 to 16
+      size      : integer range 0 to 16;
+      scantest  : integer := 0
     );
     port (
       clk   : in  std_ulogic;

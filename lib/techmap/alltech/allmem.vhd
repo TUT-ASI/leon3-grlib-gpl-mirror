@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -2246,6 +2246,35 @@ end component;
       write   : in  std_logic_vector  (dbits/8-1 downto 0)
       );
   end component;
+
+--ECC for nano
+  component nx_ram_2p_ecc is
+    generic (abits : integer := 9; dbits : integer := 32);
+    port (
+      rclk     : in std_ulogic;
+      renable  : in std_ulogic;
+      raddress : in std_logic_vector((abits -1) downto 0);
+      dataout  : out std_logic_vector((dbits -1) downto 0);
+      error    : out std_logic_vector(1 downto 0);
+      wclk     : in std_ulogic;
+      write    : in std_ulogic;
+      waddress : in std_logic_vector((abits -1) downto 0);
+      datain   : in std_logic_vector((dbits -1) downto 0));
+  end component;
+
+component syncram_nx_ecc is
+  generic (abits : integer := 9; dbits : integer := 32);
+  port (
+    clk     : in std_ulogic;
+    address : in std_logic_vector((abits -1) downto 0);
+    datain  : in std_logic_vector((dbits -1) downto 0);
+    dataout : out std_logic_vector((dbits -1) downto 0);
+    enable  : in std_ulogic;
+    write   : in std_ulogic;
+    error   : out std_logic_vector(1 downto 0));
+end component;
+--------------------------------
+
 
   component gf22fdx_syncram is
     generic (

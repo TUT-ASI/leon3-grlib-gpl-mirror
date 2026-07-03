@@ -60,7 +60,7 @@ GRLIB_LATTICE_RADIANT_SIM_DEVICE
         set to lifcl in the template design Makefile
 
 = Tested Software =
-For design building: Radiant 3.2, 2022.1
+For design building: Radiant 2023.1
 For simulation: ModelSim 10.7g
 
     RADIANT 2022.1

@@ -71,8 +71,8 @@ package config is
 -- AMBA settings
   constant CFG_DEFMST : integer := (0);
   constant CFG_RROBIN : integer := 1;
-  constant CFG_SPLIT : integer := 0;
-  constant CFG_FPNPEN : integer := 0;
+  constant CFG_SPLIT : integer := 1;
+  constant CFG_FPNPEN : integer := 1;
   constant CFG_AHBIO : integer := 16#FFF#;
   constant CFG_APBADDR : integer := 16#800#;
   constant CFG_AHB_MON : integer := 0;
@@ -80,11 +80,11 @@ package config is
   constant CFG_AHB_MONWAR : integer := 0;
   constant CFG_AHB_DTRACE : integer := 0;
 -- DSU UART
-  constant CFG_AHB_UART : integer := 1;
+  constant CFG_AHB_UART : integer := 0;
 -- JTAG based DSU interface
   constant CFG_AHB_JTAG : integer := 1;
 -- AHB RAM
-  constant CFG_AHBRAMEN : integer := 1;
+  constant CFG_AHBRAMEN : integer := 0;
   constant CFG_AHBRSZ : integer := 64;
   constant CFG_AHBRADDR : integer := 16#400#;
   constant CFG_AHBRPIPE : integer := 0;
@@ -147,4 +147,18 @@ package config is
   constant CFG_GRGPIO_WIDTH : integer := (16);
 -- GRLIB debugging
   constant CFG_DUART : integer := 0;
+  -- L2 Cache
+  constant CFG_L2_EN : integer := 1;
+  constant CFG_L2_SIZE : integer := 32;
+  constant CFG_L2_WAYS : integer := 1;
+  constant CFG_L2_HPROT : integer := 0;
+  constant CFG_L2_PEN : integer := 0;
+  constant CFG_L2_WT : integer := 0;
+  constant CFG_L2_RAN : integer := 0;
+  constant CFG_L2_SHARE : integer := 0;
+  constant CFG_L2_LSZ : integer := 32;
+  constant CFG_L2_MAP : integer := 16#00F0#;
+  constant CFG_L2_MTRR : integer := (0);
+  constant CFG_L2_EDAC : integer := 0;
+  constant CFG_L2_AXI : integer := 0;
 end;

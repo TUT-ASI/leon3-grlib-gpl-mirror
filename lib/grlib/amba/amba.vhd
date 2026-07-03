@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ constant GRLIB_ENDIAN : integer := GRLIB_CONFIG_ARRAY(grlib_little_endian);
 --    AHB data vectors based on the address input. If a core uses a function
 --    that does not have the address input, a failure will be asserted.
 --
-constant CORE_ACDM : integer := CFG_AHB_ACDM; 
+constant CORE_ACDM : integer := CFG_AHB_ACDM;
 
 constant NAHBMST   : integer := 16;  -- maximum AHB masters
 constant NAHBSLV   : integer := 16;  -- maximum AHB slaves
@@ -148,7 +148,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     testen      : std_ulogic;                           -- scan test enable
     testrst     : std_ulogic;                           -- scan test reset
     scanen      : std_ulogic;                           -- scan enable
-    testoen     : std_ulogic;                           -- test output enable 
+    testoen     : std_ulogic;                           -- test output enable
     testin      : std_logic_vector(NTESTINBITS-1 downto 0);         -- test vector for syncrams
     endian      : std_ulogic;                           -- endianness of bus
   end record;
@@ -166,6 +166,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
 
 -- array types
   type ahb_mst_out_vector_type is array (natural range <>) of ahb_mst_out_type;
+  type ahb_mst_extaddr_vector is array (natural range <>) of std_logic_vector(31 downto 0);
   type ahb_mst_in_vector_type is array (natural range <>) of ahb_mst_in_type;
   type ahb_slv_out_vector_type is array (natural range <>) of ahb_slv_out_type;
   type ahb_slv_in_vector_type is array (natural range <>) of ahb_slv_in_type;
@@ -180,7 +181,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     idle   : std_ulogic;                    -- HTRANS_IDLE
     busy   : std_ulogic;                    -- HTRANS_BUSY
     nseq   : std_ulogic;                    -- HTRANS_NONSEQ
-    seq    : std_ulogic;                    -- HTRANS_SEQ 
+    seq    : std_ulogic;                    -- HTRANS_SEQ
     read   : std_ulogic;                    -- Read access
     write  : std_ulogic;                    -- Write access
     hsize  : std_logic_vector(5 downto 0);  -- 8WORD downto BYTE
@@ -372,7 +373,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     cache  : std_logic_vector (3 downto 0);               -- awcache
     prot   : std_logic_vector (2 downto 0);               -- awprot
     valid  : std_logic;                                   -- awvalid
-    qos    : std_logic_vector (3 downto 0);  
+    qos    : std_logic_vector (3 downto 0);
   end record;
 
 -- AXI Write Address channel signals (Dedicated AXI3)
@@ -421,7 +422,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     cache  : std_logic_vector (3 downto 0);              -- arcache
     prot   : std_logic_vector (2 downto 0);              -- arprot
     valid  : std_logic;                                  -- arvalid
-    qos    : std_logic_vector (3 downto 0);              -- arqos 
+    qos    : std_logic_vector (3 downto 0);              -- arqos
   end record;
 
 -- AXI Read Address channel signals  (Dedicated AXI3)
@@ -448,7 +449,7 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     cache  : std_logic_vector (3 downto 0);              -- arcache
     prot   : std_logic_vector (2 downto 0);              -- arprot
     valid  : std_logic;                                  -- arvalid
-    qos    : std_logic_vector (3 downto 0);              -- arqos 
+    qos    : std_logic_vector (3 downto 0);              -- arqos
   end record;
 
 -- AXI interfaces (Combined AXI3/4)
@@ -604,6 +605,10 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
                           endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector;
 
+  function ahbselectdata (hdata : std_logic_vector(AHBDW-1 downto 0);
+    haddr : std_logic_vector(4 downto 2); hsize : std_logic_vector(2 downto 0); endian : std_ulogic)
+    return std_logic_vector;
+
   function ahbreadword (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
@@ -692,6 +697,13 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     return std_logic_vector;
 
   function ahbreaddata (
+    hdata  : std_logic_vector(AHBDW-1 downto 0);
+    haddr  : std_logic_vector(4 downto 2);
+    hsize  : std_logic_vector(2 downto 0);
+    endian : std_ulogic)
+    return std_logic_vector;
+
+  function ahbreaddata (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     hsize : std_logic_vector(2 downto 0))
     return std_logic_vector;
@@ -739,9 +751,9 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
     icheck  : integer range 0 to 1 := 1;
     devid   : integer := 0;               -- unique device ID
     enbusmon    : integer range 0 to 1 := 0; --enable bus monitor
-    assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings 
+    assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings
     asserterr   : integer range 0 to 1 := 0; --enable assertions for errors
-    hmstdisable : integer := 0; --disable master checks           
+    hmstdisable : integer := 0; --disable master checks
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
@@ -794,9 +806,9 @@ component ahbxb is
     icheck      : integer range 0 to 1        := 1;
     devid       : integer                     := 0; -- unique device ID
     enbusmon    : integer range 0 to 1        := 0; --enable bus monitor
-    assertwarn  : integer range 0 to 1        := 0; --enable assertions for warnings 
+    assertwarn  : integer range 0 to 1        := 0; --enable assertions for warnings
     asserterr   : integer range 0 to 1        := 0; --enable assertions for errors
-    hmstdisable : integer                     := 0; --disable master checks           
+    hmstdisable : integer                     := 0; --disable master checks
     hslvdisable : integer                     := 0; --disable slave checks
     arbdisable  : integer                     := 0; --disable arbiter checks
     mprio       : integer                     := 0; --master with highest priority
@@ -1080,7 +1092,7 @@ component ahbxb is
       wpv     : in  std_logic_vector((256*4)-1 downto 0) := (others => '0')
     );
   end component;
-  
+
   component apb3ctrl
   generic (
     hindex      : integer := 0;
@@ -1125,12 +1137,12 @@ component ahbxb is
     debug       : integer range 0 to 2 := 2;   -- report cores to console
     fpnpen      : integer range 0 to 1 := 0;   -- full PnP configuration decoding
     busndx      : integer range 0 to 3 := 0;
-    icheck      : integer range 0 to 1 := 1;    
+    icheck      : integer range 0 to 1 := 1;
     devid       : integer := 0;            -- unique device ID
     enbusmon    : integer range 0 to 1 := 0; --enable bus monitor
-    assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings 
+    assertwarn  : integer range 0 to 1 := 0; --enable assertions for warnings
     asserterr   : integer range 0 to 1 := 0; --enable assertions for errors
-    hmstdisable : integer := 0; --disable master checks           
+    hmstdisable : integer := 0; --disable master checks
     hslvdisable : integer := 0; --disable slave checks
     arbdisable  : integer := 0; --disable arbiter checks
     mprio       : integer := 0; --master with highest priority
@@ -1151,13 +1163,13 @@ component ahbxb is
     testoen : in  std_ulogic := '1'
     );
   end component;
-  
+
   component ahbdefmst
     generic ( hindex : integer range 0 to NAHBMST-1 := 0);
     port ( ahbmo  : out ahb_mst_out_type);
   end component;
 
-  component ahblitm2ahbm 
+  component ahblitm2ahbm
     generic(
       hindex    : integer := 0;
       venid     : integer := 16#01#;    --VENDOR_GAISLER
@@ -1174,7 +1186,7 @@ component ahbxb is
       ahbmo_hwrite : in  std_logic;
       ahbmo_hsize  : in  std_logic_vector(2 downto 0);
       ahbmo_hwdata : in  std_logic_vector(AHBDW-1 downto 0);
-      ahbmo_hburst : in  std_logic_vector(2 downto 0); 
+      ahbmo_hburst : in  std_logic_vector(2 downto 0);
       ahbmo_hprot  : in  std_logic_vector(3 downto 0);
       ahbmi_hready : out std_logic;
       ahbmi_hresp  : out std_logic;
@@ -1275,7 +1287,7 @@ component ahbxb is
     apb3o       : in apb3_slv_out_vector;
     err         : out std_ulogic);
   end component;
-  
+
   component ambamon is
     generic(
       asserterr   : integer range 0 to 1 := 1;
@@ -1300,7 +1312,7 @@ component ahbxb is
       apbo       : in apb_slv_out_vector;
       err        : out std_ulogic);
   end component;
-  
+
   subtype vendor_description is string(1 to 24);
   subtype device_description is string(1 to 32);
   type device_table_type is array (0 to 1023) of device_description;
@@ -1392,7 +1404,7 @@ package body amba is
     if cached = 0 then
       for i in 0 to NAHBSLV-1 loop
         for j in NAHBAMR to NAHBCFG-1 loop
-          if (ahbso(i).hconfig(j)(16) = '1') and 
+          if (ahbso(i).hconfig(j)(16) = '1') and
                 (ahbso(i).hconfig(j)(15 downto 4) /= "000000000000")
           then
             if (haddr(31 downto 20) and ahbso(i).hconfig(j)(15 downto 4)) =
@@ -1460,9 +1472,9 @@ package body amba is
   begin
     return ahb_iobar_size(addrmask);
   end;
-  
+
   -- purpose: Duplicates 'hdata' to suite AHB data width. If the input vector's
-  -- length exceeds AHBDW the low part is returned. 
+  -- length exceeds AHBDW the low part is returned.
   function ahbdrivedata (
     hdata : std_logic_vector)
     return std_logic_vector is
@@ -1472,7 +1484,7 @@ package body amba is
       data := hdata(AHBDW+hdata'low-1 downto hdata'low);
     else
       for i in 0 to AHBDW/hdata'length-1 loop
-        data(hdata'length-1+hdata'length*i downto  hdata'length*i) := hdata; 
+        data(hdata'length-1+hdata'length*i downto  hdata'length*i) := hdata;
       end loop;
     end if;
     return data;
@@ -1618,6 +1630,22 @@ package body amba is
     end if;
   end ahbselectdata;
 
+  function ahbselectdata (
+    hdata  : std_logic_vector(AHBDW-1 downto 0);
+    haddr  : std_logic_vector(4 downto 2);
+    hsize  : std_logic_vector(2 downto 0);
+    endian : std_ulogic)
+    return std_logic_vector is
+    variable ret   : std_logic_vector(AHBDW-1 downto 0);
+  begin  -- ahbselectdata
+    if endian = '1' then
+      return ahbselectdatale(hdata,haddr,hsize);
+    else
+      return ahbselectdatabe(hdata,haddr,hsize);
+    end if;
+  end ahbselectdata;
+
+
   -- Description of ahbread* functions and procedures.
   --
   -- The ahbread* subprograms with an 'haddr' input selects the valid slice of
@@ -1635,7 +1663,7 @@ package body amba is
     endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(31 downto 0);
-  begin 
+  begin
     if CORE_ACDM = 1 then data := ahbselectdata(hdata, haddr, HSIZE_WORD, endian)(31 downto 0);
     else data := hdata(31 downto 0); end if;
     return data;
@@ -1677,7 +1705,7 @@ package body amba is
     endian : integer range 0 to 1 := AHBENDIAN)
     return std_logic_vector is
     variable data : std_logic_vector(255 downto 0);
-  begin 
+  begin
 -- pragma translate_off
     assert AHBDW > 32
       report "ahbreaddword can not be used in system with AHB data width < 64"
@@ -1713,7 +1741,7 @@ package body amba is
     haddr : in  std_logic_vector(4 downto 2);
     data  : out std_logic_vector(63 downto 0);
     endian : integer range 0 to 1 := AHBENDIAN) is
-  begin 
+  begin
     data := ahbreaddword(hdata, haddr, endian);
   end ahbreaddword;
 
@@ -1721,7 +1749,7 @@ package body amba is
     hdata : std_logic_vector(AHBDW-1 downto 0))
     return std_logic_vector is
     variable data : std_logic_vector(255 downto 0);
-  begin 
+  begin
 -- pragma translate_off
     assert AHBDW > 32
       report "ahbreaddword can not be used in system with AHB data width < 64"
@@ -1743,7 +1771,7 @@ package body amba is
   procedure ahbreaddword (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     data  : out std_logic_vector(63 downto 0)) is
-  begin 
+  begin
     data := ahbreaddword(hdata);
   end ahbreaddword;
 
@@ -1782,10 +1810,10 @@ package body amba is
     haddr : in  std_logic_vector(4 downto 2);
     data  : out std_logic_vector(127 downto 0);
     endian : integer range 0 to 1 := AHBENDIAN) is
-  begin 
+  begin
     data := ahbread4word(hdata, haddr, endian);
   end ahbread4word;
-  
+
   function ahbread4word (
     hdata : std_logic_vector(AHBDW-1 downto 0))
     return std_logic_vector is
@@ -1810,10 +1838,10 @@ package body amba is
   procedure ahbread4word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     data  : out std_logic_vector(127 downto 0)) is
-  begin 
+  begin
     data := ahbread4word(hdata);
   end ahbread4word;
-  
+
   function ahbread8word (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
@@ -1839,7 +1867,7 @@ package body amba is
     haddr : in  std_logic_vector(4 downto 2);
     data  : out std_logic_vector(255 downto 0);
     endian : integer range 0 to 1 := AHBENDIAN) is
-  begin 
+  begin
     data := ahbread8word(hdata, haddr);
   end ahbread8word;
 
@@ -1863,10 +1891,10 @@ package body amba is
   procedure ahbread8word (
     hdata : in  std_logic_vector(AHBDW-1 downto 0);
     data  : out std_logic_vector(255 downto 0)) is
-  begin 
+  begin
     data := ahbread8word(hdata);
   end ahbread8word;
-  
+
   function ahbreaddata (
     hdata : std_logic_vector(AHBDW-1 downto 0);
     haddr : std_logic_vector(4 downto 2);
@@ -1901,6 +1929,18 @@ package body amba is
       when others => null;
     end case;
     return ahbreadword(hdata);
+  end ahbreaddata;
+
+  function ahbreaddata (
+    hdata  : std_logic_vector(AHBDW-1 downto 0);
+    haddr  : std_logic_vector(4 downto 2);
+    hsize  : std_logic_vector(2 downto 0);
+    endian : std_ulogic)
+    return std_logic_vector is
+    variable endian_int : integer := 0;
+  begin
+    if endian = '1' then endian_int := 1; end if;
+      return ahbreaddata(hdata, haddr, hsize, endian_int);
   end ahbreaddata;
 
   -- a*mux below drives their amba output records with the amba input record if

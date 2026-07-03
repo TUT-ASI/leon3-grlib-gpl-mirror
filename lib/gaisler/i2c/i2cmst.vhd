@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,6 +63,8 @@ library grlib;
 use grlib.amba.all;
 use grlib.devices.all;
 use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
 
 library gaisler;
 use gaisler.i2c.all;
@@ -169,6 +171,23 @@ architecture rtl of i2cmst is
   signal r, rin : i2c_reg_type;
   signal vcc : std_logic;
 
+
+--Asynch regs CONSTANTS declaration
+constant ASYNC_RESET : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
+
+  function RESVAL_FUNC return i2c_reg_type is
+    variable vres : i2c_reg_type;
+  begin
+      vres.prer := (others => '1');
+      vres.ctrl := ('0', '0');
+      vres.txr  := (others => '0');
+      vres.cmd  := ('0','0','0','0', '0');
+      vres.sts   := ('0','0','0','0', '0');
+      vres.irq  := '0';
+      if dynfilt /= 0 then vres.filt := (others => '1'); else vres.filt := (others => '0'); end if;
+    return vres;
+  end function RESVAL_FUNC;
+  constant RESVAL : i2c_reg_type := RESVAL_FUNC;
 
 begin
   -- Byte Controller from OpenCores I2C master,
@@ -288,7 +307,8 @@ begin
       end case;
     end if;
     
-    if rstn = '0' then
+    -- if rstn = '0' then
+    if (not ASYNC_RESET) and (rstn = '0') then
       v.prer := (others => '1');
       v.ctrl := ('0', '0');
       v.txr  := (others => '0');
@@ -311,12 +331,25 @@ begin
     
   end process comb;
 
-  reg: process (clk)
-  begin  -- process reg
-    if rising_edge(clk) then
-      r <= rin;
-    end if;
-  end process reg;
+  syncregs : if not ASYNC_RESET generate    
+    regs: process (clk)
+    begin  -- process reg
+      if rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process regs;
+  end generate;
+
+  asyncregs : if ASYNC_RESET generate  
+    regs: process(clk, rstn)
+    begin
+      if rstn = '0' then
+        r <= RESVAL;
+      elsif rising_edge(clk) then
+        r <= rin;
+      end if;
+    end process regs;
+  end generate;
 
   -- Boot message
   -- pragma translate_off

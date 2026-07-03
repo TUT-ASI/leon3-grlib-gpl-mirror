@@ -3,7 +3,7 @@
 --  Copyright (C) 2003 - 2008, Gaisler Research
 --  Copyright (C) 2008 - 2014, Aeroflex Gaisler
 --  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2025, Frontgrade Gaisler
+--  Copyright (C) 2023 - 2026, Frontgrade Gaisler
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library grlib;
+use grlib.config_types.all;
+use grlib.config.all;
 use grlib.stdlib.log2ext;
 library gaisler;
 use gaisler.noelvint.nv_btb_in_type;
@@ -40,17 +42,22 @@ entity btbdmnv is
   generic (
     nentries    : integer range 1  to 32;   -- Number of Entries
     pcbits      : integer range 32 to 56;
-    dissue      : integer range 0  to 1     -- Dual issue
+    dissue      : integer range 0  to 1;    -- Dual issue
+    scantest    : integer               := 0
     );
   port (
     clk         : in  std_ulogic;
     rstn        : in  std_ulogic;
     btbi        : in  nv_btb_in_type;
-    btbo        : out nv_btb_out_type
+    btbo        : out nv_btb_out_type;
+    testen      : in  std_ulogic;
+    testrst     : in  std_ulogic
     );
 end btbdmnv;
 
 architecture rtl of btbdmnv is
+  constant RESET_ALL    : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
+  constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
 
   constant INDEX_LOW  : integer := 2+dissue;
   constant INDEX_HIGH : integer := INDEX_LOW + log2ext(nentries) - 1;
@@ -69,6 +76,12 @@ architecture rtl of btbdmnv is
     tags    : btbtag;
     lpc     : lpc_a;
   end record;
+  constant reg_reset : reg_type := (
+    valid   => (others => '0'),
+    targets => (others => (others => '0')),
+    tags    => (others => (others => '0')),
+    lpc     => (others => (others => '0')));
+    
 
   function lsb_hit(entry_pc : std_logic_vector(1 downto 0);
                    cur_pc   : std_logic_vector(1 downto 0))
@@ -102,8 +115,11 @@ architecture rtl of btbdmnv is
   end;
 
   signal r, rin : reg_type;
+  signal arst   : std_ulogic;
 
 begin  -- rtl
+  arst        <= testrst when (ASYNC_RESET and scantest/=0 and testen/='0') else
+                 rstn when ASYNC_RESET else '1';
 
   comb : process(r, btbi, rstn)
     variable v          : reg_type;
@@ -165,11 +181,24 @@ begin  -- rtl
 
   end process;
 
-  seq : process(clk, rstn)
-  begin
-    if rising_edge(clk) then
-        r <= rin;
-    end if;
-  end process;
+  syncrregs : if not ASYNC_RESET generate
+    seq : process(clk, rstn)
+    begin
+      if rising_edge(clk) then
+          r <= rin;
+      end if;
+    end process;
+  end generate;
+
+  asyncrregs : if ASYNC_RESET generate
+    regs : process(clk, arst)
+    begin
+      if arst = '0' then
+        r <= reg_reset;
+      elsif rising_edge(clk) then
+          r <= rin;
+      end if;
+    end process;
+  end generate;
 
 end rtl;
