@@ -115,3 +115,6 @@ include $(GRLIB)/software/leon3/Makefile
 
 ##################  project specific targets ##########################
 
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+VIVADO_LOCAL_IPS = mig.tcl
+

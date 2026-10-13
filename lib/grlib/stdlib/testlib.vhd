@@ -50,7 +50,7 @@ package testlib is
    type data_vector256 is array (natural range <>) of std_logic_vector(255 downto 0);
    type nibble_vector  is array (natural range <>) of std_logic_vector(3 downto 0);
    subtype data_vector is data_vector32;
-   
+
    -----------------------------------------------------------------------------
    -- compare function handling '-'. c is the expected data parameter. If it is
    --'-' or 'U' then this bit is not compared. Returns true if the vectors match
@@ -193,7 +193,7 @@ package testlib is
      constant filename:      in    string := "";
      constant size:          in    integer := 0;
      variable dataout:       out   octet_vector);
-   
+
    ----------------------------------------------------------------------------
    -- Read file contents to data_vector
    ----------------------------------------------------------------------------
@@ -222,8 +222,16 @@ package testlib is
      constant endian  : std_logic := '0')
      return integer;
 
+   -- Returns offset to start of valid data for an access of size 'size' in
+   -- AXI data vector
+   function axi_doff (
+      constant dw    : integer;
+      constant size  : integer;           -- access size
+      constant addr  : std_logic_vector(6 downto 0))
+   return integer;
+
 -- pragma translate_on
-   
+
 end package testlib;
 
 -- pragma translate_off
@@ -384,7 +392,7 @@ package body testlib is
          severity failure;
       wait;
    end procedure tterminate;
-   
+
    -----------------------------------------------------------------------------
    -- check std_logic_vector array
    -----------------------------------------------------------------------------
@@ -573,8 +581,8 @@ package body testlib is
         d(i/4)((3-(i mod 4))*8+7 downto (3-(i mod 4))*8) := o(i);
       end loop;
       return d;
-   end function conv_data_vector;  
-   
+   end function conv_data_vector;
+
   procedure compare(
     constant data:     in    octet_vector;
     constant cxdata:   in    octet_vector;
@@ -624,8 +632,8 @@ package body testlib is
          when others => R := "XXXX";
       end case;
    return R;
-   end FromChar; 
-   
+   end FromChar;
+
    procedure readfile(
      constant filename:      in    string := "";
      constant filetype:      in    integer := 0;
@@ -652,7 +660,7 @@ package body testlib is
             hread(l, dtmp, test);
             if (not test) then
               print("illegal data in file");
-              exit; 
+              exit;
             end if;
             for i in 0 to 3 loop
               data(count) := dtmp(31-i*8 downto 24-i*8);
@@ -662,7 +670,7 @@ package body testlib is
               end if;
             end loop;
             if count >= size then
-              exit; 
+              exit;
             end if;
           end loop;
           if count < size then
@@ -705,7 +713,7 @@ package body testlib is
 --                   Print(tost(data(count)));
                   count := count + 1;
                   if count >= size then
-                    exit; 
+                    exit;
                   end if;
                 end if;
                 i := i + 1;
@@ -732,7 +740,7 @@ package body testlib is
    begin
      readfile(filename, 0, size, dataout);
    end procedure;
-   
+
    procedure readfile(
      constant filename:      in    string := "";
      constant size:          in    integer := 0;
@@ -753,11 +761,11 @@ package body testlib is
           hread(l, data(count/4), test);
           if (not test) then
             print("illegal data in file");
-            exit; 
+            exit;
           end if;
           count := count + 4;
           if count >= size then
-            exit; 
+            exit;
           end if;
         end loop;
         if count < size then
@@ -769,7 +777,7 @@ package body testlib is
           else
             dataout(dataout'low to dataout'low+data'high) := data(0 to data'high);
           end if;
-        end if;  
+        end if;
       end if;
     else
       print("size is zero. no data read");
@@ -788,14 +796,14 @@ package body testlib is
       real_tmp := floor(rand_tmp*max);
       rand := integer(real_tmp);
    end procedure;
-   
+
   function reverse(din : std_logic_vector)
     return std_logic_vector is
     variable dout: std_logic_vector(din'REVERSE_RANGE);
   begin
     for i in din'RANGE loop dout(i) := din(i); end loop;
-    return dout; 
-  end function reverse; 
+    return dout;
+  end function reverse;
 
    function ahb_doff (
      constant dw   : integer;
@@ -805,7 +813,7 @@ package body testlib is
      return integer is
      variable off : integer;
    begin  -- ahb_doff
-     
+
      if endian = '1' then --little endian
        if size < 256 and dw = 256 and addr(4) = '1' then off := 128; else off := 0; end if;
        if size < 128 and dw >= 128 and addr(3) = '1' then off := off + 64; end if;
@@ -821,6 +829,28 @@ package body testlib is
      end if;
      return off;
    end ahb_doff;
+
+   function axi_doff (
+      constant dw    : integer;
+      constant size  : integer;
+      constant addr  : std_logic_vector(6 downto 0))
+   return integer is
+      variable off : integer;
+      variable shamt : integer;
+      variable addr_aligned : unsigned(6 downto 0);
+   begin
+      off := 0;
+      shamt := grlib.stdlib.log2(size/8);
+      addr_aligned := shift_left(shift_right(unsigned(addr), shamt), shamt);
+      if size < 1024 and dw = 1024 and addr_aligned(6) = '1' then off := off + 512; end if;
+      if size <  512 and dw >= 512 and addr_aligned(5) = '1' then off := off + 256; end if;
+      if size <  256 and dw >= 256 and addr_aligned(4) = '1' then off := off + 128; end if;
+      if size <  128 and dw >= 128 and addr_aligned(3) = '1' then off := off +  64; end if;
+      if size <   64 and dw >=  64 and addr_aligned(2) = '1' then off := off +  32; end if;
+      if size <   32 and dw >=  32 and addr_aligned(1) = '1' then off := off +  16; end if;
+      if size <   16 and dw >=  16 and addr_aligned(0) = '1' then off := off +   8; end if;
+      return off;
+   end function axi_doff;
 
 end package body ; --=======================================--
 -- pragma translate_on

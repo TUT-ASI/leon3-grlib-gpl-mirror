@@ -520,7 +520,7 @@ begin
       v.lr_valid := '0';
     end if;
     -- Snooping
-    if r.ahb_phready='1' and r.ahb2_htrans="10" and r.ahb2_hwrite='1' and 
+    if r.ahb_phready='1' and r.ahb2_htrans(1)='1' and r.ahb2_hwrite='1' and 
        r.ahb2_nosnoop='0' then
       if r.ahb2_haddr(r.lr_addr'high downto DOFFSET_LOW) = 
          r.lr_addr(r.lr_addr'high downto DOFFSET_LOW) then
@@ -621,7 +621,9 @@ begin
       end loop;
     end if;
     if r.ahb_phready='1' then
-      if r.ahb2_htrans="10" and r.ahb2_hwrite='1' and r.ahb2_nosnoop='0' and bifi_snoopen='1' then
+      if (r.ahb2_htrans="10" or
+          (r.ahb2_htrans = "11" and r.ahb2_haddr(DLINE_HIGH downto 2) = (DLINE_HIGH downto 2 => '0') )) and
+         r.ahb2_hwrite='1' and r.ahb2_nosnoop='0' and bifi_snoopen='1' then
         -- Write snoop
         osni.dtagsen := (others => '1');
         v.ahb3_sntype := SNTYPE_SNOOP;

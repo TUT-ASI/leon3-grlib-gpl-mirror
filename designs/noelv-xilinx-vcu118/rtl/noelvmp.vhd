@@ -828,7 +828,7 @@ begin
         apb_clk  => clkm,
         apb_rstn => rstn,
         apbi     => eth_apbi,
-        apbo     => open
+        apbo     => eth_apbo
       );
 
       emdio_pad : iopad generic map (tech => padtech, level => cmos, voltage => x18v)

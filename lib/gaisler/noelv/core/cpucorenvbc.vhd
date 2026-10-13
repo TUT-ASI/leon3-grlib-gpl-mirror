@@ -47,6 +47,12 @@ use gaisler.noelv_cpu_cfg.all;
 use gaisler.noelv_pma_cfg.all;
 use gaisler.noelvint.all;
 use gaisler.utilnv.all;
+library bsc;
+use bsc.sparrow.sprw_in_vec;
+use bsc.sparrow.sprw_out_vec;
+use bsc.sparrow.sprw_out_none;
+use bsc.sparrow.sparrow_unit;
+use bsc.sparrow.sprw_ctrl_reg_word_res;
 
 entity cpucorenvbc is
   generic (
@@ -69,7 +75,7 @@ entity cpucorenvbc is
     cgen                : integer;
     asyncif             : integer;
     tscen               : integer := 0;
-    ext_itbuf           : integer := 0
+    ext_itbuf           : integer := 1
     );
   port (
     clk         : in  std_ulogic;           -- CPU clock
@@ -115,6 +121,7 @@ architecture rtl of cpucorenvbc is
                                         DBLTRP  => DBLTRP_SUPPORT,
                                         ZICFISS => ZICFISS_SUPPORT,
                                         ZICFILP => ZICFILP_SUPPORT,
+                                        SPARROW => SPARROW_SUPPORT,
                                         RV64    => boolean'pos(XLEN = 64)
                                       );
 
@@ -302,6 +309,10 @@ architecture rtl of cpucorenvbc is
   signal mulo         : mul_out_type;
   signal divi         : div_in_type;
   signal divo         : div_out_type;
+
+  -- Sparrow Unit
+  signal sdi          : sprw_in_vec;
+  signal sdo          : sprw_out_vec;
 
   signal c_perf       : perf_type;
 
@@ -511,6 +522,7 @@ begin
       ext_smpmpmt   => cfg_c.ext_smpmpmt,
       ext_svnapot   => cfg_c.ext_svnapot,
       tlb_pmp       => cfg_c.tlb_pmp,
+      ext_sparrow   => cfg_c.ext_sparrow,
       mode_s        => cfg_c.mode_s,
       mode_u        => cfg_c.mode_u,
       dmen          => cfg_c.dmen,
@@ -567,6 +579,8 @@ begin
       fpuia         => fpia,
       fpuo          => fpo,
       fpuoa         => fpoa,
+      sdi           => sdi,
+      sdo           => sdo,
       cnt           => cnt,
       itracei       => itracei,
       itraceo       => itraceo,
@@ -631,6 +645,115 @@ begin
   nomgen : if cfg_c.ext_m = 0 generate
     divo  <= div_out_none;
     mulo  <= mul_out_none;
+  end generate;
+
+  spgen : if cfg_c.ext_sparrow = 1 generate
+    sparrow_ctrl : block
+      type ctrl_t is record
+        valid : boolean;
+        ctrl  : wordx;
+      end record;
+      constant ctrl_none : ctrl_t := (false, zerox);
+      type ctrl_arr is array(integer range <>) of ctrl_t;
+
+      type reg_t is record
+        set  : boolean;
+        ctrl : ctrl_arr(0 to 3);
+        sel  : unsigned(1 downto 0);
+      end record;
+
+      signal sparrow_in  : sprw_in_vec;
+      signal sparrow_out : sprw_out_vec;
+      signal r   : reg_t;
+      signal rin : reg_t;
+
+    begin
+
+      sploop: for i in 0 to 1 - cfg_c.single_issue generate
+        sprw : sparrow_unit
+          generic map (
+            sh8_en  => i = 1,
+            sh16_en => i = 1
+--            sh8_en  => false,
+--            sh16_en => false
+          )
+          port map (
+            clk       => gclk,
+            rstn      => rstx,
+            holdn     => holdn,
+            sdi       => sparrow_in(i),
+            sdo       => sparrow_out(i)
+          );
+      end generate;
+
+      -- Deal with writes to Sparrow ctrl via nop.nop x0,...
+      comb: process(r, holdn, sdi, sdo, sparrow_out)
+        -- Non-const
+        variable v : reg_t;
+      begin
+        v := r;
+
+        if holdn = '1' then
+          -- Update actual ctrl value when ctrl set instruction reaches WB.
+          -- Cancelled ctrl settings will thus never be completed.
+          v.ctrl(v.ctrl'high).valid  := true;
+          if sdi(1).wb_valid = '1' and r.ctrl(r.ctrl'high - 1).valid then
+            v.ctrl(v.ctrl'high).ctrl := r.ctrl(r.ctrl'high - 1).ctrl;
+          end if;
+          -- Move queued ctrl value forward
+          for i in r.ctrl'high - 1 downto r.ctrl'low + 1 loop
+            v.ctrl(i) := r.ctrl(i - 1);
+          end loop;
+          v.ctrl(v.ctrl'low).valid := false;
+
+          -- Collect incoming ctrl when instruction in EX
+          if r.set then
+            v.ctrl(v.ctrl'low).valid := true;
+            v.ctrl(v.ctrl'low).ctrl  := sdi(1).ra;
+          end if;
+
+          -- Write to ctrl coming up?
+          v.set := false;
+          if sdi(1).rc_we = '1' and
+             all_0(sdi(1).op1 & sdi(1).op2 & sdi(1).opx) and sdi(1).rd_zero = '1' then
+            v.set := true;
+          end if;
+        end if;
+
+        -- Select newest set ctrl value
+        v.sel := u2vec(v.ctrl'high, v.sel);
+        for i in v.ctrl'high downto v.ctrl'low loop
+          if v.ctrl(i).valid then
+            v.sel := u2vec(i, v.sel);
+          end if;
+        end loop;
+
+        sparrow_in         <= sdi;
+        sparrow_in(0).ctrl <= v.ctrl(u2i(v.sel)).ctrl;
+        sparrow_in(1).ctrl <= v.ctrl(u2i(v.sel)).ctrl;
+        sdo(0)             <= sparrow_out(0);
+        sdo(1)             <= sparrow_out(1);
+        sdo(1).ctrl        <= r.ctrl(r.ctrl'high).ctrl;
+
+        rin <= v;
+      end process;
+
+      reg: process(gclk)
+      begin
+        if rising_edge(clk) then
+          r <= rin;
+          if rstx = '0' then
+            r <= (false, (r.ctrl'high => (true, sprw_ctrl_reg_word_res), others => ctrl_none), "00");
+          end if;
+        end if;
+      end process;
+    end block;
+  end generate;
+
+  nospgen : if cfg_c.ext_sparrow = 0 generate
+    sploop: for i in 0 to 1 - cfg_c.single_issue generate
+      sdo(i) <= sprw_out_none;
+    end generate;
   end generate;
 
 

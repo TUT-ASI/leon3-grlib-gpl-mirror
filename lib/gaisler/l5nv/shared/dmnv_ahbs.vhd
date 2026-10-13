@@ -40,15 +40,18 @@ entity dmnv_ahbs is
     hindex    : integer range 0  to 15  := 0;   -- bus index
     hmindex   : integer range 0  to 15  := 0;   -- master bus index
     haddr     : integer                 := 16#900#;
-    hmask     : integer                 := 16#f00#
+    hmask     : integer                 := 16#f00#;
+    ntrace    : integer                 := 5
   );
   port (
     clk     : in  std_ulogic;
     rstn    : in  std_ulogic;
     ahbsi   : in  ahb_slv_in_type;
     ahbso   : out ahb_slv_out_type;
+    -- Debug-link Interface
     ahbmi   : in  ahb_mst_in_type;
     ahbmo   : out ahb_mst_out_type;
+    extaddrs : out  std_logic_vector(31 downto 0);
     -- DM interface
     dmi     : out dev_reg_in_type;
     dmo     : in  dev_reg_out_type := dev_reg_out_none;
@@ -57,6 +60,9 @@ entity dmnv_ahbs is
     -- Trace interface
     tri     : out dev_reg_in_type;
     tro     : in  dev_reg_out_type;
+    -- Striped traces master ports
+    traceo  : out dmstr_trace_m2s_array_type(0 to ntrace - 1);
+    tracei  : in dmstr_trace_s2m_array_type(0 to ntrace - 1) := (others => dmstr_trace_s2m_type_none);
     -- LEON5 mode
     l5mode  : in  std_ulogic;
     -- LEON5 itrace buffer
@@ -74,6 +80,8 @@ architecture rtl of dmnv_ahbs is
   constant ASYNC_RESET  : boolean := GRLIB_CONFIG_ARRAY(grlib_async_reset_enable) = 1;
   constant AREA_H       : integer := 21;
   constant AREA_L       : integer := 19;
+  constant AHB_TRACE_L  : integer := 7;
+  constant AHB_TRACE_H  : integer := log2(ntrace + 1) + AHB_TRACE_L - 1;
   -- AMBA PnP
   -- RVDM is instantiated both as a Slave and as a Master. For GRMON to work
   -- properly version of Master and Slave have to coincide. If RVDM_VERSION
@@ -126,17 +134,27 @@ architecture rtl of dmnv_ahbs is
     dodma     : std_ulogic;
     sbwr      : std_ulogic;
     sbaccess  : std_logic_vector(2 downto 0);
+    -- Trace output
+    traceo : dmstr_trace_m2s_array_type(0 to ntrace - 1);
+    new_acc: std_ulogic;
+    dmstr_bp_hit_mask : std_logic_vector(ntrace - 1 downto 0);
+    dmstr_bp_to_en_mask : std_logic_vector(ntrace - 1 downto 0);
   end record;
   constant RES_T : reg_type := (
     ahb        => ahb_reg_none,
     -- System bus access
     dodma     => '0',
     sbwr      => '0',
-    sbaccess  => (others => '0')
+    sbaccess  => (others => '0'),
+    -- Trace output
+    traceo => (others => dmstr_trace_m2s_type_none),
+    new_acc => '0',
+    dmstr_bp_hit_mask => (others => '0'),
+    dmstr_bp_to_en_mask => (others => '0')
     );
 
   -- Signals ----------------------------------------------------------------
-  signal r, rin : reg_type;     
+  signal r, rin : reg_type;
   -- AHB Master control signals
   signal ami : ahb_dma_in_type;
   signal amo : ahb_dma_out_type;
@@ -152,7 +170,7 @@ begin
   port map (rstn, clk, ami, amo, ahbmi, ahbmo);
 
 
-  comp : process(r, ahbsi, ahbmi, amo, dmo, dmo2, tro, l5mode, l5ito, l5iuo)
+  comp : process(r, ahbsi, ahbmi, amo, dmo, dmo2, tro, l5mode, l5ito, l5iuo, tracei)
     variable v    : reg_type;
     -- AHB Interface
     variable hready         : std_ulogic;
@@ -171,6 +189,9 @@ begin
     variable otri   : dev_reg_in_type;
     variable ol5iti : dev_reg_in_type;
     variable ol5iui : dev_reg_in_type;
+    -- AHB trace
+    variable active_trace   : integer range 0 to ntrace - 1;
+    variable trace_acc      : integer range 0 to 1;
   begin
     ---------------------------------------------------------------------------------
     -- Defaults
@@ -214,7 +235,8 @@ begin
     -- regardless of the BE field of the domain’s domaincfg register 
 
     -- Signal assignation to AHB master interface
-    ami.address   <= dmo2.sbaddr;
+    ami.address   <= dmo2.sbaddr(31 downto 0);
+    extaddrs      <= dmo2.sbaddr(63 downto 32);
     ami.wdata     <= ahbdrivedata(dmo2.sbwdata);
     ami.start     <= ahbreq;
     ami.burst     <= '0';
@@ -294,6 +316,24 @@ begin
     ol5iui.data := wdata;
     ol5iui.testen := ahbsi.testen;
     ol5iui.testrst:= ahbsi.testrst;
+
+    -- AHB trace access
+    v.new_acc     := '1';
+    trace_acc     := boolean'pos(notx(r.ahb.haddr(AHB_TRACE_H downto AHB_TRACE_L)) and 
+                                 r.ahb.haddr(AHB_TRACE_H downto AHB_TRACE_L) /= zero32(AHB_TRACE_H downto AHB_TRACE_L) and
+                                 unsigned(r.ahb.haddr(AHB_TRACE_H downto AHB_TRACE_L)) <= ntrace);
+    active_trace  := 0;
+    if hasel1 = "010" and trace_acc = 1 then
+      active_trace  := to_integer(unsigned(r.ahb.haddr(AHB_TRACE_H downto AHB_TRACE_L))) - trace_acc;
+    end if;
+    v.traceo(active_trace).valid    := not r.ahb.hwrite;
+    v.traceo(active_trace).address  := r.ahb.haddr(6 downto 2);
+    v.traceo(active_trace).write    := r.ahb.hwrite;
+    v.traceo(active_trace).data     := wdata;
+    for i in r.traceo'range loop
+      v.traceo(i).valid := '0';
+    end loop;
+
     if r.ahb.hsel(1)='0' and r.ahb.hsel(0)='1' and r.ahb.hwrite='1' then
       v.ahb.hready := '0';
     end if;
@@ -331,7 +371,7 @@ begin
               v.ahb.hsel := "00";
             end if;
           elsif (r.ahb.haddr(7)='1' and l5mode = '1') or  -- LEON5 mode
-                (r.ahb.haddr(10)='1' and r.ahb.haddr(7)='0' and l5mode = '0') then -- NOELV mode
+                (r.ahb.haddr(10)='1' and l5mode = '0') then -- NOELV mode
             -- Instruction trace buffer control registers
             ol5iti.sel(0) := '1';
             rdata       := l5ito.data;
@@ -340,15 +380,15 @@ begin
             else
               v.ahb.hsel := "00";
             end if;
-          else
-            --trace_reg_access(hasel2, r.ahb.hwrite, wdata, rdata);
-            otri.sel(0) := '1';
-            rdata       := tro.data;
-            if tro.rdy='0' then
-              v.ahb.hready := '0';
-            else
-              v.ahb.hsel := "00";
-            end if;
+          --else
+          --  --trace_reg_access(hasel2, r.ahb.hwrite, wdata, rdata);
+          --  otri.sel(0) := '1';
+          --  rdata       := tro.data;
+          --  if tro.rdy='0' then
+          --    v.ahb.hready := '0';
+          --  else
+          --    v.ahb.hsel := "00";
+          --  end if;
           end if;
 
         when "001"  =>  -- IU tbuf data
@@ -361,10 +401,44 @@ begin
           end if;
 
         when "010"  =>  -- AHB tbuf
-          --trace_data_access(hasel3, r.ahb.hwrite, r.ahb.hhold(0), wdata, rdata);
-          otri.sel(1) := '1';
-          rdata       := tro.data;
-          if tro.rdy='0' then
+          v.new_acc := '0';
+          if trace_acc = 0 then
+            case r.ahb.haddr(6 downto 2) is
+              when "00000" =>
+                rdata(log2(ntrace + 1)-1 downto 0) :=
+                  std_logic_vector(to_unsigned(ntrace, log2(ntrace + 1)));
+              when "00001" =>
+                if r.ahb.hsel(1) = '1' and r.ahb.hwrite = '1' then
+                  for i in 0 to ntrace - 1 loop
+                    v.traceo(i).enable := ahbsi.hwdata(i);
+                  end loop;
+                else
+                  for i in 0 to ntrace - 1 loop
+                    rdata(i) := r.traceo(i).enable;
+                  end loop;
+                end if;
+              when "00010" =>
+                if r.ahb.hsel(1) = '1' and r.ahb.hwrite = '1' then
+                  v.dmstr_bp_hit_mask := ahbsi.hwdata(ntrace - 1 downto 0);
+                else
+                  rdata(ntrace - 1 downto 0) := r.dmstr_bp_hit_mask;
+                end if;
+              when "00011" =>
+                if r.ahb.hsel(1) = '1' and r.ahb.hwrite = '1' then
+                  v.dmstr_bp_to_en_mask := ahbsi.hwdata(ntrace - 1 downto 0);
+                else
+                  rdata(ntrace - 1 downto 0) := r.dmstr_bp_to_en_mask;
+                end if;
+              when others => null;
+            end case;
+          else
+            if r.new_acc = '1' then -- Only generate a valid pulse
+              v.traceo(active_trace).valid := '1';
+            end if;
+            rdata       := tracei(active_trace).data;
+          end if;
+
+          if tracei(active_trace).valid = '0' and trace_acc = 1 then
             v.ahb.hready := '0';
           else
             v.ahb.hsel := "00";
@@ -425,15 +499,31 @@ begin
       end if;
     end if;
 
+    ----------------------
+    -- AHB Stripe Trace Breakpoint Hit Management.
+    ----------------------
+    for i in 0 to ntrace - 1 loop
+      if tracei(i).breakpoint_hit = '1' then
+        if r.dmstr_bp_hit_mask(i) = '1' then
+          for j in 0 to ntrace - 1 loop
+            if r.dmstr_bp_to_en_mask(j) = '1' then
+              v.traceo(j).enable := '0';
+            end if;
+          end loop;
+        end if;
+      end if;
+    end loop;
+
     ---------------------------------------------------------------------------------
     -- Signals
     ---------------------------------------------------------------------------------
     rin           <= v;
-    dmi           <= odmi;    
-    dmi2          <= odmi2;    
-    tri           <= otri;    
+    dmi           <= odmi;
+    dmi2          <= odmi2;
+    tri           <= otri;
     l5iti         <= ol5iti;
     l5iui         <= ol5iui;
+    traceo        <= r.traceo;
 
     -- AHB Interface
     ahbso.hready  <= hready;

@@ -46,6 +46,10 @@ begin
       x0 : clkinv_saed32 port map (i => i, o => o);
     end generate;
 
+    tsmc7 : if (tech = n7) generate
+      x0 : clkinv_n7 port map (i => i, o => o);
+    end generate;
+
     dar : if (tech = dare) generate
       x0 : clkinv_dare port map (i => i, o => o);
     end generate;

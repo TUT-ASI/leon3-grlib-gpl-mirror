@@ -3050,49 +3050,50 @@ proc menu11 {w title} {
 
 
 	bool $w.config.f 11 0 "Enable L2 Cache                      " CONFIG_L2_ENABLE
+	bool $w.config.f 11 1 "Implement L2 Cache Lite              " CONFIG_L2_LITE
 	global tmpvar_32
-	minimenu $w.config.f 11 1 "Associativity (ways)            " tmpvar_32 CONFIG_L2_ASSO1
-	menu $w.config.f.x1.x.menu -tearoffcommand "menutitle \"Associativity (ways)            \""
-	$w.config.f.x1.x.menu add radiobutton -label "1" -variable tmpvar_32 -value "1" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "2" -variable tmpvar_32 -value "2" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "3" -variable tmpvar_32 -value "3" -command "update_active"
-	$w.config.f.x1.x.menu add radiobutton -label "4" -variable tmpvar_32 -value "4" -command "update_active"
-	menusplit $w $w.config.f.x1.x.menu 4
+	minimenu $w.config.f 11 2 "Associativity (ways)            " tmpvar_32 CONFIG_L2_ASSO1
+	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Associativity (ways)            \""
+	$w.config.f.x2.x.menu add radiobutton -label "1" -variable tmpvar_32 -value "1" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "2" -variable tmpvar_32 -value "2" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "3" -variable tmpvar_32 -value "3" -command "update_active"
+	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_32 -value "4" -command "update_active"
+	menusplit $w $w.config.f.x2.x.menu 4
 	global tmpvar_33
-	minimenu $w.config.f 11 2 "Way size (kbytes/way)" tmpvar_33 CONFIG_L2_SZ1
-	menu $w.config.f.x2.x.menu -tearoffcommand "menutitle \"Way size (kbytes/way)\""
-	$w.config.f.x2.x.menu add radiobutton -label "1" -variable tmpvar_33 -value "1" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "2" -variable tmpvar_33 -value "2" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "4" -variable tmpvar_33 -value "4" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "8" -variable tmpvar_33 -value "8" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "16" -variable tmpvar_33 -value "16" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "32" -variable tmpvar_33 -value "32" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "64" -variable tmpvar_33 -value "64" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "128" -variable tmpvar_33 -value "128" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "256" -variable tmpvar_33 -value "256" -command "update_active"
-	$w.config.f.x2.x.menu add radiobutton -label "512" -variable tmpvar_33 -value "512" -command "update_active"
-	menusplit $w $w.config.f.x2.x.menu 10
+	minimenu $w.config.f 11 3 "Way size (kbytes/way)" tmpvar_33 CONFIG_L2_SZ1
+	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"Way size (kbytes/way)\""
+	$w.config.f.x3.x.menu add radiobutton -label "1" -variable tmpvar_33 -value "1" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "2" -variable tmpvar_33 -value "2" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "4" -variable tmpvar_33 -value "4" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "8" -variable tmpvar_33 -value "8" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "16" -variable tmpvar_33 -value "16" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_33 -value "32" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "64" -variable tmpvar_33 -value "64" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "128" -variable tmpvar_33 -value "128" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "256" -variable tmpvar_33 -value "256" -command "update_active"
+	$w.config.f.x3.x.menu add radiobutton -label "512" -variable tmpvar_33 -value "512" -command "update_active"
+	menusplit $w $w.config.f.x3.x.menu 10
 	global tmpvar_34
-	minimenu $w.config.f 11 3 "Line size (bytes)            " tmpvar_34 CONFIG_L2_LINE32
-	menu $w.config.f.x3.x.menu -tearoffcommand "menutitle \"Line size (bytes)            \""
-	$w.config.f.x3.x.menu add radiobutton -label "32" -variable tmpvar_34 -value "32" -command "update_active"
-	$w.config.f.x3.x.menu add radiobutton -label "64" -variable tmpvar_34 -value "64" -command "update_active"
-	menusplit $w $w.config.f.x3.x.menu 2
-	bool $w.config.f 11 4 "Use HPROT information                " CONFIG_L2_HPROT
-	bool $w.config.f 11 5 "Enable L2 cache at power-on          " CONFIG_L2_PEN
-	bool $w.config.f 11 6 "Enable write-through at power-on     " CONFIG_L2_WT
-	bool $w.config.f 11 7 "Random replacement (LRU default)     " CONFIG_L2_RAN
-	bool $w.config.f 11 8 "Shared RAM for multi-way caches      " CONFIG_L2_SHARE
-	hex $w.config.f 11 9 "Cacheability map                     " CONFIG_L2_MAP
-	int $w.config.f 11 10 "Number of MTRR registers             " CONFIG_L2_MTRR
+	minimenu $w.config.f 11 4 "Line size (bytes)            " tmpvar_34 CONFIG_L2_LINE32
+	menu $w.config.f.x4.x.menu -tearoffcommand "menutitle \"Line size (bytes)            \""
+	$w.config.f.x4.x.menu add radiobutton -label "32" -variable tmpvar_34 -value "32" -command "update_active"
+	$w.config.f.x4.x.menu add radiobutton -label "64" -variable tmpvar_34 -value "64" -command "update_active"
+	menusplit $w $w.config.f.x4.x.menu 2
+	bool $w.config.f 11 5 "Use HPROT information                " CONFIG_L2_HPROT
+	bool $w.config.f 11 6 "Enable L2 cache at power-on          " CONFIG_L2_PEN
+	bool $w.config.f 11 7 "Enable write-through at power-on     " CONFIG_L2_WT
+	bool $w.config.f 11 8 "Random replacement (LRU default)     " CONFIG_L2_RAN
+	bool $w.config.f 11 9 "Shared RAM for multi-way caches      " CONFIG_L2_SHARE
+	hex $w.config.f 11 10 "Cacheability map                     " CONFIG_L2_MAP
+	int $w.config.f 11 11 "Number of MTRR registers             " CONFIG_L2_MTRR
 	global tmpvar_35
-	minimenu $w.config.f 11 11 "Enable EDAC            " tmpvar_35 CONFIG_L2_EDAC_NONE
-	menu $w.config.f.x11.x.menu -tearoffcommand "menutitle \"Enable EDAC            \""
-	$w.config.f.x11.x.menu add radiobutton -label "None" -variable tmpvar_35 -value "None" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "Yes" -variable tmpvar_35 -value "Yes" -command "update_active"
-	$w.config.f.x11.x.menu add radiobutton -label "TechSpec" -variable tmpvar_35 -value "TechSpec" -command "update_active"
-	menusplit $w $w.config.f.x11.x.menu 3
-	bool $w.config.f 11 12 "AXI backend interface                " CONFIG_L2_AXI
+	minimenu $w.config.f 11 12 "Enable EDAC            " tmpvar_35 CONFIG_L2_EDAC_NONE
+	menu $w.config.f.x12.x.menu -tearoffcommand "menutitle \"Enable EDAC            \""
+	$w.config.f.x12.x.menu add radiobutton -label "None" -variable tmpvar_35 -value "None" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "Yes" -variable tmpvar_35 -value "Yes" -command "update_active"
+	$w.config.f.x12.x.menu add radiobutton -label "TechSpec" -variable tmpvar_35 -value "TechSpec" -command "update_active"
+	menusplit $w $w.config.f.x12.x.menu 3
+	bool $w.config.f 11 13 "AXI backend interface                " CONFIG_L2_AXI
 
 
 
@@ -3751,10 +3752,10 @@ proc menu16 {w title} {
 	bool $w.config.f 16 0 "Enable SPI memory controller    " CONFIG_SPIMCTRL
 	hex $w.config.f 16 1 "Read instruction    " CONFIG_SPIMCTRL_READCMD
 	bool $w.config.f 16 2 "Read instruction requires dummy byte  " CONFIG_SPIMCTRL_DUMMYBYTE
-	bool $w.config.f 16 3 "Enable dual output for reads  " CONFIG_SPIMCTRL_DUALOUTPUT
-	bool $w.config.f 16 4 "Enable quad output for reads  " CONFIG_SPIMCTRL_QUADOUTPUT
-	bool $w.config.f 16 5 "Enable dual input for reads  " CONFIG_SPIMCTRL_DUALINPUT
-	bool $w.config.f 16 6 "Enable quad input for reads  " CONFIG_SPIMCTRL_QUADINPUT
+	bool $w.config.f 16 3 "Enable dual output  " CONFIG_SPIMCTRL_DUALOUTPUT
+	bool $w.config.f 16 4 "Enable quad output  " CONFIG_SPIMCTRL_QUADOUTPUT
+	bool $w.config.f 16 5 "Enable dual input  " CONFIG_SPIMCTRL_DUALINPUT
+	bool $w.config.f 16 6 "Enable quad input  " CONFIG_SPIMCTRL_QUADINPUT
 	bool $w.config.f 16 7 "Enable DSPI mode  " CONFIG_SPIMCTRL_DSPI
 	bool $w.config.f 16 8 "Enable QSPI mode  " CONFIG_SPIMCTRL_QSPI
 	int $w.config.f 16 9 "Number of dummy cycles  " CONFIG_SPIMCTRL_DUMMYCYCLES
@@ -3763,6 +3764,10 @@ proc menu16 {w title} {
 	int $w.config.f 16 12 "Clock divisor for device clock" CONFIG_SPIMCTRL_SCALER
 	int $w.config.f 16 13 "Clock divisor for alt. device clock" CONFIG_SPIMCTRL_ASCALER
 	bool $w.config.f 16 14 "Enables writes for configuration register  " CONFIG_SPIMCTRL_RECONF
+	hex $w.config.f 16 15 "Write instruction    " CONFIG_SPIMCTRL_WRITECMD
+	bool $w.config.f 16 16 "Allow ROM area writes  " CONFIG_SPIMCTRL_WRITES
+	bool $w.config.f 16 17 "Send XIP byte  " CONFIG_SPIMCTRL_XIPBYTE
+	int $w.config.f 16 18 "XIP disable bit polarity  " CONFIG_SPIMCTRL_XIPPOL
 
 
 
@@ -4345,6 +4350,7 @@ set CONFIG_AHB_MONERR 0
 set CONFIG_AHB_MONWAR 0
 set CONFIG_AHB_DTRACE 0
 set CONFIG_L2_ENABLE 0
+set CONFIG_L2_LITE 0
 set tmpvar_32 "(not set)"
 set CONFIG_L2_ASSO1 0
 set CONFIG_L2_ASSO2 0
@@ -4433,6 +4439,10 @@ set CONFIG_SPIMCTRL_OFFSET 0
 set CONFIG_SPIMCTRL_SCALER 1
 set CONFIG_SPIMCTRL_ASCALER 8
 set CONFIG_SPIMCTRL_RECONF 0
+set CONFIG_SPIMCTRL_WRITECMD 02
+set CONFIG_SPIMCTRL_WRITES 0
+set CONFIG_SPIMCTRL_XIPBYTE 0
+set CONFIG_SPIMCTRL_XIPPOL 1
 set CONFIG_UART1_ENABLE 0
 set tmpvar_39 "(not set)"
 set CONFIG_UA1_FIFO1 0
@@ -5028,6 +5038,8 @@ proc writeconfig {file1 file2} {
 	write_comment $cfg $autocfg "L2 Cache"
 	global CONFIG_L2_ENABLE
 	write_tristate $cfg $autocfg CONFIG_L2_ENABLE $CONFIG_L2_ENABLE [list $notmod] 2
+	global CONFIG_L2_LITE
+	write_tristate $cfg $autocfg CONFIG_L2_LITE $CONFIG_L2_LITE [list $notmod] 2
 	global tmpvar_32
 	
 	if { $tmpvar_32 == "1" } then { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 1 [list $notmod] 2 } else { write_tristate $cfg $autocfg CONFIG_L2_ASSO1 0 [list $notmod] 2 }
@@ -5166,6 +5178,14 @@ proc writeconfig {file1 file2} {
 	write_int $cfg $autocfg CONFIG_SPIMCTRL_ASCALER $CONFIG_SPIMCTRL_ASCALER $notmod
 	global CONFIG_SPIMCTRL_RECONF
 	write_tristate $cfg $autocfg CONFIG_SPIMCTRL_RECONF $CONFIG_SPIMCTRL_RECONF [list $notmod] 2
+	global CONFIG_SPIMCTRL_WRITECMD
+	write_hex $cfg $autocfg CONFIG_SPIMCTRL_WRITECMD $CONFIG_SPIMCTRL_WRITECMD $notmod
+	global CONFIG_SPIMCTRL_WRITES
+	write_tristate $cfg $autocfg CONFIG_SPIMCTRL_WRITES $CONFIG_SPIMCTRL_WRITES [list $notmod] 2
+	global CONFIG_SPIMCTRL_XIPBYTE
+	write_tristate $cfg $autocfg CONFIG_SPIMCTRL_XIPBYTE $CONFIG_SPIMCTRL_XIPBYTE [list $notmod] 2
+	global CONFIG_SPIMCTRL_XIPPOL
+	write_int $cfg $autocfg CONFIG_SPIMCTRL_XIPPOL $CONFIG_SPIMCTRL_XIPPOL $notmod
 	write_comment $cfg $autocfg "UART, timer, I/O port and interrupt controller"
 	write_comment $cfg $autocfg "UART           "
 	global CONFIG_UART1_ENABLE

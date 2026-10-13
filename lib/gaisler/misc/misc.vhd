@@ -1783,7 +1783,8 @@ package misc is
       pmask   : integer               := 16#FFF#;
       pirq    : integer               := 0;
       tobits  : integer range 4 to 64 := 4;
-      sameclk : integer range 0 to 1  := 0
+      sameclk : integer range 0 to 1  := 0;
+      useconf : integer range 0 to 1  := 0
       );
     port (
       apb_clk  : in  std_ulogic;

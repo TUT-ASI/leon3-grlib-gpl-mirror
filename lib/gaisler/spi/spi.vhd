@@ -242,9 +242,11 @@ package spi is
     rstedacuerr : std_ulogic;
     rstedacaerr : std_ulogic;
     rstoffset   : std_logic_vector(31 downto 0);
+    rstcsnw_rd  : std_logic_vector(7 downto 0);
+    rstcsnw_wr  : std_logic_vector(7 downto 0);
   end record;
   constant spimctrl_in_none : spimctrl_in_type :=
-    ('0', '0', '0', '0', '0', '0', X"03", '0', "0000", '0', '0', '0', X"00000000");
+    ('0', '0', '0', '0', '0', '0', X"03", '0', "0000", '0', '0', '0', X"00000000", X"04", X"10");
 
   type spimctrl_out_type is record
     mosi        : std_ulogic;
@@ -308,7 +310,10 @@ package spi is
       dynoffsetlo  : integer range 0 to 31  := 16;
       dynscalerlen : integer range 0 to 15  := 0;
       edac         : integer range 0 to 1   := 0;
-      extrst       : integer range 0 to 1   := 0
+      extrst       : integer range 0 to 1   := 0;
+      csnwait_rd   : integer range 0 to 255 := 4;
+      csnwait_wr   : integer range 0 to 255 := 16;
+      top_pipe_spi : integer range 0 to 1   := 0
       );
     port (
       rstn    : in  std_ulogic;

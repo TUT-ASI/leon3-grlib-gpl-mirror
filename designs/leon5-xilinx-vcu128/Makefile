@@ -109,6 +109,9 @@ include $(GRLIB)/bin/Makefile
 
 ##################  project specific targets ##########################
 
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+VIVADO_LOCAL_IPS = mig.tcl mig_cdc.tcl axi_pipe.tcl axi_dw_conv.tcl sgmii.tcl
+
 ### Synthesis ###
 modify-comp: cp-xci-files
 	tclsh modify_vivado.tcl

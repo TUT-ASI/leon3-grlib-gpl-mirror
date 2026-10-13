@@ -62,9 +62,13 @@ GRLIB_LATTICE_RADIANT_SIM_DEVICE
 
 
 = Tested Software =
-For design building: Radiant 2023.1
+
+For design building: Radiant 2025.2.1 | 2026.1
 For simulation: ModelSim 10.7g
 
+Note: previous versions of Radiant are supported but the user may need to
+regenerate the SerDes IP (hssl_serdes_x2.ipx) and update its component
+declaration and instantiation in leon3mp.vhd.
 
 = Simulation =
 

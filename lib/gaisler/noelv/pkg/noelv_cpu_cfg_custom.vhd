@@ -78,6 +78,7 @@ package noelv_cpu_cfg_custom is
     ext_zfh       => 1,
     ext_zfhmin    => 1,
     ext_zfbfmin   => 0,
+    ext_sparrow   => 1,
     mode_s        => 1,
     mode_u        => 1,
     fpulen        => 64,

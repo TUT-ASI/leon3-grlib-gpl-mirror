@@ -127,7 +127,7 @@
  * Debug Link           
  */
 #define CONFIG_DSU_UART 1
-#undef  CONFIG_DSU_JTAG
+#define CONFIG_DSU_JTAG 1
 /*
  * Peripherals             
  */

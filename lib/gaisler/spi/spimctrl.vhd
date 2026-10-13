@@ -61,6 +61,13 @@
 --    chip-select, and number of dummy bytes in addition to the number of
 --    address bytes (which was already supported).
 --  * Added option for programmable scaler of configurable length.
+--
+-- Revision 6. CSN wait logic reworked.
+-- Before the SPI clock was always clocked twice after each access with CSN held deasserted.
+-- This to make sure there is some minimum time CSN is deasserted between accesses, and as a
+-- remnent of the old SD/MMC SPI support. This logic has been removed, now instead there is
+-- a internal counter which starts after each access which holds the CSN signal deasserted for
+-- a set number of system clock cycles. Configurable with two new 8-bit register fields in CTRL2.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -111,7 +118,10 @@ entity spimctrl is
     dynoffsetlo  : integer range 0 to 31  := 16; -- Lowermost implemented bit of dynamic offset
     dynscalerlen : integer range 0 to 15  := 0;  -- Allow SCK scaler to be reprogrammed
     edac         : integer range 0 to 1   := 0;  -- Enable EDAC (GRLIB-FT only)
-    extrst       : integer range 0 to 1   := 0   -- Take register reset values from spii.rst*
+    extrst       : integer range 0 to 1   := 0;  -- Take register reset values from spii.rst*
+    csnwait_rd   : integer range 0 to 255 := 4;  -- Reset value, # clk cycles x4 CSN deasserted after a read
+    csnwait_wr   : integer range 0 to 255 := 16; -- Reset value, # clk cycles x4 CSN deasserted after a write
+    top_pipe_spi : integer range 0 to 1   := 0   -- 1: one external register stage on all SPI outputs and inputs
     );
   port (
     rstn    : in  std_ulogic;
@@ -125,7 +135,7 @@ end spimctrl;
 
 architecture rtl of spimctrl is
 
-  constant REVISION : amba_version_type := 5;
+  constant REVISION : amba_version_type := 6;
 
   constant HCONFIG : ahb_config_type := (
     0 => ahb_device_reg(VENDOR_GAISLER, GAISLER_SPIMCTRL, 0, REVISION, hirq),
@@ -139,6 +149,8 @@ architecture rtl of spimctrl is
 
   constant MAXDW : integer := maxahbaccsz;
   constant SHIFTDW : integer := (MAXDW/32)*(4+edac)*8;
+  -- Extra read capture delay (round trip through external output and input stage)
+  constant CAPDLY : integer := 2*top_pipe_spi;
 
   -----------------------------------------------------------------------------
   -- SPI device constants
@@ -289,7 +301,7 @@ architecture rtl of spimctrl is
   type spimstate_type is (IDLE, AHB_RESPOND, USER_SPI, BUSY);
 
   -- SPI device FSM states
- type spistate_type is (SPI_CSWAIT,  SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA, SPI_DUMMY);
+ type spistate_type is (SPI_READY, SPI_READ, SPI_ADDR, SPI_DATA, SPI_DUMMY);
 
   -----------------------------------------------------------------------------
   -- Types
@@ -325,6 +337,8 @@ architecture rtl of spimctrl is
   type spim_ctrl2_reg_type is record
       dsconf         : std_logic_vector(3 downto 0); -- chip select split configuration
       allow_writes   : std_ulogic;     -- Determines if writes are allowed or not (error response) to the flash area
+      csnrd          : std_logic_vector(7 downto 0); -- # clk cycles CSN deasserted after a read
+      csnwr          : std_logic_vector(7 downto 0); -- # clk cycles CSN deasserted after a write
   end record;
 
 
@@ -353,8 +367,8 @@ architecture rtl of spimctrl is
        rst            : std_ulogic;      -- Reset
        reg            : spim_regif_type; -- Register bank
        timer          : std_logic_vector((timer_size-1) downto 0);
-       sample         : std_logic_vector(2 downto 0);  -- Sample data line
-       bd             : std_logic_vector(1 downto 0);
+       sample         : std_logic_vector(2+CAPDLY downto 0);  -- Sample data line
+       bd             : std_logic_vector(1+CAPDLY downto 0);
        sreg           : std_logic_vector(7 downto 0);  -- Shiftreg
        bcnt           : std_logic_vector(2 downto 0);  -- Bit counter
        go             : std_ulogic;     -- SPI comm. active
@@ -366,6 +380,9 @@ architecture rtl of spimctrl is
        csn            : std_ulogic;     -- Combined chip select signal for both SPI memories
        ds             : std_logic_vector(1 downto 0); -- Chip select index selector (device select)
        fwrite         : std_ulogic;     -- Latched ahb hwrite value, used to determin SPI timing
+       csncnt         : std_logic_vector(9 downto 0); -- CSN deasserted down-counter
+       pending        : std_ulogic;     -- Access accepted, waiting for csncnt to expire
+       lanes          : std_logic_vector(1 downto 0); -- Data lines used by the current byte (0=1, 1=2, 2=4)
        -- SPI flash device
        spi            : spiflash_type;
        -- AHB
@@ -423,6 +440,48 @@ architecture rtl of spimctrl is
       end if;
     end getInputMode;
 
+  -- Description: Returns in what mode the SPIMCTRL should send the command
+  -- byte (memory accesses) and transfer bytes in user mode.
+  -- 0=serial, 1=dual, 2=quad
+  function getCmdMode(
+    conf : spim_conf_reg_type
+  )
+  return integer is
+    begin
+      if conf.QSPI = '1' then
+        return 2;
+      elsif conf.DSPI = '1' then
+        return 1;
+      else
+        return 0;
+      end if;
+    end getCmdMode;
+
+  -- Description: Sets up the number of data lines and the output enables
+  -- for the next phase. drive=true when the core drives the data lines.
+  procedure set_phase(
+    constant lanes : in    integer range 0 to 2;
+    constant drive : in    boolean;
+    variable v     : inout spim_reg_type) is
+    begin
+      v.lanes        := cslv(lanes, 2);
+      v.spio.misooen := INPUT;
+      v.spio.mosioen := OUTPUT;
+      v.spio.iooen   := OUTPUT;
+      if drive then
+        if lanes > 0 then
+          v.spio.misooen := OUTPUT;
+        end if;
+      else
+        if lanes > 0 then
+          v.spio.mosioen := INPUT;
+        end if;
+        if lanes = 2 then
+          v.spio.iooen := INPUT;
+        end if;
+      end if;
+    end set_phase;
+
   -----------------------------------------------------------------------------
   -- Signals
   -----------------------------------------------------------------------------
@@ -446,15 +505,17 @@ begin  -- rtl
     variable hrdata           : std_logic_vector(MAXDW-1 downto 0);
     variable hwdatax          : std_logic_vector(31 downto 0);
     variable samplecmp        : std_logic_vector(1 downto 0);
+    variable sampletap        : std_logic_vector(1 downto 0);
     variable addr             : std_logic_vector(31 downto 0);
     variable csn_mask         : std_logic_vector(31 downto 0);
     variable ds               : std_logic_vector(1 downto 0);
+    variable csnwait          : std_logic_vector(9 downto 0);
 
   begin  -- process comb
 
-    v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(1 downto 0) & '0';
+    v := r; v.spii := r.spii(0) & spii; v.sample := r.sample(r.sample'high-1 downto 0) & '0';
     vspio := r.spio;
-    change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1'; v.bd := r.bd(0) & '0';
+    change := '0'; v.irq := '0'; v.hresp := HRESP_OKAY; v.hready := '1'; v.bd := r.bd(r.bd'high-1 downto 0) & '0';
     regaddr := r.haddr(7 downto 2); hsplit := (others => '0');
     lowaddr := r.haddr(1 downto 0);
     hwdatax := ahbreadword(ahbsi.hwdata, r.haddr(4 downto 2), conv_integer(ahbsi.endian));
@@ -465,6 +526,14 @@ begin  -- rtl
     addr := r.haddr;
     csn_mask := (others => '1');
     ds := "00";
+    if r.fwrite = '1' then
+      csnwait := r.reg.ctrl2.csnwr & "00";
+    else
+      csnwait := r.reg.ctrl2.csnrd & "00";
+    end if;
+    if r.csncnt /= zero32(r.csncnt'range) then
+      v.csncnt := r.csncnt - 1;
+    end if;
     if dynscalerlen = 0 then
       v.reg.scaler := (others => '0');
       if r.reg.ctrl.eas = '1' then
@@ -475,18 +544,11 @@ begin  -- rtl
     else
       vscaler := r.reg.scaler;
     end if;
-    if ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.reg.conf.QSPI = '1') or
-       (r.spi.state = SPI_ADDR and getInputMode(r.reg.conf) = 2) or
-       (r.spi.state = SPI_DATA and getOutputMode(r.reg.conf) = 2)  then
-      lastbit := r.bcnt(0);
-
-    elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)  and r.reg.conf.DSPI = '1') or
-          (r.spi.state = SPI_ADDR and getInputMode(r.reg.conf) = 1) or
-          (r.spi.state = SPI_DATA and getOutputMode(r.reg.conf) = 1)  then
-      lastbit := andv(r.bcnt(1 downto 0));
-    else
-      lastbit := andv(r.bcnt);
-    end if;
+    case r.lanes is
+      when "10"   => lastbit := r.bcnt(0);
+      when "01"   => lastbit := andv(r.bcnt(1 downto 0));
+      when others => lastbit := andv(r.bcnt);
+    end case;
     v.bd(0) := lastbit and r.sample(0);
 
     if r.spimstate = IDLE then
@@ -587,6 +649,8 @@ begin  -- rtl
         when RX_REG_OFF =>
           v.rrdata(7 downto 0) := r.ar(7 downto 0);
         when CTRL2_REG_OFF =>
+          v.rrdata(31 downto 24) := r.reg.ctrl2.csnwr;
+          v.rrdata(23 downto 16) := r.reg.ctrl2.csnrd;
           v.rrdata(4)          := r.reg.ctrl2.allow_writes;
           v.rrdata(3 downto 0) := r.reg.ctrl2.dsconf;
         when SOFF_REG_OFF =>
@@ -648,6 +712,8 @@ begin  -- rtl
             v.reg.ctrl2.dsconf := hwdatax(3 downto 0);
           end if;
           v.reg.ctrl2.allow_writes := hwdatax(4);
+          v.reg.ctrl2.csnwr := hwdatax(31 downto 24);
+          v.reg.ctrl2.csnrd := hwdatax(23 downto 16);
         -- SOFF_REG_OFF: read-only register
         when DOFF_REG_OFF =>
           if dynoffset /= 0 then
@@ -728,7 +794,7 @@ begin  -- rtl
         end if;
 
       when USER_SPI =>
-        if r.bd(1) = '1' then
+        if r.bd(r.bd'high) = '1' then
           v.spimstate := BUSY;
           v.hold := '1';
         end if;
@@ -753,17 +819,7 @@ begin  -- rtl
             change := '1';
             v.hold := '0';
             v.bcnt := "000";
-
-            v.spio.misooen := INPUT;
-            v.spio.mosioen := OUTPUT;
-            if r.reg.conf.DSPI = '1' or r.reg.conf.QSPI = '1' then
-              v.spio.misooen := OUTPUT;
-              v.bcnt := "100";
-              if r.reg.conf.QSPI = '1' then
-                v.spio.iooen := OUTPUT;
-                v.bcnt := "110";
-              end if;
-            end if;
+            set_phase(getCmdMode(r.reg.conf), true, v);
 
           elsif regaddr = RX_REG_OFF and (r.hwrite and r.reg.ctrl.usrc) = '1' then
             -- Access to core receive register
@@ -774,16 +830,7 @@ begin  -- rtl
             change := '1';
             v.hold := '0';
             v.bcnt := "000";
-
-            v.spio.misooen := INPUT;
-            if r.reg.conf.DSPI = '1' or r.reg.conf.QSPI = '1' then
-              v.spio.mosioen := INPUT;
-              v.bcnt := "100";
-              if r.reg.conf.QSPI = '1' then
-                v.spio.iooen := INPUT;
-                v.bcnt := "110";
-              end if;
-            end if;
+            set_phase(getCmdMode(r.reg.conf), false, v);
 
           end if;
         end if;
@@ -808,13 +855,7 @@ begin  -- rtl
           else
             v.sreg := r.ar(23 downto 16);
           end if;
-          v.spio.mosioen := OUTPUT;
-          if getInputMode(r.reg.conf) > 0 then
-            v.spio.misooen := OUTPUT;
-            if getInputMode(r.reg.conf) = 2 then
-              v.spio.iooen := OUTPUT;
-            end if;
-          end if;
+          set_phase(getInputMode(r.reg.conf), true, v);
 
           v.hold := '0';
         end if;
@@ -835,27 +876,11 @@ begin  -- rtl
             (r.reg.conf.dummybyte = '0' and r.reg.conf.dummycycles = "0000")
              or r.fwrite = '1') then
 
-            v.spio.misooen := INPUT;
-            v.spio.mosioen := OUTPUT;
-            v.spio.iooen   := OUTPUT;
-
+            set_phase(getOutputMode(r.reg.conf), r.fwrite = '1', v);
             if r.fwrite = '1' then
               -- Set ar and sreg registers to use the write data
               v.ar(MAXDW-1 downto 0) := r.hwdata;
               v.sreg := r.hwdata(r.hwdata'length-1 downto r.hwdata'length-8);
-              if getOutputMode(r.reg.conf) > 0 then
-                v.spio.misooen := OUTPUT;
-                if getOutputMode(r.reg.conf) = 2 then
-                  v.spio.iooen := OUTPUT;
-                end if;
-              end if;
-            else
-              if getOutputMode(r.reg.conf) > 0 then
-                v.spio.mosioen := INPUT;
-                if getOutputMode(r.reg.conf) = 2 then
-                  v.spio.iooen := INPUT;
-                end if;
-              end if;
             end if;
           end if;
 
@@ -892,15 +917,7 @@ begin  -- rtl
           v.bcnt := "000";
         elsif r.spi.cnt = cslv(1, r.spi.cnt'length) then
           -- Set -oen values the clock cycle before leaving dummy phase
-          v.spio.misooen := INPUT;
-          v.spio.mosioen := OUTPUT;
-          v.spio.iooen   := OUTPUT;
-          if getOutputMode(r.reg.conf) > 0 then
-            v.spio.mosioen := INPUT;
-            if getOutputMode(r.reg.conf) = 2 then
-              v.spio.iooen := INPUT;
-            end if;
-          end if;
+          set_phase(getOutputMode(r.reg.conf), false, v);
         end if;
 
       when SPI_DATA =>
@@ -912,22 +929,17 @@ begin  -- rtl
         if lastbit = '1' and r.spi.cnt = zero32(r.spi.cnt'range) then
           v.stop := r.go;
         end if;
-        if (r.go or r.spio.sck) = '0' and r.bd ="00" then
+        if (r.go or r.spio.sck) = '0' and r.bd = zero32(r.bd'range) then
           if r.spi.hburst(0) = '0' then   -- not an incrementing burst
-            v.spi.state := SPI_CSWAIT;  -- CSN wait
             v.csn := '1';
-            v.go := '1';
-            v.stop := '1';
-            v.seq := '1';             -- Make right choice in SPI_CSWAIT
-            v.bcnt := "110";
-          else
-            v.spi.state := SPI_READY;
+            v.csncnt := csnwait;
           end if;
+          v.spi.state := SPI_READY;
           v.hold := '1';
         end if;
 
       when SPI_READY =>
-        v.spio.ready := '1';
+        v.spio.ready := not r.pending;
         if read_flash then
           -- Set device select register
           csn_mask := (others => '1');
@@ -954,26 +966,17 @@ begin  -- rtl
           -- Latch write value used for this transaction
           v.fwrite := r.hwrite;
           v.go := '1';
-          if getOutputMode(r.reg.conf) > 0 then
-            v.bcnt(2) := '0';
-          end if;
           if r.csn = '1' then
             -- New access, command and address
             v.go := '0';
-            v.csn := '0';
-            v.spi.state := SPI_READ;
-
-            v.spio.misooen := INPUT;
-            v.spio.mosioen := OUTPUT;
-            v.spio.iooen   := OUTPUT;
-            if r.reg.conf.DSPI = '1' or r.reg.conf.QSPI = '1' then
-              v.spio.misooen := OUTPUT;
-            end if;
+            v.pending := '1';
 
           elsif r.seq = '1' then
             -- Continuation of burst
             v.spi.state := SPI_DATA;
             v.hold := '0';
+            -- Set io-en values
+            set_phase(getOutputMode(r.reg.conf), v.fwrite = '1', v);
 
             if v.fwrite = '1' then
               -- Set ar and sreg registers to use the write data
@@ -982,34 +985,14 @@ begin  -- rtl
               change := '1';
               -- Need to trigger sample(1) so AR is shifted and data is not out of sync
               v.sample(1) := '1';
-              -- Set io-en values
-              v.spio.misooen := INPUT;
-              v.spio.mosioen := OUTPUT;
-              v.spio.iooen   := OUTPUT;
-              if getOutputMode(r.reg.conf) > 0 then
-                v.spio.misooen := OUTPUT;
-                if getOutputMode(r.reg.conf) = 2 then
-                  v.spio.iooen := OUTPUT;
-                end if;
-              end if;
-            else
-              v.spio.misooen := INPUT;
-              v.spio.mosioen := OUTPUT;
-              v.spio.iooen   := OUTPUT;
-              if getOutputMode(r.reg.conf) > 0 then
-                v.spio.mosioen := INPUT;
-                if getOutputMode(r.reg.conf) = 2 then
-                  v.spio.iooen := INPUT;
-                end if;
-              end if;
             end if;
 
           else
             -- Burst ended and new access
-            v.spi.state := SPI_CSWAIT;
+            v.go := '0';
+            v.pending := '1';
             v.csn := '1';
-            v.stop := '1';
-            v.bcnt := "011";
+            v.csncnt := csnwait;
           end if;
 
           v.spio.ready := '0';
@@ -1037,7 +1020,14 @@ begin  -- rtl
             end if;
           end if;
         end if;
-        if r.spio.ready = '0' then
+        if v.pending = '1' and r.csn = '1' and r.csncnt = zero32(r.csncnt'range) then
+          v.pending := '0';
+          v.csn := '0';
+          v.bcnt := "000";
+          v.spi.state := SPI_READ;
+          set_phase(getCmdMode(r.reg.conf), true, v);
+        end if;
+        if r.spio.ready = '0' and r.pending = '0' then
           case r.spi.hsize is
             when HSIZE_BYTE =>
               for i in 0 to (MAXDW/8-1) loop
@@ -1075,32 +1065,11 @@ begin  -- rtl
               end if;
           end case;
         end if; -- r.spio.ready = '0'
-        v.spi.hsize := r.hsize;
-        v.spi.hburst(0) := r.hburst(0);
-        v.spi.cnt := calc_spi_cnt(r.spi.hsize);
-
-      when others => -- SPI_CSWAIT
-        v.hold := '1';
-        -- Chip select wait
-        if (r.go or r.spio.sck) = '0' then
-          if r.seq = '1' then
-            v.spi.state := SPI_READY;
-          else
-            v.spi.state := SPI_READ;
-            v.csn := '0';
-            v.spio.misooen := INPUT;
-            v.spio.mosioen := OUTPUT;
-            v.spio.iooen   := OUTPUT;
-            if r.reg.conf.DSPI = '1' or r.reg.conf.QSPI = '1' then
-              v.spio.misooen := OUTPUT;
-              if r.reg.conf.QSPI = '1' then
-                v.spio.iooen := OUTPUT;
-              end if;
-            end if;
-
-          end if;
-
+        if r.pending = '0' then
+          v.spi.hsize := r.hsize;
+          v.spi.hburst(0) := r.hburst(0);
         end if;
+        v.spi.cnt := calc_spi_cnt(r.spi.hsize);
     end case;
 
     ---------------------------------------------------------------------------
@@ -1126,64 +1095,62 @@ begin  -- rtl
     if r.sample(0) = '1' then
       v.bcnt := r.bcnt + 1;
     end if;
+    -- Restart the bit counter for every byte, also when the number of lanes changes
+    if v.bd(0) = '1' then
+      v.bcnt := (others => '0');
+    end if;
 
     -- Use different timings for when to Shift AR depending if we are reading or writing
     -- to the SPI memory. Reading should wait one more cycle so the data is ready in
     -- r.spii(1) (which is a Two flip-flop synchronizer)
     if ((r.spi.state = SPI_DATA) and (r.fwrite = '0')) or r.spimstate = USER_SPI then
       samplecmp := "10";
+      sampletap := r.sample(2+CAPDLY downto 1+CAPDLY);
     else
       samplecmp := "01";
+      sampletap := r.sample(2 downto 1);
     end if;
 
-    if r.sample(2 downto 1) = samplecmp then
+    if sampletap = samplecmp then
       if r.hold = '0' then
 
-        -- Shift ar register if in CMD or ADDR phase
-        if ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)
-            and r.reg.conf.QSPI = '1' and r.spio.mosioen = OUTPUT)
-           or (v.spi.state = SPI_ADDR and getInputMode(r.reg.conf) = 2)
-        then
-          v.ar := r.ar(SHIFTDW-1-4 downto 0) & bit_pol & bit_pol & bit_pol & bit_pol;
-        elsif ((r.spimstate = USER_SPI or r.spi.state = SPI_READ)
-               and r.reg.conf.DSPI = '1' and r.spio.mosioen = OUTPUT)
-              or (v.spi.state = SPI_ADDR and getInputMode(r.reg.conf) = 1)
-        then
-          v.ar := r.ar(SHIFTDW-1-2 downto 0) & bit_pol & bit_pol;
-        elsif (r.spi.state = SPI_READ and r.reg.conf.QSPI = '0' and r.reg.conf.DSPI = '0')
-              or (v.spi.state = SPI_ADDR)
-        then
-          v.ar := r.ar(SHIFTDW-1-1 downto 0) & bit_pol;
-        elsif (r.spimstate = USER_SPI and r.reg.conf.QSPI = '0' and r.reg.conf.DSPI = '0') then
-          -- To keep backwards compatibility where a write to the TX register was used for both reading and writing
-          -- to memory while in ESPI USER mode, r.spii(1).miso is shifted into the ar register here.
-          v.ar := r.ar(SHIFTDW-1-1 downto 0) & r.spii(1).miso;
-        end if;
-
         -- Receive data from the memory and shift it into the ar register
-        if v.spi.state = SPI_DATA or ((r.spimstate = USER_SPI) and r.spio.mosioen = INPUT) then
-          case getOutputMode(r.reg.conf) is
-            when 0 =>
+        -- To keep backwards compatibility where a write to the TX register was used for both reading and writing
+        -- to memory while in ESPI USER mode, r.spii(1).miso is shifted into the ar register here.
+        if v.spi.state = SPI_DATA or
+           (r.spimstate = USER_SPI and (r.spio.mosioen = INPUT or r.lanes = "00")) then
+          case r.lanes is
+            when "00" =>
               v.ar := r.ar(SHIFTDW-1-1 downto 0) & r.spii(1).miso;
-            when 1 =>
+            when "01" =>
               v.ar := r.ar(SHIFTDW-1-2 downto 0) & r.spii(1).miso & r.spii(1).mosi;
             when others =>
               v.ar := r.ar(SHIFTDW-1-4 downto 0) & r.spii(1).io3 & r.spii(1).io2 & r.spii(1).miso & r.spii(1).mosi;
+          end case;
+
+        -- Shift ar register if in CMD or ADDR phase
+        elsif r.spimstate = USER_SPI or r.spi.state = SPI_READ or v.spi.state = SPI_ADDR then
+          case r.lanes is
+            when "00" =>
+              v.ar := r.ar(SHIFTDW-1-1 downto 0) & bit_pol;
+            when "01" =>
+              v.ar := r.ar(SHIFTDW-1-2 downto 0) & bit_pol & bit_pol;
+            when others =>
+              v.ar := r.ar(SHIFTDW-1-4 downto 0) & bit_pol & bit_pol & bit_pol & bit_pol;
           end case;
         end if;
 
       end if;
     end if;
 
-    if change = '1' and r.spi.state /= SPI_CSWAIT then
+    if change = '1' then
 
       -- Output data to the memory by shifting an appropriate number of bits in the sreg register
       if v.spio.misooen = INPUT  then
         -- If miso is in INPUT mode we are always to shift 1 bit as output
         v.spio.mosi := v.sreg(7);
         v.sreg(7 downto 0) := v.sreg(6 downto 0) & '1';
-      elsif (v.spimstate = USER_SPI  and r.reg.conf.QSPI = '1') or
-            (v.spimstate /= USER_SPI and getInputMode(r.reg.conf) = 2) then
+      elsif v.lanes = "10" then
         v.spio.mosi := v.sreg(4);
         v.spio.miso := v.sreg(5);
         v.spio.io2  := v.sreg(6);
@@ -1205,25 +1172,25 @@ begin  -- rtl
     -- Select and drive CSN using Chip Select Select signal
     case r.ds is
       when "00" =>
-        v.spio.csn  := v.csn;
+        v.spio.csn  := r.csn;
         v.spio.csn1 := '1';
         v.spio.csn2 := '1';
         v.spio.csn3 := '1';
       when "01" =>
         v.spio.csn  := '1';
-        v.spio.csn1 := v.csn;
+        v.spio.csn1 := r.csn;
         v.spio.csn2 := '1';
         v.spio.csn3 := '1';
       when "10" =>
         v.spio.csn  := '1';
         v.spio.csn1 := '1';
-        v.spio.csn2 := v.csn;
+        v.spio.csn2 := r.csn;
         v.spio.csn3 := '1';
       when others =>
         v.spio.csn  := '1';
         v.spio.csn1 := '1';
         v.spio.csn2 := '1';
-        v.spio.csn3 := v.csn;
+        v.spio.csn3 := r.csn;
     end case;
 
     ---------------------------------------------------------------------------
@@ -1257,6 +1224,8 @@ begin  -- rtl
       v.reg.stat.done    := '0';
       v.reg.ctrl2.dsconf := (others => '0');
       v.reg.ctrl2.allow_writes     := to_ulogic(allow_writes);
+      v.reg.ctrl2.csnrd  := cslv(csnwait_rd, 8);
+      v.reg.ctrl2.csnwr  := cslv(csnwait_wr, 8);
       v.reg.offset := (others => '0');
       if dynscalerlen /= 0 then
         v.reg.scaler := (others => '1');
@@ -1267,6 +1236,8 @@ begin  -- rtl
         v.reg.conf.readcmd   := spii.rstreadcmd;
         v.reg.conf.dummybyte := spii.rstdbyte;
         v.reg.ctrl2.dsconf   := spii.rstdsconf;
+        v.reg.ctrl2.csnrd    := spii.rstcsnw_rd;
+        v.reg.ctrl2.csnwr    := spii.rstcsnw_wr;
         if dynoffset /= 0 then
           v.reg.offset := spii.rstoffset(dynoffsethi downto dynoffsetlo);
         end if;
@@ -1306,6 +1277,9 @@ begin  -- rtl
       v.csn              := '1';
       v.ds               := "00";
       v.fwrite           := '0';
+      v.csncnt           := (others => '0');
+      v.pending          := '0';
+      v.lanes            := "00";
 --       v.spio.errorn      := '1';
       --
       v.spio.ready       := '0';

@@ -381,7 +381,8 @@ begin
       sepclk   => 0,
       wrfst    => 0,
       testen   => 0,
-      pipeline => 0)
+      pipeline => 0,
+      rdhold   => 0)
     port map(
       rclk     => clk,
       renable  => r_en,
@@ -403,7 +404,8 @@ begin
       sepclk   => 0,
       wrfst    => 0,
       testen   => 0,
-      pipeline => 0)
+      pipeline => 0,
+      rdhold   => 0)
     port map(
       rclk     => clk,
       renable  => r_en,
@@ -577,7 +579,6 @@ begin
 
       if r.hready = '0' then
         if r.w_en = zero32(ways - 1 downto 0) and r.hmbsel(0) = '1' then
-          r_en <= '1';
           if is_cachable(r.haddr(31 downto 28), conv_std_logic_vector(cached, 16)) and r.reg.ctrl.en = '1' then
             v.control_state := TAG_MATCH_1_S;
           else ---- ADDRESS NOT CACHABLE ----
@@ -694,6 +695,7 @@ begin
       end if;
 
     when TAG_MATCH_1_S =>
+      r_en <= '1';
       v.control_state := TAG_MATCH_2_S;
     when TAG_MATCH_2_S =>
       v.tag_match := tag_match(tagdataout, r.haddr(TAG_R));

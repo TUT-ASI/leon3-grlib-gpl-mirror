@@ -23,6 +23,7 @@ entity dmnv_ic_dmaport is
     -- Debug-link interface
     dmami : out ahb_mst_in_type;
     dmamo : in  ahb_mst_out_type;
+    extaddrs :  in std_logic_vector(31 downto 0);
     -- Interface to interconnect
     icdb  : out dmnv_ic_dma_bus_type;
     icbd  : in  dmnv_ic_bus_dma_type
@@ -50,7 +51,7 @@ architecture rtl of dmnv_ic_dmaport is
     ds         : dm_ic_dma_state;
     hready     : std_ulogic;
     htrans     : std_logic_vector(1 downto 0);
-    haddr      : std_logic_vector(31 downto 0);
+    haddr      : std_logic_vector(63 downto 0);
     hsize      : std_logic_vector(2 downto 0);
     hwrite     : std_ulogic;
     hburst0    : std_ulogic;
@@ -86,8 +87,10 @@ architecture rtl of dmnv_ic_dmaport is
   end;
 
   function is_conv(addr : std_logic_vector) return boolean is
+    variable res : boolean;
   begin
-    return true;
+    res := true;
+    return res;
   end function;
 
   function is_dm(addr: std_logic_vector; haddr, hmask: integer) return boolean is
@@ -99,7 +102,8 @@ architecture rtl of dmnv_ic_dmaport is
 
 begin
 
-  comb: process(dr,dmamo,icbd)
+  comb: process(dr,dmamo, extaddrs, icbd
+               )
     variable dv       : dm_ic_dma_type;
     variable odmami   : ahb_mst_in_type;
     variable oicdb    : dmnv_ic_dma_bus_type;
@@ -123,7 +127,8 @@ begin
     dv.phready := dr.hready;
     if dr.hready='1' then
       dv.htrans := dmamo.htrans;
-      dv.haddr := dmamo.haddr;
+      dv.haddr(31 downto  0) := dmamo.haddr;
+      dv.haddr(63 downto 32) := extaddrs;
       dv.hsize := dmamo.hsize;
       dv.hwrite := dmamo.hwrite;
       dv.hburst0 := dmamo.hburst(0);
@@ -149,18 +154,20 @@ begin
         if dr.hready='0' and icbd.gnt='0' then
           -- Translate address and go to request state
           dv.ds := dsreq;
-          if is_dm(dr.haddr(31 downto 20), dmhaddr, dmhmask) then
-            -- Debug-module area
-            dv.bifreq(DM) := '1';
-            dv.bifaddr := (others => '0');
-            dv.bifaddr(31 downto 0) := dr.haddr(31 downto 0);
-            dv.hburst0 := '0';  -- break down bursts to debug-module to single accesses
-          else
-            -- Conventional area
-            dv.bifreq(CONV) := '1';
-            dv.bifaddr := (others => '0');
-            dv.bifaddr(31 downto 0) := dr.haddr(31 downto 0);
-            dv.hburst0 := '0';  -- break down bursts to conv area to single accesses
+          if is_conv(dr.haddr) then
+            if is_dm(dr.haddr(31 downto 20), dmhaddr, dmhmask) then
+              -- Debug-module area
+              dv.bifreq(DM) := '1';
+              dv.bifaddr := (others => '0');
+              dv.bifaddr(31 downto 0) := dr.haddr(31 downto 0);
+              dv.hburst0 := '0';  -- break down bursts to debug-module to single accesses
+            else
+              -- Conventional area
+              dv.bifreq(CONV) := '1';
+              dv.bifaddr := (others => '0');
+              dv.bifaddr(31 downto 0) := dr.haddr(31 downto 0);
+              dv.hburst0 := '0';  -- break down bursts to conv area to single accesses
+            end if;
           end if;
         end if;
       when dsreq => -- Request access to bus

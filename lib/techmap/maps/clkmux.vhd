@@ -98,6 +98,9 @@ begin
     gf22x : if tech = gf22 generate
       x0 : clkmux_gf22fdx port map (clki0 => i0, clki1 => i1, sel => seli, clko => oi);
     end generate;
+    tsmc7 : if tech = n7 generate
+      x0 : clkmux_n7 port map (i0 => i0, i1 => i1, sel => seli, o => oi);
+    end generate;
    
     noxil : if not((is_unisim(tech) = 1) or (tech = rhlib18t) or (tech = ut130) or
                    (tech = easic45) or (tech = ut90) or (tech = saed32) or (tech = rhs65) or (tech = dare65t) or (tech = dare) or (tech = rhumc) or (tech = gf22)) generate

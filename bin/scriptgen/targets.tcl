@@ -64,6 +64,11 @@ foreach tool $tools {
                         append toolsstring "$TOP\_nanoxmap.py "
                         continue
                 }
+		"nvc" {
+			append toolsstring "compile.nvc "
+			append toolsstring "make.nvc "
+			continue
+		}
 
 	}
 }

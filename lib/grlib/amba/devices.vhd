@@ -329,6 +329,7 @@ package devices is
   constant GAISLER_DBGMST        : amba_device_type := 16#204#;
   constant GAISLER_AHB_ERR_SHIM  : amba_device_type := 16#205#;
 
+
 -- Brainchip
 
   constant BRAINCHIP_AKIDA       : amba_device_type := 16#001#;

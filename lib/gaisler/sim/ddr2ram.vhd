@@ -43,7 +43,14 @@ entity ddr2ram is
     rowbits: integer range 1 to 16 := 13;
     implbanks: integer range 1 to 8 := 1;
     swap : integer := 0; -- byte swap during srec load
-    fname: string;
+    fname: string := " ";
+    fname1: string := " ";
+    fname2: string := " ";
+    fname3: string := " ";
+    fname4: string := " ";
+    fname5: string := " ";
+    fname6: string := " ";
+    fname7: string := " ";
     lddelay: time := (0 ns);
     ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
                                          -- loading RAM
@@ -209,7 +216,7 @@ begin
   -----------------------------------------------------------------------------
   -- Command state machine
   -----------------------------------------------------------------------------
-  cmdp: process(ck)
+  cmdp: process(ck, doload)
     -- Data split by bank to avoid exceeding 4G
     constant w16 : integer := (width+15)/16;
     constant rwidth: integer := 16*w16;
@@ -272,6 +279,20 @@ begin
       return r;
     end memdata_get;
 
+    procedure memdata_set_int(bank,idx,val : integer) is
+    begin
+      case bank is
+        when 0      => memdata0(idx) := val;
+        when 1      => memdata1(idx) := val;
+        when 2      => memdata2(idx) := val;
+        when 3      => memdata3(idx) := val;
+        when 4      => memdata4(idx) := val;
+        when 5      => memdata5(idx) := val;
+        when 6      => memdata6(idx) := val;
+        when others => memdata7(idx) := val;
+      end case;
+    end memdata_set_int;
+
     procedure memdata_set(bank,idx: integer; v: coldata) is
       variable n: coldata;
       variable x: idata;
@@ -292,21 +313,22 @@ begin
         if p(7 downto 0)="UUUUUUUU" then p(16):='0'; p(7 downto 0):=x"00";
         elsif is_x(p(7 downto 0)) then p(17):='1'; p(7 downto 0):=x"00"; end if;
         x := to_integer(unsigned(p));
-        case bank is
-          when 0      => memdata0(iidx+q) := x;
-          when 1      => memdata1(iidx+q) := x;
-          when 2      => memdata2(iidx+q) := x;
-          when 3      => memdata3(iidx+q) := x;
-          when 4      => memdata4(iidx+q) := x;
-          when 5      => memdata5(iidx+q) := x;
-          when 6      => memdata6(iidx+q) := x;
-          when others => memdata7(iidx+q) := x;
-        end case;
+        memdata_set_int(bank,iidx+q,x);
+--        case bank is
+--          when 0      => memdata0(iidx+q) := x;
+--          when 1      => memdata1(iidx+q) := x;
+--          when 2      => memdata2(iidx+q) := x;
+--          when 3      => memdata3(iidx+q) := x;
+--          when 4      => memdata4(iidx+q) := x;
+--          when 5      => memdata5(iidx+q) := x;
+--          when 6      => memdata6(iidx+q) := x;
+--          when others => memdata7(iidx+q) := x;
+--        end case;
       end loop;
     end memdata_set;
 
-    procedure load_srec is
-      file TCF : text open read_mode is fname;
+    procedure load_srec(bank : integer; str: string) is
+      file TCF : text open read_mode is str;
       variable L1: line;
       variable CH : character;
       variable rectype : std_logic_vector(3 downto 0);
@@ -352,7 +374,8 @@ begin
               if width < 16 then
                 idx := to_integer(unsigned(recaddr(rowbits+colbits-1 downto 0)));
                 while len > 1 loop
-                  memdata0(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                  memdata_set_int(bank,idx,16#10000# + to_integer(unsigned(recdata(0 to 7))));
+                  -- memdata0(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
                   idx := idx+1;
                   len := len-1;
                   recdata(0 to recdata'length-8-1) := recdata(8 to recdata'length-1);
@@ -364,18 +387,21 @@ begin
                   idx := idx + (idx/(w16-1));
                 end if;
                 while len > 1 loop
-                  memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                  memdata_set_int(bank,idx,16#50000# + to_integer(unsigned(recdata(0 to 15))));
+                  -- memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
                   idx := idx+1;
                   if (width mod 16)/=0 and (idx mod w16)=(w16-1) then
                     -- set top byte (ECC byte) to 0
-                    memdata0(idx) := 16#10000#;
+                    memdata_set_int(bank,idx,16#10000#);
+                    -- memdata0(idx) := 16#10000#;
                     idx := idx+1;
                   end if;
                   len := len-2;
                   recdata(0 to recdata'length-16-1) := recdata(16 to recdata'length-1);
                 end loop;
                 if len > 0 then
-                  memdata0(idx) := 16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                  memdata_set_int(bank,idx,16#40000# + to_integer(unsigned(recdata(0 to 15))));
+                  -- memdata0(idx) := 16#40000# + to_integer(unsigned(recdata(0 to 15)));
                 end if;
               end if;
             end if;
@@ -619,9 +645,20 @@ begin
         end if;
       end loop;
 
+      -- If doload is deasserted and then asserted again, load the srec again
+      if doload = '0' Then
+        loaded := false;
+      end if;
       -- Read/write management
       if not loaded and lddelay < now and (ldguard=0 or doload='1') then
-        load_srec;
+        if fname  /= " " then load_srec(0, fname ); end if;
+        if fname1 /= " " then load_srec(1, fname1); end if;
+        if fname2 /= " " then load_srec(2, fname2); end if;
+        if fname3 /= " " then load_srec(3, fname3); end if;
+        if fname4 /= " " then load_srec(4, fname4); end if;
+        if fname5 /= " " then load_srec(5, fname5); end if;
+        if fname6 /= " " then load_srec(6, fname6); end if;
+        if fname7 /= " " then load_srec(7, fname7); end if;
         loaded := true;
       end if;
       if accpipe(2+cl+al).r then

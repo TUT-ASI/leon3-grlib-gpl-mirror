@@ -128,6 +128,7 @@ package noelvtypes is
                       x_rv64, x_mode_u, x_mode_s,
                       x_capability, x_hwassert, x_diagnostics,
                       x_noelv,
+                      x_sparrow,
                       x_m, x_f, x_d, x_q,
                       x_a, x_c, x_h, x_sscofpmf, x_smcntrpmf,
                       x_zba, x_zbb, x_zbc, x_zbs,

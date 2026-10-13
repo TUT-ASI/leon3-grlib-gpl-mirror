@@ -72,15 +72,93 @@ begin
       SCLK => clk,
       RST => R,
       Q0 => Q0,
-      Q1 => preQ1);
+      Q1 => Q1);
 
-  -- to align the Q1 data to the next clock positive edge
-  alignreg : process (C, preQ1, R)
-  begin
-    if R='1' then --asynchronous reset, active high
-      Q1 <= '0';
-    elsif C'event and C='1' then --Clock event - posedge
-      Q1 <= preQ1;
-    end if;
-  end process;
+  -- nexus_iddrx1: IDDRX1
+  --   port map(
+  --     D => D,
+  --     SCLK => clk,
+  --     RST => R,
+  --     Q0 => Q0,
+  --     Q1 => preQ1);
+
+  -- -- to align the Q1 data to the next clock positive edge
+  -- alignreg : process (C, preQ1, R)
+  -- begin
+  --   if R='1' then --asynchronous reset, active high
+  --     Q1 <= '0';
+  --   elsif C'event and C='1' then --Clock event - posedge
+  --     Q1 <= preQ1;
+  --   end if;
+  -- end process;
 end architecture;
+
+---------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+library techmap;
+use techmap.gencomp.all;
+
+-- pragma translate_off
+library nexus_sim;
+use nexus_sim.all;
+--pragma translate_on
+
+
+entity nexus_oddrx1_reg is
+  port(
+    Q  : out std_ulogic;
+    C1 : in std_ulogic; 
+    C2 : in std_ulogic;
+    CE : in std_ulogic;
+    D1 : in std_ulogic;
+    D2 : in std_ulogic;
+    R  : in std_ulogic; 
+    S  : in std_ulogic); 
+ 
+
+end entity;
+
+architecture rtl of nexus_oddrx1_reg is
+
+  signal clk   : std_ulogic;
+  signal preD2 : std_ulogic;
+  signal pre : std_ulogic;
+
+    component ODDRX1
+    generic (
+      GSR : String := "DISABLED");
+    port(
+      D0   : in std_logic;
+      D1   : in std_logic;
+      SCLK : in std_logic;
+      RST  : in std_logic;
+      Q    : out std_logic);
+  end component;
+
+ begin
+
+   clk <= C1 when (CE = '1') else '0';
+
+   nexus_oddrx1: ODDRX1
+     port map(
+       D0 => D1,
+       D1 => D2, 
+       SCLK => clk,
+       RST => R,
+       Q => Q);
+
+    -- -- -- to align the Q1 data to the next clock positive edge
+    --  alignreg : process (clk, D2, R)
+    --  begin
+    --    if R='1' then --asynchronous reset, active high
+    --      preD2 <= '0';
+    --    elsif clk'event and Clk='1' then --Clock event - posedge
+    --      preD2 <= D2;
+    -- --     elsif clk'event and Clk='0' then --Clock event - posedge  
+    -- --     Q <= D2;
+    --    end if;
+    --  end process;
+
+ end architecture;

@@ -30,6 +30,7 @@ use techmap.gencomp.all;
 library grlib;
 use grlib.stdlib.all;
 use grlib.amba.all;
+use grlib.devices.all;
 library gaisler;
 use gaisler.busif5_types.all;
 
@@ -81,7 +82,7 @@ package l5nv_shared is
     sbwdata  : std_logic_vector(31 downto 0);
     sbwr     : std_ulogic;
     sbaccess : std_logic_vector(2 downto 0);
-    sbaddr   : std_logic_vector(31 downto 0);
+    sbaddr   : std_logic_vector(63 downto 0);
   end record;
   constant dev_reg_out_none : dev_reg_out_type := (
     rdy   => '0',
@@ -160,6 +161,39 @@ package l5nv_shared is
     );
   type itracebuf_in_type5_array is array(natural range <>) of itracebuf_in_type5;
   type itracebuf_out_type5_array is array(natural range <>) of itracebuf_out_type5;
+
+  -- Striped Trace Infrastructure
+  -- Interface between trace units and CDCs
+  type dmstr_trace_m2s_type is record
+    -- Register interface.
+    address : std_logic_vector(4 downto 0); -- Word address
+    data : std_logic_vector(31 downto 0);
+    valid : std_ulogic;
+    write : std_ulogic;
+    -- Other signals.
+    enable : std_ulogic; -- Active high level.
+  end record;
+  type dmstr_trace_s2m_type is record
+    -- Register interface.
+    data : std_logic_vector(31 downto 0);
+    valid : std_ulogic;
+    -- Other signals.
+    breakpoint_hit : std_ulogic; -- Active high pulse.
+  end record;
+  constant dmstr_trace_m2s_type_none : dmstr_trace_m2s_type := (
+    address => (others => '0'),
+    data => (others => '0'),
+    valid => '0',
+    write => '0',
+    enable => '1'
+  );
+  constant dmstr_trace_s2m_type_none : dmstr_trace_s2m_type := (
+    data => (others => '0'),
+    valid => '0',
+    breakpoint_hit => '0'
+  );
+  type dmstr_trace_m2s_array_type is array (integer range <>) of dmstr_trace_m2s_type;
+  type dmstr_trace_s2m_array_type is array (integer range <>) of dmstr_trace_s2m_type;
 
   -- L1-cache and busif
   constant TAGMAX: integer := 32;
@@ -388,6 +422,7 @@ package l5nv_shared is
       -- Debug-link interface
       dmami : out ahb_mst_in_type;
       dmamo : in  ahb_mst_out_type;
+      extaddrs : in std_logic_vector(31 downto 0);
       -- Interface to interconnect
       icdb  : out dmnv_ic_dma_bus_type;
       icbd  : in  dmnv_ic_bus_dma_type
@@ -456,6 +491,7 @@ package l5nv_shared is
       -- Debug-link interface
       dmami   : out ahb_mst_in_vector_type(ndmamst-1 downto 0);
       dmamo   : in  ahb_mst_out_vector_type(ndmamst-1 downto 0);
+      extaddrs : in ahb_mst_extaddr_vector(ndmamst-1 downto 0);
       -- Conventional AHB bus interface
       cbmi    : in  ahb_mst_in_type;
       cbmo    : out ahb_mst_out_type;
@@ -488,6 +524,7 @@ package l5nv_shared is
       -- Debug-link interface
       dmami   : out ahb_mst_in_vector_type(ndmamst-1 downto 0);
       dmamo   : in  ahb_mst_out_vector_type(ndmamst-1 downto 0);
+      extaddrs : in ahb_mst_extaddr_vector(ndmamst-1 downto 0);
       -- Conventional AHB bus interface
       cbmi    : in  ahb_mst_in_type;
       cbmo    : out ahb_mst_out_type;
@@ -504,7 +541,8 @@ package l5nv_shared is
       hindex    : integer range 0  to 15  := 0;   -- bus index
       hmindex   : integer range 0  to 15  := 0;   -- master bus index
       haddr     : integer                 := 16#900#;
-      hmask     : integer                 := 16#f00#
+      hmask     : integer                 := 16#f00#;
+      ntrace    : integer                 := 5
       );
     port (
       clk     : in  std_ulogic;
@@ -513,6 +551,7 @@ package l5nv_shared is
       ahbso   : out ahb_slv_out_type;
       ahbmi   : in  ahb_mst_in_type;
       ahbmo   : out ahb_mst_out_type;
+      extaddrs : out  std_logic_vector(31 downto 0);
       -- DM interface
       dmi     : out dev_reg_in_type;
       dmo     : in  dev_reg_out_type := dev_reg_out_none;
@@ -521,6 +560,9 @@ package l5nv_shared is
       -- Trace interface
       tri     : out dev_reg_in_type;
       tro     : in  dev_reg_out_type;
+      -- Striped traces master ports
+      traceo  : out dmstr_trace_m2s_array_type(0 to ntrace - 1);
+      tracei  : in dmstr_trace_s2m_array_type(0 to ntrace - 1) := (others => dmstr_trace_s2m_type_none);
       -- LEON5 mode
       l5mode  : in  std_ulogic := '0';
       -- LEON5 itrace buffer
@@ -819,6 +861,7 @@ package l5nv_shared is
       nsync    : integer;
       nsinks   : integer;
       npipe    : integer;
+      extpipe  : integer := 0;
       asyncset : integer
       );
     port (
@@ -843,6 +886,32 @@ package l5nv_shared is
       timer  : out std_logic_vector(tbits-1 downto 0)
       );
   end component;
+
+
+  component dmstr_trace is
+    generic (
+      memtech : integer := 0;
+      buffer_depth : integer := 128;
+      striped_bus_data_width : integer range 32 to 128 := 128;
+      scantest : integer := 0;
+      -- Disable debug master tracing at reset. -1 do not disable else hindex.
+      dbg_master_trace_reset : integer := -1
+    );
+    port (
+      clk : in std_ulogic;
+      rstn : in std_ulogic;
+      timer : in std_logic_vector(62 downto 0);
+      -- Register interface
+      reg_slvi : in dmstr_trace_m2s_type;
+      reg_slvo : out dmstr_trace_s2m_type;
+      testin : in std_logic_vector(TESTIN_WIDTH - 1 downto 0);
+      -- Striped bus to be traced
+      sb_slvo : in ahbstripe_slv_out_slice;
+      sb_slvi : in ahbstripe_slv_in_slice;
+      sb_endian : in std_ulogic
+    );
+  end component;
+
 
   ----------------------------------------------------------------------------
   -- Functions

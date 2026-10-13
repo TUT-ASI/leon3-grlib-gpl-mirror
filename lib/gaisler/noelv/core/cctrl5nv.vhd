@@ -21,7 +21,7 @@
 -----------------------------------------------------------------------------
 -- Entity:      cctrl5nv
 -- File:        cctrl5nv.vhd
--- Author:      Magnus Hjorth and Johan Klockars, Cobham Gaisler
+-- Author:      Magnus Hjorth and Johan Klockars, Frontgrade Gaisler AB
 -- Based on:    LEON3/LEON4 cache and MMU by Jiri Gaisler, Edvin Catovic
 --              and Konrad Eisele
 -- Description: Complete cache controller with MMU for LEON5 and NOEL-V.
@@ -2357,27 +2357,27 @@ begin
         end if;
 
         if tlb(n).valid = '1' and ctx_match and match then
-         -- There is no point in making OR:ed data depend on whether the top bits were OK.
-         if addr_ok then
-          assert not already report "Double TLB hit!" severity failure;
-          already := true;
-          if (walk_pmp and not is_mapping(mode)) or                -- If only fetching PMP/PMA information,
-             permitted(x(0), su, w, tlb(n).modified, tlb(n).perm,  --   or PT permissions OK.
-                       tlb(n).pmp_r, tlb(n).h_r, tlb(n).pmp_no_x,
-                       sum, mxr, vmxr, hx,
-                       ss, ss_010en, cbo
-                      ) then
-            tmpchk.hit     := '1';
-            tmpchk.hitv(n) := '1';  -- unused (had better only get one bit set, anyway!)
-          else
-            -- Invalidate matching TLB entry on permission fail since there will be a
-            -- new MMU walk, and it would be a bad idea to have two instances in the TLB!
-            -- Will not invalidate on repeat due to stall, since walk already done.
-            if check = '1' and specialasi = '0' and nullify = '0' and repeat = '0' then
-              tmpchk.clr := '1';
+          -- There is no point in making OR:ed data depend on whether the top bits were OK.
+          if addr_ok then
+            assert not already report "Double TLB hit!" severity failure;
+            already := true;
+            if (walk_pmp and not is_mapping(mode)) or                -- If only fetching PMP/PMA information,
+               permitted(x(0), su, w, tlb(n).modified, tlb(n).perm,  --   or PT permissions OK.
+                         tlb(n).pmp_r, tlb(n).h_r, tlb(n).pmp_no_x,
+                         sum, mxr, vmxr, hx,
+                         ss, ss_010en, cbo
+                        ) then
+              tmpchk.hit     := '1';
+              tmpchk.hitv(n) := '1';  -- unused (had better only get one bit set, anyway!)
+            else
+              -- Invalidate matching TLB entry on permission fail since there will be a
+              -- new MMU walk, and it would be a bad idea to have two instances in the TLB!
+              -- Will not invalidate on repeat due to stall, since walk already done.
+              if check = '1' and specialasi = '0' and nullify = '0' and repeat = '0' then
+                tmpchk.clr := '1';
+              end if;
             end if;
           end if;
-         end if;
           index := (n);
           -- Note that 'or' can be used since only one TLB entry may really hit,
           -- and it avoids prioritizing so less logic.
@@ -2738,17 +2738,17 @@ begin
     begin
 -- coverage off
 -- reason: SPARC
-     if arch = SPARC then
-      ccr := (others => '0');
-      ccr(23) := r.cctrl.dsnoop;
-      ccr(17) := '1';
-      ccr(15 downto 14) := r.iflushpend & r.dflushpend;
-      ccr(3 downto 0) := r.cctrl.dcs & r.cctrl.ics;
-     else
+      if arch = SPARC then
+        ccr := (others => '0');
+        ccr(23) := r.cctrl.dsnoop;
+        ccr(17) := '1';
+        ccr(15 downto 14) := r.iflushpend & r.dflushpend;
+        ccr(3 downto 0) := r.cctrl.dcs & r.cctrl.ics;
+      else
 -- coverage on
 -- reason: RISCV
-       assert false report "get_ccr() must not be called for RISC-V!" severity failure;
-     end if;
+        assert false report "get_ccr() must not be called for RISC-V!" severity failure;
+      end if;
       return ccr;
     end;
 
@@ -2757,15 +2757,15 @@ begin
     begin
 -- coverage off
 -- reason: SPARC
-     if arch = SPARC then
-      vx := val;
-      v.cctrl.dsnoop := vx(23);
-      v.dflushpend := v.dflushpend or vx(22);
-      v.iflushpend := v.iflushpend or vx(21);
-      v.cctrl.dcs := vx(3 downto 2);
-      v.cctrl.ics := vx(1 downto 0);
-      v.cctrl.ics_btb := vx(1 downto 0);
-     end if;
+      if arch = SPARC then
+        vx := val;
+        v.cctrl.dsnoop := vx(23);
+        v.dflushpend := v.dflushpend or vx(22);
+        v.iflushpend := v.iflushpend or vx(21);
+        v.cctrl.dcs := vx(3 downto 2);
+        v.cctrl.ics := vx(1 downto 0);
+        v.cctrl.ics_btb := vx(1 downto 0);
+      end if;
 -- coverage on
 -- reason: RISCV
     end;
@@ -2970,22 +2970,22 @@ begin
     oico.exctype   := '0';     -- Default to page fault
     oico.exchyper  := '0';     -- Default to non-hypervisor fault
     --
-   if arch = SPARC then
-    oico.mexcdata := (others => '0');
-    oico.mexcdata(7 downto 6) := r.mmuerr.l;
-    oico.mexcdata(5) := r.mmuerr.at_su;
-    oico.mexcdata(4 downto 2) := r.mmuerr.ft;
-    oico.flush := r.flushpart(1);
-    oico.cfg := (others => '0');
-    oico.bpmiss := r.ibpmiss;
-    oico.eocl := '0';
-    if r.i2pc(2)='1' and r.i2pc(3)='1' and (ilinesize=4 or r.i2pc(4)='1') then
-      oico.eocl := '1';
+    if arch = SPARC then
+      oico.mexcdata := (others => '0');
+      oico.mexcdata(7 downto 6) := r.mmuerr.l;
+      oico.mexcdata(5) := r.mmuerr.at_su;
+      oico.mexcdata(4 downto 2) := r.mmuerr.ft;
+      oico.flush := r.flushpart(1);
+      oico.cfg := (others => '0');
+      oico.bpmiss := r.ibpmiss;
+      oico.eocl := '0';
+      if r.i2pc(2)='1' and r.i2pc(3)='1' and (ilinesize=4 or r.i2pc(4)='1') then
+        oico.eocl := '1';
+      end if;
+      oico.ctxswitch := r.ctxswitch;
+      oico.ics_btb := r_cctrl.ics_btb;
+      oico.btb_flush := r.flushpart(1);
     end if;
-    oico.ctxswitch := r.ctxswitch;
-    oico.ics_btb := r_cctrl.ics_btb;
-    oico.btb_flush := r.flushpart(1);
-   end if;
     oico.hold := r.holdn;
     oico.mds := '1';
     oico.parked := '0';
@@ -3004,15 +3004,15 @@ begin
     --
     odco.hold := r.holdn;
     odco.mds := '1';
-   if arch = SPARC then
-    odco.dtrapet1 := r.dtrapet1;
-    odco.dtrapet0 := r.dtrapet0;
-    odco.dtraptt := r.dtraptt;
-    odco.cache := '0';
-    odco.wbhold := '0';
-    odco.iudiag_mosi := r.iudiag_mosi;
-    odco.iuctrl := r.iuctrl;
-   end if;
+    if arch = SPARC then
+      odco.dtrapet1 := r.dtrapet1;
+      odco.dtrapet0 := r.dtrapet0;
+      odco.dtraptt := r.dtraptt;
+      odco.cache := '0';
+      odco.wbhold := '0';
+      odco.iudiag_mosi := r.iudiag_mosi;
+      odco.iuctrl := r.iuctrl;
+    end if;
 
     -- Mux current 64 bit part of fetched RAM data
     rdbuf_data := (others => '-');  -- A better way?
@@ -3325,397 +3325,409 @@ begin
       vregwdata1 := r.dregval(63 downto 32);
       vregwdata0 := r.dregval(31 downto 0);
     end if;
+
+    -- Ensure these are not considered latches
+    vregw0        := '0';
+    vregw1        := '0';
+    vregrdata0    := (others => '0');
+    vregrdata1    := (others => '0');
+    vbadreg0      := '0';
+    vbadreg1      := '0';
+    vbadreg       := '0';
+    vregaddr64    := (others => '0');
+    vregaddrmmu   := (others => '0');
+    vwidereg      := '0';
+    vregwmmu      := '0';
+    vwideregrdata := (others => '0');
+    vwideregwdata := (others => '0');
+    vwideregwh    := '0';
+    vwideregwl    := '0';
+
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    vregw0 := '0';
-    vregw1 := '0';
-    vregrdata0 := (others => '0');
-    vregrdata1 := (others => '0');
-    vbadreg0 := '0';
-    vbadreg1 := '0';
-    vregaddr64 := r.d2vaddr(7 downto 3);
-    vregaddrmmu := r.d2vaddr(10 downto 8);
-    if r.s=as_wrasi and r.d2asi=x"02" then
-      if r.d2size="11" then vregw0 := '1'; vregw1 := '1'; end if;
-      if r.d2vaddr(2)='0' then vregw0 := '1'; else vregw1 := '1'; end if;
-    end if;
-    vwidereg := '0';
-    vregwmmu := '0';
-    vwideregrdata := (others => '0');
-    vwideregwdata := r.dregval;
-    if endian='0' then
-      vwideregwh := vregw0;
-      vwideregwl := vregw1;
-    else
-      vwideregwh := vregw1;
-      vwideregwl := vregw0;
-    end if;
-    if r.s=as_wrasi and (r.d2asi=x"19" or r.d2asi=x"04") then
-      vregwmmu := '1';
-    end if;
-    case vregaddr64 is
-      when "00000" =>   -- 0x00: Cache control register,
-        vregrdata0 := get_ccr(r,rs);
-        if vregw0='1' then set_ccr(vregwdata0); end if;
-                       -- 0x04: Unimplemented
-        vbadreg1 := '1';
-      when "00001" =>  -- 0x08: ICache configuration register
-        vregrdata0 := cache_cfg5(0, iways, ilinesize, iwaysize, 0,
-                                 0, 0, 0, 0, 1);
-                       -- 0x0C: DCache configuration register
-        vregrdata1 := cache_cfg5(0, dways, dlinesize, dwaysize, 0,
-                                 6, 0, 0, 0, 1);
-      when "00010" =>  -- 0x10: LEON5 configuration register
-        vregrdata0(31 downto 30) := std_logic_vector(to_unsigned(dtagconf,2));
-        if itcmen /= 0 then
-          vregrdata0(28) := '1';
-        end if;
-        if dtcmen /= 0 then
-          vregrdata0(27) := '1';
-        end if;
-        vregrdata0(26) := '0';   -- GRLIB AHB bus implementation
-        vregrdata0(25 downto 23) := "001";  -- Revision 1
-        if dphysbits /= 32 or iphysbits /= 32 then
-          vregrdata0(21) := '1'; -- Indicate >4G address space support
-        end if;
-        vregrdata0(11) := r_cctrl.wcomben;
-        vregrdata0(10) := r.iuctrl.staticd;
-        vregrdata0(8)  := r.iuctrl.staticbp;
-        vregrdata0(7)  := r.iuctrl.fbp;
-        vregrdata0(6)  := r.iuctrl.fbtb;
-        vregrdata0(5)  := r.iuctrl.dlatearith;
-        vregrdata0(4)  := r.iuctrl.dlatewicc;
-        vregrdata0(3)  := r.iuctrl.dbtb;
-        vregrdata0(2)  := r.iuctrl.single_issue;
-        vregrdata0(1)  := r.iuctrl.dlatealu;
-        vregrdata0(0)  := r.iuctrl.fpspec;
-        if vregw0='1' then
-          v.cctrl.wcomben       := vregwdata0(11);
-          v.iuctrl.staticd      := vregwdata0(10);
-          --bit9 is reserved
-          v.iuctrl.staticbp     := vregwdata0(8);
-          v.iuctrl.fbp          := vregwdata0(7);
-          v.iuctrl.fbtb         := vregwdata0(6);
-          v.iuctrl.dlatearith   := vregwdata0(5);
-          v.iuctrl.dlatewicc    := vregwdata0(4);
-          v.iuctrl.dbtb         := vregwdata0(3);
-          v.iuctrl.single_issue := vregwdata0(2);
-          v.iuctrl.dlatealu     := vregwdata0(1);
-          v.iuctrl.fpspec       := vregwdata0(0);
-        end if;
-                      -- 0x14: LEON5 FT configuration register (FT only)
-        vbadreg1 := '1';
-      when "00011" =>  -- 0x18: LEON5 region flush mask register
-        vregrdata0(31 downto 4) := r.regflmask(31 downto 4);
-        if vregw0='1' then
-          v.regflmask := (others => '0');
-          v.regflmask(31 downto 4) := vregwdata0(31 downto 4);
-        end if;
-                      -- 0x1C: LEON5 region flush register
-        vregrdata1(31 downto 4) := r.regfladdr(31 downto 4);
-        vregrdata1(1) := r.iregflush;
-        vregrdata1(0) := r.dregflush;
-        if vregw1='1' then
-          v.regfladdr := (others => '0');
-          v.regfladdr(31 downto 4) := vregwdata1(31 downto 4);
-          v.iregflush := vregwdata1(1);
-          v.dregflush := vregwdata1(0);
-          v.iflushpend := v.iflushpend or v.iregflush;
-          v.dflushpend := v.dflushpend or v.dregflush;
-        end if;
-
-      when "00100" =>  -- 0x20: AHB error register
-                       -- 0x24: AHB error address register
-        -- Handled via bus interface in state machine code
-        --   except writing trapmode fields of error register
-        if vregw0='1' then
-          v.mmuwtrapmode := vregwdata0(31 downto 30);
-          v.ahbwtrapmode := vregwdata0(29 downto 28);
-        end if;
-
-      when "00101" =>  -- 0x28: AHB stripe configuration register
-        -- This register is not implemented in standard AHB version
-        -- of LEON5 (LEON5 config reg bits 26 and 21 are 0)
-        vbadreg0 := '1';
-        if dphysbits > 32 or iphysbits > 32 then
-          vbadreg0 := '0';
-          vregrdata0(27 downto 22) := std_logic_vector(to_unsigned(DTAG_HIGH, 6));
-          vregrdata0(21 downto 16) := std_logic_vector(to_unsigned(ITAG_HIGH, 6));
-        end if;
-                      -- 0x2C: Trap register
-        vregrdata1(25 downto 22) := r.ctrapacc;
-        vregrdata1(21 downto 18) := r.ctrappend;
-        vregrdata1(17 downto 16) := r.ctraptype;
-        vregrdata1(12 downto 11) := r.wtraplost;
-        vregrdata1(10 downto 9)  := r.wtrappend;
-        vregrdata1(8)            := r.wtraptype;
-        vregrdata1(7 downto 5)   := r.itraplost;
-        vregrdata1(4 downto 2)   := r.itrappend;
-        vregrdata1(1 downto 0)   := r.itraptype;
-        if vregw1='1' then
-          v.ctrapacc  := v.ctrapacc  and not vregwdata1(25 downto 22);
-          v.ctrappend := v.ctrappend and not vregwdata1(21 downto 18);
-          v.ctraptype := v.ctraptype and not vregwdata1(17 downto 16);
-          v.wtraplost := v.wtraplost and not vregwdata1(12 downto 11);
-          v.wtrappend := v.wtrappend and not vregwdata1(10 downto 9);
-          v.wtraptype := v.wtraptype and not vregwdata1(8);
-          v.itraplost := v.itraplost and not vregwdata1(7 downto 5);
-          v.itrappend := v.itrappend and not vregwdata1(4 downto 2);
-        end if;
-
-      when "00111" =>  -- 0x38: FT error counters (FT only)
-        vbadreg0 := '1';
-                      -- 0x3C: Boot word
-        vregrdata1 := bootword;
-
-      when "01000" =>   -- 0x40: TCM configuration register
-        if itcmen=0 and dtcmen=0 then
-          vbadreg0 := '1';
-        else
+    if arch = SPARC then
+      vregaddr64 := r.d2vaddr(7 downto 3);
+      vregaddrmmu := r.d2vaddr(10 downto 8);
+      if r.s=as_wrasi and r.d2asi=x"02" then
+        if r.d2size="11" then vregw0 := '1'; vregw1 := '1'; end if;
+        if r.d2vaddr(2)='0' then vregw0 := '1'; else vregw1 := '1'; end if;
+      end if;
+      vwidereg := '0';
+      vregwmmu := '0';
+      vwideregrdata := (others => '0');
+      vwideregwdata := r.dregval;
+      if endian='0' then
+        vwideregwh := vregw0;
+        vwideregwl := vregw1;
+      else
+        vwideregwh := vregw1;
+        vwideregwl := vregw0;
+      end if;
+      if r.s=as_wrasi and (r.d2asi=x"19" or r.d2asi=x"04") then
+        vregwmmu := '1';
+      end if;
+      case vregaddr64 is
+        when "00000" =>   -- 0x00: Cache control register,
+          vregrdata0 := get_ccr(r,rs);
+          if vregw0='1' then set_ccr(vregwdata0); end if;
+                         -- 0x04: Unimplemented
+          vbadreg1 := '1';
+        when "00001" =>  -- 0x08: ICache configuration register
+          vregrdata0 := cache_cfg5(0, iways, ilinesize, iwaysize, 0,
+                                   0, 0, 0, 0, 1);
+                         -- 0x0C: DCache configuration register
+          vregrdata1 := cache_cfg5(0, dways, dlinesize, dwaysize, 0,
+                                   6, 0, 0, 0, 1);
+        when "00010" =>  -- 0x10: LEON5 configuration register
+          vregrdata0(31 downto 30) := std_logic_vector(to_unsigned(dtagconf,2));
           if itcmen /= 0 then
-            vregrdata0(31) := r.itcmwipe;
-            vregrdata0(23 downto 21) := std_logic_vector(to_unsigned(itcmfrac,3));
-            vregrdata0(20 downto 16) := std_logic_vector(to_unsigned(itcmabits+3,5));
-            if vregw0='1' then
-              v.itcmwipe := vregwdata0(31);
-            end if;
+            vregrdata0(28) := '1';
           end if;
           if dtcmen /= 0 then
-            vregrdata0(15) := r.dtcmwipe;
-            vregrdata0(7 downto 5) := std_logic_vector(to_unsigned(dtcmfrac,3));
-            vregrdata0(4 downto 0) := std_logic_vector(to_unsigned(dtcmabits+3,5));
-            if vregw0='1' then
-              v.dtcmwipe := vregwdata0(15);
+            vregrdata0(27) := '1';
+          end if;
+          vregrdata0(26) := '0';   -- GRLIB AHB bus implementation
+          vregrdata0(25 downto 23) := "001";  -- Revision 1
+          if dphysbits /= 32 or iphysbits /= 32 then
+            vregrdata0(21) := '1'; -- Indicate >4G address space support
+          end if;
+          vregrdata0(11) := r_cctrl.wcomben;
+          vregrdata0(10) := r.iuctrl.staticd;
+          vregrdata0(8)  := r.iuctrl.staticbp;
+          vregrdata0(7)  := r.iuctrl.fbp;
+          vregrdata0(6)  := r.iuctrl.fbtb;
+          vregrdata0(5)  := r.iuctrl.dlatearith;
+          vregrdata0(4)  := r.iuctrl.dlatewicc;
+          vregrdata0(3)  := r.iuctrl.dbtb;
+          vregrdata0(2)  := r.iuctrl.single_issue;
+          vregrdata0(1)  := r.iuctrl.dlatealu;
+          vregrdata0(0)  := r.iuctrl.fpspec;
+          if vregw0='1' then
+            v.cctrl.wcomben       := vregwdata0(11);
+            v.iuctrl.staticd      := vregwdata0(10);
+            --bit9 is reserved
+            v.iuctrl.staticbp     := vregwdata0(8);
+            v.iuctrl.fbp          := vregwdata0(7);
+            v.iuctrl.fbtb         := vregwdata0(6);
+            v.iuctrl.dlatearith   := vregwdata0(5);
+            v.iuctrl.dlatewicc    := vregwdata0(4);
+            v.iuctrl.dbtb         := vregwdata0(3);
+            v.iuctrl.single_issue := vregwdata0(2);
+            v.iuctrl.dlatealu     := vregwdata0(1);
+            v.iuctrl.fpspec       := vregwdata0(0);
+          end if;
+                        -- 0x14: LEON5 FT configuration register (FT only)
+          vbadreg1 := '1';
+        when "00011" =>  -- 0x18: LEON5 region flush mask register
+          vregrdata0(31 downto 4) := r.regflmask(31 downto 4);
+          if vregw0='1' then
+            v.regflmask := (others => '0');
+            v.regflmask(31 downto 4) := vregwdata0(31 downto 4);
+          end if;
+                        -- 0x1C: LEON5 region flush register
+          vregrdata1(31 downto 4) := r.regfladdr(31 downto 4);
+          vregrdata1(1) := r.iregflush;
+          vregrdata1(0) := r.dregflush;
+          if vregw1='1' then
+            v.regfladdr := (others => '0');
+            v.regfladdr(31 downto 4) := vregwdata1(31 downto 4);
+            v.iregflush := vregwdata1(1);
+            v.dregflush := vregwdata1(0);
+            v.iflushpend := v.iflushpend or v.iregflush;
+            v.dflushpend := v.dflushpend or v.dregflush;
+          end if;
+
+        when "00100" =>  -- 0x20: AHB error register
+                         -- 0x24: AHB error address register
+          -- Handled via bus interface in state machine code
+          --   except writing trapmode fields of error register
+          if vregw0='1' then
+            v.mmuwtrapmode := vregwdata0(31 downto 30);
+            v.ahbwtrapmode := vregwdata0(29 downto 28);
+          end if;
+
+        when "00101" =>  -- 0x28: AHB stripe configuration register
+          -- This register is not implemented in standard AHB version
+          -- of LEON5 (LEON5 config reg bits 26 and 21 are 0)
+          vbadreg0 := '1';
+          if dphysbits > 32 or iphysbits > 32 then
+            vbadreg0 := '0';
+            vregrdata0(27 downto 22) := std_logic_vector(to_unsigned(DTAG_HIGH, 6));
+            vregrdata0(21 downto 16) := std_logic_vector(to_unsigned(ITAG_HIGH, 6));
+          end if;
+                        -- 0x2C: Trap register
+          vregrdata1(25 downto 22) := r.ctrapacc;
+          vregrdata1(21 downto 18) := r.ctrappend;
+          vregrdata1(17 downto 16) := r.ctraptype;
+          vregrdata1(12 downto 11) := r.wtraplost;
+          vregrdata1(10 downto 9)  := r.wtrappend;
+          vregrdata1(8)            := r.wtraptype;
+          vregrdata1(7 downto 5)   := r.itraplost;
+          vregrdata1(4 downto 2)   := r.itrappend;
+          vregrdata1(1 downto 0)   := r.itraptype;
+          if vregw1='1' then
+            v.ctrapacc  := v.ctrapacc  and not vregwdata1(25 downto 22);
+            v.ctrappend := v.ctrappend and not vregwdata1(21 downto 18);
+            v.ctraptype := v.ctraptype and not vregwdata1(17 downto 16);
+            v.wtraplost := v.wtraplost and not vregwdata1(12 downto 11);
+            v.wtrappend := v.wtrappend and not vregwdata1(10 downto 9);
+            v.wtraptype := v.wtraptype and not vregwdata1(8);
+            v.itraplost := v.itraplost and not vregwdata1(7 downto 5);
+            v.itrappend := v.itrappend and not vregwdata1(4 downto 2);
+          end if;
+
+        when "00111" =>  -- 0x38: FT error counters (FT only)
+          vbadreg0 := '1';
+                        -- 0x3C: Boot word
+          vregrdata1 := bootword;
+
+        when "01000" =>   -- 0x40: TCM configuration register
+          if itcmen=0 and dtcmen=0 then
+            vbadreg0 := '1';
+          else
+            if itcmen /= 0 then
+              vregrdata0(31) := r.itcmwipe;
+              vregrdata0(23 downto 21) := std_logic_vector(to_unsigned(itcmfrac,3));
+              vregrdata0(20 downto 16) := std_logic_vector(to_unsigned(itcmabits+3,5));
+              if vregw0='1' then
+                v.itcmwipe := vregwdata0(31);
+              end if;
+            end if;
+            if dtcmen /= 0 then
+              vregrdata0(15) := r.dtcmwipe;
+              vregrdata0(7 downto 5) := std_logic_vector(to_unsigned(dtcmfrac,3));
+              vregrdata0(4 downto 0) := std_logic_vector(to_unsigned(dtcmabits+3,5));
+              if vregw0='1' then
+                v.dtcmwipe := vregwdata0(15);
+              end if;
             end if;
           end if;
-        end if;
 
-      when "01001" =>  -- 0x48: Instruction TCM control register
-        if itcmen=0 and dtcmen=0 then
-          vbadreg0 := '1';
-        end if;
-        if itcmen /=0 then
-          vregrdata0(31 downto 16) := r.itcmaddr;
-          vregrdata0(15 downto 8) := r.itcmctx;
-          vregrdata0(4 downto 3) := r.itcmperm;
-          vregrdata0(2) := r.itcmenva;
-          vregrdata0(1) := r.itcmenvc;
-          vregrdata0(0) := r.itcmenp;
-          if vregw0='1' then
-            v.itcmaddr := vregwdata0(31 downto 16);
-            v.itcmctx := vregwdata0(15 downto 8);
-            v.itcmperm := vregwdata0(4 downto 3);
-            v.itcmenva := vregwdata0(2);
-            v.itcmenvc := vregwdata0(1);
-            v.itcmenp := vregwdata0(0);
+        when "01001" =>  -- 0x48: Instruction TCM control register
+          if itcmen=0 and dtcmen=0 then
+            vbadreg0 := '1';
           end if;
-        end if;
-                      -- 0x4C: Data TCM control register
-        if itcmen=0 and dtcmen=0 then
+          if itcmen /=0 then
+            vregrdata0(31 downto 16) := r.itcmaddr;
+            vregrdata0(15 downto 8) := r.itcmctx;
+            vregrdata0(4 downto 3) := r.itcmperm;
+            vregrdata0(2) := r.itcmenva;
+            vregrdata0(1) := r.itcmenvc;
+            vregrdata0(0) := r.itcmenp;
+            if vregw0='1' then
+              v.itcmaddr := vregwdata0(31 downto 16);
+              v.itcmctx := vregwdata0(15 downto 8);
+              v.itcmperm := vregwdata0(4 downto 3);
+              v.itcmenva := vregwdata0(2);
+              v.itcmenvc := vregwdata0(1);
+              v.itcmenp := vregwdata0(0);
+            end if;
+          end if;
+                        -- 0x4C: Data TCM control register
+          if itcmen=0 and dtcmen=0 then
+            vbadreg1 := '1';
+          end if;
+          if dtcmen /= 0 then
+            vregrdata1(31 downto 16) := r.dtcmaddr;
+            vregrdata1(15 downto 8) := r.dtcmctx;
+            vregrdata1(6 downto 3) := r.dtcmperm;
+            vregrdata1(2) := r.dtcmenva;
+            vregrdata1(1) := r.dtcmenvc;
+            vregrdata1(0) := r.dtcmenp;
+            if vregw1='1' then
+              v.dtcmaddr := vregwdata1(31 downto 16);
+              v.dtcmctx := vregwdata1(15 downto 8);
+              v.dtcmperm := vregwdata1(6 downto 3);
+              v.dtcmenva := vregwdata1(2);
+              v.dtcmenvc := vregwdata1(1);
+              v.dtcmenp := vregwdata1(0);
+            end if;
+          end if;
+
+        when "10000" =>   -- 0x80,0x84: Extended region flush mask register (64-bit)
+          vwidereg := '1';
+          vwideregrdata := (others => '0');
+          vwideregrdata(dphysbits-1 downto 4) := r.regflmask;
+          for x in dphysbits-1 downto 4 loop
+            if (x>=32 and vwideregwh='1') or (x<32 and vwideregwl='1') then
+              v.regflmask(x) := vwideregwdata(x);
+            end if;
+          end loop;
+
+        when "10001" =>   -- 0x88,0x8C: Extended region flush address register (64-bit)
+          vwidereg := '1';
+          vwideregrdata := (others => '0');
+          vwideregrdata(dphysbits-1 downto 4) := r.regfladdr;
+          vwideregrdata(1) := r.iregflush;
+          vwideregrdata(0) := r.dregflush;
+          for x in dphysbits-1 downto 4 loop
+            if (x>=32 and vwideregwh='1') or (x<32 and vwideregwl='1') then
+              v.regfladdr(x) := vwideregwdata(x);
+            end if;
+          end loop;
+          if vwideregwl='1' then
+            v.iregflush := vwideregwdata(1);
+            v.dregflush := vwideregwdata(0);
+            v.iflushpend := v.iflushpend or v.iregflush;
+            v.dflushpend := v.dflushpend or v.dregflush;
+          end if;
+
+        when "10100" =>   -- 0xA0,0xA4: Extended AHB error address register (64-bit)
+          -- Handled via bus interface in state machine code
+          null;
+
+        when others =>    -- Unimplemented
+          vbadreg0 := '1';
           vbadreg1 := '1';
-        end if;
-        if dtcmen /= 0 then
-          vregrdata1(31 downto 16) := r.dtcmaddr;
-          vregrdata1(15 downto 8) := r.dtcmctx;
-          vregrdata1(6 downto 3) := r.dtcmperm;
-          vregrdata1(2) := r.dtcmenva;
-          vregrdata1(1) := r.dtcmenvc;
-          vregrdata1(0) := r.dtcmenp;
-          if vregw1='1' then
-            v.dtcmaddr := vregwdata1(31 downto 16);
-            v.dtcmctx := vregwdata1(15 downto 8);
-            v.dtcmperm := vregwdata1(6 downto 3);
-            v.dtcmenva := vregwdata1(2);
-            v.dtcmenvc := vregwdata1(1);
-            v.dtcmenp := vregwdata1(0);
-          end if;
-        end if;
-
-      when "10000" =>   -- 0x80,0x84: Extended region flush mask register (64-bit)
-        vwidereg := '1';
-        vwideregrdata := (others => '0');
-        vwideregrdata(dphysbits-1 downto 4) := r.regflmask;
-        for x in dphysbits-1 downto 4 loop
-          if (x>=32 and vwideregwh='1') or (x<32 and vwideregwl='1') then
-            v.regflmask(x) := vwideregwdata(x);
-          end if;
-        end loop;
-
-      when "10001" =>   -- 0x88,0x8C: Extended region flush address register (64-bit)
-        vwidereg := '1';
-        vwideregrdata := (others => '0');
-        vwideregrdata(dphysbits-1 downto 4) := r.regfladdr;
-        vwideregrdata(1) := r.iregflush;
-        vwideregrdata(0) := r.dregflush;
-        for x in dphysbits-1 downto 4 loop
-          if (x>=32 and vwideregwh='1') or (x<32 and vwideregwl='1') then
-            v.regfladdr(x) := vwideregwdata(x);
-          end if;
-        end loop;
-        if vwideregwl='1' then
-          v.iregflush := vwideregwdata(1);
-          v.dregflush := vwideregwdata(0);
-          v.iflushpend := v.iflushpend or v.iregflush;
-          v.dflushpend := v.dflushpend or v.dregflush;
-        end if;
-
-      when "10100" =>   -- 0xA0,0xA4: Extended AHB error address register (64-bit)
-        -- Handled via bus interface in state machine code
-        null;
-
-      when others =>    -- Unimplemented
-        vbadreg0 := '1';
-        vbadreg1 := '1';
-    end case;
-
-    -- MMU registers
-    if r.d2asi(0)='1' or r.d2asi(2)='1' then
-      vbadreg1 := '1';
-      vregrdata0 := (others => '0');
-      vregrdata1 := (others => '0');
-      case vregaddrmmu is
-        when "000" =>  -- 0x000 MMU control register
-          vregrdata0(31 downto 28) := "0000";  -- impl
-          vregrdata0(27 downto 24) := "0001";  -- ver
-          vregrdata0(23 downto 21) := std_logic_vector(to_unsigned(log2(itlbnum),3));
-          vregrdata0(20 downto 18) := std_logic_vector(to_unsigned(log2(dtlbnum),3));
-          vregrdata0(17 downto 16) := std_logic_vector(to_unsigned(0,2));
-          vregrdata0(15) := r.mmctrl1.tlbdis;
-          vregrdata0(14) := '1';   -- Sep tlb
-          vregrdata0(1) := r.mmctrl1.nf;
-          vregrdata0(0) := r.mmctrl1.e;
-          if vregwmmu='1' then
-            v.mmctrl1.tlbdis := vregwdata0(15);
-            v.mmctrl1.nf := vregwdata0(1);
-            v.mmctrl1.e := vregwdata0(0);
-          end if;
-        when "001" =>  -- 0x100 Context pointer register
-          vregrdata0(31 downto 2) := r.mmctrl1.ctxp;
-          if vregwmmu='1' then
-            v.mmctrl1.ctxp := vregwdata0(31 downto 2);
-          end if;
-        when "010" =>  -- 0x200 Context register
-          --vregrdata0(7 downto 0) := r.mmctrl1.ctx;
-          --vregrdata0(7 downto 0) := r.mmctrl1.ctx(7 downto 0);
-          if vregwmmu='1' then
-            --v.mmctrl1.ctx := vregwdata0(7 downto 0);
-            --v.mmctrl1.ctx(7 downto 0) := vregwdata0(7 downto 0);
-          end if;
-          -- Side effect of setting ctxflush in as_wrasi code
-        when "011" =>  -- 0x300 Fault status register
-          -- Field cleared on read handled in FSM
-          vregrdata0(17 downto 10) := r.mmfsr.ebe;
-          vregrdata0(9 downto 8) := r.mmfsr.l;
-          vregrdata0(7 downto 5) := r.mmfsr.at_ls & r.mmfsr.at_id & r.mmfsr.at_su;
-          vregrdata0(4 downto 2) := r.mmfsr.ft;
-          vregrdata0(1) := r.mmfsr.fav;
-          vregrdata0(0) := r.mmfsr.ow;
-        when "100" =>  -- 0x400 Fault address register
-          vregrdata0(31 downto 12) := r.mmfar;
-        when others =>
-          vbadreg0 := '1';
       end case;
-    end if;
 
-    vbadreg := '0';
-    if vbadreg0='1' and vbadreg1='1'     then vbadreg:='1'; end if;
-    if r.d2size /= "11" then
-      if vbadreg0='1' and r.d2vaddr(2)='0' then vbadreg:='1'; end if;
-      if vbadreg1='1' and r.d2vaddr(2)='1' then vbadreg:='1'; end if;
+      -- MMU registers
+      if r.d2asi(0)='1' or r.d2asi(2)='1' then
+        vbadreg1 := '1';
+        vregrdata0 := (others => '0');
+        vregrdata1 := (others => '0');
+        case vregaddrmmu is
+          when "000" =>  -- 0x000 MMU control register
+            vregrdata0(31 downto 28) := "0000";  -- impl
+            vregrdata0(27 downto 24) := "0001";  -- ver
+            vregrdata0(23 downto 21) := std_logic_vector(to_unsigned(log2(itlbnum),3));
+            vregrdata0(20 downto 18) := std_logic_vector(to_unsigned(log2(dtlbnum),3));
+            vregrdata0(17 downto 16) := std_logic_vector(to_unsigned(0,2));
+            vregrdata0(15) := r.mmctrl1.tlbdis;
+            vregrdata0(14) := '1';   -- Sep tlb
+            vregrdata0(1) := r.mmctrl1.nf;
+            vregrdata0(0) := r.mmctrl1.e;
+            if vregwmmu='1' then
+              v.mmctrl1.tlbdis := vregwdata0(15);
+              v.mmctrl1.nf := vregwdata0(1);
+              v.mmctrl1.e := vregwdata0(0);
+            end if;
+          when "001" =>  -- 0x100 Context pointer register
+            vregrdata0(31 downto 2) := r.mmctrl1.ctxp;
+            if vregwmmu='1' then
+              v.mmctrl1.ctxp := vregwdata0(31 downto 2);
+            end if;
+          when "010" =>  -- 0x200 Context register
+            --vregrdata0(7 downto 0) := r.mmctrl1.ctx;
+            --vregrdata0(7 downto 0) := r.mmctrl1.ctx(7 downto 0);
+            if vregwmmu='1' then
+              --v.mmctrl1.ctx := vregwdata0(7 downto 0);
+              --v.mmctrl1.ctx(7 downto 0) := vregwdata0(7 downto 0);
+            end if;
+            -- Side effect of setting ctxflush in as_wrasi code
+          when "011" =>  -- 0x300 Fault status register
+            -- Field cleared on read handled in FSM
+            vregrdata0(17 downto 10) := r.mmfsr.ebe;
+            vregrdata0(9 downto 8) := r.mmfsr.l;
+            vregrdata0(7 downto 5) := r.mmfsr.at_ls & r.mmfsr.at_id & r.mmfsr.at_su;
+            vregrdata0(4 downto 2) := r.mmfsr.ft;
+            vregrdata0(1) := r.mmfsr.fav;
+            vregrdata0(0) := r.mmfsr.ow;
+          when "100" =>  -- 0x400 Fault address register
+            vregrdata0(31 downto 12) := r.mmfar;
+          when others =>
+            vbadreg0 := '1';
+        end case;
+      end if;
+
+      vbadreg := '0';
+      if vbadreg0='1' and vbadreg1='1'     then vbadreg:='1'; end if;
+      if r.d2size /= "11" then
+        if vbadreg0='1' and r.d2vaddr(2)='0' then vbadreg:='1'; end if;
+        if vbadreg1='1' and r.d2vaddr(2)='1' then vbadreg:='1'; end if;
+      end if;
     end if;
-   end if;
 -- coverage on
 -- reason: RISCV
 
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    --------------------------------------------------------------------------
-    -- Trap handshake management
-    --------------------------------------------------------------------------
-    v.mmuerr.fav := '0';
-    vmaskwtrap := "00";
-    if r.holdn='1' and dci.trapack='1' then
-      if dci.trapacktt=x"01" then           -- Instruction access exception
-        v.itraptype := dci.trapackidata(1 downto 0);
-        case v.itraptype is
-          when "00" =>
-            v.itrappend(0) := '0';
-          when "01" =>
-            v.itrappend(1) := '0';
-            if r_cctrl.diaemru='1' then
-              v.newerrclass := "01";
-              v.newent.vaddr(31 downto 12) := dci.trapackpc(31 downto 12);
-              v.mmuerr.fav := '1';
-              v.mmuerr.l := dci.trapackidata(7 downto 6);
-              v.mmuerr.at_ls := '0';        -- Load/Execute
-              v.mmuerr.at_id := '1';        -- Instruction space
-              v.mmuerr.at_su := dci.trapackidata(5);
-              v.mmuerr.ft := dci.trapackidata(4 downto 2);
-            end if;
-          when others =>
-            v.itrappend(2) := '0';
-        end case;
-      end if;
-      v.itraplost := v.itraplost or v.itrappend;
-      v.itrappend := (others => '0');
-      -- Write error
-      if dci.trapacktt=x"2b" then
-        v.wtraptype := r.wtrappend(1);
-        if v.wtraptype='0' then
+    if arch = SPARC then
+      --------------------------------------------------------------------------
+      -- Trap handshake management
+      --------------------------------------------------------------------------
+      v.mmuerr.fav := '0';
+      vmaskwtrap := "00";
+      if r.holdn='1' and dci.trapack='1' then
+        if dci.trapacktt=x"01" then           -- Instruction access exception
+          v.itraptype := dci.trapackidata(1 downto 0);
+          case v.itraptype is
+            when "00" =>
+              v.itrappend(0) := '0';
+            when "01" =>
+              v.itrappend(1) := '0';
+              if r_cctrl.diaemru='1' then
+                v.newerrclass := "01";
+                v.newent.vaddr(31 downto 12) := dci.trapackpc(31 downto 12);
+                v.mmuerr.fav := '1';
+                v.mmuerr.l := dci.trapackidata(7 downto 6);
+                v.mmuerr.at_ls := '0';        -- Load/Execute
+                v.mmuerr.at_id := '1';        -- Instruction space
+                v.mmuerr.at_su := dci.trapackidata(5);
+                v.mmuerr.ft := dci.trapackidata(4 downto 2);
+              end if;
+            when others =>
+              v.itrappend(2) := '0';
+          end case;
+        end if;
+        v.itraplost := v.itraplost or v.itrappend;
+        v.itrappend := (others => '0');
+        -- Write error
+        if dci.trapacktt=x"2b" then
+          v.wtraptype := r.wtrappend(1);
+          if v.wtraptype='0' then
+            v.wtrappend(0) := '0';
+          else
+            v.wtrappend(1) := '0';
+          end if;
+        end if;
+        if r.ahbwtrapmode="01" then
+          v.wtraplost(0) := v.wtraplost(0) or v.wtrappend(0);
           v.wtrappend(0) := '0';
-        else
+          vmaskwtrap(0) := '1';
+        end if;
+        if r.mmuwtrapmode="01" then
+          v.wtraplost(1) := v.wtraplost(1) or v.wtrappend(1);
           v.wtrappend(1) := '0';
+          vmaskwtrap(1) := '1';
+        end if;
+        -- Internal error
+        if dci.trapacktt=x"60" then
+          v.ctraptype := "00";
+          for x in r.ctrappend'range loop
+            if r.ctrappend(x)='1' then
+              v.ctraptype := std_logic_vector(to_unsigned(x,2));
+            end if;
+          end loop;
+          for x in r.ctrappend'range loop
+            if v.ctraptype=std_logic_vector(to_unsigned(x,2)) then
+              v.ctrappend(x) := '0';
+            end if;
+          end loop;
         end if;
       end if;
-      if r.ahbwtrapmode="01" then
-        v.wtraplost(0) := v.wtraplost(0) or v.wtrappend(0);
-        v.wtrappend(0) := '0';
+      if r.ahbwtrapmode="00" then
         vmaskwtrap(0) := '1';
       end if;
-      if r.mmuwtrapmode="01" then
-        v.wtraplost(1) := v.wtraplost(1) or v.wtrappend(1);
-        v.wtrappend(1) := '0';
+      if r.mmuwtrapmode="00" then
         vmaskwtrap(1) := '1';
       end if;
-      -- Internal error
-      if dci.trapacktt=x"60" then
-        v.ctraptype := "00";
-        for x in r.ctrappend'range loop
-          if r.ctrappend(x)='1' then
-            v.ctraptype := std_logic_vector(to_unsigned(x,2));
-          end if;
-        end loop;
-        for x in r.ctrappend'range loop
-          if v.ctraptype=std_logic_vector(to_unsigned(x,2)) then
-            v.ctrappend(x) := '0';
-          end if;
-        end loop;
-      end if;
-    end if;
-    if r.ahbwtrapmode="00" then
-      vmaskwtrap(0) := '1';
-    end if;
-    if r.mmuwtrapmode="00" then
-      vmaskwtrap(1) := '1';
-    end if;
 
-    obifi.maskwerr := vmaskwtrap;
+      obifi.maskwerr := vmaskwtrap;
 
-    if bifo.stat.sterr(0)='1' and vmaskwtrap(0)='0' then v.wtrappend(0) := '1'; end if;
-    if bifo.stat.sterr(1)='1' and vmaskwtrap(1)='0' then v.wtrappend(1) := '1'; end if;
-    if bifo.stat.sterr(2)='1' or (bifo.stat.sterr(0)='1' and vmaskwtrap(0)='1') then v.wtraplost(0) := '1'; end if;
-    if bifo.stat.sterr(3)='1' or (bifo.stat.sterr(1)='1' and vmaskwtrap(1)='1') then v.wtraplost(1) := '1'; end if;
-   end if;
+      if bifo.stat.sterr(0)='1' and vmaskwtrap(0)='0' then v.wtrappend(0) := '1'; end if;
+      if bifo.stat.sterr(1)='1' and vmaskwtrap(1)='0' then v.wtrappend(1) := '1'; end if;
+      if bifo.stat.sterr(2)='1' or (bifo.stat.sterr(0)='1' and vmaskwtrap(0)='1') then v.wtraplost(0) := '1'; end if;
+      if bifo.stat.sterr(3)='1' or (bifo.stat.sterr(1)='1' and vmaskwtrap(1)='1') then v.wtraplost(1) := '1'; end if;
+    end if;
 -- coverage on
 -- reason: RISCV
 
    -- Don't mask wtrappend in RISCV mode
-   if arch = RISCV then
-     if bifo.stat.sterr(0)='1' then v.wtrappend(0) := '1'; end if;
-     if bifo.stat.sterr(1)='1' then v.wtrappend(1) := '1'; end if;
-   end if;
+    if arch = RISCV then
+      if bifo.stat.sterr(0)='1' then v.wtrappend(0) := '1'; end if;
+      if bifo.stat.sterr(1)='1' then v.wtrappend(1) := '1'; end if;
+    end if;
 
     --------------------------------------------------------------------------
     -- ICache logic
@@ -4105,9 +4117,9 @@ begin
           if (r.itcmperm(0)='0' and r.i1su='0') or (r.itcmperm(1)='0' and r.i1su='1') then
             oico.mexc    := '1';
             oico.exctype := '1';
-           if arch = SPARC then
-            oico.mexcdata(1 downto 0) := "10";
-           end if;
+            if arch = SPARC then
+              oico.mexcdata(1 downto 0) := "10";
+            end if;
             v.itrappend(1) := '1';
           end if;
         end if;
@@ -4306,11 +4318,11 @@ begin
     itcmact := '0';
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    if r.itcmenp='1' and r.mmctrl1.e='0' then itcmact := '1'; end if;
-    if r.itcmenva='1' and r.mmctrl1.e='1' then itcmact := '1'; end if;
-    if r.itcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.itcmctx then itcmact:='1'; end if;
-   end if;
+    if arch = SPARC then
+      if r.itcmenp='1' and r.mmctrl1.e='0' then itcmact := '1'; end if;
+      if r.itcmenva='1' and r.mmctrl1.e='1' then itcmact := '1'; end if;
+      if r.itcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.itcmctx then itcmact:='1'; end if;
+    end if;
     if (r.holdn='1' or r.ramreload='1') then
       v.i1tcmen := '0';
       if itcmact='1' then
@@ -4893,13 +4905,13 @@ begin
 
     -- Register read logic
     if r.dregmux='1' then
-     if use_xdata = 0 then
-      dway := "00";
-      odco.data(0) := r.dregval;
-     else
+      if use_xdata = 0 then
+        dway := "00";
+        odco.data(0) := r.dregval;
+      else
         -- v.dregval
         odco.xway  := '1';
-     end if;
+      end if;
       odco.mds     := '0';
       odco.mexc    := r.dregerr;
       odco.exctype := r.dregerr;  -- Count register error as access fault.
@@ -5107,13 +5119,13 @@ begin
     dtcmact := '0';
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    if r.dtcmenp='1' and r.mmctrl1.e='0' then dtcmact := '1'; end if;
-    if r.dtcmenva='1' and r.mmctrl1.e='1' then dtcmact := '1'; end if;
-    if r.dtcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.dtcmctx then dtcmact:='1'; end if;
+    if arch = SPARC then
+      if r.dtcmenp='1' and r.mmctrl1.e='0' then dtcmact := '1'; end if;
+      if r.dtcmenva='1' and r.mmctrl1.e='1' then dtcmact := '1'; end if;
+      if r.dtcmenvc='1' and r.mmctrl1.e='1' and r.mmctrl1.ctx=r.dtcmctx then dtcmact:='1'; end if;
 -- coverage on
 -- reason: RISCV
-   end if;
+    end if;
     if dtenall='1' and dtcmact='1' and dwriting='0' then
       ocrami.dtcmen := '1';
     end if;
@@ -5131,18 +5143,18 @@ begin
       v.d1specialasi := '0';
 -- coverage off
 -- reason: SPARC
-     if arch = SPARC then
-      if v.d1asi(7 downto 1)="0000000" then
-        v.d1forcemiss := '1';
-        v.d1su:='1';
-      elsif v.d1asi(4 downto 0)/=ASI_UDATA and v.d1asi(4 downto 0)/=ASI_SDATA then
-        v.d1specialasi := '1';
-      end if;
+      if arch = SPARC then
+        if v.d1asi(7 downto 1)="0000000" then
+          v.d1forcemiss := '1';
+          v.d1su:='1';
+        elsif v.d1asi(4 downto 0)/=ASI_UDATA and v.d1asi(4 downto 0)/=ASI_SDATA then
+          v.d1specialasi := '1';
+        end if;
 -- coverage on
 -- reason: RISCV
-     elsif v.d1asi(4 downto 0) /= ASI_UDATA then
-      v.d1specialasi := '1';
-     end if;
+      elsif v.d1asi(4 downto 0) /= ASI_UDATA then
+        v.d1specialasi := '1';
+      end if;
       v.d1m     := '0';
       v.d1sum   := '0';
       v.d1mxr   := '0';
@@ -5809,7 +5821,7 @@ begin
    end if;
 -- coverage on
 -- reason: RISCV
-    vstd32 := (others => '0');
+    vstd64 := (others => '0');  -- Ensure this is not considered a latch
     vstoresu := v.d2su;
     v.fsmidle := '0';
     vtoglock := '0';
@@ -5850,9 +5862,9 @@ begin
             v.stbuffull := '1';
             v.s := as_bifwait;
           end if;
-         if not is_riscv then
-          v.dwchint := '0';
-         end if;
+          if not is_riscv then
+            v.dwchint := '0';
+          end if;
         elsif v.holdpend = '1' then
           v.s := as_hold;
         elsif ( ((not IMISSPIPE) and v.iflushpend='1') or (IMISSPIPE and r.iflushpend='1') or
@@ -6202,11 +6214,11 @@ begin
         if bifo.rdb.err='1' then
           v.dflushpend := '1';
         end if;
-       if use_xdata < 2 then
-        odco.way := "00";
-       else
+        if use_xdata < 2 then
+          odco.way := "00";
+        else
           odco.xway := '1';
-       end if;
+        end if;
         odco.mds := '0';
 
 -- coverage off
@@ -6267,11 +6279,11 @@ begin
             v.ramreload := '1';
           end if;
         end if;
-       if use_xdata < 2 then
-        odco.way := "00";
-       else
+        if use_xdata < 2 then
+          odco.way := "00";
+        else
           odco.xway := '1';
-       end if;
+        end if;
         odco.mds := '0';
 
         odco.mexc    := bifo.rdb.err;
@@ -6511,80 +6523,80 @@ begin
       when as_mmuwalk3 =>
 -- coverage off
 -- reason: SPARC
-       if arch = SPARC then
-        if r.mmusel(2)='0' then
-          if r.mmusel(0)='0' then
-            oico.mds := '0';
-            if r.mmctrl1.nf='0' then
-              oico.mexc := '1';
-              v.itrappend(2) := '1';
-            end if;
-            v.imisspend := '0';
-          else
-            odco.mds := '0';
-            if r.mmctrl1.nf='0' then
-              odco.mexc := '1';
-            end if;
-            if r.mmusel(1)='1' then
-              v.slowwrpend := '0';
+        if arch = SPARC then
+          if r.mmusel(2)='0' then
+            if r.mmusel(0)='0' then
+              oico.mds := '0';
+              if r.mmctrl1.nf='0' then
+                oico.mexc := '1';
+                v.itrappend(2) := '1';
+              end if;
+              v.imisspend := '0';
             else
-              v.dmisspend := '0';
+              odco.mds := '0';
+              if r.mmctrl1.nf='0' then
+                odco.mexc := '1';
+              end if;
+              if r.mmusel(1)='1' then
+                v.slowwrpend := '0';
+              else
+                v.dmisspend := '0';
+              end if;
             end if;
+            v.ramreload := '1';
+            v.s := as_normal;
+          else
+            v.s := as_rdasi2;
           end if;
-          v.ramreload := '1';
-          v.s := as_normal;
+          v.dregval := (others => '0');
+          oico.mexcdata(1 downto 0) := "01";
         else
-          v.s := as_rdasi2;
-        end if;
-        v.dregval := (others => '0');
-        oico.mexcdata(1 downto 0) := "01";
-       else
 -- coverage on
 -- reason: RISCV
-         assert false report "Reached as_mmuwalk3!" severity failure;
-       end if;
+          assert false report "Reached as_mmuwalk3!" severity failure;
+        end if;
 
       when as_mmuwalk4 =>
 -- coverage off
 -- reason: SPARC
-       if arch = SPARC then
-        obifi.busaddr := (others => '0');
-        obifi.busaddr(31 downto 0) := r.mmuaddr(31 downto 0);
-        obifi.widebus := '0';
-        obifi.size := "10";
-        obifi.nosnoop := '0';
-        obifi.mmuacc := '1';
-        vstd32 := rdb32;
-        vstd32(5) := '1';  -- set referenced bit
-        obifi.stdata := vstd32 & vstd32;
-        if r.biflocked='0' then
-          vtoglock := '1';
-        end if;
-        if bifo.rdb.err='1' then
-          -- AHB error fetching entry
-          v.s := as_mmuwalk3;
-          v.newerrclass := "11";
-          v.mmuerr.ft := "100";       -- Translation error
-          if r.mmusel /= "0000" then
-            v.mmuerr.fav := '1';
+        if arch = SPARC then
+          obifi.busaddr := (others => '0');
+          obifi.busaddr(31 downto 0) := r.mmuaddr(31 downto 0);
+          obifi.widebus := '0';
+          obifi.size := "10";
+          obifi.nosnoop := '0';
+          obifi.mmuacc := '1';
+          vstd32 := rdb32;
+          vstd32(5) := '1';  -- set referenced bit
+          obifi.stdata := vstd32 & vstd32;
+          if r.biflocked='0' then
+            vtoglock := '1';
           end if;
-        elsif rdb32v='1' and bifo.stat.ready='1' then
-          v.s := as_wptectag1;
-          v.newent.modified := v.newent.modified or rdb32(6);
-          v.tlbupdate := '1';
-          obifi.bifop := BIFOP_STORE;
-        elsif rdb32v='1' or bifo.stat.idle='0' or (RDB32PIPE and r.idle_pipe='0') then
-          -- wait for read access to complete
-          null;
-        elsif r.biflocked='1' and bifo.stat.ready='1' then
-          -- start read access with lock held
-          obifi.bifop := BIFOP_SMFET;
-        end if;
-       else
+          if bifo.rdb.err='1' then
+            -- AHB error fetching entry
+            v.s := as_mmuwalk3;
+            v.newerrclass := "11";
+            v.mmuerr.ft := "100";       -- Translation error
+            if r.mmusel /= "0000" then
+              v.mmuerr.fav := '1';
+            end if;
+          elsif rdb32v='1' and bifo.stat.ready='1' then
+            v.s := as_wptectag1;
+            v.newent.modified := v.newent.modified or rdb32(6);
+            v.tlbupdate := '1';
+            obifi.bifop := BIFOP_STORE;
+          elsif rdb32v='1' or bifo.stat.idle='0' or (RDB32PIPE and r.idle_pipe='0') then
+            -- wait for read access to complete
+            null;
+          elsif r.biflocked='1' and bifo.stat.ready='1' then
+            -- start read access with lock held
+            obifi.bifop := BIFOP_SMFET;
+          end if;
+        else
 -- coverage on
 -- reason: RISCV
-         assert false report "Reached as_mmuwalk4!" severity failure;
-       end if;
+           assert false report "Reached as_mmuwalk4!" severity failure;
+        end if;
 
       when as_wptectag1 =>
         -- Write PTE and recheck tags stage 1
@@ -6793,13 +6805,13 @@ begin
 
         case r.d2asi is
           when "00000010" =>            -- 0x02 System control registers
-           if arch = RISCV then
-             vbadreg := '1';
-             if r.d2vaddr(6 downto 3)="0100" then
-               vbadreg := '0';
-             end if;
-             obifi.widebus := '1';
-           end if;
+            if arch = RISCV then
+              vbadreg := '1';
+              if r.d2vaddr(6 downto 3)="0100" then
+                vbadreg := '0';
+              end if;
+              obifi.widebus := '1';
+            end if;
             v.dregerr := '0';
             -- Mostly handled in register access code above FSM
             if vbadreg='1' then
@@ -6829,93 +6841,93 @@ begin
           when "00001100" =>            -- 0x0C ICache tags
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            null;
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              null;
+            end if;
 -- coverage on
 -- reason: RISCV
 
           when "00001101" =>            -- 0x0D ICache data
-           if arch = SPARC or ext_diagnostics = 1 then
-            v.dregerr := '0';
-            null;
-           end if;
+            if arch = SPARC or ext_diagnostics = 1 then
+              v.dregerr := '0';
+              null;
+            end if;
 
           when "00001110" =>            -- 0x0E DCache tags
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            obifi.bifop := BIFOP_DTAGW;
-            v.bifwait_op := BIFOP_DTAGW;
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              obifi.bifop := BIFOP_DTAGW;
+              v.bifwait_op := BIFOP_DTAGW;
+            end if;
 -- coverage on
 -- reason: RISCV
 
           when "00001111" =>            -- 0x0F DCache data
-           if arch = SPARC or ext_diagnostics = 1 then
-            v.dregerr := '0';
-           end if;
+            if arch = SPARC or ext_diagnostics = 1 then
+              v.dregerr := '0';
+            end if;
             null;
 
           when "00010000" | "00010011" =>            -- 0x10 ICache+Dcache flush
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.flushpart := "11";
-            v.dflushpend := '1';
-            v.iflushpend := '1';
-            v.flushctr := (others => '0');
-            v.slowwrpend := '0';
-            v.s := as_flush;
-            v.perf(CCTRL_DCACHE_FLUSH) := '1';
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.flushpart := "11";
+              v.dflushpend := '1';
+              v.iflushpend := '1';
+              v.flushctr := (others => '0');
+              v.slowwrpend := '0';
+              v.s := as_flush;
+              v.perf(CCTRL_DCACHE_FLUSH) := '1';
+            end if;
 
           when "00010001" =>            -- 0x11 DCache flush
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.dflushpend := '1';
-            v.flushpart(0) := '1';
-            v.flushctr := (others => '0');
-            v.slowwrpend := '0';
-            v.s := as_flush;
-            v.perf(CCTRL_DCACHE_FLUSH) := '1';
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.dflushpend := '1';
+              v.flushpart(0) := '1';
+              v.flushctr := (others => '0');
+              v.slowwrpend := '0';
+              v.s := as_flush;
+              v.perf(CCTRL_DCACHE_FLUSH) := '1';
+            end if;
 
             --when "00010011" =>            -- 0x13 ICache+Dcache flush
             -- merged with ASI 0x10
 
           when "00011000" | "00000011" =>            -- 0x18 Cache+TLB flush
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.tlbflush := '1';
-            v.htlbflush := '1';
-            v.flushpart := "11";
-            v.dflushpend := '1';
-            v.iflushpend := '1';
-            v.flushctr := (others => '0');
-            v.slowwrpend := '0';
-            v.s := as_flush;
-            v.perf(CCTRL_DCACHE_FLUSH) := '1';
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.tlbflush := '1';
+              v.htlbflush := '1';
+              v.flushpart := "11";
+              v.dflushpend := '1';
+              v.iflushpend := '1';
+              v.flushctr := (others => '0');
+              v.slowwrpend := '0';
+              v.s := as_flush;
+              v.perf(CCTRL_DCACHE_FLUSH) := '1';
+            end if;
 
           when "00011001" | "00000100" =>            -- 0x19 MMU registers
-           if arch = SPARC then
-            v.dregerr := '0';
-            -- Mostly handled in register access code above FSM
-            if vbadreg='1' then
-              v.dregerr := '1'; v.s := as_wrasi3;
-            else
-              v.slowwrpend := '0'; v.s := as_normal;
+            if arch = SPARC then
+              v.dregerr := '0';
+              -- Mostly handled in register access code above FSM
+              if vbadreg='1' then
+                v.dregerr := '1'; v.s := as_wrasi3;
+              else
+                v.slowwrpend := '0'; v.s := as_normal;
+              end if;
+              -- Set ctxswitch flag when context register is written to trigger
+              -- BTB flush in pipeline
+              if r.d2vaddr(10 downto 8)="010" then
+                v.ctxswitch := '1';
+              end if;
             end if;
-            -- Set ctxswitch flag when context register is written to trigger
-            -- BTB flush in pipeline
-            if r.d2vaddr(10 downto 8)="010" then
-              v.ctxswitch := '1';
-            end if;
-           end if;
 -- coverage on
 -- reason: RISCV
 
@@ -6936,9 +6948,9 @@ begin
             v.dregval(r.i1ctx'length-1+r.i1pc'length downto r.i1pc'length) := r.i1ctx;
             v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
             v.mark_count := (others => '0');
-           if arch = SPARC then
-            v.i1ctx := r.mmctrl1.ctx;
-           end if;
+            if arch = SPARC then
+              v.i1ctx := r.mmctrl1.ctx;
+            end if;
             v.d1vaddr := r.d2vaddr;
             v.d2vaddr := r.d1vaddr;
             if arch = RISCV and mmuen = 1 then
@@ -6977,83 +6989,83 @@ begin
           when "00011100" =>            -- 0x1C MMU/Cache bypass
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            -- Update registers and jump back to normal to handle in standard
-            -- path
-            v.d2paddr := (others => '0');
-            v.d2paddr(31 downto 0) := r.d2vaddr(31 downto 0);
-            v.d2paddrv := '1';
-            v.d2tlbmod := '1';
-            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
-            v.d2asi := "000" & ASI_SDATA;
-            v.d2specialasi := '0';
-            v.d2forcemiss := '1';
-            v.d2nocache := '1';
-            v.d2su := '1';
-            v.d2hitv := (others => '0');
-            v.s := as_normal;
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              -- Update registers and jump back to normal to handle in standard
+              -- path
+              v.d2paddr := (others => '0');
+              v.d2paddr(31 downto 0) := r.d2vaddr(31 downto 0);
+              v.d2paddrv := '1';
+              v.d2tlbmod := '1';
+              v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
+              v.d2asi := "000" & ASI_SDATA;
+              v.d2specialasi := '0';
+              v.d2forcemiss := '1';
+              v.d2nocache := '1';
+              v.d2su := '1';
+              v.d2hitv := (others => '0');
+              v.s := as_normal;
+            end if;
 
           when "00011110" =>            -- 0x1E snoop tags
-           if arch = SPARC then
-            v.dregerr := '0';
-            obifi.bifop := BIFOP_STAGW;
-            v.bifwait_op := BIFOP_STAGW;
-           end if;
+            if arch = SPARC then
+              v.dregerr := '0';
+              obifi.bifop := BIFOP_STAGW;
+              v.bifwait_op := BIFOP_STAGW;
+            end if;
 
           when "00100000" =>            -- 0x20  FPC control/debug
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.s := as_wrasi;
-            v.fpc_mosi.accen := '1';
-            v.fpc_mosi.accwr := '1';
-            if r.fpc_mosi.accen='0' then
-              v.fpc_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' and r.d2size="11" then
-              v.fpc_mosi.addr(0) := '1';
-            end if;
-            if v.fpc_mosi.addr(0)='0' xor (endian='1') then
-              v.fpc_mosi.wrdata := r.d2data(63 downto 32);
-            else
-              v.fpc_mosi.wrdata := r.d2data(31 downto 0);
-            end if;
-            if r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' then
-              if r.d2size /= "11" or r.fpc_mosi.addr(0)='1' then
-                v.s := as_wrasi3;
-                v.fpc_mosi.accen := '0';
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.s := as_wrasi;
+              v.fpc_mosi.accen := '1';
+              v.fpc_mosi.accwr := '1';
+              if r.fpc_mosi.accen='0' then
+                v.fpc_mosi.addr(0) := r.d2vaddr(2);
+              elsif r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' and r.d2size="11" then
+                v.fpc_mosi.addr(0) := '1';
+              end if;
+              if v.fpc_mosi.addr(0)='0' xor (endian='1') then
+                v.fpc_mosi.wrdata := r.d2data(63 downto 32);
+              else
+                v.fpc_mosi.wrdata := r.d2data(31 downto 0);
+              end if;
+              if r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' then
+                if r.d2size /= "11" or r.fpc_mosi.addr(0)='1' then
+                  v.s := as_wrasi3;
+                  v.fpc_mosi.accen := '0';
+                end if;
               end if;
             end if;
-           end if;
 
           when "00100001" =>            -- 0x21 CPC (coprocessor) control/debug
-           if arch = SPARC then
-            v.dregerr := '1';
-           end if;
+            if arch = SPARC then
+              v.dregerr := '1';
+            end if;
 
           when "00100010" =>            -- 0x22  CPU-to-CPU interface
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.s := as_wrasi;
-            v.c2c_mosi.accen := '1';
-            v.c2c_mosi.accwr := '1';
-            if r.c2c_mosi.accen='0' then
-              v.c2c_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' and r.d2size="11" then
-              v.c2c_mosi.addr(0) := '1';
-            end if;
-            if v.c2c_mosi.addr(0)='0' xor (endian='1') then
-              v.c2c_mosi.wrdata := r.d2data(63 downto 32);
-            else
-              v.c2c_mosi.wrdata := r.d2data(31 downto 0);
-            end if;
-            if r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' then
-              if r.d2size /= "11" or r.c2c_mosi.addr(0)='1' then
-                v.s := as_wrasi3;
-                v.c2c_mosi.accen := '0';
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.s := as_wrasi;
+              v.c2c_mosi.accen := '1';
+              v.c2c_mosi.accwr := '1';
+              if r.c2c_mosi.accen='0' then
+                v.c2c_mosi.addr(0) := r.d2vaddr(2);
+              elsif r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' and r.d2size="11" then
+                v.c2c_mosi.addr(0) := '1';
+              end if;
+              if v.c2c_mosi.addr(0)='0' xor (endian='1') then
+                v.c2c_mosi.wrdata := r.d2data(63 downto 32);
+              else
+                v.c2c_mosi.wrdata := r.d2data(31 downto 0);
+              end if;
+              if r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' then
+                if r.d2size /= "11" or r.c2c_mosi.addr(0)='1' then
+                  v.s := as_wrasi3;
+                  v.c2c_mosi.accen := '0';
+                end if;
               end if;
             end if;
-           end if;
 -- coverage on
 -- reason: RISCV
 
@@ -7222,91 +7234,91 @@ begin
           when "00100100" =>            -- 0x24 BTB/BHT diagnostic access
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.s := as_wrasi;
-            v.iudiag_mosi.accen := '1';
-            v.iudiag_mosi.accwr := '1';
-            if r.iudiag_mosi.accen='0' then
-              v.iudiag_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' and r.d2size="11" then
-              v.iudiag_mosi.addr(0) := '1';
-            end if;
-            if v.iudiag_mosi.addr(0)='0' xor (endian='1') then
-              v.iudiag_mosi.wrdata := r.d2data(63 downto 32);
-            else
-              v.iudiag_mosi.wrdata := r.d2data(31 downto 0);
-            end if;
-            if r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' then
-              if r.d2size /= "11" or r.iudiag_mosi.addr(0)='1' then
-                v.s := as_wrasi3;
-                v.iudiag_mosi.accen := '0';
+            if arch = SPARC then
+              v.dregerr := '0';
+              v.s := as_wrasi;
+              v.iudiag_mosi.accen := '1';
+              v.iudiag_mosi.accwr := '1';
+              if r.iudiag_mosi.accen='0' then
+                v.iudiag_mosi.addr(0) := r.d2vaddr(2);
+              elsif r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' and r.d2size="11" then
+                v.iudiag_mosi.addr(0) := '1';
+              end if;
+              if v.iudiag_mosi.addr(0)='0' xor (endian='1') then
+                v.iudiag_mosi.wrdata := r.d2data(63 downto 32);
+              else
+                v.iudiag_mosi.wrdata := r.d2data(31 downto 0);
+              end if;
+              if r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' then
+                if r.d2size /= "11" or r.iudiag_mosi.addr(0)='1' then
+                  v.s := as_wrasi3;
+                  v.iudiag_mosi.accen := '0';
+                end if;
               end if;
             end if;
-           end if;
 -- coverage on
 -- reason: RISCV
 
           when "00100101" =>         -- 0x25 Cache LRU diagnostic interface
-           if arch = SPARC or ext_diagnostics = 1 then
-            v.dregerr := '0';
-            if r.d2vaddr(31)='1' then
-              v.ilru(to_integer(unsigned(r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW)))) :=
-                vregwdata0(4 downto 0);
-              if rnd_repl = 1 then
-                v.irnd := vregwdata0(15 downto 0);
-              end if;
-            else
-              v.dlru(to_integer(unsigned(r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW)))) :=
-                vregwdata0(4 downto 0);
-              if rnd_repl = 1 then
-                v.drnd := vregwdata0(15 downto 0);
-              end if;
-            end if;
-           end if;
-
-          when "00100110" =>            -- 0x26 Instruction TCM access
-           if (arch = SPARC or ext_diagnostics = 1) and itcmen /= 0 then
-            v.dregerr := '0';
-            v.s := as_wrasi2;
-           end if;
-
-          when "00100111" =>            -- 0x27 Data TCM access
-           if (arch = SPARC or ext_diagnostics = 1) and dtcmen /= 0 then
-            v.dregerr := '0';
-            v.s := as_wrasi2;
-           end if;
-
-          when "00101000" =>            -- 0x28 Stripe mapping table access
-           if arch = SPARC or ext_diagnostics = 1 then
-            -- busif address bit 31 set to 1 in slowwr state
-            v.dregerr := '0';
-            obifi.bifop := BIFOP_AREGW;
-            v.bifwait_op := BIFOP_AREGW;
-           end if;
-
-          when "00101001" =>            -- 0x29 Extended cache tag access
-           if arch = SPARC or ext_diagnostics = 1 then
-            v.dregerr := '0';
-            if r.d2size/="11" then
-              -- We need to perform a read-modify-write cycle to only modify
-              -- part of the tag
-              v.s := as_rdcdiag;
-            else
-              obifi.widebus := '1';
-              if r.d2vaddr(23)='1' then
-                if r.d2vaddr(22)='0' then
-                  -- DCache tags
-                  obifi.bifop := BIFOP_DTAGW;
-                  v.bifwait_op := BIFOP_DTAGW;
-                else
-                  -- DCache snoop tags
-                  obifi.bifop := BIFOP_STAGW;
-                  v.bifwait_op := BIFOP_STAGW;
+            if arch = SPARC or ext_diagnostics = 1 then
+              v.dregerr := '0';
+              if r.d2vaddr(31)='1' then
+                v.ilru(to_integer(unsigned(r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW)))) :=
+                  vregwdata0(4 downto 0);
+                if rnd_repl = 1 then
+                  v.irnd := vregwdata0(15 downto 0);
+                end if;
+              else
+                v.dlru(to_integer(unsigned(r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW)))) :=
+                  vregwdata0(4 downto 0);
+                if rnd_repl = 1 then
+                  v.drnd := vregwdata0(15 downto 0);
                 end if;
               end if;
             end if;
-           end if;
+
+          when "00100110" =>            -- 0x26 Instruction TCM access
+            if (arch = SPARC or ext_diagnostics = 1) and itcmen /= 0 then
+              v.dregerr := '0';
+              v.s := as_wrasi2;
+            end if;
+
+          when "00100111" =>            -- 0x27 Data TCM access
+            if (arch = SPARC or ext_diagnostics = 1) and dtcmen /= 0 then
+              v.dregerr := '0';
+              v.s := as_wrasi2;
+            end if;
+
+          when "00101000" =>            -- 0x28 Stripe mapping table access
+            if arch = SPARC or ext_diagnostics = 1 then
+              -- busif address bit 31 set to 1 in slowwr state
+              v.dregerr := '0';
+              obifi.bifop := BIFOP_AREGW;
+              v.bifwait_op := BIFOP_AREGW;
+            end if;
+
+          when "00101001" =>            -- 0x29 Extended cache tag access
+            if arch = SPARC or ext_diagnostics = 1 then
+              v.dregerr := '0';
+              if r.d2size/="11" then
+                -- We need to perform a read-modify-write cycle to only modify
+                -- part of the tag
+                v.s := as_rdcdiag;
+              else
+                obifi.widebus := '1';
+                if r.d2vaddr(23)='1' then
+                  if r.d2vaddr(22)='0' then
+                    -- DCache tags
+                    obifi.bifop := BIFOP_DTAGW;
+                    v.bifwait_op := BIFOP_DTAGW;
+                  else
+                    -- DCache snoop tags
+                    obifi.bifop := BIFOP_STAGW;
+                    v.bifwait_op := BIFOP_STAGW;
+                  end if;
+                end if;
+              end if;
+            end if;
 
           when x"2e" =>                 -- PMP MMUU test
             if arch = RISCV and (mmuen = 1 or walk_pmp) and ext_diagnostics = 1 then
@@ -7388,729 +7400,729 @@ begin
         end if;
 
       when as_wrasi2 =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        v.s := as_wrasi3;
-        v.ramreload := r.ramreload;
-        ocrami.iindex(IOFFSET_BITS-1 downto 0) := r.irdbufvaddr(IOFFSET_HIGH downto IOFFSET_LOW);
-        ocrami.idataoffs(log2(ilinesize)-2 downto 0) := r.iramaddr;
+        if arch = SPARC or ext_diagnostics = 1 then
+          v.s := as_wrasi3;
+          v.ramreload := r.ramreload;
+          ocrami.iindex(IOFFSET_BITS-1 downto 0) := r.irdbufvaddr(IOFFSET_HIGH downto IOFFSET_LOW);
+          ocrami.idataoffs(log2(ilinesize)-2 downto 0) := r.iramaddr;
 
-        -- Write data for tags
-        d64 := r.dregval;
-       if arch = SPARC then
-        if r.d2asi(5)='0' then
-          -- Using old diagnostic tag ASI, pick high or low part depending
-          -- on address used for access for bits 31:0 of tag and one for
-          -- bit 32 to get compatible physical address
-          if r.d2vaddr(2)='0' xor (endian='1') then
-            d64(31 downto 0) := r.dregval(63 downto 32);
+          -- Write data for tags
+          d64 := r.dregval;
+          if arch = SPARC then
+            if r.d2asi(5)='0' then
+              -- Using old diagnostic tag ASI, pick high or low part depending
+              -- on address used for access for bits 31:0 of tag and one for
+              -- bit 32 to get compatible physical address
+              if r.d2vaddr(2)='0' xor (endian='1') then
+                d64(31 downto 0) := r.dregval(63 downto 32);
+              end if;
+              d64(63 downto 32) := (others => '0');
+              if d64(31)='1' then d64(32):='1'; end if;
+            end if;
           end if;
-          d64(63 downto 32) := (others => '0');
-          if d64(31)='1' then d64(32):='1'; end if;
-        end if;
-       end if;
 
-        for w in 0 to IWAYS-1 loop
-          ocrami.itagdin(w) := (others => '0');
-          ocrami.itagdin(w)(ITAG_HIGH-ITAG_LOW+1 downto 1) := d64(ITAG_HIGH downto ITAG_LOW);
-          ocrami.itagdin(w)(0) := d64(0);
-        end loop;
+          for w in 0 to IWAYS-1 loop
+            ocrami.itagdin(w) := (others => '0');
+            ocrami.itagdin(w)(ITAG_HIGH-ITAG_LOW+1 downto 1) := d64(ITAG_HIGH downto ITAG_LOW);
+            ocrami.itagdin(w)(0) := d64(0);
+          end loop;
 
-        ocrami.idatadin := r.dregval;
-        ocrami.dtagcindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
-        ocrami.ddataindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
-        ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
-        ocrami.ifulladdr := r.d2vaddr(ocrami.ifulladdr'range);
-        ocrami.ifulladdrw := r.d2vaddr(ocrami.ifulladdrw'range);
-        ocrami.ddatafulladdr := r.d2vaddr(ocrami.ddatafulladdr'range);
-        ocrami.ddatafulladdrw := r.d2vaddr(ocrami.ddatafulladdrw'range);
-        v.dtagpipe := r.dtagpipe;
+          ocrami.idatadin := r.dregval;
+          ocrami.dtagcindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
+          ocrami.ddataindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
+          ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
+          ocrami.ifulladdr := r.d2vaddr(ocrami.ifulladdr'range);
+          ocrami.ifulladdrw := r.d2vaddr(ocrami.ifulladdrw'range);
+          ocrami.ddatafulladdr := r.d2vaddr(ocrami.ddatafulladdr'range);
+          ocrami.ddatafulladdrw := r.d2vaddr(ocrami.ddatafulladdrw'range);
+          v.dtagpipe := r.dtagpipe;
 
-        -- Make sure cache data RAMs are masked by default if tcm is written
-        -- and vice versa. Otherwise we can trigger an unwanted write if the
-        -- ramreload flag is set on this cycle since they share the same
-        -- idatawrite/ddatawrite mask
+          -- Make sure cache data RAMs are masked by default if tcm is written
+          -- and vice versa. Otherwise we can trigger an unwanted write if the
+          -- ramreload flag is set on this cycle since they share the same
+          -- idatawrite/ddatawrite mask
 -- coverage off
 -- reason: TCM
-        if itcmen /= 0 then
-          ocrami.idataen := (others => '0');
-          ocrami.itcmen := '0';
-        end if;
-        if dtcmen /= 0 then
-          ocrami.ddataen := (others => '0');
-          ocrami.dtcmen := '0';
-        end if;
+          if itcmen /= 0 then
+            ocrami.idataen := (others => '0');
+            ocrami.itcmen := '0';
+          end if;
+          if dtcmen /= 0 then
+            ocrami.ddataen := (others => '0');
+            ocrami.dtcmen := '0';
+          end if;
 -- coverage on
 -- reason: not TCM
-        case r.d2asi is
-          when "00001100" =>            -- 0x0C ICache tags
+          case r.d2asi is
+            when "00001100" =>            -- 0x0C ICache tags
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            ocrami.itagen(0 to IWAYS-1) := r.i2hitv;
-            ocrami.itagwrite := '1';
-           end if;
+              if arch = SPARC then
+                ocrami.itagen(0 to IWAYS-1) := r.i2hitv;
+                ocrami.itagwrite := '1';
+              end if;
 -- coverage on
 -- reason: RISCV
-          when "00001101" =>            -- 0x0D ICache data
-            ocrami.idataen(0 to IWAYS-1) := r.i2hitv;
-           if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
-            ocrami.idatawrite := "00";
-            if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
-              ocrami.idatawrite(1) := '1';
-            end if;
-            if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
-              ocrami.idatawrite(0) := '1';
-            end if;
-           else
-            ocrami.idatawrite := "11";
-           end if;
-          when "00001110" =>            -- 0x0E DCache tags
+            when "00001101" =>            -- 0x0D ICache data
+              ocrami.idataen(0 to IWAYS-1) := r.i2hitv;
+              if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
+                ocrami.idatawrite := "00";
+                if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
+                  ocrami.idatawrite(1) := '1';
+                end if;
+                if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
+                  ocrami.idatawrite(0) := '1';
+                end if;
+              else
+                ocrami.idatawrite := "11";
+              end if;
+            when "00001110" =>            -- 0x0E DCache tags
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            -- wait for write to complete in snoop tag pipeline
-            if bifo.stat.idle='0' then
-              v.s := r.s;
-            end if;
-           end if;
+              if arch = SPARC then
+                -- wait for write to complete in snoop tag pipeline
+                if bifo.stat.idle='0' then
+                  v.s := r.s;
+                end if;
+              end if;
 -- coverage on
 -- reason: RISCV
-          when "00001111" =>            -- 0x0F DCache data
-            ocrami.ddataen(0 to DWAYS-1) := r.d2hitv;
-           if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
-            if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
-              ocrami.ddatawrite(7 downto 4) := "1111";
-            end if;
-            if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
-              ocrami.ddatawrite(3 downto 0) := "1111";
-            end if;
-           else
-            ocrami.ddatawrite := "11111111";
-           end if;
-          when "00011110" =>            -- 0x1E snoop tags
+            when "00001111" =>            -- 0x0F DCache data
+              ocrami.ddataen(0 to DWAYS-1) := r.d2hitv;
+              if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
+                if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
+                  ocrami.ddatawrite(7 downto 4) := "1111";
+                end if;
+                if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
+                  ocrami.ddatawrite(3 downto 0) := "1111";
+                end if;
+              else
+                ocrami.ddatawrite := "11111111";
+              end if;
+            when "00011110" =>            -- 0x1E snoop tags
 -- coverage off
 -- reason: SPARC
-            -- wait for write to complete in snoop tag pipeline
-            if bifo.stat.idle='0' then
-              v.s := r.s;
-            end if;
--- coverage on
--- reason: RISCV
-          when "00100110" =>            -- 0x26 Instruction TCM
--- coverage off
--- reason: TCM
-           if itcmen /= 0 then
-            ocrami.itcmen := '1';
-           if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
-            ocrami.idatawrite := "00";
-            if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
-              ocrami.idatawrite(1) := '1';
-            end if;
-            if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
-              ocrami.idatawrite(0) := '1';
-            end if;
-           else
-            ocrami.idatawrite := "11";
-           end if;
-           end if;
--- coverage on
--- reason: not TCM
-          when "00100111" =>            -- 0x27 Data TCM
--- coverage off
--- reason: TCM
-           if dtcmen /= 0 then
-            ocrami.dtcmen := '1';
-           if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
-            if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
-              ocrami.ddatawrite(7 downto 4) := "1111";
-            end if;
-            if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
-              ocrami.ddatawrite(3 downto 0) := "1111";
-            end if;
-           else
-            ocrami.ddatawrite := "11111111";
-           end if;
-           end if;
--- coverage on
--- reason: not TCM
-          when "00101000" =>            -- 0x28 Stripe mapping table access
-            if bifo.stat.idle='0' then
-              v.s := r.s;
-            end if;
-          when "00101001" =>            -- 0x29 Extended cache tag access
-            if r.d2vaddr(23)='1' then
-              -- DCache tag or snoop tag
               -- wait for write to complete in snoop tag pipeline
               if bifo.stat.idle='0' then
                 v.s := r.s;
               end if;
-            else
-              -- ICache tag
-              ocrami.itagen(0 to IWAYS-1) := r.i2hitv;
-              ocrami.itagwrite := '1';
-            end if;
-          when others =>
-            null;
-        end case;
-       else
-        assert false report "Reached as_wrasi2!" severity failure;
-       end if;
+-- coverage on
+-- reason: RISCV
+            when "00100110" =>            -- 0x26 Instruction TCM
+-- coverage off
+-- reason: TCM
+              if itcmen /= 0 then
+                ocrami.itcmen := '1';
+                if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
+                  ocrami.idatawrite := "00";
+                  if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
+                    ocrami.idatawrite(1) := '1';
+                  end if;
+                  if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
+                    ocrami.idatawrite(0) := '1';
+                  end if;
+                else
+                  ocrami.idatawrite := "11";
+                end if;
+              end if;
+-- coverage on
+-- reason: not TCM
+            when "00100111" =>            -- 0x27 Data TCM
+-- coverage off
+-- reason: TCM
+              if dtcmen /= 0 then
+                ocrami.dtcmen := '1';
+                if (arch = RISCV and riscv_mmu = Sv32) or arch = SPARC then
+                  if (r.d2vaddr(2)='0' xor (endian='1')) or r.d2size="11" then
+                    ocrami.ddatawrite(7 downto 4) := "1111";
+                  end if;
+                  if (r.d2vaddr(2)='1' xor (endian='1')) or r.d2size="11" then
+                    ocrami.ddatawrite(3 downto 0) := "1111";
+                  end if;
+                else
+                  ocrami.ddatawrite := "11111111";
+                end if;
+              end if;
+-- coverage on
+-- reason: not TCM
+            when "00101000" =>            -- 0x28 Stripe mapping table access
+              if bifo.stat.idle='0' then
+                v.s := r.s;
+              end if;
+            when "00101001" =>            -- 0x29 Extended cache tag access
+              if r.d2vaddr(23)='1' then
+                -- DCache tag or snoop tag
+                -- wait for write to complete in snoop tag pipeline
+                if bifo.stat.idle='0' then
+                  v.s := r.s;
+                end if;
+              else
+                -- ICache tag
+                ocrami.itagen(0 to IWAYS-1) := r.i2hitv;
+                ocrami.itagwrite := '1';
+              end if;
+            when others =>
+              null;
+          end case;
+        else
+          assert false report "Reached as_wrasi2!" severity failure;
+        end if;
 
       when as_wrasi3 =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        v.ramreload := r.ramreload;
-        odco.mds := '0';
-        odco.mexc    := bifo.rdb.err;
-        odco.exctype := bifo.rdb.err;  -- Count AHB error as access fault.
-        v.slowwrpend := '0';
-        v.s := as_normal;
-       else
-        assert false report "Reached as_wrasi3!" severity failure;
-       end if;
+        if arch = SPARC or ext_diagnostics = 1 then
+          v.ramreload := r.ramreload;
+          odco.mds := '0';
+          odco.mexc    := bifo.rdb.err;
+          odco.exctype := bifo.rdb.err;  -- Count AHB error as access fault.
+          v.slowwrpend := '0';
+          v.s := as_normal;
+        else
+          assert false report "Reached as_wrasi3!" severity failure;
+        end if;
 
       when as_rdasi =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        v.dregerr := '1';  -- Assume bad addres
-        v.s := as_rdasi2;
+        if arch = SPARC or ext_diagnostics = 1 then
+          v.dregerr := '1';  -- Assume bad addres
+          v.s := as_rdasi2;
 
-        obifi.clrrdbuf := '1';
-        v.dregmux := '1';
-        v.dregval := (others => '0');
-        v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
-        v.mark_count := (others => '0');
-        case r.d2asi is
-          when "00000010" =>            -- 0x02 System control registers
+          obifi.clrrdbuf := '1';
+          v.dregmux := '1';
+          v.dregval := (others => '0');
+          v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
+          v.mark_count := (others => '0');
+          case r.d2asi is
+            when "00000010" =>            -- 0x02 System control registers
 -- coverage off
 -- reason: SPARC
-           if arch = SPARC then
-            if vwidereg='1' then
-              v.dregval := vwideregrdata;
-            elsif (not (endian='1')) then
-              v.dregval := vregrdata0 & vregrdata1;
-            else
-              v.dregval := vregrdata1 & vregrdata0;
-            end if;
-            v.dregerr := vbadreg;
-           end if;
--- coverage on
--- reason: RISCV
-            if arch = RISCV then
-              v.dregerr := '1';
-              if r.d2vaddr(6 downto 3)="0100" then
-                v.dregerr := '0';
+              if arch = SPARC then
+                if vwidereg='1' then
+                  v.dregval := vwideregrdata;
+                elsif (not (endian='1')) then
+                  v.dregval := vregrdata0 & vregrdata1;
+                else
+                  v.dregval := vregrdata1 & vregrdata0;
+                end if;
+                v.dregerr := vbadreg;
               end if;
-            end if;
-            v.s := as_rdasi2;
-            if r.d2vaddr(6 downto 3)="0100" then
-              -- Access to AHB error / AHB error address / AHB extended address
-              -- register
-              -- Note that d2paddrbs logic above applies to this access so
-              -- address bits (:DOFFSET_HIGH+4) selects stripe.
-              vdlyop := '1'; -- need extra cycle for d2paddrba generation above
-              v.bifwait_op := BIFOP_AREGR;
-              v.s := as_dcsingle;
-            end if;
-            -- Pass through current values of mmuwtrapmode and ahbwtrapmode into
-            -- store data bits going into the busif, used for reading the AHB error
-            -- register
--- coverage off
--- reason: SPARC
-           if arch = SPARC then
-            v.d2data(63 downto 60) := r.mmuwtrapmode & r.ahbwtrapmode;
-            v.d2data(31 downto 28) := r.mmuwtrapmode & r.ahbwtrapmode;
-           end if;
 -- coverage on
 -- reason: RISCV
-           -- For RISCV we only support Direct mode
-           if arch = RISCV then
-            v.d2data(63 downto 60) := "1111";
-            v.d2data(31 downto 28) := "1111";
-           end if;
-
-          when "00001100" =>            -- 0x0C ICache tags
--- coverage off
--- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.s := as_rdcdiag;
-           end if;
--- coverage on
--- reason: RISCV
-
-          when "00001101" =>            -- 0x0D ICache data
-            v.dregerr := '0';
-            v.s := as_rdcdiag;
-
-          when "00001110" =>            -- 0x0E DCache tags
--- coverage off
--- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.s := as_rdcdiag;
-           end if;
--- coverage on
--- reason: RISCV
-
-          when "00001111" =>            -- 0x0F DCache data
-            v.dregerr := '0';
-            v.s := as_rdcdiag;
-
-          when "00011001" =>            -- 0x19 MMU registers
--- coverage off
--- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.dregval := vregrdata0 & vregrdata0;
-            v.s := as_rdasi2;
-            if r.d2vaddr(10 downto 8)="011" then
-              -- MMU Fault status register fields self-clearing on read
-              -- but not if read through DSU
-              if dci.dsuen='0' then
-                v.mmfsr.ft := "000";
-                v.mmfsr.fav := '0';
-                v.mmfsr.ow := '0';
+              if arch = RISCV then
+                v.dregerr := '1';
+                if r.d2vaddr(6 downto 3)="0100" then
+                  v.dregerr := '0';
+                end if;
               end if;
-            end if;
-           end if;
-
-          when "00011011" =>            -- 0x1B MMU flush/probe
-           if arch = SPARC then
-            v.dregerr := '0';
-            if r.d2vaddr(11)='1' or (r.d2vaddr(10)='1' and r.d2vaddr(9 downto 8)/="00") then
-              -- Undefined probe type -- return 0
-              v.dregval := (others => '0');
               v.s := as_rdasi2;
-            elsif r.d2vaddr(10)='1' then
-              -- Return data from DTLB if address matched and "entire" mode
-              if r.d2tlbamatch='1' then
-                v.dregval(31 downto 8) := r.dtlb(to_integer(unsigned(r.d2tlbid))).paddr;
-                v.dregval(7) := r.dtlb(to_integer(unsigned(r.d2tlbid))).cached;
-                v.dregval(6) := r.dtlb(to_integer(unsigned(r.d2tlbid))).modified;
-                v.dregval(5) := '1';    -- referenced
-                v.dregval(4 downto 2) := r.dtlb(to_integer(unsigned(r.d2tlbid))).acc;
-                v.dregval(1 downto 0) := "10";  -- PTE
-                v.dregval(63 downto 32) := v.dregval(31 downto 0);
-                v.s := as_rdasi2;
-              else
-                -- Try reading from ITLB
-                v.s := as_mmuprobe2;
-                v.i1pc := r.d2vaddr;
-                v.d2vaddr := r.i1pc;
+              if r.d2vaddr(6 downto 3)="0100" then
+                -- Access to AHB error / AHB error address / AHB extended address
+                -- register
+                -- Note that d2paddrbs logic above applies to this access so
+                -- address bits (:DOFFSET_HIGH+4) selects stripe.
+                vdlyop := '1'; -- need extra cycle for d2paddrba generation above
+                v.bifwait_op := BIFOP_AREGR;
+                v.s := as_dcsingle;
               end if;
-            else
-              -- Fall back to MMU walk
-              v.s := as_mmuwalk;
-              v.mmusel := "0101";
-            end if;
-           end if;
-
-          when "00011100" =>            -- 0x1C MMU/Cache bypass
-           if arch = SPARC then
-            v.dregerr := '0';
-            -- Update registers and jump back to normal to handle in standard
-            -- path
-            v.d2paddr := (others => '0');
-            v.d2paddr(31 downto 0) := r.d2vaddr(31 downto 0);
-            v.d2paddrv := '1';
-            v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
-            v.d2asi := "000" & ASI_SDATA;
-            v.d2specialasi := '0';
-            v.d2su := '1';
-            v.d2hitv := (others => '0');
-            v.d2nocache := '1';
-            v.s := as_normal;
-           end if;
-
-          when "00011110" =>            -- 0x1E  Snoop tags
-           if arch = SPARC then
-            v.dregerr := '0';
-            vdlyop := '1'; -- need extra cycle for d2paddrba generation above
-            v.bifwait_op := BIFOP_STAGR;
-            -- Jump directly to dcsingle and wait for the data to come out
-            v.s := as_dcsingle;
-           end if;
-
-          when "00100000" =>            -- 0x20  FPC control/debug
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.dregval := r.dregval;
-            v.fpc_mosi.accen := '1';
-            v.fpc_mosi.accwr := '0';
-            if r.fpc_mosi.accen='0' then
-              v.fpc_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' and r.d2size="11" then
-              v.fpc_mosi.addr(0) := '1';
-            end if;
-            if r.fpc_mosi.addr(0)='0' xor endian='1' then
-              v.dregval(63 downto 32) := fpc_miso.rddata;
-            else
-              v.dregval(31 downto 0) := fpc_miso.rddata;
-            end if;
-            if r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' then
-              if r.d2size /= "11" or r.fpc_mosi.addr(0)='1' then
-                v.s := as_rdasi2;
-                v.fpc_mosi.accen := '0';
-              end if;
-            end if;
-           end if;
-
-          when "00100001" =>            -- 0x21  CPC (co-processor) control/debug
-           if arch = SPARC then
-            v.dregerr := '1';
-            v.s := as_rdasi2;
-           end if;
-
-          when "00100010" =>            -- 0x22 CPU-to-CPU interface
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.dregval := r.dregval;
-            v.c2c_mosi.accen := '1';
-            v.c2c_mosi.accwr := '0';
-            if r.c2c_mosi.accen='0' then
-              v.c2c_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' and r.d2size="11" then
-              v.c2c_mosi.addr(0) := '1';
-            end if;
-            if r.c2c_mosi.addr(0)='0' xor endian='1' then
-              v.dregval(63 downto 32) := c2c_miso.rddata;
-            else
-              v.dregval(31 downto 0) := c2c_miso.rddata;
-            end if;
-            if r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' then
-              if r.d2size /= "11" or r.c2c_mosi.addr(0)='1' then
-                v.s := as_rdasi2;
-                v.c2c_mosi.accen := '0';
-              end if;
-            end if;
-           end if;
--- coverage on
--- reason: RISCV
-
-          when "00100011" =>            -- 0x23 TLB diagnostic access
-            v.dregerr := '0';
+              -- Pass through current values of mmuwtrapmode and ahbwtrapmode into
+              -- store data bits going into the busif, used for reading the AHB error
+              -- register
 -- coverage off
 -- reason: SPARC
-            if arch = SPARC then
-            -- d2vaddr(9) -- I / D
-            -- d2vaddr(8) -- PMRU state
-            -- d2vaddr(7 downto 3) -- entry
-            if r.d2vaddr(9)='0' then
-              v.newent := r.dtlb(to_integer(unsigned(r.d2vaddr(2+log2x(dtlbnum) downto 3))));
-            else
-              v.newent := r.itlb(to_integer(unsigned(r.d2vaddr(2+log2x(itlbnum) downto 3))));
-            end if;
-              if r.d2vaddr(8)='0' then
-                d32 := (others => '0');
-                d32(31 downto 12) := v.newent.vaddr;
-                d32(11 downto 4) := v.newent.ctx;
-                d32(3) := v.newent.mask(1);
-                d32(2) := v.newent.mask(2);
-                d32(1) := v.newent.mask(3);
-                d32(0) := v.newent.valid;
-                if (not (endian='1')) then
-                  v.dregval(63 downto 32) := d32;
-                else
-                  v.dregval(31 downto 0) := d32;
-                end if;
-                d32 := (others => '0');
-                d32(31 downto 12) := v.newent.paddr(31 downto 12);
-                d32(9 downto 6) := v.newent.paddr(35 downto 32);
-                d32(5 downto 3) := v.newent.acc;
-                d32(2) := v.newent.busw;
-                d32(1) := v.newent.cached;
-                d32(0) := v.newent.modified;
-                if (not (endian='1')) then
-                  v.dregval(31 downto 0) := d32;
-                else
-                  v.dregval(63 downto 32) := d32;
-                end if;
-              else
-                if r.d2vaddr(9)='0' then
-                  for x in 0 to dtlbnum-1 loop
-                    v.dregval(x) := r.dtlbpmru(x);
-                    v.dregval(32+x) := r.dtlbpmru(x);
-                  end loop;
-                else
-                  for x in 0 to itlbnum-1 loop
-                    v.dregval(x) := r.itlbpmru(x);
-                    v.dregval(32+x) := r.itlbpmru(x);
-                  end loop;
-                end if;
+              if arch = SPARC then
+                v.d2data(63 downto 60) := r.mmuwtrapmode & r.ahbwtrapmode;
+                v.d2data(31 downto 28) := r.mmuwtrapmode & r.ahbwtrapmode;
               end if;
 -- coverage on
 -- reason: RISCV
-            elsif (mmuen = 1 or walk_pmp) and diagsplit_tlb = 0 then
-              -- d2vaddr(11)         - paddr instead of vaddr
-              -- d2vaddr(10)         - H
-              -- d2vaddr(9)          - I / D
-              -- d2vaddr(8)          - PMRU state, and VMID/ASID
-              -- d2vaddr(7 downto 3) - entry
-              v.dregval := (others => '0');
-              if r.d2vaddr(9) = '1' then
-                entry   := r.htlb(u2i(r.d2vaddr(2 + log2x(htlbnum) downto 3)));
-              else
-                if r.d2vaddr(10) = '0' then
-                  entry := r.dtlb(u2i(r.d2vaddr(2 + log2x(dtlbnum) downto 3)));
-                else
-                  entry := r.itlb(u2i(r.d2vaddr(2 + log2x(itlbnum) downto 3)));
+              -- For RISCV we only support Direct mode
+              if arch = RISCV then
+                v.d2data(63 downto 60) := "1111";
+                v.d2data(31 downto 28) := "1111";
+              end if;
+
+            when "00001100" =>            -- 0x0C ICache tags
+-- coverage off
+-- reason: SPARC
+              if arch = SPARC then
+                v.dregerr := '0';
+                v.s := as_rdcdiag;
+              end if;
+-- coverage on
+-- reason: RISCV
+
+            when "00001101" =>            -- 0x0D ICache data
+              v.dregerr := '0';
+              v.s := as_rdcdiag;
+
+            when "00001110" =>            -- 0x0E DCache tags
+-- coverage off
+-- reason: SPARC
+              if arch = SPARC then
+                 v.dregerr := '0';
+                 v.s := as_rdcdiag;
+              end if;
+-- coverage on
+-- reason: RISCV
+
+            when "00001111" =>            -- 0x0F DCache data
+              v.dregerr := '0';
+              v.s := as_rdcdiag;
+
+            when "00011001" =>            -- 0x19 MMU registers
+-- coverage off
+-- reason: SPARC
+              if arch = SPARC then
+                v.dregerr := '0';
+                v.dregval := vregrdata0 & vregrdata0;
+                v.s := as_rdasi2;
+                if r.d2vaddr(10 downto 8)="011" then
+                  -- MMU Fault status register fields self-clearing on read
+                  -- but not if read through DSU
+                  if dci.dsuen='0' then
+                    v.mmfsr.ft := "000";
+                    v.mmfsr.fav := '0';
+                    v.mmfsr.ow := '0';
+                  end if;
                 end if;
               end if;
-              if r.d2vaddr(8) = '0' then
-                d64                           := (others => '0');
 
-                if r.d2vaddr(11) = '0' then
-                  d64(entry.vaddr'range)      := entry.vaddr;
-
-                  d64(rv_pte_v)               := entry.valid;
-                  if mmuen = 1 then
-                    d64(rv_pte_u downto rv_pte_r) := get_lo(entry.perm, 4);
-                    if enable_g = 1 then
-                      d64(rv_pte_g)           := entry.global;
-                    end if;
-                    d64(rv_pte_a)             := get_hi(entry.perm);  -- "S"
-                    d64(rv_pte_d)             := entry.modified;
-                  end if;
-                  -- The RSW bits are for software, so free to use.
-                  -- Also, address shifted up by two compared to PTE,
-                  -- to fit with paddr'range, giving two more bits.
-                  -- Enough mask bits for up to Sv48.
-                  d64(rv_pte_rsw'low + entry.mask'length - 1 downto rv_pte_rsw'low) := entry.mask;
-                  if ext_h = 1 then
-                    d64(rv_pte_pbmt'low - 11) := entry.h_r;
-                  end if;
--- coverage off
--- reason: actual_tlb_pmp
-                  if ext_h = 1 and actual_tlb_pmp and (pmpen or pmaen) then
-                    d64(rv_pte_pbmt'low - 10) := entry.pmp_r;
-                    d64(rv_pte_pbmt'low - 9)  := entry.pmp_no_w;
-                    d64(rv_pte_pbmt'low - 8)  := entry.pmp_no_x;
-                  end if;
--- coverage on
--- reason: not actual_tlb_pmp
-                  -- Save two bits here for later.
-                  d64(rv_pte_pbmt'low - 5)    := entry.cached;
-                  d64(rv_pte_pbmt'low - 4)    := entry.busw;
-                  d64(rv_pte_pbmt'low - 1 downto rv_pte_pbmt'low - 3) := entry.mode;
-                  if ext_svpbmt = 1 then
-                    d64(rv_pte_pbmt'range)    := entry.pbmt;
-                  end if;
-                  if ext_svnapot = 1 then
-                    d64(rv_pte_n)             := entry.svnapot;
-                  end if;
-                else
-                  d64(entry.paddr'range)      := entry.paddr;
-
-                  if pmaen then
-                    d64(PMA_SIZE - 1 downto 0) := from_pma(entry.pma);
-                  end if;
-                  if walk_pmp then
-                    d64(59)                   := entry.pmp_none;
-                    d64(60)                   := entry.pmp_lock;
-                    d64(63 downto 61)         := entry.pmp_rwx;
-                  end if;
-                end if;
-
-                v.dregval := d64;
-              else
-                -- This returns PMRU with TLB entry n represented by bit n.
-                if ext_h = 1 and r.d2vaddr(9) = '1' then
-                  v.dregval   := uext(entry.ctx & uext(make_downto0(r.htlbpmru), 32), v.dregval);
-                elsif mmuen = 1 then
-                  if r.d2vaddr(10) = '0' then
-                    v.dregval := uext(entry.ctx & uext(make_downto0(r.dtlbpmru), 32), v.dregval);
+            when "00011011" =>            -- 0x1B MMU flush/probe
+              if arch = SPARC then
+                v.dregerr := '0';
+                if r.d2vaddr(11)='1' or (r.d2vaddr(10)='1' and r.d2vaddr(9 downto 8)/="00") then
+                  -- Undefined probe type -- return 0
+                  v.dregval := (others => '0');
+                  v.s := as_rdasi2;
+                elsif r.d2vaddr(10)='1' then
+                  -- Return data from DTLB if address matched and "entire" mode
+                  if r.d2tlbamatch='1' then
+                    v.dregval(31 downto 8) := r.dtlb(to_integer(unsigned(r.d2tlbid))).paddr;
+                    v.dregval(7) := r.dtlb(to_integer(unsigned(r.d2tlbid))).cached;
+                    v.dregval(6) := r.dtlb(to_integer(unsigned(r.d2tlbid))).modified;
+                    v.dregval(5) := '1';    -- referenced
+                    v.dregval(4 downto 2) := r.dtlb(to_integer(unsigned(r.d2tlbid))).acc;
+                    v.dregval(1 downto 0) := "10";  -- PTE
+                    v.dregval(63 downto 32) := v.dregval(31 downto 0);
+                    v.s := as_rdasi2;
                   else
-                    v.dregval := uext(entry.ctx & uext(make_downto0(r.itlbpmru), 32), v.dregval);
+                    -- Try reading from ITLB
+                    v.s := as_mmuprobe2;
+                    v.i1pc := r.d2vaddr;
+                    v.d2vaddr := r.i1pc;
+                  end if;
+                else
+                  -- Fall back to MMU walk
+                  v.s := as_mmuwalk;
+                  v.mmusel := "0101";
+                end if;
+              end if;
+
+            when "00011100" =>            -- 0x1C MMU/Cache bypass
+              if arch = SPARC then
+                v.dregerr := '0';
+                -- Update registers and jump back to normal to handle in standard
+                -- path
+                v.d2paddr := (others => '0');
+                v.d2paddr(31 downto 0) := r.d2vaddr(31 downto 0);
+                v.d2paddrv := '1';
+                v.d2busw := dec_wbmask_fixed(r.d2vaddr(31 downto 2), xwbmask);
+                v.d2asi := "000" & ASI_SDATA;
+                v.d2specialasi := '0';
+                v.d2su := '1';
+                v.d2hitv := (others => '0');
+                v.d2nocache := '1';
+                v.s := as_normal;
+              end if;
+
+            when "00011110" =>            -- 0x1E  Snoop tags
+              if arch = SPARC then
+                v.dregerr := '0';
+                vdlyop := '1'; -- need extra cycle for d2paddrba generation above
+                v.bifwait_op := BIFOP_STAGR;
+                -- Jump directly to dcsingle and wait for the data to come out
+                v.s := as_dcsingle;
+              end if;
+
+            when "00100000" =>            -- 0x20  FPC control/debug
+              if arch = SPARC then
+                v.dregerr := '0';
+                v.dregval := r.dregval;
+                v.fpc_mosi.accen := '1';
+                v.fpc_mosi.accwr := '0';
+                if r.fpc_mosi.accen='0' then
+                  v.fpc_mosi.addr(0) := r.d2vaddr(2);
+                elsif r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' and r.d2size="11" then
+                  v.fpc_mosi.addr(0) := '1';
+                end if;
+                if r.fpc_mosi.addr(0)='0' xor endian='1' then
+                  v.dregval(63 downto 32) := fpc_miso.rddata;
+                else
+                  v.dregval(31 downto 0) := fpc_miso.rddata;
+                end if;
+                if r.fpc_mosi.accen='1' and fpc_miso.accrdy='1' then
+                  if r.d2size /= "11" or r.fpc_mosi.addr(0)='1' then
+                    v.s := as_rdasi2;
+                    v.fpc_mosi.accen := '0';
                   end if;
                 end if;
               end if;
-            end if;
-           if arch = RISCV and (mmuen = 1 or walk_pmp) and diagsplit_tlb = 1 then
-            v.s := as_rdasi2x;
-           else
-            v.s := as_rdasi2;
-           end if;
 
-          when "00100100" =>            -- 0x24 IU BTB/BHT diagnostic interface
--- coverage off
--- reason: SPARC
-           if arch = SPARC then
-            v.dregerr := '0';
-            v.dregval := r.dregval;
-            v.iudiag_mosi.accen := '1';
-            v.iudiag_mosi.accwr := '0';
-            if r.iudiag_mosi.accen='0' then
-              v.iudiag_mosi.addr(0) := r.d2vaddr(2);
-            elsif r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' and r.d2size="11" then
-              v.iudiag_mosi.addr(0) := '1';
-            end if;
-            if r.iudiag_mosi.addr(0)='0' xor endian='1' then
-              v.dregval(63 downto 32) := dci.iudiag_miso.rddata;
-            else
-              v.dregval(31 downto 0) := dci.iudiag_miso.rddata;
-            end if;
-            if r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' then
-              if r.d2size /= "11" or r.iudiag_mosi.addr(0)='1' then
+            when "00100001" =>            -- 0x21  CPC (co-processor) control/debug
+              if arch = SPARC then
+                v.dregerr := '1';
                 v.s := as_rdasi2;
-                v.iudiag_mosi.accen := '0';
               end if;
-            end if;
-           end if;
+
+            when "00100010" =>            -- 0x22 CPU-to-CPU interface
+              if arch = SPARC then
+                v.dregerr := '0';
+                v.dregval := r.dregval;
+                v.c2c_mosi.accen := '1';
+                v.c2c_mosi.accwr := '0';
+                if r.c2c_mosi.accen='0' then
+                  v.c2c_mosi.addr(0) := r.d2vaddr(2);
+                elsif r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' and r.d2size="11" then
+                  v.c2c_mosi.addr(0) := '1';
+                end if;
+                if r.c2c_mosi.addr(0)='0' xor endian='1' then
+                  v.dregval(63 downto 32) := c2c_miso.rddata;
+                else
+                  v.dregval(31 downto 0) := c2c_miso.rddata;
+                end if;
+                if r.c2c_mosi.accen='1' and c2c_miso.accrdy='1' then
+                  if r.d2size /= "11" or r.c2c_mosi.addr(0)='1' then
+                    v.s := as_rdasi2;
+                    v.c2c_mosi.accen := '0';
+                  end if;
+                end if;
+              end if;
 -- coverage on
 -- reason: RISCV
 
-          when "00100101" =>         -- 0x25 Cache LRU diagnostic interface
-            v.dregerr := '0';
-            if r.d2vaddr(31)='1' then
-              v.dregval(4 downto 0) := ilruent;
-              if rnd_repl = 1 and r_cctrl.irepl = "01" then
-                v.dregval(15 downto 0) := r.irnd;
-              end if;
-            else
-              v.dregval(4 downto 0) := dlruent;
-              if rnd_repl = 1 and r_cctrl.drepl = "01" then
-                v.dregval(15 downto 0) := r.drnd;
-              end if;
-            end if;
-            v.dregval(63 downto 32) := v.dregval(31 downto 0);
-            v.s := as_rdasi2;
-
-          when "00100110" =>            -- 0x26 Instruction TCM access
--- coverage off
--- reason: TCM
-            if itcmen /= 0 then
+            when "00100011" =>            -- 0x23 TLB diagnostic access
               v.dregerr := '0';
-              v.s := as_rdcdiag;
-            end if;
--- coverage on
--- reason: not TCM
-
-          when "00100111" =>            -- 0x27 Data TCM access
 -- coverage off
--- reason: TCM
-            if dtcmen /= 0 then
-              v.dregerr := '0';
-              v.s := as_rdcdiag;
-            end if;
--- coverage on
--- reason: not TCM
-
-
-          when "00101001" =>            -- 0x29 Extended tag access
-            v.dregerr := '0';
-            if r.d2vaddr(23 downto 22)="11" then
-              -- Snoop tags
-              vdlyop := '1'; -- need extra cycle for d2paddrba generation above
-              v.bifwait_op := BIFOP_STAGRX;
-              -- Jump directly to dcsingle and wait for the data to come out
-              v.s := as_dcsingle;
-            else
-              v.s := as_rdcdiag;
-            end if;
-
-          when x"2e" =>                 -- Data output from PMUU test etc
-            if arch = RISCV and (mmuen = 1 or walk_pmp) then
-              v.dregerr := '0';
-              d64 := (others => '0');
-              if r.d2vaddr(5 downto 3) = "011" then                    -- 24
-              -- 0 PMP+PMA, 8 only PMP, 16 PMA
-              elsif r.d2vaddr(5) = '0' then
-                if r.d2vaddr(4) = '0' then
--- coverage off
--- reason: actual_tlb_pmp
-                  if actual_tlb_pmp and pmp_mmuu_test = 1 then         -- 0/8
-                    d64( 5 downto  0) := uext(r.pmp_idx, 6);
-                    d64(6)            := r.pmp_hit;
-                    d64(7)            := r.pmp_fit;
-                    d64(31 downto 16) := fit0ext(r.pmp_hitv, 8) & fit0ext(r.pmp_fitv, 8);
-                    d64(34 downto 32) := r.pmp_rwx;
-                    d64(35)           := r.pmp_lock;
-                    d64(36)           := r.pmp_none;
-                    d64(42 downto 40) := r.pmp_m_rwx;
-                    d64(46 downto 44) := r.pmp_su_rwx;
-                  end if;
--- coverage on
--- reason: not actual_tlb_pmp
-                else                                                   -- 16
--- coverage off
--- reason: actual_tlb_pmp
-                  if actual_tlb_pmp and pma_mmuu_test = 1 then
-                    d64( 5 downto  0) := uext(r.pma_idx, 6);
-                    d64(6)            := r.pma_hit;
-                    d64(7)            := r.pma_fit;
-                    d64(31 downto 16) := fit0ext(r.pma_hitv, 8) & fit0ext(r.pma_fitv, 8);
-                    d64(63 downto 32) := uext(from_pma(r.pma), 32);
-                  end if;
--- coverage on
--- reason: not actual_tlb_pmp
+-- reason: SPARC
+              if arch = SPARC then
+                -- d2vaddr(9) -- I / D
+                -- d2vaddr(8) -- PMRU state
+                -- d2vaddr(7 downto 3) -- entry
+                if r.d2vaddr(9)='0' then
+                  v.newent := r.dtlb(to_integer(unsigned(r.d2vaddr(2+log2x(dtlbnum) downto 3))));
+                else
+                  v.newent := r.itlb(to_integer(unsigned(r.d2vaddr(2+log2x(itlbnum) downto 3))));
                 end if;
-              elsif r.d2vaddr(5) = '1' and tlb_valid_r = 1 then
-                if r.d2vaddr(4 downto 3) = "00" then                   -- 32
-                  for x in r.dtlb'range loop
-                    d64(x) := r.dtlb(x).valid;
-                  end loop;
-                elsif r.d2vaddr(4 downto 3) = "01" then                -- 40
-                  for x in r.itlb'range loop
-                    d64(x) := r.itlb(x).valid;
-                  end loop;
-                elsif r.d2vaddr(4 downto 3) = "10" and ext_h = 1 then  -- 48
-                  for x in r.htlb'range loop
-                    d64(x) := r.htlb(x).valid;
-                  end loop;
-                else                                                   -- 56
-                  for x in r.dtlb'range loop
-                    d64(x) := r.dtlb(x).valid;
-                  end loop;
-                  for x in r.itlb'range loop
-                    d64(x + r.dtlb'length) := r.itlb(x).valid;
-                  end loop;
-                  if ext_h = 1 and (r.htlb'length + r.dtlb'length + r.itlb'length) <= 64 then
-                    for x in r.htlb'range loop
-                      d64(x + r.dtlb'length + r.itlb'length) := r.htlb(x).valid;
+                if r.d2vaddr(8)='0' then
+                  d32 := (others => '0');
+                  d32(31 downto 12) := v.newent.vaddr;
+                  d32(11 downto 4) := v.newent.ctx;
+                  d32(3) := v.newent.mask(1);
+                  d32(2) := v.newent.mask(2);
+                  d32(1) := v.newent.mask(3);
+                  d32(0) := v.newent.valid;
+                  if (not (endian='1')) then
+                    v.dregval(63 downto 32) := d32;
+                  else
+                    v.dregval(31 downto 0) := d32;
+                  end if;
+                  d32 := (others => '0');
+                  d32(31 downto 12) := v.newent.paddr(31 downto 12);
+                  d32(9 downto 6) := v.newent.paddr(35 downto 32);
+                  d32(5 downto 3) := v.newent.acc;
+                  d32(2) := v.newent.busw;
+                  d32(1) := v.newent.cached;
+                  d32(0) := v.newent.modified;
+                  if (not (endian='1')) then
+                    v.dregval(31 downto 0) := d32;
+                  else
+                    v.dregval(63 downto 32) := d32;
+                  end if;
+                else
+                  if r.d2vaddr(9)='0' then
+                    for x in 0 to dtlbnum-1 loop
+                      v.dregval(x) := r.dtlbpmru(x);
+                      v.dregval(32+x) := r.dtlbpmru(x);
+                    end loop;
+                  else
+                    for x in 0 to itlbnum-1 loop
+                      v.dregval(x) := r.itlbpmru(x);
+                      v.dregval(32+x) := r.itlbpmru(x);
                     end loop;
                   end if;
                 end if;
-              end if;
-              v.dregval := d64;
-            end if;
-            v.s := as_rdasi2;
+-- coverage on
+-- reason: RISCV
+              elsif (mmuen = 1 or walk_pmp) and diagsplit_tlb = 0 then
+                -- d2vaddr(11)         - paddr instead of vaddr
+                -- d2vaddr(10)         - H
+                -- d2vaddr(9)          - I / D
+                -- d2vaddr(8)          - PMRU state, and VMID/ASID
+                -- d2vaddr(7 downto 3) - entry
+                v.dregval := (others => '0');
+                if r.d2vaddr(9) = '1' then
+                  entry   := r.htlb(u2i(r.d2vaddr(2 + log2x(htlbnum) downto 3)));
+                else
+                  if r.d2vaddr(10) = '0' then
+                    entry := r.dtlb(u2i(r.d2vaddr(2 + log2x(dtlbnum) downto 3)));
+                  else
+                    entry := r.itlb(u2i(r.d2vaddr(2 + log2x(itlbnum) downto 3)));
+                  end if;
+                end if;
+                if r.d2vaddr(8) = '0' then
+                  d64                           := (others => '0');
 
-          when x"2f" =>                 -- Extra 64 bits of ASI data
-            if arch = RISCV then
-              v.dregerr := '0';
-              if riscv_mmu = Sv32 then
-                -- Read high part, assuming that low was read
-                -- by another ASI earlier.
-                -- Swap words to enable other half to be read later.
-                v.dregval := lo_h(r.bregval) & hi_h(r.bregval);
+                  if r.d2vaddr(11) = '0' then
+                    d64(entry.vaddr'range)      := entry.vaddr;
+
+                    d64(rv_pte_v)               := entry.valid;
+                    if mmuen = 1 then
+                      d64(rv_pte_u downto rv_pte_r) := get_lo(entry.perm, 4);
+                      if enable_g = 1 then
+                        d64(rv_pte_g)           := entry.global;
+                      end if;
+                      d64(rv_pte_a)             := get_hi(entry.perm);  -- "S"
+                      d64(rv_pte_d)             := entry.modified;
+                    end if;
+                    -- The RSW bits are for software, so free to use.
+                    -- Also, address shifted up by two compared to PTE,
+                    -- to fit with paddr'range, giving two more bits.
+                    -- Enough mask bits for up to Sv48.
+                    d64(rv_pte_rsw'low + entry.mask'length - 1 downto rv_pte_rsw'low) := entry.mask;
+                    if ext_h = 1 then
+                      d64(rv_pte_pbmt'low - 11) := entry.h_r;
+                    end if;
+-- coverage off
+-- reason: actual_tlb_pmp
+                    if ext_h = 1 and actual_tlb_pmp and (pmpen or pmaen) then
+                      d64(rv_pte_pbmt'low - 10) := entry.pmp_r;
+                      d64(rv_pte_pbmt'low - 9)  := entry.pmp_no_w;
+                      d64(rv_pte_pbmt'low - 8)  := entry.pmp_no_x;
+                    end if;
+-- coverage on
+-- reason: not actual_tlb_pmp
+                    -- Save two bits here for later.
+                    d64(rv_pte_pbmt'low - 5)    := entry.cached;
+                    d64(rv_pte_pbmt'low - 4)    := entry.busw;
+                    d64(rv_pte_pbmt'low - 1 downto rv_pte_pbmt'low - 3) := entry.mode;
+                    if ext_svpbmt = 1 then
+                      d64(rv_pte_pbmt'range)    := entry.pbmt;
+                    end if;
+                    if ext_svnapot = 1 then
+                      d64(rv_pte_n)             := entry.svnapot;
+                    end if;
+                  else
+                    d64(entry.paddr'range)      := entry.paddr;
+
+                    if pmaen then
+                      d64(PMA_SIZE - 1 downto 0) := from_pma(entry.pma);
+                    end if;
+                    if walk_pmp then
+                      d64(59)                   := entry.pmp_none;
+                      d64(60)                   := entry.pmp_lock;
+                      d64(63 downto 61)         := entry.pmp_rwx;
+                    end if;
+                  end if;
+
+                  v.dregval := d64;
+                else
+                  -- This returns PMRU with TLB entry n represented by bit n.
+                  if ext_h = 1 and r.d2vaddr(9) = '1' then
+                    v.dregval   := uext(entry.ctx & uext(make_downto0(r.htlbpmru), 32), v.dregval);
+                  elsif mmuen = 1 then
+                    if r.d2vaddr(10) = '0' then
+                      v.dregval := uext(entry.ctx & uext(make_downto0(r.dtlbpmru), 32), v.dregval);
+                    else
+                      v.dregval := uext(entry.ctx & uext(make_downto0(r.itlbpmru), 32), v.dregval);
+                    end if;
+                  end if;
+                end if;
+              end if;
+              if arch = RISCV and (mmuen = 1 or walk_pmp) and diagsplit_tlb = 1 then
+                v.s := as_rdasi2x;
               else
-                v.dregval := r.bregval;
+                v.s := as_rdasi2;
               end if;
-              v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
-              v.mark_count := (others => '0');
-            end if;
-            v.s := as_rdasi2;
+
+            when "00100100" =>            -- 0x24 IU BTB/BHT diagnostic interface
+-- coverage off
+-- reason: SPARC
+              if arch = SPARC then
+                v.dregerr := '0';
+                v.dregval := r.dregval;
+                v.iudiag_mosi.accen := '1';
+                v.iudiag_mosi.accwr := '0';
+                if r.iudiag_mosi.accen='0' then
+                  v.iudiag_mosi.addr(0) := r.d2vaddr(2);
+                elsif r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' and r.d2size="11" then
+                  v.iudiag_mosi.addr(0) := '1';
+                end if;
+                if r.iudiag_mosi.addr(0)='0' xor endian='1' then
+                  v.dregval(63 downto 32) := dci.iudiag_miso.rddata;
+                else
+                  v.dregval(31 downto 0) := dci.iudiag_miso.rddata;
+                end if;
+                if r.iudiag_mosi.accen='1' and dci.iudiag_miso.accrdy='1' then
+                  if r.d2size /= "11" or r.iudiag_mosi.addr(0)='1' then
+                    v.s := as_rdasi2;
+                    v.iudiag_mosi.accen := '0';
+                  end if;
+                end if;
+              end if;
+-- coverage on
+-- reason: RISCV
+
+            when "00100101" =>         -- 0x25 Cache LRU diagnostic interface
+              v.dregerr := '0';
+              if r.d2vaddr(31)='1' then
+                v.dregval(4 downto 0) := ilruent;
+                if rnd_repl = 1 and r_cctrl.irepl = "01" then
+                  v.dregval(15 downto 0) := r.irnd;
+                end if;
+              else
+                v.dregval(4 downto 0) := dlruent;
+                if rnd_repl = 1 and r_cctrl.drepl = "01" then
+                  v.dregval(15 downto 0) := r.drnd;
+                end if;
+              end if;
+              v.dregval(63 downto 32) := v.dregval(31 downto 0);
+              v.s := as_rdasi2;
+
+            when "00100110" =>            -- 0x26 Instruction TCM access
+-- coverage off
+-- reason: TCM
+              if itcmen /= 0 then
+                v.dregerr := '0';
+                v.s := as_rdcdiag;
+              end if;
+-- coverage on
+-- reason: not TCM
+
+            when "00100111" =>            -- 0x27 Data TCM access
+-- coverage off
+-- reason: TCM
+              if dtcmen /= 0 then
+                v.dregerr := '0';
+                v.s := as_rdcdiag;
+              end if;
+-- coverage on
+-- reason: not TCM
 
 
-          when others =>                -- Unimplemented ASI
-            v.dregerr := '1';
-            v.s := as_rdasi2;
-        end case;
-        if v.s=as_rdcdiag then
-          -- Set irdbufaddr/iramaddr regs for Icache diag accesses
-          v.irdbufvaddr := r.d2vaddr(r.irdbufvaddr'range);
-          v.iramaddr := r.d2vaddr(r.iramaddr'high downto r.iramaddr'low);
+            when "00101001" =>            -- 0x29 Extended tag access
+              v.dregerr := '0';
+              if r.d2vaddr(23 downto 22)="11" then
+                -- Snoop tags
+                vdlyop := '1'; -- need extra cycle for d2paddrba generation above
+                v.bifwait_op := BIFOP_STAGRX;
+                -- Jump directly to dcsingle and wait for the data to come out
+                v.s := as_dcsingle;
+              else
+                v.s := as_rdcdiag;
+              end if;
+
+            when x"2e" =>                 -- Data output from PMUU test etc
+              if arch = RISCV and (mmuen = 1 or walk_pmp) then
+                v.dregerr := '0';
+                d64 := (others => '0');
+                if r.d2vaddr(5 downto 3) = "011" then                    -- 24
+                -- 0 PMP+PMA, 8 only PMP, 16 PMA
+                elsif r.d2vaddr(5) = '0' then
+                  if r.d2vaddr(4) = '0' then
+-- coverage off
+-- reason: actual_tlb_pmp
+                    if actual_tlb_pmp and pmp_mmuu_test = 1 then         -- 0/8
+                      d64( 5 downto  0) := uext(r.pmp_idx, 6);
+                      d64(6)            := r.pmp_hit;
+                      d64(7)            := r.pmp_fit;
+                      d64(31 downto 16) := fit0ext(r.pmp_hitv, 8) & fit0ext(r.pmp_fitv, 8);
+                      d64(34 downto 32) := r.pmp_rwx;
+                      d64(35)           := r.pmp_lock;
+                      d64(36)           := r.pmp_none;
+                      d64(42 downto 40) := r.pmp_m_rwx;
+                      d64(46 downto 44) := r.pmp_su_rwx;
+                    end if;
+-- coverage on
+-- reason: not actual_tlb_pmp
+                  else                                                   -- 16
+-- coverage off
+-- reason: actual_tlb_pmp
+                    if actual_tlb_pmp and pma_mmuu_test = 1 then
+                      d64( 5 downto  0) := uext(r.pma_idx, 6);
+                      d64(6)            := r.pma_hit;
+                      d64(7)            := r.pma_fit;
+                      d64(31 downto 16) := fit0ext(r.pma_hitv, 8) & fit0ext(r.pma_fitv, 8);
+                      d64(63 downto 32) := uext(from_pma(r.pma), 32);
+                    end if;
+-- coverage on
+-- reason: not actual_tlb_pmp
+                  end if;
+                elsif r.d2vaddr(5) = '1' and tlb_valid_r = 1 then
+                  if r.d2vaddr(4 downto 3) = "00" then                   -- 32
+                    for x in r.dtlb'range loop
+                      d64(x) := r.dtlb(x).valid;
+                    end loop;
+                  elsif r.d2vaddr(4 downto 3) = "01" then                -- 40
+                    for x in r.itlb'range loop
+                      d64(x) := r.itlb(x).valid;
+                    end loop;
+                  elsif r.d2vaddr(4 downto 3) = "10" and ext_h = 1 then  -- 48
+                    for x in r.htlb'range loop
+                      d64(x) := r.htlb(x).valid;
+                    end loop;
+                  else                                                   -- 56
+                    for x in r.dtlb'range loop
+                      d64(x) := r.dtlb(x).valid;
+                    end loop;
+                    for x in r.itlb'range loop
+                      d64(x + r.dtlb'length) := r.itlb(x).valid;
+                    end loop;
+                    if ext_h = 1 and (r.htlb'length + r.dtlb'length + r.itlb'length) <= 64 then
+                      for x in r.htlb'range loop
+                        d64(x + r.dtlb'length + r.itlb'length) := r.htlb(x).valid;
+                      end loop;
+                    end if;
+                  end if;
+                end if;
+                v.dregval := d64;
+              end if;
+              v.s := as_rdasi2;
+
+            when x"2f" =>                 -- Extra 64 bits of ASI data
+              if arch = RISCV then
+                v.dregerr := '0';
+                if riscv_mmu = Sv32 then
+                  -- Read high part, assuming that low was read
+                  -- by another ASI earlier.
+                  -- Swap words to enable other half to be read later.
+                  v.dregval := lo_h(r.bregval) & hi_h(r.bregval);
+                else
+                  v.dregval := r.bregval;
+                end if;
+                v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
+                v.mark_count := (others => '0');
+              end if;
+              v.s := as_rdasi2;
+
+
+            when others =>                -- Unimplemented ASI
+              v.dregerr := '1';
+              v.s := as_rdasi2;
+          end case;
+          if v.s=as_rdcdiag then
+            -- Set irdbufaddr/iramaddr regs for Icache diag accesses
+            v.irdbufvaddr := r.d2vaddr(r.irdbufvaddr'range);
+            v.iramaddr := r.d2vaddr(r.iramaddr'high downto r.iramaddr'low);
+          end if;
+
+          if arch = RISCV then
+            -- Ensure we can read out all of a 64 bit value even on RV32
+            v.bregval := v.dregval;
+            -- Possibly cancelling flush counts (after popcount to .bregval)
+            v.perf(CCTRL_TLB_ENTRY_FLUSHES) := get_hi(v.mark_count);
+            v.mark_count := (others => '0');
+          end if;
+        else
+          assert false report "Reached as_rdasi!" severity failure;
         end if;
-
-        if arch = RISCV then
-          -- Ensure we can read out all of a 64 bit value even on RV32
-          v.bregval := v.dregval;
-          -- Possibly cancelling flush counts (after popcount to .bregval)
-          v.perf(CCTRL_TLB_ENTRY_FLUSHES) := get_hi(v.mark_count);
-          v.mark_count := (others => '0');
-        end if;
-       else
-        assert false report "Reached as_rdasi!" severity failure;
-       end if;
 
       when as_rdasi2x =>
         if arch = RISCV and (mmuen = 1 or walk_pmp) and diagsplit_tlb = 1 then  -- 0x23 TLB diagnostic access
@@ -8188,117 +8200,117 @@ begin
         end if;
 
       when as_rdasi2 =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        v.s := as_normal;
-        v.dmisspend := '0';
-       else
-        assert false report "Reached as_rdasi2!" severity failure;
-       end if;
+        if arch = SPARC or ext_diagnostics = 1 then
+          v.s := as_normal;
+          v.dmisspend := '0';
+        else
+          assert false report "Reached as_rdasi2!" severity failure;
+        end if;
 
       when as_rdcdiag =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        ocrami.iindex(IOFFSET_BITS-1 downto 0) := r.irdbufvaddr(IOFFSET_HIGH downto IOFFSET_LOW);
-        ocrami.idataoffs(log2(ilinesize)-2 downto 0) := r.iramaddr;
-        ocrami.ifulladdr := r.d2vaddr(ocrami.ifulladdr'range);
-        ocrami.itagen := "1111";
-        ocrami.idataen := "1111";
-        ocrami.itcmen := '1';
-        ocrami.dtagcindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
-        ocrami.ddataindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
-        ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
-        ocrami.ddatafulladdr := r.d2vaddr(ocrami.ddatafulladdr'range);
-        ocrami.ddatafulladdrw := r.d2vaddr(ocrami.ddatafulladdrw'range);
-        ocrami.dtagcen := (others => '1');
-        ocrami.ddataen := (others => '1');
-        ocrami.dtcmen := '1';
-        v.s := as_rdcdiag2;
-       else
-        assert false report "Reached as_rdasi2!" severity failure;
-       end if;
+        if arch = SPARC or ext_diagnostics = 1 then
+          ocrami.iindex(IOFFSET_BITS-1 downto 0) := r.irdbufvaddr(IOFFSET_HIGH downto IOFFSET_LOW);
+          ocrami.idataoffs(log2(ilinesize)-2 downto 0) := r.iramaddr;
+          ocrami.ifulladdr := r.d2vaddr(ocrami.ifulladdr'range);
+          ocrami.itagen := "1111";
+          ocrami.idataen := "1111";
+          ocrami.itcmen := '1';
+          ocrami.dtagcindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
+          ocrami.ddataindex(DOFFSET_BITS-1 downto 0) := r.d2vaddr(DOFFSET_HIGH downto DOFFSET_LOW);
+          ocrami.ddataoffs(log2(dlinesize)-2 downto 0) := r.d2vaddr(DLINE_HIGH downto DLINE_LOW_REAL);
+          ocrami.ddatafulladdr := r.d2vaddr(ocrami.ddatafulladdr'range);
+          ocrami.ddatafulladdrw := r.d2vaddr(ocrami.ddatafulladdrw'range);
+          ocrami.dtagcen := (others => '1');
+          ocrami.ddataen := (others => '1');
+          ocrami.dtcmen := '1';
+          v.s := as_rdcdiag2;
+        else
+          assert false report "Reached as_rdasi2!" severity failure;
+        end if;
 
       when as_rdcdiag2 =>
-       if arch = SPARC or ext_diagnostics = 1 then
-        v.s := as_rdasi2;
-        v.dregmux := '1';
-        -- 0x0C ITags --> 000 x00
-        -- 0x0D IData --> 001 x01
-        -- 0x0E DTags --> 010 010
-        -- 0x0F DDaga --> 011 011
-        -- 0x26 ITCM  --> 110 110
-        -- 0x27 DTCM  --> 111 111
-        vdiagasi := r.d2asi(5) & r.d2asi(1 downto 0);
-        vwide := '0';
-        if r.d2asi="00101001" then
-          -- Convert ASI 0x29 address bits to diagasi and set wide flag
-          -- Note snoop tags handled separately in as_rdasi, so this state
-          --   does not get reached for ASI 0x1E.
-          vdiagasi := "000";
-          vdiagasi(1) := r.d2vaddr(23);
-          vwide := '1';
-        end if;
-        d64 := (others => '0');
-        -- Get read data into d64 variable
-        case vdiagasi is
-          when "000" | "100"  =>                  -- 0x0C ICache tags
-            d32 := cramo.itagdout(to_integer(unsigned(r.d2vaddr(ITAG_LOW+1 downto ITAG_LOW))));
-            d64(ITAG_HIGH downto ITAG_LOW) := d32(ITAG_HIGH-ITAG_LOW+1 downto 1);
-            d64(7 downto 0) := (others => d32(0));
-          when "001" | "101" =>                  -- 0x0D ICache data
-            d64 := cramo.idatadout(to_integer(unsigned(r.d2vaddr(ITAG_LOW+1 downto ITAG_LOW))));
+        if arch = SPARC or ext_diagnostics = 1 then
+          v.s := as_rdasi2;
+          v.dregmux := '1';
+          -- 0x0C ITags --> 000 x00
+          -- 0x0D IData --> 001 x01
+          -- 0x0E DTags --> 010 010
+          -- 0x0F DDaga --> 011 011
+          -- 0x26 ITCM  --> 110 110
+          -- 0x27 DTCM  --> 111 111
+          vdiagasi := r.d2asi(5) & r.d2asi(1 downto 0);
+          vwide := '0';
+          if r.d2asi="00101001" then
+            -- Convert ASI 0x29 address bits to diagasi and set wide flag
+            -- Note snoop tags handled separately in as_rdasi, so this state
+            --   does not get reached for ASI 0x1E.
+            vdiagasi := "000";
+            vdiagasi(1) := r.d2vaddr(23);
             vwide := '1';
-          when "010" =>                  -- 0x0E DCache tags
-            d32 := dctagsv(to_integer(unsigned(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW))));
-            d64(DTAG_HIGH downto DTAG_LOW) := d32(DTAG_HIGH-DTAG_LOW+1 downto 1);
-            d64(7 downto 0) := (others => d32(0));
-          when "110" =>                -- 0x26 ITCM
+          end if;
+          d64 := (others => '0');
+          -- Get read data into d64 variable
+          case vdiagasi is
+            when "000" | "100"  =>                  -- 0x0C ICache tags
+              d32 := cramo.itagdout(to_integer(unsigned(r.d2vaddr(ITAG_LOW+1 downto ITAG_LOW))));
+              d64(ITAG_HIGH downto ITAG_LOW) := d32(ITAG_HIGH-ITAG_LOW+1 downto 1);
+              d64(7 downto 0) := (others => d32(0));
+            when "001" | "101" =>                  -- 0x0D ICache data
+              d64 := cramo.idatadout(to_integer(unsigned(r.d2vaddr(ITAG_LOW+1 downto ITAG_LOW))));
+              vwide := '1';
+            when "010" =>                  -- 0x0E DCache tags
+              d32 := dctagsv(to_integer(unsigned(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW))));
+              d64(DTAG_HIGH downto DTAG_LOW) := d32(DTAG_HIGH-DTAG_LOW+1 downto 1);
+              d64(7 downto 0) := (others => d32(0));
+            when "110" =>                -- 0x26 ITCM
 -- coverage off
 -- reason: TCM
-           if itcmen /= 0 then
-            d64 := cramo.itcmdout;
-            vwide := '1';
-           end if;
+              if itcmen /= 0 then
+                d64 := cramo.itcmdout;
+                vwide := '1';
+              end if;
 -- coverage on
 -- reason: not TCM
-          when "111"  =>                -- 0x27 DTCM
+            when "111"  =>                -- 0x27 DTCM
 -- coverage off
 -- reason: TCM
-           if dtcmen /= 0 then
-            d64 := cramo.dtcmdout;
-            vwide := '1';
-           end if;
+              if dtcmen /= 0 then
+                d64 := cramo.dtcmdout;
+                vwide := '1';
+              end if;
 -- coverage on
 -- reason: not TCM
-          when others =>                -- 0x0F DCache data
-            d64 := cramo.ddatadout(to_integer(unsigned(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW))));
-            vwide := '1';
-        end case;
-        -- Mux d64 into dregval
-        v.dregval := d64;
-        v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
-        v.mark_count := (others => '0');
-        if vwide='0' then
-          v.dregval(63 downto 32) := d64(31 downto 0);
+            when others =>                -- 0x0F DCache data
+              d64 := cramo.ddatadout(to_integer(unsigned(r.d2vaddr(DTAG_LOW+1 downto DTAG_LOW))));
+              vwide := '1';
+          end case;
+          -- Mux d64 into dregval
+          v.dregval := d64;
+          v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
+          v.mark_count := (others => '0');
+          if vwide='0' then
+            v.dregval(63 downto 32) := d64(31 downto 0);
+          end if;
+          -- must set ramreload here since we have done a Itag read from another addr
+          v.ramreload := '1';
+          -- Return to write for rmw cycle
+          if r.d2write='1' then
+            -- Merge existing and write data
+            dm8 := getdmask64(r.d2vaddr, r.d2size, (endian/='0'));
+            for x in 7 downto 0 loop
+              if dm8(x)='0' then
+                v.d2data(8*x+7 downto 8*x) := d64(8*x+7 downto 8*x);
+              end if;
+            end loop;
+            -- "Upgrade" to 64-bit access and jump back to write-ASI state
+            v.d2size := "11";
+            v.d2vaddr(2 downto 0) := "000";
+            v.d2paddr(2 downto 0) := "000";
+            v.s := as_wrasi;
+          end if;
+        else
+          assert false report "Reached as_rdcdiag2!" severity failure;
         end if;
-        -- must set ramreload here since we have done a Itag read from another addr
-        v.ramreload := '1';
-        -- Return to write for rmw cycle
-        if r.d2write='1' then
-          -- Merge existing and write data
-          dm8 := getdmask64(r.d2vaddr, r.d2size, (endian/='0'));
-          for x in 7 downto 0 loop
-            if dm8(x)='0' then
-              v.d2data(8*x+7 downto 8*x) := d64(8*x+7 downto 8*x);
-            end if;
-          end loop;
-          -- "Upgrade" to 64-bit access and jump back to write-ASI state
-          v.d2size := "11";
-          v.d2vaddr(2 downto 0) := "000";
-          v.d2paddr(2 downto 0) := "000";
-          v.s := as_wrasi;
-        end if;
-       else
-        assert false report "Reached as_rdcdiag2!" severity failure;
-       end if;
 
       when as_atomic1 =>
         obifi.clrrdbuf := '1';
@@ -8476,7 +8488,7 @@ begin
           if r.amo.d2type(1 downto 0) /= "10" and -- not LR
              (r.amo.d2type(1 downto 0) /= "11" or -- not SC or
               (r.amo.reserved = '1' and bifo.stat.lr_valid = '1' and
-               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or 
+               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or
                (r.d2paddr(lr_addr'range) = r.amo.addr(lr_addr'range) and csro.sc_lr_range = '1'))
               )) then -- SC and valid reservation
             vcashit := '1';
@@ -8495,7 +8507,7 @@ begin
             end if;
             -- When SC fails
             if not (r.amo.reserved = '1' and bifo.stat.lr_valid = '1' and
-               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or 
+               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or
                (r.d2paddr(lr_addr'range) = r.amo.addr(lr_addr'range) and csro.sc_lr_range = '1'))) then
               if use_xdata = 0 then
                 odco.data(0)(0) := '1';
@@ -8614,7 +8626,7 @@ begin
           if vcashit = '1' and
              (r.amo.d2type(1 downto 0) /= "11" or
               (r.amo.reserved = '1' and bifo.stat.lr_valid = '1' and
-               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or 
+               ((r.d2paddr(r.amo.addr'range) = r.amo.addr and csro.sc_lr_range = '0') or
                (r.d2paddr(lr_addr'range) = r.amo.addr(lr_addr'range) and csro.sc_lr_range = '1')))) then
             ocrami.ddataen(0 to DWAYS-1) := r.d2hitv;
             v.d2write := '1';
@@ -8648,43 +8660,43 @@ begin
         end if;
 
       when as_mmuprobe2 =>
-       if arch = SPARC then
-        -- Swap back addresses
-        v.i1pc := r.d2vaddr;
-        v.d2vaddr := r.i1pc;
-        -- Check if ITLB hit
-        if itlbamatch='1' then
-          v.s := as_mmuprobe3;
-        else
-          -- Fall back to MMU walk
+        if arch = SPARC then
+          -- Swap back addresses
+          v.i1pc := r.d2vaddr;
+          v.d2vaddr := r.i1pc;
+          -- Check if ITLB hit
+          if itlbamatch='1' then
+            v.s := as_mmuprobe3;
+          else
+            -- Fall back to MMU walk
+-- coverage off
+-- reason: SPARC
+            if arch = SPARC then
+                v.s := as_mmuwalk;
+                obifi.bifop := BIFOP_SMFET;
+                v.bifwait_op := BIFOP_SMFET;
+                v.mmusel := "0101";
+            else -- arch = RISCV
+-- coverage on
+-- reason: RISCV
+              start_walk := true;
+            end if;
+          end if;
 -- coverage off
 -- reason: SPARC
           if arch = SPARC then
-            v.s := as_mmuwalk;
-            obifi.bifop := BIFOP_SMFET;
-            v.bifwait_op := BIFOP_SMFET;
-            v.mmusel := "0101";
-          else -- arch = RISCV
--- coverage on
--- reason: RISCV
-            start_walk := true;
+            obifi.size := "10";
+            obifi.widebus := '0';
+            v.mmuaddr(31 downto 0) := r.mmctrl1.ctxp(25 downto 4) & v.i2ctx & "00";
+            obifi.busaddr := (others => '0');
+            obifi.busaddr(31 downto 0) := v.mmuaddr(31 downto 0);
+            obifi.mmuacc := '1';            -- for MMU walk access
           end if;
-        end if;
--- coverage off
--- reason: SPARC
-        if arch = SPARC then
-          obifi.size := "10";
-          obifi.widebus := '0';
-          v.mmuaddr(31 downto 0) := r.mmctrl1.ctxp(25 downto 4) & v.i2ctx & "00";
-          obifi.busaddr := (others => '0');
-          obifi.busaddr(31 downto 0) := v.mmuaddr(31 downto 0);
-          obifi.mmuacc := '1';            -- for MMU walk access
-        end if;
 -- coverage on
 -- reason: RISCV
-       else
-        assert false report "Reached as_mmuprobe2!" severity failure;
-       end if;
+        else
+          assert false report "Reached as_mmuprobe2!" severity failure;
+        end if;
 
       when as_mmuprobe3 =>
 -- coverage off
@@ -8705,93 +8717,93 @@ begin
         end if;
 
       when as_mmuflush2 =>
-       if mmuen = 1 then
-        -- Note use same registers for address/context as in regular TLB lookup
-        -- should equality checks inside flushmatch function to be merged with
-        -- regular TLB.
-       if mmuen = 1 then
+        if mmuen = 1 then
+          -- Note use same registers for address/context as in regular TLB lookup
+          -- should equality checks inside flushmatch function to be merged with
+          -- regular TLB.
+          if mmuen = 1 then
 -- coverage off
 -- reason: SPARC
-        if arch = SPARC then
-          for e in 0 to itlbnum-1 loop
-            ipc := r.i1pc_repl((e mod tlbrepl)*32+31 downto (e mod tlbrepl)*32);
-            if flushmatch(r.itlb(e), ipc, r.i1ctx) = '1' then
-              v.itlb(e).valid := '0';
-            end if;
-          end loop;
-          for e in 0 to dtlbnum-1 loop
-            dvaddr := r.d1vaddr_repl((e mod tlbrepl)*32+31 downto (e mod tlbrepl)*32);
-            if flushmatch(r.dtlb(e), dvaddr, r.mmctrl1.ctx) = '1' then
-              v.dtlb(e).valid := '0';
-            end if;
-          end loop;
-        else -- arch = RISCV
+            if arch = SPARC then
+              for e in 0 to itlbnum-1 loop
+                ipc := r.i1pc_repl((e mod tlbrepl)*32+31 downto (e mod tlbrepl)*32);
+                if flushmatch(r.itlb(e), ipc, r.i1ctx) = '1' then
+                  v.itlb(e).valid := '0';
+                end if;
+              end loop;
+              for e in 0 to dtlbnum-1 loop
+                dvaddr := r.d1vaddr_repl((e mod tlbrepl)*32+31 downto (e mod tlbrepl)*32);
+                if flushmatch(r.dtlb(e), dvaddr, r.mmctrl1.ctx) = '1' then
+                  v.dtlb(e).valid := '0';
+                end if;
+              end loop;
+            else -- arch = RISCV
 -- coverage on
 -- reason: RISCV
-          -- Mark all flushed entries, for later count.
-          mark_i := (others => '0');
-          mark_d := (others => '0');
-          mark_h := (others => '0');
-          for e in 0 to itlbnum-1 loop
-            tmpaddr := uext(r.i1pc_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
-            if flushmatch(false, is_v(r.d2mode), is_gp(r.d2mode), r.itlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
-                          is_sv_smaller(csro, r.d2mode)) then
-              v.itlb(e).valid := '0';
               -- Mark all flushed entries, for later count.
-              mark_i(e) := '1';
-            end if;
-          end loop;
-          for e in 0 to dtlbnum-1 loop
-            tmpaddr := uext(r.d1vaddr_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
-            if flushmatch(false, is_v(r.d2mode), is_gp(r.d2mode), r.dtlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
-                          is_sv_smaller(csro, r.d2mode)) then
-              v.dtlb(e).valid := '0';
-              -- Mark all flushed entries, for later count.
-              mark_d(e) := '1';
-            end if;
-          end loop;
-         if ext_h = 1 then
-          for e in 0 to htlbnum-1 loop
-            tmpaddr := uext(r.h_addr_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
-            -- Only check hTLB for hfence.gvma
-            if r.d2size = "10" then
-              if flushmatch(true, false, true, r.htlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
-                            is_svx4_smaller(csro)) then
-                v.htlb(e).valid := '0';
-                -- Mark all flushed entries, for later count.
-                mark_h(e) := '1';
+              mark_i := (others => '0');
+              mark_d := (others => '0');
+              mark_h := (others => '0');
+              for e in 0 to itlbnum-1 loop
+                tmpaddr := uext(r.i1pc_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
+                if flushmatch(false, is_v(r.d2mode), is_gp(r.d2mode), r.itlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
+                              is_sv_smaller(csro, r.d2mode)) then
+                  v.itlb(e).valid := '0';
+                  -- Mark all flushed entries, for later count.
+                  mark_i(e) := '1';
+                end if;
+              end loop;
+              for e in 0 to dtlbnum-1 loop
+                tmpaddr := uext(r.d1vaddr_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
+                if flushmatch(false, is_v(r.d2mode), is_gp(r.d2mode), r.dtlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
+                              is_sv_smaller(csro, r.d2mode)) then
+                  v.dtlb(e).valid := '0';
+                  -- Mark all flushed entries, for later count.
+                  mark_d(e) := '1';
+                end if;
+              end loop;
+              if ext_h = 1 then
+                for e in 0 to htlbnum-1 loop
+                  tmpaddr := uext(r.h_addr_repl((e mod tlbrepl) * vaddrbits + tlbabits - 1 downto (e mod tlbrepl) * vaddrbits), tmpaddr);
+                  -- Only check hTLB for hfence.gvma
+                  if r.d2size = "10" then
+                    if flushmatch(true, false, true, r.htlb(e), tmpaddr(tlbabits-1 downto 0), r.d2data,
+                                  is_svx4_smaller(csro)) then
+                      v.htlb(e).valid := '0';
+                      -- Mark all flushed entries, for later count.
+                      mark_h(e) := '1';
+                    end if;
+                  end if;
+                end loop;
               end if;
             end if;
-          end loop;
-         end if;
-        end if;
-       end if;
-        v.s := as_normal;
-        -- Swap back addresses to restore correct state
-        --  use r.dregval is used as temp holding register for i1pc
-        v.i1pc := r.dregval(v.i1pc'length-1 downto 0);
-        v.i1ctx := r.dregval(r.i1ctx'length-1+r.i1pc'length downto r.i1pc'length);
-        v.d1vaddr := r.d2vaddr;
-        v.d2vaddr := r.d1vaddr;
-        v.ramreload := '1';
-        v.slowwrpend := '0';
-        -- Store marked bits for later counting
-        v.dregval := fit0ext(mark_h & mark_i & mark_d, v.dregval);
-        if mark_h'length + mark_i'length + mark_d'length > v.dregval'length then
-          v.bregval := get_hi(r.bregval, 18) &
-                       fit0ext(get_left(mark_h & mark_i & mark_d, -v.dregval'length),
-                               v.bregval'length - 18);
+          end if;
+          v.s := as_normal;
+          -- Swap back addresses to restore correct state
+          --  use r.dregval is used as temp holding register for i1pc
+          v.i1pc := r.dregval(v.i1pc'length-1 downto 0);
+          v.i1ctx := r.dregval(r.i1ctx'length-1+r.i1pc'length downto r.i1pc'length);
+          v.d1vaddr := r.d2vaddr;
+          v.d2vaddr := r.d1vaddr;
+          v.ramreload := '1';
+          v.slowwrpend := '0';
+          -- Store marked bits for later counting
+          v.dregval := fit0ext(mark_h & mark_i & mark_d, v.dregval);
+          if mark_h'length + mark_i'length + mark_d'length > v.dregval'length then
+            v.bregval := get_hi(r.bregval, 18) &
+                         fit0ext(get_left(mark_h & mark_i & mark_d, -v.dregval'length),
+                                 v.bregval'length - 18);
+          else
+            v.bregval := get_hi(r.bregval, 18) & get_lo(zerow64, v.bregval'length - 18);
+          end if;
+          if ext_h = 1 then
+            v.mark_count := "111";
+          else
+            v.mark_count := "110";
+          end if;
         else
-          v.bregval := get_hi(r.bregval, 18) & get_lo(zerow64, v.bregval'length - 18);
+          assert false report "Reached as_mmuflush2!" severity failure;
         end if;
-        if ext_h = 1 then
-          v.mark_count := "111";
-        else
-          v.mark_count := "110";
-        end if;
-       else
-         assert false report "Reached as_mmuflush2!" severity failure;
-       end if;
 
       when as_regflush =>
         ocrami.iindex := (others => '0');
@@ -8957,7 +8969,7 @@ begin
         v.s          := as_normal;
 
       when as_rv_start_walk =>
-       if is_riscv and mmuen = 1 and walk_state and not walk_sw then
+        if is_riscv and mmuen = 1 and walk_state and not walk_sw then
           iaddr_ok  := true;
           daddr_ok  := true;
 
@@ -9112,7 +9124,7 @@ begin
           end if;
           -- end if;
         else
-         assert false report "Reached as_rv_start_walk!" severity failure;
+          assert false report "Reached as_rv_start_walk!" severity failure;
         end if;
 
       -- Do PMP as if it was a PT walk
@@ -10264,52 +10276,52 @@ begin
 
       -- Some kind of page table error occurred during MMU walk
       when as_rv_mmuwalk_pterr => -- as_mmuwalk3
-       if is_riscv then
-        obifi.clrrdbuf := '1';
-        if is_access_asi_walk(r.mmusel) then
-          v.s := as_rdasi2;
-        else
-          if is_access_i(r.mmusel) then
-            oico.mds    := '0';
-            if walk_fault or walk_sw then
-              oico.swpt    := r.walk_fault or to_bit(walk_sw);
-              v.walk_fault := '0';
-            end if;
-            if is_riscv or r.mmctrl1.nf = '0' then
-              oico.mexc    := '1';
-              oico.exctype := '0';  -- Page fault
-            end if;
-            v.imisspend := '0';
+        if is_riscv then
+          obifi.clrrdbuf := '1';
+          if is_access_asi_walk(r.mmusel) then
+            v.s := as_rdasi2;
           else
-            odco.mds       := '0';
-            if walk_fault or walk_sw then
-              odco.swpt    := r.walk_fault or to_bit(walk_sw);
-              v.walk_fault := '0';
-            end if;
-            if is_riscv or r.mmctrl1.nf = '0' then
-              odco.mexc    := '1';
-              odco.exctype := '0';  -- Page fault
-            end if;
-            if is_access_w(r.mmusel) then
-              v.slowwrpend := '0';
+            if is_access_i(r.mmusel) then
+              oico.mds    := '0';
+              if walk_fault or walk_sw then
+                oico.swpt    := r.walk_fault or to_bit(walk_sw);
+                v.walk_fault := '0';
+              end if;
+              if is_riscv or r.mmctrl1.nf = '0' then
+                oico.mexc    := '1';
+                oico.exctype := '0';  -- Page fault
+              end if;
+              v.imisspend := '0';
             else
-              v.dmisspend  := '0';
-              -- For AMO and SC also stop write
-              if r.amo.d2type(5) = '1' and (r.amo.d2type(1) = '0' or
-                                            r.amo.d2type(1 downto 0) = "11") then
+              odco.mds       := '0';
+              if walk_fault or walk_sw then
+                odco.swpt    := r.walk_fault or to_bit(walk_sw);
+                v.walk_fault := '0';
+              end if;
+              if is_riscv or r.mmctrl1.nf = '0' then
+                odco.mexc    := '1';
+                odco.exctype := '0';  -- Page fault
+              end if;
+              if is_access_w(r.mmusel) then
                 v.slowwrpend := '0';
+              else
+                v.dmisspend  := '0';
+                -- For AMO and SC also stop write
+                if r.amo.d2type(5) = '1' and (r.amo.d2type(1) = '0' or
+                                              r.amo.d2type(1 downto 0) = "11") then
+                  v.slowwrpend := '0';
+                end if;
               end if;
             end if;
+            v.ramreload := '1';
+            v.s         := as_normal;
           end if;
-          v.ramreload := '1';
-          v.s         := as_normal;
+          v.dregval     := (others => '0');
+          v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
+          v.mark_count  := (others => '0');
+        else
+          assert false report "Reached as_rv_mmuwalk_pterr!" severity failure;
         end if;
-        v.dregval     := (others => '0');
-        v.perf(CCTRL_TLB_ENTRY_FLUSHES) := cancelled_flush_count(v.mark_count);
-        v.mark_count  := (others => '0');
-       else
-        assert false report "Reached as_rv_mmuwalk_pterr!" severity failure;
-       end if;
 
       -- Some kind of PMP error occurred after MMU walk,
       -- or a PMP/bus error when fetching PT data.
@@ -11291,46 +11303,46 @@ begin
 
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    -- Debug link access
-    -- Stage 4 : tag recheck d1 -> d2, set dmisspend (if read miss) / slowwrpend
-    if r.dbgacc(1)='1' then
-      if r.dbgaccwr='1' then
-        v.slowwrpend := '1';
+    if arch = SPARC then
+      -- Debug link access
+      -- Stage 4 : tag recheck d1 -> d2, set dmisspend (if read miss) / slowwrpend
+      if r.dbgacc(1)='1' then
+        if r.dbgaccwr='1' then
+          v.slowwrpend := '1';
+        end if;
+      end if;
+      -- Stage 3 : ram reload in progress
+      v.dbgacc(1) := r.dbgacc(0);
+      if r.dbgacc(0)='1' then
+        v.ramreload := '0';
+        if r.dbgacc(1)='0' then
+          v.d1chk := '1';
+        end if;
+      end if;
+      -- Stage 2 : capture virtual address and set ramreload
+      if r.dbgaccpend='1' and r.fsmidle='1' then
+        v.dbgacc(0) := '1';
+        v.d1vaddr := dci.maddress(v.d1vaddr'range);
+        if r.dbgacc(0)='0' then
+          v.ramreload := '1';
+        end if;
+      end if;
+      -- Stage 1 : capture read/write command
+      if dci.dsuen='1' and dci.enaddr='1' and r.holdn='1' then
+        if dci.read='1' then
+          v.dbgaccpend := '1';
+        end if;
+        if dci.write='1' then
+          v.dbgaccpend := '1';
+          v.dbgaccwr := '1';
+        end if;
+      end if;
+      if r.dbgacc(1)='1' or dci.dsuen='0' then
+        v.dbgacc := (others => '0');
+        v.dbgaccpend := '0';
+        v.dbgaccwr := '0';
       end if;
     end if;
-    -- Stage 3 : ram reload in progress
-    v.dbgacc(1) := r.dbgacc(0);
-    if r.dbgacc(0)='1' then
-      v.ramreload := '0';
-      if r.dbgacc(1)='0' then
-        v.d1chk := '1';
-      end if;
-    end if;
-    -- Stage 2 : capture virtual address and set ramreload
-    if r.dbgaccpend='1' and r.fsmidle='1' then
-      v.dbgacc(0) := '1';
-      v.d1vaddr := dci.maddress(v.d1vaddr'range);
-      if r.dbgacc(0)='0' then
-        v.ramreload := '1';
-      end if;
-    end if;
-    -- Stage 1 : capture read/write command
-    if dci.dsuen='1' and dci.enaddr='1' and r.holdn='1' then
-      if dci.read='1' then
-        v.dbgaccpend := '1';
-      end if;
-      if dci.write='1' then
-        v.dbgaccpend := '1';
-        v.dbgaccwr := '1';
-      end if;
-    end if;
-    if r.dbgacc(1)='1' or dci.dsuen='0' then
-      v.dbgacc := (others => '0');
-      v.dbgaccpend := '0';
-      v.dbgaccwr := '0';
-    end if;
-   end if;
 -- coverage on
 -- reason: RISCV
     if arch = RISCV then
@@ -11401,63 +11413,63 @@ begin
 -- coverage off
 -- reason: TCM
     -- TCM wiping support
-   if dtcmen /= 0 then
-    ocrami.dtcmwrite := ocrami.ddatawrite;
-    if r.dtcmwipe='1' then
-      ocrami.dtcmen := '1';
-      ocrami.dtcmwrite := "11111111";
-      ocrami.dtcmdin := (others => '0');
-      ocrami.ddatafulladdr := r.tcmdata;
-      ocrami.ddatafulladdrw := r.tcmdata;
-    end if;
-   end if;
-   if itcmen /= 0 then
-    ocrami.itcmwrite := ocrami.idatawrite;
-    ocrami.itcmdin := ocrami.idatadin;
-    if r.itcmwipe='1' then
-      ocrami.itcmen := '1';
-      ocrami.itcmwrite := "11";
-      ocrami.itcmdin := (others => '1');
-      ocrami.ifulladdr := r.tcmdata;
-      ocrami.ifulladdrw := r.tcmdata;
-    end if;
-   end if;
-   if dtcmen /= 0 or itcmen /= 0 then
-    if r.dtcmwipe='1' or r.itcmwipe='1' then
-      v.tcmdata(31 downto 3) := std_logic_vector(unsigned(r.tcmdata(31 downto 3))+1);
-      v.tcmdata(2 downto 0) := "000";
-      for x in 31 downto 3 loop
-        if (itcmen=0 or x>(2+itcmabits)) and (dtcmen=0 or x>(2+dtcmabits)) then
-          v.tcmdata(x) := '0';
-        end if;
-      end loop;
-      if v.tcmdata=(v.tcmdata'range => '0') then
-        v.dtcmwipe := '0';
-        v.itcmwipe := '0';
+    if dtcmen /= 0 then
+      ocrami.dtcmwrite := ocrami.ddatawrite;
+      if r.dtcmwipe='1' then
+        ocrami.dtcmen := '1';
+        ocrami.dtcmwrite := "11111111";
+        ocrami.dtcmdin := (others => '0');
+        ocrami.ddatafulladdr := r.tcmdata;
+        ocrami.ddatafulladdrw := r.tcmdata;
       end if;
     end if;
-   end if;
+    if itcmen /= 0 then
+      ocrami.itcmwrite := ocrami.idatawrite;
+        ocrami.itcmdin := ocrami.idatadin;
+      if r.itcmwipe='1' then
+        ocrami.itcmen := '1';
+        ocrami.itcmwrite := "11";
+        ocrami.itcmdin := (others => '1');
+        ocrami.ifulladdr := r.tcmdata;
+        ocrami.ifulladdrw := r.tcmdata;
+      end if;
+    end if;
+    if dtcmen /= 0 or itcmen /= 0 then
+      if r.dtcmwipe='1' or r.itcmwipe='1' then
+        v.tcmdata(31 downto 3) := std_logic_vector(unsigned(r.tcmdata(31 downto 3))+1);
+        v.tcmdata(2 downto 0) := "000";
+        for x in 31 downto 3 loop
+          if (itcmen=0 or x>(2+itcmabits)) and (dtcmen=0 or x>(2+dtcmabits)) then
+            v.tcmdata(x) := '0';
+          end if;
+        end loop;
+        if v.tcmdata=(v.tcmdata'range => '0') then
+          v.dtcmwipe := '0';
+          v.itcmwipe := '0';
+        end if;
+      end if;
+    end if;
 -- coverage on
 -- reason: not TCM
 
 -- coverage off
 -- reason: SPARC
-   if arch = SPARC then
-    v.dtraptt := TT_DSEX;
-    v.dtrapet1 := '0';
-    v.dtrapet0 := '0';
-    if v.ctrappend /= "0000" then
-      v.dtrapet1 := '1';
-      v.dtrapet0 := '1';
-      v.dtraptt := "110000";
-    elsif v.wtrappend /= "00" then
-      v.dtrapet1 := '1';
+    if arch = SPARC then
+      v.dtraptt := TT_DSEX;
+      v.dtrapet1 := '0';
       v.dtrapet0 := '0';
-      if (v.wtrappend(0)='1' and r.ahbwtrapmode(0)='1') or (v.wtrappend(1)='1' and r.mmuwtrapmode(0)='1') then
+      if v.ctrappend /= "0000" then
+        v.dtrapet1 := '1';
         v.dtrapet0 := '1';
+        v.dtraptt := "110000";
+      elsif v.wtrappend /= "00" then
+        v.dtrapet1 := '1';
+        v.dtrapet0 := '0';
+        if (v.wtrappend(0)='1' and r.ahbwtrapmode(0)='1') or (v.wtrappend(1)='1' and r.mmuwtrapmode(0)='1') then
+          v.dtrapet0 := '1';
+        end if;
       end if;
     end if;
-   end if;
 -- coverage on
 -- reason: RISCV
     if notx(r.ctrappend) and notx(rst) then
@@ -11528,7 +11540,7 @@ begin
         v.dbgaccpend     := RRES.dbgaccpend;
         v.holdpend       := RRES.holdpend;
         v.syncbar        := RRES.syncbar;
-        v.dbgacc         := RRES.dbgacc; 
+        v.dbgacc         := RRES.dbgacc;
         v.dbgaccwr       := RRES.dbgaccwr;
         v.irdbufen       := RRES.irdbufen;
         v.holdn          := RRES.holdn;
@@ -11579,13 +11591,13 @@ begin
       v.d1vaddr_repl(x*vaddrbits+vaddrbits-1 downto x*vaddrbits) := v.d1vaddr;
       v.d1ctx_repl(x*ctxbits+ctxbits-1 downto x*ctxbits) := v.d1ctx;
     end loop;
-   if ext_h = 1 then
-    for x in 0 to tlbrepl-1 loop
-      v.h_addr_repl(x*vaddrbits+vaddrbits-1 downto x*vaddrbits) := (others => '0');
-      v.h_addr_repl(x*vaddrbits+ga_msb downto x*vaddrbits) := v.h_addr;
-      v.h_ctx_repl(x*ctxbits+ctxbits-1 downto x*ctxbits) := mmu_ctx(csro);
-    end loop;
-   end if;
+    if ext_h = 1 then
+      for x in 0 to tlbrepl-1 loop
+        v.h_addr_repl(x*vaddrbits+vaddrbits-1 downto x*vaddrbits) := (others => '0');
+        v.h_addr_repl(x*vaddrbits+ga_msb downto x*vaddrbits) := v.h_addr;
+        v.h_ctx_repl(x*ctxbits+ctxbits-1 downto x*ctxbits) := mmu_ctx(csro);
+      end loop;
+    end if;
 
     ---------------------------------------------------------------------------
     -- Constant registers

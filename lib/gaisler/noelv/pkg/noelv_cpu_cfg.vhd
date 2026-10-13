@@ -79,6 +79,7 @@ package noelv_cpu_cfg is
     ext_zfh       => 0,
     ext_zfhmin    => 0,
     ext_zfbfmin   => 0,
+    ext_sparrow   => 0,
     mode_s        => 0,
     mode_u        => 0,
     fpulen        => 0,
@@ -175,6 +176,7 @@ package noelv_cpu_cfg is
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 1,
+      ext_sparrow   => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -275,6 +277,7 @@ package noelv_cpu_cfg is
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 1,
+      ext_sparrow   => 1,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -369,6 +372,7 @@ package noelv_cpu_cfg is
       ext_zfh       => 1,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 1,
+      ext_sparrow   => 0,
       mode_s        => 1,
       mode_u        => 1,
       fpulen        => 64,
@@ -463,6 +467,7 @@ package noelv_cpu_cfg is
       ext_zfh       => 0,
       ext_zfhmin    => 1,
       ext_zfbfmin   => 1,
+      ext_sparrow   => 0,
       mode_s        => 0,
       mode_u        => 1,
       fpulen        => 32,
@@ -557,6 +562,7 @@ package noelv_cpu_cfg is
       ext_zfh       => 0,
       ext_zfhmin    => 0,
       ext_zfbfmin   => 0,
+      ext_sparrow   => 0,
       mode_s        => 0,
       mode_u        => 1,
       fpulen        => 0,
@@ -615,6 +621,7 @@ package noelv_cpu_cfg is
                      DBLTRP   : integer;
                      ZICFISS  : integer;
                      ZICFILP  : integer;
+                     SPARROW  : integer;
                      RV64     : integer) return nv_cpu_cfg_type;
 end;
 
@@ -744,6 +751,7 @@ package body noelv_cpu_cfg is
                      DBLTRP   : integer;
                      ZICFISS  : integer;
                      ZICFILP  : integer;
+                     SPARROW  : integer;
                      RV64     : integer
                      ) return nv_cpu_cfg_type is
     variable co  : nv_cpu_cfg_type := ci;
@@ -780,6 +788,7 @@ package body noelv_cpu_cfg is
     co.ext_zicfilp      := co.ext_zicfilp * ZICFILP * RDV;
     co.ext_svinval      := co.ext_svinval * RDV;
     co.vmidlen          := co.vmidlen * RV64 * RDV;
+    co.ext_sparrow      := co.ext_sparrow * SPARROW * RDV * RV64;
 
     return co;
   end function;

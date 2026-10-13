@@ -1,5 +1,5 @@
-VER=$(VNAME)2026.2
-BID=4300
+VER=$(VNAME)2026.3
+BID=4301
 CC=gcc
 SED=sed
 
@@ -535,15 +535,33 @@ ncsim-clean:
 
 ### Lattice targets ###
 
+# If GRLIB_LATTICE_RADIANT is not set explicitly, derive it from the radiantc binary currently on PATH (e.g. the one selected by "module load lattice/radiant/<ver>"). This way a single "module load" is
+# enough (no separate export needed) and GRLIB_LATTICE_RADIANT can never drift out of sync with the tools actually being run.
+ifeq ($(GRLIB_LATTICE_RADIANT),)
+GRLIB_LATTICE_RADIANT := $(shell d=$$(command -v radiantc 2>/dev/null); if [ -n "$$d" ]; then cd "$$(dirname "$$d")/../.." && pwd; fi)
+endif
+
 GRLIB_LATTICE_RADIANT_PERFORMANCE?="9_High-Performance_1.0"
 GRLIB_LATTICE_RADIANT_SYNTHESIS?="synplify"
 GRLIB_LATTICE_RADIANT_SIM_DEVICE?=all
+# Operating condition ("-op" flag) required by the ipgen tool starting with Radiant 2024.x/2025.x. It has to match the device grade (see TEMPERATURE in boards/<board>/Makefile.inc).
+GRLIB_LATTICE_RADIANT_IP_OPERATION?=
+# Package name used for the "-t" argument to ipgen. Defaults to PACKAGE, override in the board's Makefile.inc only when they diverge.
+GRLIB_LATTICE_RADIANT_IPGEN_PACKAGE?=$(PACKAGE)
+# Set to a non-empty value (e.g. in the design Makefile) to disable the post-PAR tmcheck timing verification (tmcheck -stop_if_error) in the generated Radiant build script: the flow then continues to bitstream even when STA reports timing errors.
+GRLIB_LATTICE_RADIANT_DISABLE_TMCHK?=
+# Set to a non-empty value to enable "IP Evaluation Mode" in the bitstream strategy (bit_ip_eval), so that a bitstream is generated even when an IP license feature is missing (e.g. server IPs without a runtime license). Eval-mode bitstreams may be time-limited on hardware.
+GRLIB_LATTICE_RADIANT_IP_EVAL?=
+# "Server" IPs (LATTICE_COM_IP) are not redistributable, so they are not checked into the repo and are never downloaded automatically.
+# Set LATTICE_COM_IP_FOLDER (in the design Makefile) to a local/site directory already holding a copy of the IP (as <vlnv>.ipk or an
+# already-extracted <vlnv>/ folder) - see README.md for how to obtain and place it.
+# Example: LATTICE_COM_IP_FOLDER?=/path/to/your/lattice_ipx
+LATTICE_COM_IP_FOLDER?=$(HOME)/RadiantIPLocal
 export FOUNDRY=$(GRLIB_LATTICE_RADIANT)/ispfpga
 #Setting Modelsim path by checking where vsim is, unless already set
 GRLIB_LATTICE_RADIANT_SIM_PATH?=$(dir $(shell which vsim))
 
 $(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl radiant-ips
-	@mkdir -p $(TOP)_radiant
 	@echo "Calling radiant in CLI mode to create project"
 	@if test -r "$(GRLIB_LATTICE_RADIANT)/bin/lin64/radiantc"; then \
 		radiantc $(TOP)_radiant.tcl; \
@@ -558,7 +576,12 @@ $(TOP)_radiant.rdf: $(TOP)_radiant.tcl $(TOP)_radiant_build.tcl radiant-ips
 #set in LATTICE_IP in the design Makefile
 radiant-ips: $(TOP)_radiant_gen_ips.tcl
 	@for ip_cfg in ${LATTICE_IP}; do \
-		if [ ! -d "./lattice_ips/$${ip_cfg}" ]; then \
+		if [ ! -f "./lattice_ips/$${ip_cfg}/$$(basename $${ip_cfg}).cfg" ]; then \
+			if [ ! -f "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" ]; then \
+				echo "No cfg found for IP (library) $${ip_cfg} in boards/$(BOARD)/lattice_ips, creating an empty default one there"; \
+				mkdir -p "$(GRLIB)/boards/$(BOARD)/lattice_ips/$$(dirname $${ip_cfg})"; \
+				echo "{}" > "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg"; \
+			fi; \
 			echo "Copying IP (library) cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
 			mkdir -p lattice_ips/$${ip_cfg}; \
 			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
@@ -567,7 +590,31 @@ radiant-ips: $(TOP)_radiant_gen_ips.tcl
 		fi; \
 	done;
 	@for ip_cfg in ${LATTICE_COM_IP}; do \
-		if [ ! -d "./lattice_ips/$${ip_cfg}" ]; then \
+		ip_vlnv=$$(dirname $${ip_cfg}); \
+		if [ -f "./lattice_ips/$${ip_vlnv}/metadata.xml" ]; then \
+			echo "IP (server) $${ip_vlnv} already in lattice_ips/. We use that one."; \
+		elif [ -n "$(LATTICE_COM_IP_FOLDER)" ] && [ -f "$(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}.ipk" ]; then \
+			echo "IP (server) $${ip_vlnv} found in LATTICE_COM_IP_FOLDER ($(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}.ipk), extracting to lattice_ips/$${ip_vlnv}"; \
+			mkdir -p "./lattice_ips/$${ip_vlnv}"; \
+			unzip -q -o "$(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}.ipk" -d "./lattice_ips/$${ip_vlnv}"; \
+		elif [ -n "$(LATTICE_COM_IP_FOLDER)" ] && [ -d "$(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}" ]; then \
+			echo "IP (server) $${ip_vlnv} found in LATTICE_COM_IP_FOLDER ($(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}), copying to lattice_ips/$${ip_vlnv}"; \
+			mkdir -p "./lattice_ips/$${ip_vlnv}"; \
+			cp -r "$(LATTICE_COM_IP_FOLDER)/$${ip_vlnv}/." "./lattice_ips/$${ip_vlnv}/"; \
+		else \
+			echo "ERROR: IP (server) $${ip_vlnv} not found in lattice_ips/ or in LATTICE_COM_IP_FOLDER ($(LATTICE_COM_IP_FOLDER))."; \
+			echo "This IP is not redistributed with GRLIB and must be obtained manually - see README.md (\"Lattice server IPs\") for instructions."; \
+			echo "Once obtained, either place it as $${ip_vlnv}.ipk or an extracted $${ip_vlnv}/ folder in a directory of your choice and point LATTICE_COM_IP_FOLDER to it, or extract it directly to ./lattice_ips/$${ip_vlnv}/."; \
+			exit 1; \
+		fi; \
+	done;
+	@for ip_cfg in ${LATTICE_COM_IP}; do \
+		if [ ! -f "./lattice_ips/$${ip_cfg}/$$(basename $${ip_cfg}).cfg" ]; then \
+			if [ ! -f "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" ]; then \
+				echo "No cfg found for IP (server) $${ip_cfg} in boards/$(BOARD)/lattice_ips, creating an empty default one there"; \
+				mkdir -p "$(GRLIB)/boards/$(BOARD)/lattice_ips/$$(dirname $${ip_cfg})"; \
+				echo "{}" > "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg"; \
+			fi; \
 			echo "Copying IP (server) cfg $${ip_cfg} from boards/$(BOARD)/lattice_ips to lattice_ips/ in project folder"; \
 			mkdir -p lattice_ips/$${ip_cfg}; \
 			cp "$(GRLIB)/boards/$(BOARD)/lattice_ips/$${ip_cfg}.cfg" lattice_ips/$${ip_cfg}/. ; \
@@ -635,7 +682,7 @@ remove-radiant-ips:
 	-rm -rf lattice_ips
 
 radiant-clean:
-	-rm -rf $(TOP)_radiant* reportview.xml .recovery .setting.ini .ng_run_manager.ini
+	-rm -rf $(TOP)_radiant* reportview.xml .recovery .setting.ini .ng_run_manager.ini radiantc.* promote.*
 
 #########   Lattice ISPLEVER targets   ############
 
@@ -1407,19 +1454,62 @@ endif
 #VIVADO_SIMSET=sim_$(DESIGN)
 VIVADO_SIMSET=sim_1
 
-vivado-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
+vivado-xci-launch: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	vivado -mode gui -source ./vivado/$(TOP)_vivado.tcl
 	@if test -r ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
 	fi;
 
-vivado: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
+vivado-xci: vivado/$(TOP)_vivado.tcl $(VHDLSYNFILES) $(VERILOGSYNFILES)
 	set -o pipefail && vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl | tee -i $(TOP)_vivado.log
 	@if test -r ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
 	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
 	fi;
+
+VIVADO_LOCAL_IP_DIR ?= ./xilinx_ips
+VIVADO_LOCAL_IP_NAMES = $(sort $(notdir $(patsubst %.tcl,%,$(VIVADO_LOCAL_IPS))))
+
+define VIVADO_IP_GEN_PREP
+for n in $(VIVADO_LOCAL_IP_NAMES); do \
+  rm -f ./vivado/$$n.* ; \
+  sed -i "/$$n\.xci/d" ./vivado/$(TOP)_vivado.tcl ; \
+done
+for f in $(VIVADO_LOCAL_IPS); do \
+  echo "source $(VIVADO_LOCAL_IP_DIR)/$$f" >> ./vivado/$(TOP)_vivado.tcl ; \
+done
+endef
+
+vivado: scripts-clean scripts
+	@$(VIVADO_IP_GEN_PREP)
+	set -o pipefail && vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl ./vivado/$(TOP)_vivado_run.tcl | tee -i $(TOP)_vivado.log
+	@if test -r ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
+	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
+	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
+	fi;
+
+vivado-launch: scripts-clean scripts
+	@$(VIVADO_IP_GEN_PREP)
+	vivado -mode gui -source ./vivado/$(TOP)_vivado.tcl
+	@if test -r ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit; then \
+	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).bit . ; \
+	  cp ./vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP).msk . ; \
+	fi;
+vivado-xilipgen: scripts-clean scripts
+	@$(VIVADO_IP_GEN_PREP)
+	@echo "synth_ip [get_ips *]" > ./vivado/$(TOP)_vivado_ips_run.tcl
+	set -o pipefail && vivado -mode batch \
+	  -source ./vivado/$(TOP)_vivado.tcl \
+	  ./vivado/$(TOP)_vivado_ips_run.tcl | tee -i $(TOP)_vivado.log
+
+vivado-rerun:
+	@echo "open_project ./vivado/$(DESIGN)/$(DESIGN).xpr" > ./vivado/$(TOP)_resynth.tcl
+	@echo "reset_run synth_1" >> ./vivado/$(TOP)_resynth.tcl
+	@echo "reset_run impl_1" >> ./vivado/$(TOP)_resynth.tcl
+	@cat ./vivado/$(TOP)_vivado_run.tcl >> ./vivado/$(TOP)_resynth.tcl
+	set -o pipefail && vivado -mode batch \
+		-source ./vivado/$(TOP)_resynth.tcl | tee -a $(TOP)_vivado.log
 
 vivado-clean:
 	-rm -rf ./vivado *vivado.log vivado*.jou vivado*.backup.log vivado*.str .Xil .cxl.*.version compile_simlib.log compile_simlib.log.bak xmd.ini xsct.ini
@@ -1852,6 +1942,25 @@ $(TOP).rc: compile.rc
 rc-clean:
 	-rm -rf rtlc rc.log rc.cmd
 
+#########   NVC targets   ############
+
+NVC ?= nvc
+NVCRUNOPT ?= -H1g
+NVCAOPT ?= --relaxed
+NVCOPT ?= --std=93
+NVCVOPT ?=
+
+.PHONY: nvc
+nvc: compile.nvc make.nvc
+	make -f make.nvc nvc-import
+	$(NVC) $(NVCOPT) --work=work:nvc/work -L nvc -e --jit $(SIMTOP)
+
+.PHONY: nvc-run
+nvc-run:
+	$(NVC) $(NVCOPT) $(NVCRUNOPT) --work=work:nvc/work -L nvc -r $(SIMTOP)
+
+nvc-clean:
+	-rm -rf nvc
 
 #########    NanoXplore  targets   ############
 
@@ -1985,7 +2094,7 @@ scriptgendone: scriptgen_variable_values.tcl
 work-clean: $(CLEAN) vsim-clean ise-clean ncsim-clean ghdl-clean synplify-clean quartus-clean \
 	actel-clean dc-clean rc-clean isp-clean precision-clean vsimsa-clean avhdl-clean \
 	vivado-clean planahead-clean riviera-clean fpro-clean vcs-clean nanoxmap-clean \
-	radiant-clean
+	radiant-clean nvc-clean
 	-rm -rf verilog.txt tkparse.exe main.tk ahbrom outdata ahbrom.bin
 
 scripts-clean:
@@ -2098,7 +2207,7 @@ oldconfig: lconfig.tk $(GRLIB)/bin/Makefile.config
 	   echo config.vhd recreated from .config; \
 	fi
 
-.PHONY: xst precision synplify scripts bitfiles planahead planahead-launch vivado vivado-launch
+.PHONY: xst precision synplify scripts bitfiles planahead planahead-launch vivado-xci vivado-xci-launch vivado vivado-launch vivado-xilipgen vivado-rerun
 
 
 

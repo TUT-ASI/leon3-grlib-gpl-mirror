@@ -513,6 +513,11 @@ begin
       port map (clk, address, datain, dataoutx, xenable, xwrite);
   end generate;
 
+  tsmc7 : if xtech = n7 generate
+    x0 : n7_syncram generic map (abits, dbits)
+         port map (clk, address, datain, dataoutx, xenable, xwrite);
+  end generate;
+
 -- pragma translate_off
   noram : if has_sram(xtech) = 0 generate
     x : process

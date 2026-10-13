@@ -1,1 +1,1 @@
-set tools {actel aldec altera cdns ghdl lattice mentor microsemi snps xlnx nanoxplore}
+set tools {actel aldec altera cdns ghdl lattice mentor microsemi snps xlnx nanoxplore nvc}

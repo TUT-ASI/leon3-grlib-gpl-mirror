@@ -77,6 +77,7 @@
 
 -- L2 Cache
   constant CFG_L2_EN    : integer := CONFIG_L2_ENABLE;
+  constant CFG_L2_LITE  : integer := CONFIG_L2_LITE;
   constant CFG_L2_SIZE	: integer := CFG_L2_SZ;
   constant CFG_L2_WAYS	: integer := CFG_L2_ASSO;
   constant CFG_L2_HPROT	: integer := CONFIG_L2_HPROT;
@@ -88,7 +89,7 @@
   constant CFG_L2_MAP  	: integer := 16#CONFIG_L2_MAP#;
   constant CFG_L2_MTRR 	: integer := CONFIG_L2_MTRR;
   constant CFG_L2_EDAC	: integer := CONFIG_L2_EDAC;
-  constant CFG_L2_AXI	  : integer := CONFIG_L2_AXI;
+  constant CFG_L2_AXI	: integer := CONFIG_L2_AXI;
 
 -- DSU UART
   constant CFG_AHB_UART	: integer := CONFIG_DSU_UART;
@@ -134,6 +135,10 @@
   constant CFG_SPIMCTRL_ASCALER     : integer := CONFIG_SPIMCTRL_ASCALER;
   constant CFG_SPIMCTRL_PWRUPCNT    : integer := CONFIG_SPIMCTRL_PWRUPCNT;
   constant CFG_SPIMCTRL_OFFSET      : integer := 16#CONFIG_SPIMCTRL_OFFSET#;
+  constant CFG_SPIMCTRL_WRITECMD    : integer := 16#CONFIG_SPIMCTRL_WRITECMD#;
+  constant CFG_SPIMCTRL_ALLOWWRT    : integer := CONFIG_SPIMCTRL_WRITES;
+  constant CFG_SPIMCTRL_XIPBYTE     : integer := CONFIG_SPIMCTRL_XIPBYTE;
+  constant CFG_SPIMCTRL_XIPPOL      : integer := CONFIG_SPIMCTRL_XIPPOL;
 -- UART 1
   constant CFG_UART1_ENABLE : integer := CONFIG_UART1_ENABLE;
   constant CFG_UART1_FIFO   : integer := CFG_UA1_FIFO;

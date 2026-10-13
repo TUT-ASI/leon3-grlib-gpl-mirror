@@ -32,7 +32,7 @@ entity dfi_phy_sim_fr is
   generic (
     freqratio               : integer range 1 to 4 := 1;
     -- Generics to dfi_phy_sim PHY model
-    ddrtype     : integer range 2 to 3 := 2;
+    ddrtype     : integer range 2 to 4 := 2;
     dfi_lowfirst : integer range 0 to 1 := 1;
     dfi_addr_width          : integer := 13;
     dfi_bank_width          : integer := 3;
@@ -40,6 +40,7 @@ entity dfi_phy_sim_fr is
     dfi_data_width          : integer := 64;
     dfi_data_en_width       : integer := 1;
     dfi_rdata_valid_width   : integer := 1;
+    dfi_bg_width            : integer := 2;
     tctrl_delay : integer := 2;
     tphy_wrdata : integer := 1;
     tphy_wrlat  : integer := 100-1;
@@ -60,6 +61,9 @@ entity dfi_phy_sim_fr is
     dfi_ras_n              : in    std_logic_vector(freqratio-1 downto 0);
     dfi_reset_n            : in    std_logic_vector(freqratio*dfi_cs_width-1 downto 0);
     dfi_we_n               : in    std_logic_vector(freqratio-1 downto 0);
+    dfi_act_n              : in    std_logic_vector(freqratio-1 downto 0);
+    dfi_bg                 : in    std_logic_vector(freqratio*dfi_bg_width-1 downto 0);
+    dfi_parity_in          : in    std_logic_vector(freqratio-1 downto 0);
     --DFI write data interface
     dfi_wrdata             : in    std_logic_vector(freqratio*dfi_data_width-1 downto 0);
     dfi_wrdata_en          : in    std_logic_vector(freqratio*dfi_data_en_width-1 downto 0);
@@ -81,7 +85,7 @@ entity dfi_phy_sim_fr is
     dfi_freq_ratio         : in    std_logic_vector(1 downto 0);
     dfi_init_complete      : out   std_logic;
     dfi_init_start         : in    std_logic;
-    --DDR2/3 ports
+    --DDR2/3/4 ports
     ddr_ck                 : out   std_logic_vector(dfi_cs_width-1 downto 0);
     ddr_ckn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
     ddr_cke                : out   std_logic_vector(dfi_cs_width-1 downto 0);
@@ -96,7 +100,11 @@ entity dfi_phy_sim_fr is
     ddr_resetn             : out   std_logic_vector(dfi_cs_width-1 downto 0);  --DDR3 specific
     ddr_dq                 : inout std_logic_vector((dfi_data_width/2)-1 downto 0);
     ddr_dqs                : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
-    ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0)
+    ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+    ddr_actn               : out   std_ulogic;                                 -- DDR4 specific
+    ddr_bg                 : out   std_logic_vector(dfi_bg_width-1 downto 0);  -- DDR4 specific
+    ddr_parityin           : out   std_ulogic;                                 -- DDR4 specific
+    ddr_alertn             : in    std_logic_vector(dfi_cs_width-1 downto 0) -- DDR4 specific
     );
 end;
 
@@ -116,6 +124,9 @@ architecture sim of dfi_phy_sim_fr is
   signal phy_dfi_ras_n              : std_ulogic;
   signal phy_dfi_reset_n            : std_logic_vector(dfi_cs_width-1 downto 0);
   signal phy_dfi_we_n               : std_ulogic;
+  signal phy_dfi_act_n              : std_ulogic;                                      -- DDR4 specirfic
+  signal phy_dfi_bg                 : std_logic_vector(dfi_bg_width-1 downto 0);       -- DDR4 specific
+  signal phy_dfi_parity_in          : std_ulogic;       -- DDR4 specific
   --DFI write data interface
   signal phy_dfi_wrdata             : std_logic_vector(dfi_data_width-1 downto 0);
   signal phy_dfi_wrdata_en          : std_logic_vector(dfi_data_en_width-1 downto 0);
@@ -165,6 +176,9 @@ begin
       dfi_rddata             => phy_dfi_rddata,
       dfi_rddata_dnv         => phy_dfi_rddata_dnv,
       dfi_rddata_valid       => phy_dfi_rddata_valid,
+      dfi_act_n              => phy_dfi_act_n,
+      dfi_bg                 => phy_dfi_bg,
+      dfi_parity_in          => phy_dfi_parity_in,
       dfi_ctrlupd_req        => dfi_ctrlupd_req,
       dfi_ctrlupd_ack        => dfi_ctrlupd_ack,
       dfi_phyupd_req         => dfi_phyupd_req,
@@ -188,7 +202,11 @@ begin
       ddr_resetn             => ddr_resetn,
       ddr_dq                 => ddr_dq,
       ddr_dqs                => ddr_dqs,
-      ddr_dqsn               => ddr_dqsn
+      ddr_dqsn               => ddr_dqsn,
+      ddr_actn               => ddr_actn,
+      ddr_bg                 => ddr_bg,
+      ddr_parityin           => ddr_parityin,
+      ddr_alertn             => ddr_alertn
       );
 
   clkmeas: process
@@ -234,7 +252,7 @@ begin
     end loop;
   end process;
 
-  frproc: process(phy_dfi_clk,phy_resetn)
+  frproc: process(phy_dfi_clk)
     variable rdphase: integer range 0 to freqratio-1 := 0;
     type rddata_slot is record
       data: std_logic_vector(dfi_data_width-1 downto 0);
@@ -246,11 +264,7 @@ begin
     variable next_rddata_valid: std_logic_vector(freqratio*dfi_rdata_valid_width-1 downto 0) := (others => '0');
     variable pushrddata: boolean;
   begin
-    if phy_resetn='0' then
-      dfi_rddata_valid <= (others => '0');
-      rdphase := 0;
-      next_rddata_valid := (others => '0');
-    elsif rising_edge(phy_dfi_clk) then
+    if rising_edge(phy_dfi_clk) then
       rddata(rdphase).valid := phy_dfi_rddata_valid(0);
       rddata(rdphase).data := phy_dfi_rddata;
       if rddata(rdphase).valid='1' then
@@ -289,6 +303,10 @@ begin
   phy_dfi_ras_n       <= dfi_ras_n      (phase);
   phy_dfi_reset_n     <= dfi_reset_n    ((phase+1)*dfi_cs_width-1       downto phase*dfi_cs_width);
   phy_dfi_we_n        <= dfi_we_n       (phase);
+
+  phy_dfi_act_n       <= dfi_act_n      (phase);
+  phy_dfi_bg          <= dfi_bg         ((phase+1)*dfi_bg_width-1       downto phase*dfi_bg_width);
+  phy_dfi_parity_in   <= dfi_parity_in  (phase);
 
   phy_dfi_wrdata      <= dfi_wrdata     ((phase+1)*dfi_data_width-1     downto phase*dfi_data_width);
   phy_dfi_wrdata_en   <= dfi_wrdata_en  ((phase+1)*dfi_data_en_width-1  downto phase*dfi_data_en_width);

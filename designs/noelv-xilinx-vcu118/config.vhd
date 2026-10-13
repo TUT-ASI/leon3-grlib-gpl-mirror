@@ -6,16 +6,16 @@ library techmap;
 use techmap.gencomp.all;
 package config is
 -- Technology and synthesis options
-  constant CFG_FABTECH : integer := kintexu;
-  constant CFG_MEMTECH : integer := kintexu;
-  constant CFG_PADTECH : integer := kintexu;
+  constant CFG_FABTECH : integer := virtexup;
+  constant CFG_MEMTECH : integer := virtexup;
+  constant CFG_PADTECH : integer := virtexup;
   constant CFG_TRANSTECH : integer := TT_XGTP0;
   constant CFG_NOASYNC : integer := 0;
   constant CFG_SCAN : integer := 0;
 -- Clock generator
-  constant CFG_CLKTECH : integer := kintexu;
-  constant CFG_CLKMUL : integer := (2);
-  constant CFG_CLKDIV : integer := (6);
+  constant CFG_CLKTECH : integer := virtexup;
+  constant CFG_CLKMUL : integer := (6);
+  constant CFG_CLKDIV : integer := (20);
   constant CFG_OCLKDIV : integer := 1;
   constant CFG_OCLKBDIV : integer := 0;
   constant CFG_OCLKCDIV : integer := 0;
@@ -105,7 +105,7 @@ package config is
   constant CFG_GRETH1G : integer := 1;
   constant CFG_ETH_FIFO : integer := 8;
   constant CFG_GRETH_FMC : integer := 0;
-  constant CFG_ETH_PHY_ADDR : integer := (7);
+  constant CFG_ETH_PHY_ADDR : integer := (3);
 -- GPIO port
   constant CFG_GRGPIO_ENABLE : integer := 1;
   constant CFG_GRGPIO_IMASK : integer := 16#FFFE#;

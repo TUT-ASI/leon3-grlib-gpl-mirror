@@ -12,6 +12,7 @@ actel/core1553brt
 actel/core1553brm
 actel/corePCIF
 gr1553
+bsc
 gaisler
 esa
 #nasa

@@ -81,6 +81,7 @@ package config is
   constant CFG_AHB_DTRACE : integer := 0;
 -- L2 Cache
   constant CFG_L2_EN : integer := 0;
+  constant CFG_L2_LITE : integer := 0;
   constant CFG_L2_SIZE : integer := 32;
   constant CFG_L2_WAYS : integer := 1;
   constant CFG_L2_HPROT : integer := 0;
@@ -132,6 +133,10 @@ package config is
   constant CFG_SPIMCTRL_ASCALER : integer := (8);
   constant CFG_SPIMCTRL_PWRUPCNT : integer := 0;
   constant CFG_SPIMCTRL_OFFSET : integer := 16#0#;
+  constant CFG_SPIMCTRL_WRITECMD : integer := 16#02#;
+  constant CFG_SPIMCTRL_ALLOWWRT : integer := 0;
+  constant CFG_SPIMCTRL_XIPBYTE : integer := 0;
+  constant CFG_SPIMCTRL_XIPPOL : integer := (1);
 -- UART 1
   constant CFG_UART1_ENABLE : integer := 1;
   constant CFG_UART1_FIFO : integer := 4;

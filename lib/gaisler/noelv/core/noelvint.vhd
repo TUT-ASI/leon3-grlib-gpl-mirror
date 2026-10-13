@@ -39,6 +39,9 @@ use gaisler.l5nv_shared.all;
 use gaisler.busif5_types.all;
 use gaisler.noelvtypes.all;
 use gaisler.noelv.all;
+library bsc;
+use bsc.sparrow.sprw_in_vec;
+use bsc.sparrow.sprw_out_vec;
 
 package noelvint is
 
@@ -1098,6 +1101,7 @@ package noelvint is
       ext_smpmpmt      : integer range 0  to 1;        -- Smpmpmt Extension (unratified)
       ext_svnapot      : integer range 0  to 1;        -- Svnapot Extension
       tlb_pmp          : integer range 0  to 1;        -- Do PMP via TLB
+      ext_sparrow      : integer range 0  to 1;        -- Sparrow (BSC) Custom Extension
       mode_s           : integer range 0  to 1;        -- Supervisor Mode Support
       mode_u           : integer range 0  to 1;        -- User Mode Support
       dmen             : integer range 0  to 1;        -- Using RISC-V Debug Module
@@ -1161,6 +1165,8 @@ package noelvint is
       fpuo           : in  fpu5_out_type;        -- FPU Unit Out Port
       fpuoa          : in  fpu5_out_async_type;  -- FPU Unit Out Port
       cnt            : out nv_counter_out_type;  -- Perf event Out Port
+      sdi            : out sprw_in_vec;          -- Sparrow Unit In Port
+      sdo            : in  sprw_out_vec;         -- Sparrow Unit Out Port
       itracei        : out itrace_in_type;       -- Trace information
       itraceo        : in  itrace_out_type;      -- Trace control
       pma_addr       : in  word64_arr(0 to PMAENTRIES - 1); -- PMA addresses

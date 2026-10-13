@@ -28,6 +28,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use std.textio.all;
 library grlib;
 use grlib.stdlib.all;
@@ -125,7 +126,14 @@ package sim is
       rowbits: integer range 1 to 16 := 13;
       implbanks: integer range 1 to 8 := 1;
       swap : integer := 0; -- byte swap during srec load
-      fname: string;
+      fname: string  := " ";
+      fname1: string := " ";
+      fname2: string := " ";
+      fname3: string := " ";
+      fname4: string := " ";
+      fname5: string := " ";
+      fname6: string := " ";
+      fname7: string := " ";
       lddelay: time := (0 ns);
       ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
                                            -- loading RAM
@@ -163,17 +171,68 @@ package sim is
       colbits: integer range 9 to 12 := 10;
       rowbits: integer range 1 to 16 := 13;
       implbanks: integer range 1 to 8 := 1;
-      fname: string;
+      fname: string  := " ";
+      fname1: string := " ";
+      fname2: string := " ";
+      fname3: string := " ";
+      fname4: string := " ";
+      fname5: string := " ";
+      fname6: string := " ";
+      fname7: string := " ";
       lddelay: time := (0 ns);
       ldguard: integer range 0 to 1 := 0;
-      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G 13:1866M
-      speedbin: integer range 0 to 13 := 0;
+      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
+      speedbin: integer range 0 to 12 := 0;
       density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
       pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
       changeendian: integer range 0 to 32 := 0;
       initbyte: integer := 0;
-      jitter_tol: integer := 50;
-      mprmode: integer range 0 to 8 := 0
+      jitter_tol: integer := 50
+      );
+    port (
+      ck: in std_ulogic;
+      ckn: in std_ulogic;
+      cke: in std_ulogic;
+      csn: in std_ulogic;
+      odt: in std_ulogic;
+      rasn: in std_ulogic;
+      casn: in std_ulogic;
+      wen: in std_ulogic;
+      dm: in std_logic_vector(width/8-1 downto 0);
+      ba: in std_logic_vector(2 downto 0);
+      a: in std_logic_vector(abits-1 downto 0);
+      resetn: in std_ulogic;
+      dq: inout std_logic_vector(width-1 downto 0);
+      dqs: inout std_logic_vector(width/8-1 downto 0);
+      dqsn: inout std_logic_vector(width/8-1 downto 0);
+      doload: in std_ulogic := '1'
+      );
+  end component;
+
+  component ddr4ram is
+    generic (
+      width: integer := 32;
+      abits: integer range 13 to 16 := 13;
+      colbits: integer range 9 to 12 := 10;
+      rowbits: integer range 1 to 16 := 13;
+      implbanks: integer range 1 to 8 := 1;
+      fname: string  := " ";
+      fname1: string := " ";
+      fname2: string := " ";
+      fname3: string := " ";
+      fname4: string := " ";
+      fname5: string := " ";
+      fname6: string := " ";
+      fname7: string := " ";
+      lddelay: time := (0 ns);
+      ldguard: integer range 0 to 1 := 0;
+      -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
+      speedbin: integer range 0 to 12 := 0;
+      density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
+      pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
+      changeendian: integer range 0 to 32 := 0;
+      initbyte: integer := 0;
+      jitter_tol: integer := 50
       );
     port (
       ck: in std_ulogic;
@@ -280,6 +339,40 @@ package sim is
     );
   end component;
 
+  component phy_sgmii is
+    generic (
+      INSTANCE_NUMBER          : integer := 0
+    );
+    port (
+      -- Physical Interface (Transceiver)
+      --------------------------------
+      txp                     : in  std_logic;
+      txn                     : in  std_logic;
+      rxp                     : out std_logic;
+      rxn                     : out std_logic;
+      -- GMII Interface
+      -----------------
+      gmii_tx_clk             : out std_logic;
+      gmii_rx_clk             : in std_logic;
+      gmii_txd                : out std_logic_vector(7 downto 0);
+      gmii_tx_en              : out std_logic;
+      gmii_tx_er              : out std_logic;
+      gmii_rxd                : in std_logic_vector(7 downto 0);
+      gmii_rx_dv              : in std_logic;
+      gmii_rx_er              : in std_logic;
+      -- Test bench speed selection
+      -----------------------------
+      speed_is_10_100         : in std_logic;
+      speed_is_100            : in std_logic;
+      -- Test Bench Semaphores
+      ------------------------
+      configuration_finished  : in  boolean;
+      tx_monitor_finished     : out boolean;
+      rx_monitor_finished     : out boolean
+      );
+  end component;
+
+
   procedure leon3_subtest(subtest : integer);
   procedure mctrl_subtest(subtest : integer);
   procedure gptimer_subtest(subtest : integer);
@@ -300,14 +393,14 @@ package sim is
   procedure l4stat_subtest(subtest : integer);
 
   procedure call_subtest(vendorid, deviceid, subtest : integer);
+  procedure call_misctest(testno : integer);
 
   component ahbrep
   generic (
     hindex  : integer := 0;
     haddr   : integer := 0;
     hmask   : integer := 16#fff#;
-    halt    : integer := 1;
-    delay_stop : integer := 0);
+    halt    : integer := 1);
   port (
     rst     : in  std_ulogic;
     clk     : in  std_ulogic;
@@ -464,7 +557,9 @@ package sim is
       b : inout std_logic;
       eiab : in std_ulogic := '0';
       eiba : in std_ulogic := '0';
-      col : out std_ulogic
+      col : out std_ulogic;
+      discona : in std_ulogic := '0';
+      disconb : in std_ulogic := '0'
       );
   end component;
 
@@ -480,7 +575,27 @@ package sim is
       b : inout std_logic_vector(width-1 downto 0);
       eiab: in std_logic_vector(width-1 downto 0) := (others => '0');
       eiba: in std_logic_vector(width-1 downto 0) := (others => '0');
-      col : out std_logic_vector(width-1 downto 0)
+      col : out std_logic_vector(width-1 downto 0);
+      discona: in std_ulogic := '0';
+      disconb: in std_ulogic := '0'
+      );
+  end component;
+
+  component bidir_wire_mux is
+    generic (
+      width : integer;
+      pull  : integer range 0 to 2 := 0;
+      wdly0ab : time := 10 ps;
+      wdly0ba : time := 10 ps;
+      wdly1ab : time := 10 ps;
+      wdly1ba : time := 10 ps;
+      sdly  : time := 50 ps
+      );
+    port (
+      a : inout std_logic_vector(width-1 downto 0);
+      b0 : inout std_logic_vector(width-1 downto 0);
+      b1 : inout std_logic_vector(width-1 downto 0);
+      muxsel: in bit
       );
   end component;
 
@@ -620,7 +735,8 @@ package sim is
       ahbbits: integer := 32;
       fname: string;
       autoload: integer := 0;
-      scid: integer := 0
+      scid: integer := 0;
+      dynctrl: integer := 0
       );
     port (
       rst    : in std_logic;
@@ -633,7 +749,9 @@ package sim is
       ihsize  : in std_logic_vector(2 downto 0);
       ihwdata : in std_logic_vector(ahbbits-1 downto 0);
       ohresp  : in std_logic_vector(1 downto 0);
-      ohrdata : in std_logic_vector(ahbbits-1 downto 0)
+      ohrdata : in std_logic_vector(ahbbits-1 downto 0);
+      dynid   : in integer := 0;
+      endian  : in std_ulogic := '0'
       );
   end component;
 
@@ -705,6 +823,21 @@ component spwtrace is
       );
   end component;
 
+  component axi4mem is
+    generic (
+      fname: string;
+      axibits: integer := AXIDW;
+      rstmode: integer range 0 to 1;
+      exclusive: integer range 0 to 1 -- Exclusive access support
+      );
+    port (
+      clk  : in std_ulogic;
+      rst  : in std_ulogic;
+      axisi: in axi4_mosi_type;
+      axiso: out axi_somi_type
+    );
+  end component;
+
 
   type aximem_error_type is record
     id : integer;
@@ -774,7 +907,9 @@ component spwtrace is
     generic (
       fname: string;
       axibits: integer := AXIDW;
-      rstmode: integer range 0 to 1
+      no_x: integer := 0;
+      rstmode: integer range 0 to 1;
+      axi4: integer range 0 to 1 := 0
       );
     port (
       clk  : in std_ulogic;
@@ -805,74 +940,10 @@ component spwtrace is
       );
   end component;
 
-  component canfdsim is
-    port(
-      -- Timing parameters
-      nom_syn_seg         : in  time;
-      nom_ph1_seg         : in  time;
-      nom_ph2_seg         : in  time;
-      data_syn_seg        : in  time;
-      data_ph1_seg        : in  time;
-      data_ph2_seg        : in  time;
-      -- Frame control
-      start               : in  std_ulogic;                    -- Start TX/RX
-      mode                : in  std_ulogic;                    -- TX(1); RX(0)
-      -- Frame description
-      id                  : in  std_logic_vector(28 downto 0);
-      ide                 : in  std_ulogic;
-      rtr                 : in  std_ulogic;
-      fdf                 : in  std_ulogic;
-      brs                 : in  std_ulogic;
-      esi                 : in  std_ulogic;
-      dlc                 : in  std_logic_vector(3 downto 0);
-      data                : in  std_logic_vector(511 downto 0);
-      -- Exception generation (only as a RX for GRCANFD)
-      srr_dom             : in  std_ulogic;                    -- SRR transmitted dominant
-      rrs_rec             : in  std_ulogic;                    -- RRS transmitted recessive
-      r0_rec              : in  std_ulogic;                    -- r0 transmitted recessive
-      res_rec             : in  std_ulogic;                    -- res transmitted recessive
-      -- Exception generation (only as a TX for GRCANFD)
-      ack_long            : in  std_ulogic;                    -- ACK 2 bit times long
-      -- Error insertion (only for TX)
-      crc_err_msk         : in  std_logic_vector(20 downto 0); -- CRC error mask
-      bstuff_err_sel      : in  std_logic_vector(2 downto 0);  -- Field with stuff errors
-      stuffcnt_err_msk    : in  std_logic_vector(3 downto 0);  -- Stuff cnt error mask
-      fxdstuff_err_sel    : in  std_logic_vector(2 downto 0);  -- Fixed stuff err sel
-      -- TX/RX outputs
-      frm_completed       : out std_ulogic;                    -- End of TX/RX
-      tx_frm_ackd         : out std_ulogic;                    -- TX frame acknowledged
-      tx_arb_lost         : out std_ulogic;                    -- Arbitration lost
-      err_frm_gen         : out std_ulogic;                    -- EF generated
-      -- CAN interface
-      can_rx_bit          : in  std_ulogic;
-      can_tx_bit          : out std_ulogic
-      );
-  end component canfdsim;
-
-  component tlk2711_sim is
-    port (
-      -- Control interface
-      enable    : in  std_ulogic;
-      loop_en   : in  std_ulogic;
-      -- Host interface
-      tx_clk    : in  std_ulogic;
-      tx_data   : in  std_logic_vector(15 downto 0);
-      tx_kflags : in  std_logic_vector(1 downto 0);
-      rx_clk    : out std_ulogic;
-      rx_data   : out std_logic_vector(15 downto 0);
-      rx_kflags : out std_logic_vector(1 downto 0);
-      -- Serial interface
-      dout_txp  : out std_ulogic;
-      dout_txn  : out std_ulogic;
-      din_rxp   : in  std_ulogic;
-      din_rxn   : in  std_ulogic
-      );
-  end component tlk2711_sim;
-
   component dfi_phy_sim is
     generic (
       -- DDR type
-      ddrtype     : integer range 2 to 3 := 2;
+      ddrtype     : integer range 2 to 4 := 2;
       -- For DDR vectors, if low or high half is taken first
       -- 1=low half first, 0=high half first
       dfi_lowfirst : integer range 0 to 1 := 1;
@@ -888,7 +959,8 @@ component spwtrace is
       tctrl_delay : integer := 2;
       tphy_wrdata : integer := 1;
       tphy_wrlat  : integer := 100-1;
-      trddata_en  : integer := 100-2
+      trddata_en  : integer := 100-2;
+      dfi_bg_width : integer := 2
       );
     port (
       -- Master reset for PHY
@@ -905,27 +977,30 @@ component spwtrace is
       dfi_ras_n              : in    std_ulogic;
       dfi_reset_n            : in    std_logic_vector(dfi_cs_width-1 downto 0);
       dfi_we_n               : in    std_ulogic;
+      dfi_act_n              : in    std_ulogic;
+      dfi_bg                 : in    std_logic_vector(dfi_bg_width-1 downto 0);
+      dfi_parity_in          : in    std_ulogic;
       --DFI write data interface
       dfi_wrdata             : in    std_logic_vector(dfi_data_width-1 downto 0);
       dfi_wrdata_en          : in    std_logic_vector(dfi_data_en_width-1 downto 0);
       dfi_wrdata_mask        : in    std_logic_vector((dfi_data_width/8)-1 downto 0);
-                                        --DFI read data interface
+      --DFI read data interface
       dfi_rddata_en          : in    std_logic_vector(dfi_data_en_width-1 downto 0);
       dfi_rddata             : out   std_logic_vector(dfi_data_width-1 downto 0);
       dfi_rddata_dnv         : out   std_logic_vector((dfi_data_width/8)-1 downto 0);  --LPDDR2 specific
       dfi_rddata_valid       : out   std_logic_vector(dfi_rdata_valid_width-1 downto 0);
-                                        --DFI update interface
+      --DFI update interface
       dfi_ctrlupd_req        : in    std_ulogic;
       dfi_ctrlupd_ack        : out   std_ulogic;
       dfi_phyupd_req         : out   std_ulogic;
       dfi_phyupd_type        : out   std_logic_vector(1 downto 0);
       dfi_phyupd_ack         : in    std_ulogic;
-                                        --DFI status interface
+      --DFI status interface
       dfi_data_byte_disable  : in    std_logic_vector((dfi_data_width/16)-1 downto 0);
       dfi_dram_clk_disable   : in    std_logic_vector(dfi_cs_width-1 downto 0);
       dfi_init_complete      : out   std_ulogic;
       dfi_init_start         : in    std_ulogic;
-                                        --DDR2/3 ports
+      --DDR2/3/4 ports
       ddr_ck                 : out   std_logic_vector(dfi_cs_width-1 downto 0);
       ddr_ckn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
       ddr_cke                : out   std_logic_vector(dfi_cs_width-1 downto 0);
@@ -940,7 +1015,11 @@ component spwtrace is
       ddr_resetn             : out   std_logic_vector(dfi_cs_width-1 downto 0);  --DDR3 specific
       ddr_dq                 : inout std_logic_vector((dfi_data_width/2)-1 downto 0);
       ddr_dqs                : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
-      ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0)
+      ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+      ddr_actn               : out   std_logic;
+      ddr_bg                 : out   std_logic_vector(dfi_bg_width-1 downto 0);
+      ddr_parityin           : out   std_logic;
+      ddr_alertn             : in    std_logic_vector(dfi_cs_width-1 downto 0)
       );
   end component;
 
@@ -948,7 +1027,7 @@ component spwtrace is
     generic (
       freqratio               : integer range 1 to 4 := 1;
       -- Generics to dfi_phy_sim PHY model
-      ddrtype     : integer range 2 to 3 := 2;
+      ddrtype     : integer range 2 to 4 := 2;
       dfi_lowfirst : integer range 0 to 1 := 1;
       dfi_addr_width          : integer := 13;
       dfi_bank_width          : integer := 3;
@@ -956,6 +1035,7 @@ component spwtrace is
       dfi_data_width          : integer := 64;
       dfi_data_en_width       : integer := 1;
       dfi_rdata_valid_width   : integer := 1;
+      dfi_bg_width            : integer := 2;
       tctrl_delay : integer := 2;
       tphy_wrdata : integer := 1;
       tphy_wrlat  : integer := 100-1;
@@ -976,6 +1056,9 @@ component spwtrace is
       dfi_ras_n              : in    std_logic_vector(freqratio-1 downto 0);
       dfi_reset_n            : in    std_logic_vector(freqratio*dfi_cs_width-1 downto 0);
       dfi_we_n               : in    std_logic_vector(freqratio-1 downto 0);
+      dfi_act_n              : in    std_logic_vector(freqratio-1 downto 0);
+      dfi_bg                 : in    std_logic_vector(freqratio*dfi_bg_width-1 downto 0);
+      dfi_parity_in          : in    std_logic_vector(freqratio-1 downto 0);
       --DFI write data interface
       dfi_wrdata             : in    std_logic_vector(freqratio*dfi_data_width-1 downto 0);
       dfi_wrdata_en          : in    std_logic_vector(freqratio*dfi_data_en_width-1 downto 0);
@@ -997,7 +1080,7 @@ component spwtrace is
       dfi_freq_ratio         : in    std_logic_vector(1 downto 0);
       dfi_init_complete      : out   std_logic;
       dfi_init_start         : in    std_logic;
-      --DDR2/3 ports
+      --DDR2/3/4 ports
       ddr_ck                 : out   std_logic_vector(dfi_cs_width-1 downto 0);
       ddr_ckn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
       ddr_cke                : out   std_logic_vector(dfi_cs_width-1 downto 0);
@@ -1012,7 +1095,54 @@ component spwtrace is
       ddr_resetn             : out   std_logic_vector(dfi_cs_width-1 downto 0);  --DDR3 specific
       ddr_dq                 : inout std_logic_vector((dfi_data_width/2)-1 downto 0);
       ddr_dqs                : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
-      ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0)
+      ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+      ddr_actn               : out   std_ulogic;                                 -- DDR4 specific
+      ddr_bg                 : out   std_logic_vector(dfi_bg_width-1 downto 0);  -- DDR4 specific
+      ddr_parityin           : out   std_ulogic;                                 -- DDR4 specific
+      ddr_alertn             : in    std_logic_vector(dfi_cs_width-1 downto 0) -- DDR4 specific
+      );
+  end component;
+
+  component serdes_sim is
+    generic (
+      dbits    : integer := 8;
+      bitorder : integer range 0 to 1 := 0  -- 0=LSB first, 1=MSB first
+      );
+    port (
+      rxp      : in  std_ulogic;
+      rxn      : in  std_ulogic;
+      txp      : out std_ulogic;
+      txn      : out std_ulogic;
+      resetn   : in  std_ulogic;
+      irxclk   : out std_ulogic;
+      irxd     : out std_logic_vector(dbits-1 downto 0);
+      itxclk   : in  std_ulogic;
+      itxd     : in  std_logic_vector(dbits-1 downto 0);
+      txen     : in  std_ulogic;
+      rxlock   : out std_ulogic;
+      rxinvpol : in  std_ulogic := '0'
+      );
+  end component;
+
+  component serdes_8b10b_sim is
+    generic (
+      dbytes    : integer := 4
+      );
+    port (
+      rxp       : in  std_ulogic;
+      rxn       : in  std_ulogic;
+      txp       : out std_ulogic;
+      txn       : out std_ulogic;
+      resetn    : in  std_ulogic;
+      irxclk    : out std_ulogic;
+      irxd      : out std_logic_vector(8*dbytes-1 downto 0);
+      irxk      : out std_logic_vector(dbytes-1 downto 0);
+      itxclk    : in  std_ulogic;
+      itxd      : in  std_logic_vector(8*dbytes-1 downto 0);
+      itxk      : in  std_logic_vector(dbytes-1 downto 0);
+      txen      : in  std_ulogic;
+      rxlock    : out std_ulogic;
+      rxinvpol  : in  std_ulogic := '0'
       );
   end component;
 
@@ -1036,6 +1166,40 @@ component spwtrace is
       id    : in std_logic_vector(3 downto 0)
     );
   end component htif_sim;
+
+  -- Stuck bits injection
+  constant max_width          : integer := 256; -- Max datawidth
+  constant fault_table_depth  : integer := 16;
+  constant mask_width         : integer := 96;
+  constant addr_width         : integer := 32;
+
+  type int_arr is array(natural range <>) of integer;
+
+  type fault_t is record
+        active : boolean;
+        bank   : integer;
+        col    : int_arr(0 to 1);
+        off    : integer range 0 to 3;
+        mask   : std_logic_vector(mask_width-1 downto 0);
+        pol    : std_logic;
+  end record;
+
+  type fault_table_t is array (0 to fault_table_depth-1) of fault_t;
+
+  shared variable fault_table        : fault_table_t := (others => (false, 0, (others => 0), 0, (others => '0'), '0'));
+  shared variable inj_lock_trigger   : boolean := false;
+  shared variable inj_unlock_trigger : boolean := false;
+  shared variable inj_offset         : integer range 0 to 3 := 0;
+  shared variable inj_mask           : std_logic_vector(mask_width-1 downto 0) := (others => '0');
+  shared variable inj_pol            : std_logic := '0';
+
+  procedure stck_inj(
+    constant stuck_en  : in std_logic;
+    constant stuck_rel  : in std_logic;
+    constant polarity : in std_logic;
+    constant mask     : in std_logic_vector(mask_width-1 downto 0);
+    constant addr     : in std_logic_vector(addr_width-1 downto 0)
+  );
 
 end;
 
@@ -1095,7 +1259,6 @@ package body sim is
 
   procedure leon3_subtest(subtest : integer) is
   begin
-
     case (subtest mod 16) is
     when 3 => print("  CPU#" & (tost(subtest/16)) & " register file");
     when 4 => print("  CPU#" & (tost(subtest/16)) & " multiplier");
@@ -1116,10 +1279,16 @@ package body sim is
   end;
 
   procedure leon5_subtest(subtest : integer) is
+    variable xsubtest: integer;
+    variable xcpu: integer;
   begin
-    case (subtest mod 16) is
-      when 1 => print("  CPU#" & (tost(subtest/16)) & " write combining");
-      when 2 => print("  CPU#" & (tost(subtest/16)) & " tightly coupled memory");
+    xsubtest := (subtest / 16#1000#)*16 + (subtest mod 16);
+    xcpu := (subtest/16) mod 256;
+    case xsubtest is
+      when 1 => print("  CPU#" & (tost(xcpu)) & " write combining");
+      when 2 => print("  CPU#" & (tost(xcpu)) & " tightly coupled memory");
+      when 17 => print("  CPU#" & (tost(xcpu)) & " region flush");
+      when 18 => print("  CPU#" & (tost(xcpu)) & " cache error correction");
       when others => leon3_subtest(subtest);
     end case;
 
@@ -1346,6 +1515,37 @@ package body sim is
 
   end;
 
+  procedure nandfctrl2_subtest(subtest : integer) is
+  begin
+
+    case subtest is
+    when 20000      => print("  subtest " & tost(subtest) & " Test report_subtest.");
+    when 20010      => print("  subtest " & tost(subtest) & " Sanity check.");
+    when 20040      => print("  subtest " & tost(subtest) & " Abort and soft reset test.");
+    when 20050      => print("  subtest " & tost(subtest) & " SDR Timing setup.");
+    when 20051      => print("  subtest " & tost(subtest) & " NVDDR2 Timing setup.");
+    when 20060      => print("  subtest " & tost(subtest) & " ONFI reset test.");
+    when 20070      => print("  subtest " & tost(subtest) & " Write protect outputs test SKIPPED.");
+    when 20074      => print("  subtest " & tost(subtest) & " Write protect outputs test for 4 signals.");
+    when 20078      => print("  subtest " & tost(subtest) & " Write protect outputs test for 8 signals.");
+    when 20090      => print("  subtest " & tost(subtest) & " Sefi outputs not tested.");
+    when 20091      => print("  subtest " & tost(subtest) & " Sefi outputs test for 1 signal.");
+    when 20092      => print("  subtest " & tost(subtest) & " Sefi outputs test for 2 signals.");
+    when 20097      => print("  subtest " & tost(subtest) & " Sefi outputs test SKIPPED.");
+    when 20100      => print("  subtest " & tost(subtest) & " Feature config test.");
+    when 20120      => print("  subtest " & tost(subtest) & " Switch to NV-DDR2 mode.");
+    when 20130      => print("  subtest " & tost(subtest) & " Mem access test SDR mode without block erase.");
+    when 20131      => print("  subtest " & tost(subtest) & " Mem access test SDR mode with block erase.");
+    when 20132      => print("  subtest " & tost(subtest) & " Mem access test NV-DDR2 mode without block erase.");
+    when 20133      => print("  subtest " & tost(subtest) & " Mem access test NV-DDR2 mode with block erase.");
+    when 20990      => print("  subtest " & tost(subtest) & " Reset test.");
+    when 20999      => print("  subtest " & tost(subtest) & " All subtests done!");
+    when 0 to 16383 => print("  subtest " & tost(subtest) & " (debug)");
+    when others     => print("  subtest " & tost(subtest) & " Undefined nandfctrl2 test.");
+    end case;
+
+  end;
+
   procedure rv64gc_subtest(subtest : integer) is
   begin
 
@@ -1367,7 +1567,6 @@ package body sim is
     end case;
 
   end;
-
 
   procedure call_subtest(vendorid, deviceid, subtest : integer) is
   begin
@@ -1394,6 +1593,7 @@ package body sim is
         when GAISLER_L4STAT => l4stat_subtest(subtest);
         when GAISLER_GRDMAC => grdmac_subtest(subtest);
         when GAISLER_GRDMAC2 => grdmac2_subtest(subtest);
+        when GAISLER_NANDFCTRL2 => nandfctrl2_subtest(subtest);
         when GAISLER_RV64GC => rv64gc_subtest(subtest);
         when others =>
           print ("  subtest " & tost(subtest));
@@ -1409,6 +1609,15 @@ package body sim is
     else
       print ("subtest " & tost(subtest));
     end if;
+  end;
+
+  procedure call_misctest(testno : integer) is
+  begin
+    case testno is
+      when 1 => print("Basic memory test");
+      when 2 => print("Pin muxing test");
+      when others => print("Misc test " & tost(testno));
+    end case;
   end;
 
 
@@ -1521,6 +1730,27 @@ package body sim is
     start <= '0';
     wait until falling_edge(done);
   end grusb_dcl_write;
+
+  procedure stck_inj(
+    constant stuck_en  : in std_logic;
+    constant stuck_rel  : in std_logic;
+    constant polarity : in std_logic;
+    constant mask     : in std_logic_vector(mask_width-1 downto 0);
+    constant addr     : in std_logic_vector(addr_width-1 downto 0)
+) is
+  begin
+    if stuck_en = '1' then
+      inj_mask := (others => '0');
+      inj_mask(mask_width-1 downto 0) := mask;
+      inj_pol := polarity;
+      inj_offset := to_integer(unsigned(addr(5 downto 4)));
+      inj_lock_trigger := true;
+    end if;
+    if stuck_rel = '1' then
+      inj_mask := (others => '0');
+      inj_unlock_trigger := true;
+    end if;
+  end procedure;
 
 end;
 -- pragma translate_on

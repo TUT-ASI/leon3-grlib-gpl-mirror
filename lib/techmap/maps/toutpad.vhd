@@ -157,6 +157,11 @@ begin
   nxus : if (tech = nexus) generate
     u0 : nexus_toutpad  port map(pad, i, oen);
   end generate;
+  tsmc7 : if (tech = n7) generate
+    u0 : n7_toutpad generic map (level, slew, voltage, strength)
+	 port map (pad, i, oen);
+  end generate;  
+
 end;
 
 library techmap;

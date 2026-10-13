@@ -807,6 +807,7 @@ architecture sim of spi_flash is
                 if dbg /= 0 then  Print(time'image(now) & ": dynamic_spi_flash_model: Memory configured in 3 byte address mode"); end if;
                 exit receiving;
               when NOPCMD =>
+                if csn  = '0' then wait until csn = '1'; end if;
                 exit receiving;
               when others =>
                 assert false report "Unsupported read command. CMD received:  " & tost(indata) severity warning;

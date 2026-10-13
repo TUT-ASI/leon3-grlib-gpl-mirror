@@ -32,7 +32,7 @@ use grlib.stdlib.all;
 entity dfi_phy_sim is
   generic (
     -- DDR type
-    ddrtype     : integer range 2 to 3 := 2;
+    ddrtype     : integer range 2 to 4 := 2;
     -- For DDR vectors, if low or high half is taken first
     -- 1=low half first, 0=high half first
     dfi_lowfirst : integer range 0 to 1 := 1;
@@ -48,7 +48,8 @@ entity dfi_phy_sim is
     tctrl_delay : integer := 2;
     tphy_wrdata : integer := 1;
     tphy_wrlat  : integer := 100-1;
-    trddata_en  : integer := 100-2
+    trddata_en  : integer := 100-2;
+    dfi_bg_width : integer := 2
     );
   port (
     -- Master reset for PHY
@@ -65,6 +66,9 @@ entity dfi_phy_sim is
     dfi_ras_n              : in    std_ulogic;
     dfi_reset_n            : in    std_logic_vector(dfi_cs_width-1 downto 0);
     dfi_we_n               : in    std_ulogic;
+    dfi_act_n              : in    std_ulogic;
+    dfi_bg                 : in    std_logic_vector(dfi_bg_width-1 downto 0);
+    dfi_parity_in          : in    std_ulogic;
     --DFI write data interface
     dfi_wrdata             : in    std_logic_vector(dfi_data_width-1 downto 0);
     dfi_wrdata_en          : in    std_logic_vector(dfi_data_en_width-1 downto 0);
@@ -85,7 +89,7 @@ entity dfi_phy_sim is
     dfi_dram_clk_disable   : in    std_logic_vector(dfi_cs_width-1 downto 0);
     dfi_init_complete      : out   std_ulogic;
     dfi_init_start         : in    std_ulogic;
-    --DDR2/3 ports
+    --DDR2/3/4 ports
     ddr_ck                 : out   std_logic_vector(dfi_cs_width-1 downto 0);
     ddr_ckn                : out   std_logic_vector(dfi_cs_width-1 downto 0);
     ddr_cke                : out   std_logic_vector(dfi_cs_width-1 downto 0);
@@ -100,7 +104,11 @@ entity dfi_phy_sim is
     ddr_resetn             : out   std_logic_vector(dfi_cs_width-1 downto 0);  --DDR3 specific
     ddr_dq                 : inout std_logic_vector((dfi_data_width/2)-1 downto 0);
     ddr_dqs                : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
-    ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0)
+    ddr_dqsn               : inout std_logic_vector((dfi_data_width/2)/8-1 downto 0);
+    ddr_actn               : out   std_logic;                                 --DDR4 specific
+    ddr_bg                 : out   std_logic_vector(dfi_bg_width-1 downto 0); --DDR4 specific
+    ddr_parityin           : out   std_logic;                                 --DDR4 specific
+    ddr_alertn             : in    std_logic_vector(dfi_cs_width-1 downto 0) --DDR4 specific
     );
 end;
 
@@ -123,6 +131,9 @@ architecture sim of dfi_phy_sim is
     wrdata_en: std_ulogic;
     wrdata_mask: std_logic_vector((dfi_data_width/8)-1 downto 0);
     rddata_en: std_ulogic;
+    act_n: std_ulogic;
+    bg: std_logic_vector(dfi_bg_width-1 downto 0);
+    parity_in: std_ulogic;
   end record;
   type ctrl_array_type is array(0 to 17) of ctrl_type;
   signal ctrl_pipe: ctrl_array_type;
@@ -204,7 +215,10 @@ begin
         wrdata_en   => '0',
         wrdata      => (others => '0'),
         wrdata_mask => (others => '0'),
-        rddata_en   => '0'
+        rddata_en   => '0',
+        act_n       => '0',
+        bg          => (others => '0'),
+        parity_in   => '0'
         ) );
     end if;
   end process;
@@ -221,18 +235,24 @@ begin
     wrdata_en   => dfi_wrdata_en(0),
     wrdata      => dfi_wrdata,
     wrdata_mask => dfi_wrdata_mask,
-    rddata_en   => dfi_rddata_en(0)
+    rddata_en   => dfi_rddata_en(0),
+    act_n       => dfi_act_n,
+    bg          => dfi_bg,
+    parity_in   => dfi_parity_in
     );
 
-  ddr_cke     <= ctrl_pipe(tctrl_delay).cke;
-  ddr_csn     <= ctrl_pipe(tctrl_delay).cs_n;
-  ddr_odt     <= ctrl_pipe(tctrl_delay).odt;
-  ddr_rasn    <= ctrl_pipe(tctrl_delay).ras_n;
-  ddr_casn    <= ctrl_pipe(tctrl_delay).cas_n;
-  ddr_wen     <= ctrl_pipe(tctrl_delay).we_n;
-  ddr_ba      <= ctrl_pipe(tctrl_delay).bank;
-  ddr_a       <= ctrl_pipe(tctrl_delay).address;
-  ddr_resetn  <= ctrl_pipe(tctrl_delay).reset_n;
+  ddr_cke       <= ctrl_pipe(tctrl_delay).cke;
+  ddr_csn       <= ctrl_pipe(tctrl_delay).cs_n;
+  ddr_odt       <= ctrl_pipe(tctrl_delay).odt;
+  ddr_rasn      <= ctrl_pipe(tctrl_delay).ras_n;
+  ddr_casn      <= ctrl_pipe(tctrl_delay).cas_n;
+  ddr_wen       <= ctrl_pipe(tctrl_delay).we_n;
+  ddr_ba        <= ctrl_pipe(tctrl_delay).bank;
+  ddr_a         <= ctrl_pipe(tctrl_delay).address;
+  ddr_resetn    <= ctrl_pipe(tctrl_delay).reset_n;
+  ddr_actn      <= ctrl_pipe(tctrl_delay).act_n;
+  ddr_bg        <= ctrl_pipe(tctrl_delay).bg;
+  ddr_parityin  <= ctrl_pipe(tctrl_delay).parity_in;
 
   ----------------------------------------------------------------------------
   -- Write data
@@ -253,7 +273,7 @@ begin
       if ctrl_pipe(wdqsidx).wrdata_en='1' then
         vdrv := 1;
       end if;
-      if ddrtype=3 and pwdqsctrl.wrdata_en='1' then
+      if (ddrtype=3 or ddrtype=4) and pwdqsctrl.wrdata_en='1' then
         vdrv := 1;
       end if;
     end if;
@@ -294,7 +314,7 @@ begin
         ddr_dm <= ctrl_pipe(wdqidx).wrdata_mask((dfi_data_width/2)/8-1 downto 0);
       when 1 =>
         ddr_dq <= ctrl_pipe(wdqidx).wrdata(dfi_data_width-1 downto dfi_data_width/2);
-        ddr_dm <= ctrl_pipe(wdqidx).wrdata_mask(dfi_data_width/8-1 downto (dfi_data_width/2)/8);
+        ddr_dm <= ctrl_pipe(wdqidx).wrdata_mask(dfi_data_width/8-1 downto (dfi_data_width/2)/8); 
       when 2 =>
         ddr_dq <= (others => 'Z');
         ddr_dm <= (others => 'X');

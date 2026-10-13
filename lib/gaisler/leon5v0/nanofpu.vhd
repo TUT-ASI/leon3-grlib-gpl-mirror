@@ -455,7 +455,9 @@ begin
       r(63) := op.sgn;
       r(51 downto 0) := op.mant(53 downto 2);
       if sp='0' then
+--pragma translate_off
         assert (op.exp > -1023 and op.exp < 1024) or op.cls/="00";
+--pragma translate_on
         r(62 downto 52) := std_logic_vector(op.exp(10 downto 0)+1023);
         if op.exp=-1022 then
           r(52):=op.mant(54);
@@ -469,7 +471,9 @@ begin
           r(51 downto 0) := "0000000000000000000000000000000000000000000000000000";
         end if;
       else
+--pragma translate_off
         assert (op.exp > -127 and op.exp < 128) or op.cls/="00";
+--pragma translate_on
         r(62 downto 55) := std_logic_vector(op.exp(7 downto 0)+127);
         if op.exp=-126 then
           r(55) := op.mant(54);
@@ -668,8 +672,10 @@ begin
         end if;
         v.op2.exp := r.op2.exp - vadj;
       when OPACT_ROUND | OPACT_RSV2 =>
+--pragma translate_off
         assert r.op2action /= OPACT_RSV2;
         assert r.op2.mant(55 downto 54)="01" or r.op2.cls="01" or ((r.op2.exp<=-126 or r.op2.exp>126) and r.rddp='0') or r.op2.exp<=-1022 or r.op2.exp>1022;
+--pragma translate_on
         vrndbits := r.op2.mant(2 downto 0);
         if r.rddp='0' then
           vrndbits := r.op2.mant(31 downto 29);
@@ -1197,7 +1203,9 @@ begin
         if r.accen='0' then
           -- Copy result into op2
           -- Leading one could be in either bit 27 or 26 of accumulator
+--pragma translate_off
           assert r.acc(29 downto 28)="00";
+--pragma translate_on
           v.op2.mant(55 downto 28) :=  std_logic_vector(r.acc(27 downto 0));
           v.op2.mant(27 downto 0) := std_logic_vector(r.acclo);
           -- Adjust exponent
@@ -1288,7 +1296,9 @@ begin
         v.res(53 downto 1) := r.res(52 downto 0);
         v.res(0) := '0';
         if r.divrem1(28)='0' and (r.divcmp1='0' or r.divrem2(28)='0') then
+--pragma translate_off
           assert r.divrem1(28 downto 27)="00" or (r.divrem1(27)='1' and r.divrem1(26 downto 0)=(26 downto 0 => '0'));
+--pragma translate_on
           v.res(0) := '1';
           if r.divrem2(28)='1' then
             v.op1.mant(55 downto 29) := std_logic_vector(r.divrem1(26 downto 0)-1);
@@ -1299,7 +1309,9 @@ begin
           v.op1.mant(0) := '0';
           vtmpadd := unsigned('0' & r.divrem1(26 downto 0) & '0') - unsigned ('0' & r.op2.mant(55 downto 28));
         else
+--pragma translate_off
           assert r.op1.mant(55)='0';
+--pragma translate_on
           v.op1.mant := r.op1.mant(54 downto 0) & '0';
           if r.divfirst='1' then
             v.op2.exp := r.op2.exp - 1;
@@ -1507,7 +1519,9 @@ begin
         v.mulen := '0';
         v.shftpl2 := '0';
         if r.accen='0' then
+--pragma translate_off
           assert r.acc(29 downto 28)="00";
+--pragma translate_on
           -- Subtract input from mul result
           vtmpadd := unsigned('0' & r.acclo) - unsigned('0' & r.op2.mant(27 downto 0));
           v.divrem2 := vtmpadd;

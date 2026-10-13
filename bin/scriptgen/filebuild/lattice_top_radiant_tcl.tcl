@@ -8,7 +8,7 @@ proc create_lattice_top_radiant_tcl {} {
 
 	append rc "# Lattice Radiant project creation script for GRLIB"
 	append rc "\n# Create a new project"
-	append rc "\nprj_create -name \"$TOP\_radiant\" -impl \"$TOP\_radiant_impl_1\" -dev $DEVICE -performance \"$GRLIB_LATTICE_RADIANT_PERFORMANCE\" -impl_dir $TOP\_radiant_impl_1_dir -synthesis \"$GRLIB_LATTICE_RADIANT_SYNTHESIS\""
+	append rc "\nprj_create -name \"$TOP\_radiant\" -dev $DEVICE -performance \"$GRLIB_LATTICE_RADIANT_PERFORMANCE\" -impl \"impl_1\" -impl_dir $TOP\_radiant -synthesis \"$GRLIB_LATTICE_RADIANT_SYNTHESIS\""
 	append rc "\n# Add files for simulation and synthesis"
 
   append ri "# Lattice Radiant IPs generation script\n"
@@ -18,11 +18,34 @@ proc create_lattice_top_radiant_tcl {} {
 
 
 proc append_file_lattice_top_radiant_tcl {f finfo} {
-	global GRLIB_LATTICE_RADIANT GRLIB_LATTICE_RADIANT_PERFORMANCE PART PACKAGE ARCHITECTURE LATTICE_COM_IP_FOLDER
+	global GRLIB_LATTICE_RADIANT GRLIB_LATTICE_RADIANT_PERFORMANCE GRLIB_LATTICE_RADIANT_IP_OPERATION GRLIB_LATTICE_RADIANT_IPGEN_PACKAGE PART PACKAGE ARCHITECTURE
 	set i [dict get $finfo i]
 	set bn [dict get $finfo bn]
 	set q [dict get $finfo q]
 	set fattr [dict get $finfo fattr]
+	# ipgen in Radiant 2024.x/2025.x+ requires a non-empty "-op" (operating condition) argument, but older ipgen (e.g. 2022.1/2023.x) doesn't even recognize it ("unrecognized arguments: ...").
+	# The decision is based on the Radiant version, which is read from the path of the ipgen binary that will actually run (whatever is first on PATH - this is what "module load" switches).
+	# We deliberately do NOT read it from GRLIB_LATTICE_RADIANT: that variable is set separately by the user and "module load" does not touch it, so the two can disagree (e.g. GRLIB_LATTICE_RADIANT
+	# still points to 2026.1 while "module load .../2022.1" put an older ipgen on PATH). Using the real binary's path keeps the -op decision consistent with the ipgen that actually executes.
+	# Fall back to GRLIB_LATTICE_RADIANT only if ipgen can't be located on PATH. -op is needed from Radiant 2024.1 on.
+	global ipgen_supports_op GRLIB_LATTICE_RADIANT
+	if {![info exists ipgen_supports_op]} {
+		set ipgen_supports_op 1
+		set radiant_year ""
+		set ipgen_path [auto_execok ipgen]
+		# e.g. /gsl/cad/lattice/radiant/2025.2.1/ispfpga/bin/lin64/ipgen -> 2025
+		if {$ipgen_path eq "" || ![regexp {/radiant/([0-9]+)} $ipgen_path -> radiant_year]} {
+			# ipgen not resolvable on PATH: fall back to the version dir in GRLIB_LATTICE_RADIANT (e.g. ".../radiant/2025.2.1" -> 2025)
+			regexp {^([0-9]+)} [file tail $GRLIB_LATTICE_RADIANT] -> radiant_year
+		}
+		if {$radiant_year ne "" && $radiant_year < 2024} {
+			set ipgen_supports_op 0
+		}
+	}
+	set ipgenopstr ""
+	if {$ipgen_supports_op && ![string equal $GRLIB_LATTICE_RADIANT_IP_OPERATION ""]} {
+		set ipgenopstr " -op $GRLIB_LATTICE_RADIANT_IP_OPERATION"
+	}
 	switch $i {
 		"vhdlp1735" {
 			upvar radiant_contents rc
@@ -75,7 +98,7 @@ proc append_file_lattice_top_radiant_tcl {f finfo} {
       upvar radiant_ips ri
       upvar radiant_contents rc
 			append ri "\ntry {"
-			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip $GRLIB_LATTICE_RADIANT/ip/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE"
+			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip $GRLIB_LATTICE_RADIANT/ip/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $GRLIB_LATTICE_RADIANT_IPGEN_PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE$ipgenopstr"
 		  append ri "\n} on error ipgenerr {"
 			append ri "\n\tputs \"IPGEN error caught:\n\$ipgenerr\"\n}"
 			append rc "\nprj_add_source lattice_ips/$fattr/$q/$q.ipx -work $bn"
@@ -85,7 +108,7 @@ proc append_file_lattice_top_radiant_tcl {f finfo} {
       upvar radiant_ips ri
       upvar radiant_contents rc
 			append ri "\ntry {"
-			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip $LATTICE_COM_IP_FOLDER/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE"
+			append ri "\n\texec ipgen -o lattice_ips/$fattr/$q -ip lattice_ips/$fattr -name $q -cfg lattice_ips/$fattr/$q/$q.cfg -p $PART -t $GRLIB_LATTICE_RADIANT_IPGEN_PACKAGE -sp $GRLIB_LATTICE_RADIANT_PERFORMANCE -a $ARCHITECTURE$ipgenopstr"
 		  append ri "\n} on error ipgenerr {"
 			append ri "\n\tputs \"IPGEN error caught:\n\$ipgenerr\"\n}"
 			append rc "\nprj_add_source lattice_ips/$fattr/$q/$q.ipx -work $bn"
@@ -111,7 +134,7 @@ proc append_file_lattice_top_radiant_tcl {f finfo} {
 }
 
 proc eof_lattice_top_radiant_tcl {} {
-	global TOP PDC LDC SDCFILE FDC GRLIB_LATTICE_RADIANT_SYNTHESIS
+	global TOP PDC LDC SDCFILE FDC GRLIB_LATTICE_RADIANT_SYNTHESIS GRLIB_LATTICE_RADIANT_DISABLE_TMCHK GRLIB_LATTICE_RADIANT_IP_EVAL
 	upvar radiant_contents rc
   upvar radiant_build rb
   upvar radiant_ips ri
@@ -135,7 +158,7 @@ proc eof_lattice_top_radiant_tcl {} {
                 }
 	}
 	append rc "\n\n# Set top level entity"
-	append rc "\nprj_set_impl_opt -impl \"$TOP\_radiant_impl_1\" \"top\" \"$TOP\""
+	append rc "\nprj_set_impl_opt -impl \"impl_1\" \"top\" \"$TOP\""
 
 	append rc "\n\nprj_save"
 	append rc "\nprj_close"
@@ -147,6 +170,12 @@ proc eof_lattice_top_radiant_tcl {} {
 
 	append rb "# Building commands"
 	append rb "\nprj_open $TOP\_radiant.rdf\n"
+	if {![string equal $GRLIB_LATTICE_RADIANT_DISABLE_TMCHK ""]} {
+		append rb "\nprj_set_strategy_value tmchk_enable_check=False\n"
+	}
+	if {![string equal $GRLIB_LATTICE_RADIANT_IP_EVAL ""]} {
+		append rb "\nprj_set_strategy_value bit_ip_eval=True\n"
+	}
 	append rb "\nprj_run_synthesis\n"
 	append rb "\nprj_run_map\n"
 	append rb "\nprj_run_par\n"

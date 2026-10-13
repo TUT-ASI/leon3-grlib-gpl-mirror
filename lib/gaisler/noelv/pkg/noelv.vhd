@@ -60,6 +60,7 @@ package noelv is
   constant ZICFILP_SUPPORT      : integer := 1;   -- 0 = ZICFILP support is disabled in GRLIB
   constant SMRNMI_SUPPORT       : integer := 1;   -- 0 = SMRNMI support is disabled in GRLIB
   constant DBLTRP_SUPPORT       : integer := 1;   -- 0 = Double trap extensions support is disabled in GRLIB
+  constant SPARROW_SUPPORT      : integer := 1;   -- 0 = Sparrow support is disabled in GRLIB
   constant NEXTNMIRQ            : integer := 1;   -- Number of External Resumable Non-Maskable Interrupts
   constant NLOCNMIRQ            : integer := 5;   -- Number of Local Resumable Non-Maskable Interrupts
   constant NMCAUSELEN           : integer := NEXTNMIRQ + NLOCNMIRQ + 1;
@@ -556,6 +557,7 @@ package noelv is
       -- trace
       tbits     : integer;
       itentr    : integer := 0;
+      tentr     : integer := 0;
       --
       scantest  : integer;
       -- Pipelining

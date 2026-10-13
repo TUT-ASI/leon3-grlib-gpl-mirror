@@ -382,6 +382,14 @@ architecture rtl of leon3mp is
       sd1txn_o             : out std_logic;
       sd1_rext_i           : in  std_logic;
       sd1_refret_i         : in  std_logic;
+      mpcs_rate_i_7        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_6        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_5        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_4        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_3        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_2        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_1        : in  std_logic_vector(1 downto 0);
+      mpcs_rate_i_0        : in  std_logic_vector(1 downto 0);
       epcs_rx_usr_clk_i_1  : in  std_logic;
       epcs_rx_usr_clk_i_0  : in  std_logic;
       epcs_tx_usr_clk_i_1  : in  std_logic;
@@ -400,6 +408,10 @@ architecture rtl of leon3mp is
       epcs_txdata_i_0      : in  std_logic_vector(79 downto 0);
       epcs_rxdata_o_1      : out std_logic_vector(79 downto 0);
       epcs_rxdata_o_0      : out std_logic_vector(79 downto 0);
+      epcs_tx_fifo_st_o_1  : out std_logic_vector(3 downto 0);
+      epcs_tx_fifo_st_o_0  : out std_logic_vector(3 downto 0);
+      epcs_rx_fifo_st_o_1  : out std_logic_vector(3 downto 0);
+      epcs_rx_fifo_st_o_0  : out std_logic_vector(3 downto 0);
       epcs_clkin_i_1       : in  std_logic;
       epcs_clkin_i_0       : in  std_logic;
       epcs_pwrdn_i_1       : in  std_logic_vector(1 downto 0);
@@ -1063,6 +1075,14 @@ begin
       sd1txn_o             => hssl_txn(1),
       sd1_rext_i           => '0',
       sd1_refret_i         => '0',
+      mpcs_rate_i_7        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_6        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_5        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_4        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_3        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_2        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_1        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
+      mpcs_rate_i_0        => (others => '0'), -- MPCS not used (SerDes configured as PMA-only, bypassing the PCS)
       epcs_rx_usr_clk_i_1  => epcs(1).rxclk,
       epcs_rx_usr_clk_i_0  => epcs(0).rxclk,
       epcs_tx_usr_clk_i_1  => hssl_clk,
@@ -1081,6 +1101,10 @@ begin
       epcs_txdata_i_0      => epcs(0).txdata,
       epcs_rxdata_o_1      => epcs(1).rxdata,
       epcs_rxdata_o_0      => epcs(0).rxdata,
+      epcs_tx_fifo_st_o_1  => open,
+      epcs_tx_fifo_st_o_0  => open,
+      epcs_rx_fifo_st_o_1  => open,
+      epcs_rx_fifo_st_o_0  => open,
       epcs_clkin_i_1       => clk_in, -- Slow speed clock (100-300 MHz) to drive the calibration
       epcs_clkin_i_0       => clk_in, -- Slow speed clock (100-300 MHz) to drive the calibration
       epcs_pwrdn_i_1       => "00", -- Powerdown never enabled

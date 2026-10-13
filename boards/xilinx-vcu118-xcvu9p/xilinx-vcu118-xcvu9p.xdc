@@ -18,6 +18,17 @@ set_false_path -from [get_clocks mmcm_clkout0] -to [get_clocks -include_generate
 set_false_path -from [get_clocks mmcm_clkout1] -to [get_clocks -include_generated_clocks mmcm_clkout0]
 
 #-----------------------------------------------------------
+# --- Bitstream generation configuration -------------------
+#-----------------------------------------------------------
+# Bus width 4 should be correct for VCU118
+
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property CONFIG_MODE SPIx4 [current_design]
+set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 31.9 [current_design]
+set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR YES [current_design]
+
+#-----------------------------------------------------------
 #                  Pin and IO Property                     -
 #-----------------------------------------------------------
 
@@ -420,6 +431,25 @@ set_property IOSTANDARD  LVDS [get_ports rxp] ;# Bank  64 VCCO - VCC1V8_FPGA - I
 set_property IOSTANDARD  LVDS [get_ports txn] ;# Bank  64 VCCO - VCC1V8_FPGA - IO_L15N_T2L_N5_AD11N_64
 set_property IOSTANDARD  LVDS [get_ports txp] ;# Bank  64 VCCO - VCC1V8_FPGA - IO_L15P_T2L_N4_AD11P_64
 
+# Equalization can be set to EQ_LEVEL0-4 based on the loss in the channel. EQ_NONE is #an invalid option
+set_property EQUALIZATION EQ_LEVEL0 [get_ports rxn]
+set_property EQUALIZATION EQ_LEVEL0 [get_ports rxp]
+#DQS_BIAS is to be set to TRUE if internal DC biasing is used - this is recommended.
+#If the signal is biased externally on the board, should be set to FALSE
+set_property DQS_BIAS TRUE [get_ports rxn]
+set_property DQS_BIAS TRUE [get_ports rxp]
+
+# DIFF_TERM is to be set to TERM_100 if internal Diff term is used - this is
+#recommended. If differential termination is external on the board, should be set to
+#TERM_NONE
+set_property DIFF_TERM_ADV TERM_100 [get_ports rxn]
+set_property DIFF_TERM_ADV TERM_100 [get_ports rxp]
+set_property DIFF_TERM_ADV TERM_100 [get_ports gtrefclk_n]
+set_property DIFF_TERM_ADV TERM_100 [get_ports gtrefclk_p]
+
+set_property LVDS_PRE_EMPHASIS FALSE [get_ports txn]
+set_property LVDS_PRE_EMPHASIS FALSE [get_ports txp]
+
 # There was a WNS of -5 between the paths
 #set_max_delay -from [get_clocks mmcm_clkout1] -to   [get_clocks IntTx_ClkOut1] 20.000
 #set_max_delay -to   [get_clocks mmcm_clkout1] -from [get_clocks IntTx_ClkOut1] 20.000
@@ -551,6 +581,30 @@ set_false_path -to [get_pins -of [get_cells -hierarchical -filter {NAME =~ *gen_
 
 set_max_delay -from [get_clocks mmcm_clkout*] -to   [get_clocks IntTx_ClkOut*] 12.000
 set_max_delay -to   [get_clocks mmcm_clkout*] -from [get_clocks IntTx_ClkOut*] 12.000
+
+
+# Below constraint from 801 FPGA
+# The 125MHz clock IntTx_Clkout1 drives the GMII interface between
+# the SGMII IP and the GRETH. mmcm_clkout1 is the 50MHz clock that
+# drives most of the rest of the design. For the CDC to work we need
+# to prevent the tool from placing things too far apart. If we had
+# done this with a set_max_delay we would need to do unintuitive
+# things. But Vivado supports the very intuive -datapath_only option.
+# All we need to do is constrain the maximum data delay to be less
+# than one fast clock period. Minus any clock skew between different
+# launching registers or different capturing registers. Let's use
+# 2 ns. The fast clock is 8 ns, so we use 6 ns. Vivado automatically
+# subtracts the register setup time.
+set_max_delay -datapath_only \
+  -from [get_clocks mmcm_clkout1] \
+  -to   [get_clocks IntTx_ClkOut1] \
+  6.0
+
+set_max_delay -datapath_only \
+  -from [get_clocks IntTx_ClkOut1] \
+  -to   [get_clocks mmcm_clkout1] \
+  6.0
+
 
 # False paths
 ## WARNING: [Route 35-468] The router encountered 122 pins that are both setup-critical and hold-critical and tried to fix hold violations at the expense of setup slack. Such pins are:

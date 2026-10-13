@@ -25,7 +25,7 @@ package config is
 -- DSU UART
   constant CFG_AHB_UART : integer := 1;
 -- JTAG based DSU interface
-  constant CFG_AHB_JTAG : integer := 0;
+  constant CFG_AHB_JTAG : integer := 1;
 -- AHB status register
   constant CFG_AHBSTAT : integer := 1;
   constant CFG_AHBSTATN : integer := (1);

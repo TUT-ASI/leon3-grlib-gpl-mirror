@@ -1,22 +1,10 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2026, Frontgrade Gaisler
+--  Copyright (C) 2024, Frontgrade Gaisler AB - all rights reserved.
 --
---  This program is free software; you can redistribute it and/or modify
---  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; version 2.
---
---  This program is distributed in the hope that it will be useful,
---  but WITHOUT ANY WARRANTY; without even the implied warranty of
---  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---  GNU General Public License for more details.
---
---  You should have received a copy of the GNU General Public License
---  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN 
+-- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED 
+-- IN ADVANCE IN WRITING. 
 -----------------------------------------------------------------------------
 -- Package:     allddr
 -- File:        allddr.vhd
@@ -1212,6 +1200,19 @@ component nexus_iddrx1_reg is
     D : in std_ulogic;
     R : in std_ulogic
     );
+end component;
+
+component nexus_oddrx1_reg is
+  port(
+      Q : out std_ulogic;
+      C1 : in std_ulogic;
+      C2 : in std_ulogic;
+      CE : in std_ulogic;
+      D1 : in std_ulogic;
+      D2 : in std_ulogic;
+      R : in std_ulogic;
+      S : in std_ulogic
+      );
 end component;
 
 end;

@@ -114,6 +114,7 @@ architecture rtl of cpucorenvb is
                                         DBLTRP  => DBLTRP_SUPPORT,
                                         ZICFISS => ZICFISS_SUPPORT,
                                         ZICFILP => ZICFILP_SUPPORT,
+                                        SPARROW => SPARROW_SUPPORT,
                                         RV64    => boolean'pos(XLEN = 64)
                                       );
   constant iphys_bits  : integer := gaisler.utilnv.minimum(iphysbits, gaisler.mmucacheconfig.pa_msb(cfg_c.riscv_mmu)+1);

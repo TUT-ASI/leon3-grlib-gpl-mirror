@@ -57,6 +57,7 @@ entity dmnv_ic_ebp is
     -- Debug-link interface
     dmami   : out ahb_mst_in_vector_type(ndmamst-1 downto 0);
     dmamo   : in  ahb_mst_out_vector_type(ndmamst-1 downto 0);
+    extaddrs : in ahb_mst_extaddr_vector(ndmamst-1 downto 0);
     -- Conventional AHB bus interface
     cbmi    : in  ahb_mst_in_type;
     cbmo    : out ahb_mst_out_type;
@@ -181,6 +182,7 @@ begin
         rstn    => rstn,
         dmami   => dmami(x),
         dmamo   => dmamo(x),
+        extaddrs => extaddrs(x),
         icdb    => icdb_dma(x),
         icbd    => r.bustodma(x)
         );

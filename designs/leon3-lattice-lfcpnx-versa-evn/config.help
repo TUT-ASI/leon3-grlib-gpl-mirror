@@ -676,13 +676,18 @@ CONFIG_AHB_DTRACE
   Say yes here to write a trace of all AHB transfers to the
   simulator console. Has not impact on final netlist.
 
+L2 Cache Lite
+CONFIG_L2_LITE
+  When set to yes, it implements the L2 cache lite instead of
+  the regular L2 cache.
+
 L2 Associativity
 CONFIG_L2_ASSO1
   Select how many cache ways the L2 cache should have.
 
 L2 Way size
 CONFIG_L2_SZ1
-  Select the szie of each way in kbytes. The total L2 cache
+  Select the size of each way in kbytes. The total L2 cache
   size will be way size * number of ways.
 
 L2 cache line size
@@ -893,7 +898,30 @@ CONFIG_SPIMCTRL_ASCALER
 Reconfigurable configuration
 CONFIG_SPIMCTRL_RECONF
   Enables writing to the configuration register.
-UART1 enable
+
+Write command
+CONFIG_SPIMCTRL_WRITECMD
+  Write instruction for SPI memory device (hex).
+
+Allow writes
+CONFIG_SPIMCTRL_WRITES
+  Writes to ROM area is accpeted. If not set, all AHB writes to the
+  ROM area of the core will give error responses.
+
+XIP byte
+CONFIG_SPIMCTRL_XIPBYTE
+  Send one byte worth of data after the address phase, containing
+  either 0x00 or 0xff depending on the value of xip_polarity. 
+  Used so commands which require XIP are supported for some 
+  memory devices.
+
+XIP polarity
+CONFIG_SPIMCTRL_XIPPOL
+  Sets bit value sent to the memory device while in the 
+  dummy cycles and XIP byte phase. Should be set so a XIP 
+  disable activation command is sent to the memory device.
+  Has to be either '0' or '1'.
+  UART1 enable
 CONFIG_UART1_ENABLE
   Say Y here to enable UART1, or the console UART. This is needed to
   get any print-out from LEON3 systems regardless of operating system.

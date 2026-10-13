@@ -177,3 +177,6 @@ vivrom:
 vivslack: vivado/$(DESIGN)/$(DESIGN).runs/impl_1/$(TOP)_routed.dcp
 	vivado -mode tcl -nojournal -log slack.log -source slack.tcl $<
 
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+
+VIVADO_LOCAL_IPS = mig_cdc.tcl mig.tcl

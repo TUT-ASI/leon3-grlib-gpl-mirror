@@ -28,3 +28,8 @@ busif5pipe.vhd
 busif5pipechain.vhd
 busif5dtu.vhd
 busif5cdc.vhd
+itctrl5nv.vhd
+itbufmem5nv.vhd
+dmstr_trace.vhd
+dmstr_trace_cdc.vhd
+dmstr_trace_hub.vhd

@@ -37,6 +37,22 @@ e.g. increasing the AHBRAM to 128KB while setting LEON3 in MIN configuration.
 
 To trigger a reset of the Leon3 processor, the user can press button SW2
 
+== Lattice server IPs =
+
+Some designs use Lattice IPs that are distributed from Lattice's own IP
+server (e.g. the DDR3 memory controller) rather than bundled with a Radiant
+install. These are not redistributed with GRLIB and are not downloaded automatically.
+
+To build a design that needs one of these IPs:
+
+1 Download the vlnv.ipk package for the IP yourself(the exact vlnv needed by a given design is listed in
+  its `LATTICE_COM_IP' Makefile variable), or obtain a copy from Lattice or your team through whatever channel your organization uses.
+2 Place it somewhere on disk, either as the downloaded vlnv.ipk file or as an already-extracted vlnv> folder.
+3 Point the design's build at that location by setting `LATTICE_COM_IP_FOLDER` in the design's Makefile.
+
+`LATTICE_COM_IP_FOLDER` is checked before anything else; if the IP isn't
+found there (or in the design's local `lattice_ips/` from a previous run),
+the build stops with an error explaining what's missing.
 
 = Cores instantiated =
 

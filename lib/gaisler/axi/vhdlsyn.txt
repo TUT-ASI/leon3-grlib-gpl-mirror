@@ -7,6 +7,7 @@ ahbm2axi.vhd
 ahbm2axi3.vhd
 ahbm2axi4.vhd
 axinullslv.vhd
+axi4nullslv.vhd
 ahb2axib.vhd
 ahb2axi3b.vhd
 ahb2axi4b.vhd
@@ -16,8 +17,7 @@ axis_gearbox.vhd
 axi4_resize.vhd
 axi2ahb.vhd
 axi4mux.vhd
-axi4mux_wrapper.vhd
 axi4demux.vhd
-axi4demux_wrapper.vhd
+axi4xbarc.vhd
 axi2apb3.vhd
 axi2apb.vhd

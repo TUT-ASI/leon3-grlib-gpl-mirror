@@ -1070,5 +1070,28 @@ component nexus_toutpad is
          en  : in std_ulogic); -- Tri-state control
 end component;
 
+component n7_inpad 
+  generic (level : integer := 0; voltage : integer := 0; filter : integer := 0);
+  port (pad : in std_logic; o : out std_logic);
+end component; 
+
+component n7_iopad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : inout std_logic; i, en : in std_logic; o : out std_logic);
+end component;
+
+component n7_outpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i : in std_logic);
+end component;
+
+component n7_toutpad 
+  generic (level : integer := 0; slew : integer := 0;
+	   voltage : integer := 0; strength : integer := 0);
+  port (pad : out std_logic; i, en : in std_logic);
+end component;
+
 end;
 

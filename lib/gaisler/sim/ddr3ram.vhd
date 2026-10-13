@@ -33,6 +33,8 @@ use ieee.numeric_std.all;
 library grlib;
 use grlib.stdio.hread;
 use grlib.stdlib.all;
+library gaisler;
+use gaisler.sim.all;
 
 entity ddr3ram is
   generic (
@@ -41,18 +43,24 @@ entity ddr3ram is
     colbits: integer range 9 to 12 := 10;
     rowbits: integer range 1 to 16 := 13;
     implbanks: integer range 1 to 8 := 1;
-    fname: string;
+    fname: string :=  " ";
+    fname1: string := " ";
+    fname2: string := " ";
+    fname3: string := " ";
+    fname4: string := " ";
+    fname5: string := " ";
+    fname6: string := " ";
+    fname7: string := " ";
     lddelay: time := (0 ns);
     ldguard: integer range 0 to 1 := 0;  -- 1: wait for doload input before
                                          -- loading RAM
-    -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G 13:1866M
-    speedbin: integer range 0 to 13 := 0;
+    -- Speed bins: 0-1:800E-D, 2-4:1066G-E 5-8:1333J-F 9-12:1600K-G
+    speedbin: integer range 0 to 12 := 0;
     density: integer range 2 to 6 := 3;  -- 2:512M 3:1G 4:2G 5:4G 6:8G bits/chip
     pagesize: integer range 1 to 2 := 1;  -- 1K/2K page size (controls tRRD)
     changeendian: integer range 0 to 32 := 0;
     initbyte: integer := 0;
-    jitter_tol: integer := 50;
-    mprmode: integer range 0 to 8 := 0
+    jitter_tol: integer := 50
     );
   port (
     ck: in std_ulogic;
@@ -131,12 +139,12 @@ architecture sim of ddr3ram is
   constant tMOD_ck: integer := 12;
   constant tMOD_t: time := 15 ns;
 
-  type timetab is array (0 to 13) of time;
-  -- 800E     800D     1066G    1066H      1066E     1333J  1333H    1333G  1333F    1600K     1600J    1600H     1600G     1866M
+  type timetab is array (0 to 12) of time;
+  -- 800E     800D     1066G    1066H      1066E     1333J  1333H    1333G  1333F    1600K     1600J    1600H     1600G
   constant tRAS : timetab :=
-    (37.5 ns, 37.5 ns, 37.5 ns, 37.5   ns, 37.5  ns, 36 ns, 36   ns, 36 ns, 36   ns, 35    ns, 35   ns, 35    ns, 35 ns, 34    ns);
+    (37.5 ns, 37.5 ns, 37.5 ns, 37.5   ns, 37.5  ns, 36 ns, 36   ns, 36 ns, 36   ns, 35    ns, 35   ns, 35    ns, 35 ns);
   constant tRP :  timetab :=
-    (15   ns, 12.5 ns, 15   ns, 13.125 ns, 11.25 ns, 15 ns, 13.5 ns, 12 ns, 10.5 ns, 13.75 ns, 12.5 ns, 11.25 ns, 10 ns, 13.92 ns);
+    (15   ns, 12.5 ns, 15   ns, 13.125 ns, 11.25 ns, 15 ns, 13.5 ns, 12 ns, 10.5 ns, 13.75 ns, 12.5 ns, 11.25 ns, 10 ns);
   constant tRCD:  timetab := tRP;
 
   type timetab2 is array(2 to 6) of time;
@@ -144,14 +152,13 @@ architecture sim of ddr3ram is
 
   constant address_zero : std_logic_vector(abits-1 downto 0) := (others=>'0');
 
-  function tRRD(tper: time; speedbin: integer range 0 to 13) return time is
+  function tRRD(tper: time; speedbin: integer range 0 to 12) return time is
     variable t: time;
   begin
     case speedbin is
       when 0 to 1  => t:=10 ns;
       when 2 to 4  => if pagesize<2 then t:=7.5 ns; else t:=10 ns; end if;
       when 5 to 12  => if pagesize<2 then t:=6 ns; else t:=7.5 ns; end if;
-      when 13 to 13  => if pagesize<2 then t:=5 ns; else t:=6 ns; end if;
     end case;
     if t < 4*tper then t:=4*tper; end if;
     return t;
@@ -248,7 +255,7 @@ begin
   -----------------------------------------------------------------------------
   -- Command state machine
   -----------------------------------------------------------------------------
-  cmdp: process(ck)
+  cmdp: process(ck, doload)
     constant w16: integer := (width+15)/16;
     constant rwidth : integer := 16*w16;
     -- Data split by bank to avoid exceeding 4G
@@ -360,8 +367,8 @@ begin
       end loop;
     end memdata_set;
 
-    procedure load_srec is
-      file TCF : text open read_mode is fname;
+    procedure load_srec(bank : integer; str : string) is
+      file TCF : text open read_mode is str;
       variable L1: line;
       variable CH : character;
       variable rectype : std_logic_vector(3 downto 0);
@@ -394,7 +401,16 @@ begin
               if width < 16 then
                 idx := to_integer(unsigned(recaddr(rowbits+colbits-1 downto 0)));
                 while len > 1 loop
-                  memdata0(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                  case bank is
+                    when 0      => memdata0(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 1      => memdata1(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 2      => memdata2(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 3      => memdata3(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 4      => memdata4(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 5      => memdata5(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when 6      => memdata6(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                    when others => memdata7(idx) := 16#10000# + to_integer(unsigned(recdata(0 to 7)));
+                  end case;
                   idx := idx+1;
                   len := len-1;
                   recdata(0 to recdata'length-8-1) := recdata(8 to recdata'length-1);
@@ -409,18 +425,45 @@ begin
                   idx := idx + (idx/(w16-1));
                 end if;
                 while len > 1 loop
-                  memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                  case bank is
+                    when 0      => memdata0(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 1      => memdata1(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 2      => memdata2(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 3      => memdata3(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 4      => memdata4(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 5      => memdata5(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 6      => memdata6(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                    when others => memdata7(idx) := 16#50000# + to_integer(unsigned(recdata(0 to 15)));
+                  end case;
                   idx := idx+1;
                   if (width mod 16)/=0 and (idx mod w16)=(w16-1) then
                     -- set top byte (ECC byte) to 0
-                    memdata0(idx) := 16#10000#;
+                    case bank is
+                      when 0      => memdata0(idx) := 16#10000#;
+                      when 1      => memdata1(idx) := 16#10000#;
+                      when 2      => memdata2(idx) := 16#10000#;
+                      when 3      => memdata3(idx) := 16#10000#;
+                      when 4      => memdata4(idx) := 16#10000#;
+                      when 5      => memdata5(idx) := 16#10000#;
+                      when 6      => memdata6(idx) := 16#10000#;
+                      when others => memdata7(idx) := 16#10000#;
+                    end case;
                     idx := idx+1;
                   end if;
                   len := len-2;
                   recdata(0 to recdata'length-16-1) := recdata(16 to recdata'length-1);
                 end loop;
                 if len > 0 then
-                  memdata0(idx) := 16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                  case bank is
+                    when 0      => memdata0(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 1      => memdata1(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 2      => memdata2(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 3      => memdata3(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 4      => memdata4(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 5      => memdata5(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when 6      => memdata6(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                    when others => memdata7(idx) :=  16#40000# + to_integer(unsigned(recdata(0 to 15)));
+                  end case;
                 end if;
               end if;
             end if;
@@ -472,6 +515,10 @@ begin
         report (req & " violation, got: " & tost(got/(1 ps)) & " ps, exp: " & tost(exp/(1 ps)) & "ps")
         severity warning;
     end checktime;
+
+    variable c_bank : integer;
+    variable c_col  : int_arr(0 to 1);
+
   begin
     if memdata0=null then
       memdata0 := new idata_arr(0 to b0size-1);
@@ -715,9 +762,20 @@ begin
         end if;
       end loop;
 
+      -- If doload is deasserted and then asserted again, load the srec again
+      if doload = '0' Then
+        loaded := false;
+      end if;
       -- Read/write management
       if not loaded and lddelay < now and (ldguard=0 or doload='1') then
-        load_srec;
+        if fname  /= " " then load_srec(0, fname ); end if;
+        if fname1 /= " " then load_srec(1, fname1); end if;
+        if fname2 /= " " then load_srec(2, fname2); end if;
+        if fname3 /= " " then load_srec(3, fname3); end if;
+        if fname4 /= " " then load_srec(4, fname4); end if;
+        if fname5 /= " " then load_srec(5, fname5); end if;
+        if fname6 /= " " then load_srec(6, fname6); end if;
+        if fname7 /= " " then load_srec(7, fname7); end if;
         loaded := true;
       end if;
       if accpipe(2+cl+al).r then
@@ -729,11 +787,7 @@ begin
           assert vmr.mprloc="00" report "Read from undefined MPR!" severity warning;
           read_data <= (others => '0');
           for x in width/8-1 downto 0 loop
-            if mprmode=8 then
-              read_data(x*8+7 downto x*8) <= (others => '1');
-            else
-              read_data(x*8+mprmode) <= '1';
-            end if;
+            read_data(x*8) <= '1';
           end loop;
         else
           read_data <= memdata_get(accpipe(2+cl+al).bank, accpipe(2+cl+al).col(0)) &
@@ -764,6 +818,41 @@ begin
                 write_data( (1-x)*width+b*8+7 downto (1-x)*width+b*8);
             end if;
           end loop;
+          if x = 0 then
+            -- Logic to inject stuck bits on writes
+            c_bank := accpipe(4+cwl+al).bank;
+            c_col  := accpipe(4+cwl+al).col;
+            --Lock/Unlock the stuck bit
+            if gaisler.sim.inj_lock_trigger then
+              for i in 0 to (gaisler.sim.fault_table_depth-1) loop
+                if not gaisler.sim.fault_table(i).active then
+                  gaisler.sim.fault_table(i) := (true, c_bank, gaisler.sim.int_arr(c_col), inj_offset, inj_mask(width-1 downto 0), inj_pol);                
+                  exit;
+                end if;
+              end loop;
+            elsif gaisler.sim.inj_unlock_trigger then
+              for i in 0 to (gaisler.sim.fault_table_depth-1) loop
+                if gaisler.sim.fault_table(i).active then --and gaisler.sim.fault_table(i).bank = accpipe(4+cwl+al+1).bank and gaisler.sim.fault_table(i).col(x) = accpipe(4+cwl+al+1).col(x) then
+                  gaisler.sim.fault_table(i).active := false;
+                  exit;
+                end if;
+              end loop;
+            end if;
+          end if;
+          -- STUCK-BIT (Always active for each write at that cell)
+          for i in 0 to (gaisler.sim.fault_table_depth-1) loop
+            if gaisler.sim.fault_table(i).active and gaisler.sim.fault_table(i).bank = accpipe(4+cwl+al+gaisler.sim.fault_table(i).off).bank and gaisler.sim.fault_table(i).col(x) = accpipe(4+cwl+al+gaisler.sim.fault_table(i).off).col(x) then
+              for b in 0 to width-1 loop
+                if gaisler.sim.fault_table(i).mask(b) = '1' then
+                  cold(b) := gaisler.sim.fault_table(i).pol; --Force the cold variable bits to the stuck values
+                end if;
+              end loop;
+            end if;
+          end loop;
+          if x = 1 then
+            gaisler.sim.inj_lock_trigger := false;
+            gaisler.sim.inj_unlock_trigger := false;
+          end if; 
           memdata_set(accpipe(4+cwl+al).bank, accpipe(4+cwl+al).col(x), cold);
         end loop;
         banks(accpipe(4+cwl+al).bank).writetime := now;
@@ -847,3 +936,4 @@ begin
 end;
 
 -- pragma translate_on
+

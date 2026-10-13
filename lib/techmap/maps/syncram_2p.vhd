@@ -602,6 +602,12 @@ begin
                 xwrite, waddress, datain);
   end generate;
 
+  tsmc7 : if xtech = n7 generate
+    x0 : n7_syncram_2p generic map (abits, dbits, isepclk)
+         port map (rclk, renable2, raddress, dataoutx,
+		   wclk, waddress, datain, xwrite);
+  end generate;
+
 -- pragma translate_off
   noram : if has_2pram(xtech) = 0 generate
     x : process

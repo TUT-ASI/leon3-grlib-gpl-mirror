@@ -177,6 +177,26 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
   type ahb_mst_out_bus_vector is array (0 to NBUS-1) of ahb_mst_out_vector;
   type ahb_slv_out_bus_vector is array (0 to NBUS-1) of ahb_slv_out_vector;
 
+  type ahbstripe_slv_in_slice is record
+    hready      : std_ulogic;                           -- transfer done
+    htrans      : std_logic_vector(1 downto 0);         -- transfer type
+    hsladdr     : std_logic_vector(47 downto 0);        -- address bus (byte)
+    hsize       : std_logic_vector(2 downto 0);         -- transfer size
+    hwrite      : std_ulogic;                           -- read/write
+    hburst0     : std_ulogic;                           -- burst type
+    hwdata      : std_logic_vector(127 downto 0);   -- write data bus
+    hmaster     : std_logic_vector(3 downto 0);         -- current master
+    hmastlock   : std_ulogic;                           -- locked access
+  end record;
+
+  type ahbstripe_slv_out_slice is record
+    hready      : std_ulogic;                           -- transfer done
+    hresp       : std_logic_vector(1 downto 0);         -- response type
+    hrdata      : std_logic_vector(127 downto 0);       -- read data bus
+    hsplit      : std_logic_vector(15 downto 0);        -- split completion
+  end record;
+
+
   type amba_stat_type is record
     idle   : std_ulogic;                    -- HTRANS_IDLE
     busy   : std_ulogic;                    -- HTRANS_BUSY
@@ -726,6 +746,12 @@ type ahb_config_array is array(natural range <>) of ahb_config_type;
   function apb32i(i: apb3_slv_in_type) return apb_slv_in_type;
   function apb23o(o: apb_slv_out_type) return apb3_slv_out_type;
   function apb23ov(o: apb_slv_out_vector) return apb3_slv_out_vector;
+
+  -- Utility function to convert data bus width either by taking the lowest part
+  -- or by replicating
+  function hdata_sizeconv(hdata: std_logic_vector; outsz: integer) return std_logic_vector;
+
+  function ahbsi_to_stripe(si: ahb_slv_in_type) return ahbstripe_slv_in_slice;
 
 -------------------------------------------------------------------------------
 -- Components
@@ -2012,6 +2038,36 @@ package body amba is
     end loop;
     return r;
   end apb23ov;
+
+  function hdata_sizeconv(hdata: std_logic_vector; outsz: integer) return std_logic_vector is
+    variable r: std_logic_vector(outsz-1 downto 0);
+  begin
+    if outsz > hdata'length then
+      for x in 0 to (outsz/hdata'length)-1 loop
+        r((x+1)*hdata'length-1 downto x*hdata'length) := hdata;
+      end loop;
+    else
+      r := hdata(outsz-1 downto 0);
+    end if;
+    return r;
+  end hdata_sizeconv;
+
+  function ahbsi_to_stripe(si: ahb_slv_in_type) return ahbstripe_slv_in_slice is
+    variable r: ahbstripe_slv_in_slice;
+  begin
+    r := (
+      hready => si.hready,
+      htrans => si.htrans,
+      hsladdr => x"0000" & si.haddr,
+      hsize => si.hsize,
+      hwrite => si.hwrite,
+      hburst0 => si.hburst(0),
+      hwdata => hdata_sizeconv(si.hwdata,128),
+      hmaster => si.hmaster,
+      hmastlock => si.hmastlock
+      );
+    return r;
+  end ahbsi_to_stripe;
 
 end;
 

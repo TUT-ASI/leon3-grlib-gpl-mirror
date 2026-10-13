@@ -103,6 +103,7 @@ architecture rtl of cpucorenv is
                                         DBLTRP  => DBLTRP_SUPPORT,
                                         ZICFISS => ZICFISS_SUPPORT,
                                         ZICFILP => ZICFILP_SUPPORT,
+                                        SPARROW => SPARROW_SUPPORT,
                                         RV64    => boolean'pos(XLEN = 64)
                                       ); 
 

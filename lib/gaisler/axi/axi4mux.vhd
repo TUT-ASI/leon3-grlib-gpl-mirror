@@ -32,6 +32,7 @@ library grlib;
 use grlib.config_types.all;
 use grlib.config.all;
 use grlib.stdlib.all;
+use grlib.amba.all;
 library gaisler;
 use gaisler.axi.all;
 library techmap;
@@ -39,120 +40,27 @@ use techmap.gencomp.all;
 
 entity axi4mux is
   generic (
-    memtech     : integer;
+    memtech     : integer := 0;
     nsubports   : integer;
-    maxtrans    : integer;
-    awidth      : integer;
+    maxtrans    : integer range 1 to 32;
+    awidth      : integer range 1 to 64;
     dwidth      : integer;
-    idwidth     : integer;
-    axuserwidth : integer;
-    wuserwidth  : integer;
-    buserwidth  : integer;
-    ruserwidth  : integer
+    idwidth     : integer range 0 to 2*AXI_ID_WIDTH;
+    regionwidth : integer range 0 to 4 := 0
   );
   port (
-    aclk            : in  std_ulogic;
-    aresetn         : in  std_ulogic;
-
-    -- Subordinates
-    s_axi_awid      : in  std_logic_vector(nsubports*idwidth-1 downto 0);
-    s_axi_awaddr    : in  std_logic_vector(nsubports*awidth-1 downto 0);
-    s_axi_awlen     : in  std_logic_vector(nsubports*8-1 downto 0);
-    s_axi_awsize    : in  std_logic_vector(nsubports*3-1 downto 0);
-    s_axi_awburst   : in  std_logic_vector(nsubports*2-1 downto 0);
-    s_axi_awlock    : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_awcache   : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_awprot    : in  std_logic_vector(nsubports*3-1 downto 0);
-    s_axi_awqos     : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_awregion  : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_awuser    : in  std_logic_vector(nsubports*axuserwidth-1 downto 0);
-    s_axi_awvalid   : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_awready   : out std_logic_vector(nsubports-1 downto 0);
-
-    s_axi_wdata     : in  std_logic_vector(nsubports*dwidth-1 downto 0);
-    s_axi_wstrb     : in  std_logic_vector(nsubports*dwidth/8-1 downto 0);
-    s_axi_wlast     : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_wuser     : in  std_logic_vector(nsubports*wuserwidth-1 downto 0);
-    s_axi_wvalid    : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_wready    : out std_logic_vector(nsubports-1 downto 0);
-
-    s_axi_bid       : out std_logic_vector(nsubports*idwidth-1 downto 0);
-    s_axi_bresp     : out std_logic_vector(nsubports*2-1 downto 0);
-    s_axi_buser     : out std_logic_vector(nsubports*buserwidth-1 downto 0);
-    s_axi_bvalid    : out std_logic_vector(nsubports-1 downto 0);
-    s_axi_bready    : in  std_logic_vector(nsubports-1 downto 0);
-
-    s_axi_arid      : in  std_logic_vector(nsubports*idwidth-1 downto 0);
-    s_axi_araddr    : in  std_logic_vector(nsubports*awidth-1 downto 0);
-    s_axi_arlen     : in  std_logic_vector(nsubports*8-1 downto 0);
-    s_axi_arsize    : in  std_logic_vector(nsubports*3-1 downto 0);
-    s_axi_arburst   : in  std_logic_vector(nsubports*2-1 downto 0);
-    s_axi_arlock    : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_arcache   : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_arprot    : in  std_logic_vector(nsubports*3-1 downto 0);
-    s_axi_arqos     : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_arregion  : in  std_logic_vector(nsubports*4-1 downto 0);
-    s_axi_aruser    : in  std_logic_vector(nsubports*axuserwidth-1 downto 0);
-    s_axi_arvalid   : in  std_logic_vector(nsubports-1 downto 0);
-    s_axi_arready   : out std_logic_vector(nsubports-1 downto 0);
-
-    s_axi_rid       : out std_logic_vector(nsubports*idwidth-1 downto 0);
-    s_axi_rdata     : out std_logic_vector(nsubports*dwidth-1 downto 0);
-    s_axi_rresp     : out std_logic_vector(nsubports*2-1 downto 0);
-    s_axi_rlast     : out std_logic_vector(nsubports-1 downto 0);
-    s_axi_ruser     : out std_logic_vector(nsubports*buserwidth-1 downto 0);
-    s_axi_rvalid    : out std_logic_vector(nsubports-1 downto 0);
-    s_axi_rready    : in  std_logic_vector(nsubports-1 downto 0);
-
-    -- Manager
-    m_axi_awid      : out std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
-    m_axi_awaddr    : out std_logic_vector(awidth-1 downto 0);
-    m_axi_awlen     : out std_logic_vector(8-1 downto 0);
-    m_axi_awsize    : out std_logic_vector(3-1 downto 0);
-    m_axi_awburst   : out std_logic_vector(2-1 downto 0);
-    m_axi_awlock    : out std_logic;
-    m_axi_awcache   : out std_logic_vector(4-1 downto 0);
-    m_axi_awprot    : out std_logic_vector(3-1 downto 0);
-    m_axi_awqos     : out std_logic_vector(4-1 downto 0);
-    m_axi_awregion  : out std_logic_vector(4-1 downto 0);
-    m_axi_awuser    : out std_logic_vector(axuserwidth-1 downto 0);
-    m_axi_awvalid   : out std_logic;
-    m_axi_awready   : in  std_logic;
-
-    m_axi_wdata     : out std_logic_vector(dwidth-1 downto 0);
-    m_axi_wstrb     : out std_logic_vector(dwidth/8-1 downto 0);
-    m_axi_wlast     : out std_logic;
-    m_axi_wuser     : out std_logic_vector(wuserwidth-1 downto 0);
-    m_axi_wvalid    : out std_logic;
-    m_axi_wready    : in  std_logic;
-
-    m_axi_bid       : in  std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
-    m_axi_bresp     : in  std_logic_vector(2-1 downto 0);
-    m_axi_buser     : in  std_logic_vector(buserwidth-1 downto 0);
-    m_axi_bvalid    : in  std_logic;
-    m_axi_bready    : out std_logic;
-
-    m_axi_arid      : out std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
-    m_axi_araddr    : out std_logic_vector(awidth-1 downto 0);
-    m_axi_arlen     : out std_logic_vector(8-1 downto 0);
-    m_axi_arsize    : out std_logic_vector(3-1 downto 0);
-    m_axi_arburst   : out std_logic_vector(2-1 downto 0);
-    m_axi_arlock    : out std_logic;
-    m_axi_arcache   : out std_logic_vector(4-1 downto 0);
-    m_axi_arprot    : out std_logic_vector(3-1 downto 0);
-    m_axi_arqos     : out std_logic_vector(4-1 downto 0);
-    m_axi_arregion  : out std_logic_vector(4-1 downto 0);
-    m_axi_aruser    : out std_logic_vector(axuserwidth-1 downto 0);
-    m_axi_arvalid   : out std_logic;
-    m_axi_arready   : in  std_logic;
-
-    m_axi_rid       : in  std_logic_vector(log2(nsubports)+idwidth-1 downto 0);
-    m_axi_rdata     : in  std_logic_vector(dwidth-1 downto 0);
-    m_axi_rresp     : in  std_logic_vector(2-1 downto 0);
-    m_axi_rlast     : in  std_logic;
-    m_axi_ruser     : in  std_logic_vector(ruserwidth-1 downto 0);
-    m_axi_rvalid    : in  std_logic;
-    m_axi_rready    : out std_logic
+    aclk        : in  std_ulogic;
+    aresetn     : in  std_ulogic;
+    -- AXI Subordinate ports
+    axisi       : in  axi4_mosi_vector_type(0 to nsubports-1);
+    axixsi      : in  extaxi_mosi_vector_type(0 to nsubports-1) := (others => extaxi_mosi_none);
+    axiso       : out axi_somi_vector_type(0 to nsubports-1);
+    axixso      : out extaxi_miso_vector_type(0 to nsubports-1);
+    -- AXI manager port
+    aximo       : out axi4_mosi_type;
+    axixmo      : out extaxi_mosi_type;
+    aximi       : in  axi_somi_type;
+    axixmi      : in  extaxi_miso_type := extaxi_miso_none
   );
 end;
 
@@ -165,192 +73,291 @@ architecture rtl of axi4mux is
   constant midwidth   : integer := selwidth+idwidth;
   subtype selrange is integer range midwidth-1 downto idwidth;
 
-  constant axwidth    : integer := idwidth + awidth + 8 + 3 + 2 + 1 + 4 + 3 + 4 + 4 + axuserwidth;
-  constant wwidth     : integer := dwidth + dwidth/8 + 1 + wuserwidth;
+  constant axwidth    : integer := idwidth+awidth+8+3+2+1+4+3+4+regionwidth;
+  constant wwidth     : integer := dwidth+dwidth/8+1;
 
-  subtype s_ax_type is std_logic_vector(nsubports*axwidth-1 downto 0);
-  subtype s_w_type is std_logic_vector(nsubports*wwidth-1 downto 0);
-  subtype m_ax_type is std_logic_vector(axwidth-1 downto 0);
+  signal awmo  : axi4_aw_mosi_vector_type(0 to nsubports-1);
+  signal awxmo : extaxi_ax_vector_type(0 to nsubports-1);
+  signal awmi  : axi_aw_somi_vector_type(0 to nsubports-1);
+  signal wmo   : axi4_w_mosi_vector_type(0 to nsubports-1);
+  signal wmi   : axi_w_somi_vector_type(0 to nsubports-1);
+  signal bmo   : axi_b_mosi_vector_type(0 to nsubports-1);
+  signal bmi   : axi_b_somi_vector_type(0 to nsubports-1);
+  signal bxmi  : extaxi_x_vector_type(0 to nsubports-1);
+  signal armo  : axi4_ar_mosi_vector_type(0 to nsubports-1);
+  signal arxmo : extaxi_ax_vector_type(0 to nsubports-1);
+  signal armi  : axi_ar_somi_vector_type(0 to nsubports-1);
+  signal rmo   : axi_r_mosi_vector_type(0 to nsubports-1);
+  signal rmi   : axi_r_somi_vector_type(0 to nsubports-1);
+  signal rxmi  : extaxi_x_vector_type(0 to nsubports-1);
 
-  signal s_aw : s_ax_type;
-  signal s_ar : s_ax_type;
-  signal m_aw : m_ax_type;
-  signal m_ar : m_ax_type;
+  signal awarbo  : axi4_aw_mosi_type;
+  signal awxarbo : extaxi_ax_type;
+  signal awarbi  : axi_aw_somi_type;
 
-  signal awsel            : std_logic_vector(selwidth-1 downto 0);
-  signal awvalid, awready : std_ulogic;
-  signal wfull, wempty    : std_ulogic;
-  signal wpush, wpop      : std_ulogic;
-  signal wsel             : std_logic_vector(selwidth-1 downto 0);
-  signal wseli            : integer;
+  signal awsel          : std_logic_vector(selwidth-1 downto 0);
+  signal wfull, wempty  : std_ulogic;
+  signal wpush, wpop    : std_ulogic;
+  signal wsel           : std_logic_vector(selwidth-1 downto 0);
+  signal arsel          : std_logic_vector(selwidth-1 downto 0);
+
+  signal ararbo  : axi4_ar_mosi_type;
+  signal arxarbo : extaxi_ax_type;
+
+  signal axisi_reg  : axi4_mosi_type;
+  signal axixsi_reg : extaxi_mosi_type;
+  signal axiso_reg  : axi_somi_type;
+  signal axixso_reg : extaxi_miso_type;
+
+  -- Manager pipe
 
 begin
 
-  gen_subordinate : for i in 0 to nsubports-1 generate
-    s_aw((i+1)*axwidth-1 downto i*axwidth)              <= s_axi_awid((i+1)*idwidth-1 downto i*idwidth) &
-                                                           s_axi_awaddr((i+1)*awidth-1 downto i*awidth) &
-                                                           s_axi_awlen((i+1)*8-1 downto i*8) &
-                                                           s_axi_awsize((i+1)*3-1 downto i*3) &
-                                                           s_axi_awburst((i+1)*2-1 downto i*2) &
-                                                           s_axi_awlock(i) &
-                                                           s_axi_awcache((i+1)*4-1 downto i*4) &
-                                                           s_axi_awprot((i+1)*3-1 downto i*3) &
-                                                           s_axi_awqos((i+1)*4-1 downto i*4) &
-                                                           s_axi_awregion((i+1)*4-1 downto i*4) &
-                                                           s_axi_awuser((i+1)*axuserwidth-1 downto i*axuserwidth);
-    s_axi_bid((i+1)*idwidth-1 downto i*idwidth)         <= m_axi_bid(idwidth-1 downto 0);
-    s_axi_bresp((i+1)*2-1 downto i*2)                   <= m_axi_bresp;
-    s_axi_buser((i+1)*buserwidth-1 downto i*buserwidth) <= m_axi_buser;
-    s_ar((i+1)*axwidth-1 downto i*axwidth)              <= s_axi_arid((i+1)*idwidth-1 downto i*idwidth) &
-                                                           s_axi_araddr((i+1)*awidth-1 downto i*awidth) &
-                                                           s_axi_arlen((i+1)*8-1 downto i*8) &
-                                                           s_axi_arsize((i+1)*3-1 downto i*3) &
-                                                           s_axi_arburst((i+1)*2-1 downto i*2) &
-                                                           s_axi_arlock(i) &
-                                                           s_axi_arcache((i+1)*4-1 downto i*4) &
-                                                           s_axi_arprot((i+1)*3-1 downto i*3) &
-                                                           s_axi_arqos((i+1)*4-1 downto i*4) &
-                                                           s_axi_arregion((i+1)*4-1 downto i*4) &
-                                                           s_axi_aruser((i+1)*axuserwidth-1 downto i*axuserwidth);
-    s_axi_rid((i+1)*idwidth-1 downto i*idwidth)         <= m_axi_rid(idwidth-1 downto 0);
-    s_axi_rdata((i+1)*dwidth-1 downto i*dwidth)         <= m_axi_rdata;
-    s_axi_rresp((i+1)*2-1 downto i*2)                   <= m_axi_rresp;
-    s_axi_rlast(i)                                      <= m_axi_rlast;
-    s_axi_ruser((i+1)*buserwidth-1 downto i*buserwidth) <= m_axi_ruser;
+  p_remap : process(awmi, wmi, bmi, bxmi, armi, rmi, rxmi, axisi, axixsi)
+  begin
+    for i in 0 to nsubports-1 loop
+      awmo(i)     <= axisi(i).aw;
+      awxmo(i)    <= axixsi(i).aw;
+      axiso(i).aw <= awmi(i);
+
+      wmo(i)      <= axisi(i).w;
+      axiso(i).w  <= wmi(i);
+
+      bmo(i)      <= axisi(i).b;
+      axiso(i).b  <= bmi(i);
+      axixso(i).b <= bxmi(i);
+
+      armo(i)     <= axisi(i).ar;
+      arxmo(i)    <= axixsi(i).ar;
+      axiso(i).ar <= armi(i);
+
+      rmo(i)      <= axisi(i).r;
+      axiso(i).r  <= rmi(i);
+      axixso(i).r <= rxmi(i);
+    end loop;
+  end process;
+
+  awarbiter : axi4_awarbiter
+    generic map (
+      nsub        => nsubports,
+      idwidth     => idwidth,
+      awidth      => awidth,
+      regionwidth => regionwidth,
+      arb_prio    => 2,
+      arb_lock    => 1
+    )
+    port map (
+      aclk    => aclk,
+      aresetn => aresetn,
+      awsi    => awmo,
+      awxsi   => awxmo,
+      awso    => awmi,
+      awselmo => awsel,
+      awmo    => awarbo,
+      awxmo   => awxarbo,
+      awmi    => awarbi
+    );
+
+  p_awarb2reg : process(awarbo, awxarbo, axiso_reg.aw, awsel, wfull)
+    variable awid : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    axisi_reg.aw  <= awarbo;
+    axixsi_reg.aw <= awxarbo;
+    awarbi        <= axiso_reg.aw;
+
+    axisi_reg.aw.valid  <= awarbo.valid and not wfull;
+    awarbi.ready        <= axiso_reg.aw.ready and not wfull;
+
+    -- Extend AWID
+    awid := awxarbo.id & awarbo.id;
+    awid(selrange) := awsel;
+    axisi_reg.aw.id  <= awid(AXI_ID_WIDTH-1 downto 0);
+    axixsi_reg.aw.id <= awid(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+  end process;
+
+  wpush <= awarbo.valid and axiso_reg.aw.ready and not wfull;
+
+  no_wsel : if nsubports <= 1 generate
+    wsel      <= (others => '0');
+    wfull     <= '0';
+    wempty    <= '0';
+    customout <= (others => '0');
   end generate;
 
-  awarbiter : arbiter_tree
+  gen_wsel : if nsubports > 1 generate
+    wselfifo : syncfifo_2p
+      generic map(
+        tech  => memtech,
+        abits => log2x(maxtrans),
+        dbits => selwidth, -- Response + last + data
+        sepclk => 0, -- Not separate clocks
+        afullwl => 0, -- Almost full
+        aemptyrl => 0, -- No need to consider almost empty.
+        fwft => 1, -- first word fall-through
+        piperead => 1, -- output pipeline stage
+        ft => 0,
+        custombits => memtest_vlen,
+        rdhold => 1
+      )
+      port map(
+        rclk    => aclk,
+        rrstn   => aresetn,
+        wrstn   => aresetn,
+        renable => wpop,
+        rfull   => open,
+        rempty  => wempty,
+        aempty  => open,
+        rusedw  => open,
+        dataout => wsel,
+        wclk    => aclk,
+        write   => wpush,
+        wfull   => open,
+        afull   => wfull,
+        wempty  => open,
+        wusedw  => open,
+        datain  => awsel,
+        dynsync => '0',
+        error    => open
+      );
+  end generate;
+
+  wmux : process(wsel, wempty, wmo, axiso_reg.w)
+  begin
+    axisi_reg.w <= (
+      data => (others => '0'),
+      strb => (others => '0'),
+      last => '0',
+      valid => '0'
+    );
+
+    wpop <= '0';
+    for i in 0 to nsubports-1 loop
+      wmi(i).ready <= '0';
+      if notx(wsel) and i = unsigned(wsel) then
+        -- Default
+        axisi_reg.w <= wmo(i);
+
+        -- Mask valid and ready
+        axisi_reg.w.valid <= wmo(i).valid and not wempty;
+        wmi(i).ready      <= axiso_reg.w.ready and not wempty;
+
+        -- Pop on last
+        wpop <= wmo(i).valid and
+                axiso_reg.w.ready and
+                wmo(i).last and
+                not wempty;
+      end if;
+    end loop;
+  end process;
+
+  bdemux : process(axiso_reg.b, axixso_reg.b, bmo)
+    variable bidso : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable bidmi : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    bidso := axixso_reg.b.id & axiso_reg.b.id;
+    bidmi := (others => '0');
+    if idwidth > 0 then
+      -- remove unused IDs
+      bidmi(idwidth-1 downto 0) := bidso(idwidth-1 downto 0);
+    end if;
+    bmi <= (others => axiso_reg.b);
+    axisi_reg.b.ready <= '0';
+    for i in 0 to nsubports-1 loop
+      bmi(i).valid <= '0';
+      bmi(i).id  <= bidmi(AXI_ID_WIDTH-1 downto 0);
+      bxmi(i).id <= bidmi(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+      if notx(bidso(selrange)) and i = unsigned(bidso(selrange)) then
+        bmi(i).valid      <= axiso_reg.b.valid;
+        axisi_reg.b.ready <= bmo(i).ready;
+      end if;
+    end loop;
+  end process;
+
+  -- AR
+
+  ararbiter : axi4_ararbiter
     generic map (
-      nreq      => nsubports,
-      dwidth    => axwidth,
-      arb_prio  => 2,
-      arb_lock  => 1
+      nsub        => nsubports,
+      idwidth     => idwidth,
+      awidth      => awidth,
+      regionwidth => regionwidth,
+      arb_prio    => 2,
+      arb_lock    => 1
     )
     port map (
-      clk   => aclk,
-      rstn  => aresetn,
-      sdata => s_aw,
-      sreq  => s_axi_awvalid,
-      sgnt  => s_axi_awready,
-      msel  => awsel,
-      mdata => m_aw,
-      mreq  => awvalid,
-      mgnt  => awready
-    );
-  m_axi_awid(selrange) <= awsel;
-  ax_unpack(m_aw, m_axi_awid(idwidth-1 downto 0), m_axi_awaddr, m_axi_awlen, m_axi_awsize, m_axi_awburst, m_axi_awlock, m_axi_awcache, m_axi_awprot, m_axi_awqos, m_axi_awregion, m_axi_awuser);
-
-  m_axi_awvalid <= awvalid and not wfull;
-  awready       <= m_axi_awready and not wfull;
-
-  wpush <= awvalid and awready;
-
-  wselfifo : syncfifo_2p
-    generic map(
-      tech  => memtech,
-      abits => log2x(maxtrans),
-      dbits => selwidth, -- Response + last + data
-      sepclk => 0, -- Not separate clocks
-      afullwl => 0, -- Almost full
-      aemptyrl => 0, -- No need to consider almost empty.
-      fwft => 1, -- first word fall-through
-      piperead => 1, -- output pipeline stage
-      ft => 0, -- fault tolerance?
-      custombits => memtest_vlen,
-      rdhold => 1 -- Don't hold read value after pop.
-      -- scantest => scantest,
-      -- arstr => 0, -- synchronous reset
-      -- arstw => 0 -- synchronous reset
-    )
-    port map(
-      rclk    => aclk,
-      rrstn   => aresetn,
-      wrstn   => aresetn,
-      renable => wpop,
-      rfull   => open,
-      rempty  => wempty,
-      aempty  => open,
-      rusedw  => open,
-      dataout => wsel,
-      wclk    => aclk,
-      write   => wpush,
-      wfull   => open,
-      afull   => wfull,
-      wempty  => open,
-      wusedw  => open,
-      datain  => awsel,
-      dynsync => '0',
-      error    => open
+      aclk    => aclk,
+      aresetn => aresetn,
+      arsi    => armo,
+      arxsi   => arxmo,
+      arso    => armi,
+      arselmo => arsel,
+      armo    => ararbo,
+      arxmo   => arxarbo,
+      armi    => axiso_reg.ar
     );
 
-  wmux : process(wsel, wempty, m_axi_wready, s_axi_wdata, s_axi_wstrb, s_axi_wlast, s_axi_wuser, s_axi_wvalid)
+  p_ararb2reg : process(ararbo, arxarbo, arsel)
+    variable arid : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
   begin
-    s_axi_wready  <= (others => '0');
+    axisi_reg.ar  <= ararbo;
+    axixsi_reg.ar <= arxarbo;
 
-    m_axi_wdata   <= (others => '0');
-    m_axi_wstrb   <= (others => '0');
-    m_axi_wlast   <= '0';
-    m_axi_wuser   <= (others => '0');
-    m_axi_wvalid  <= '0';
+    -- Extend ARID
+    arid := arxarbo.id & ararbo.id;
+    arid(selrange) := arsel;
+    axisi_reg.ar.id  <= arid(AXI_ID_WIDTH-1 downto 0);
+    axixsi_reg.ar.id <= arid(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+  end process;
 
-    wpop          <= '0';
+  rdemux : process(axiso_reg.r, axixso_reg.r, rmo)
+    variable ridso : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+    variable ridmi : std_logic_vector(2*AXI_ID_WIDTH-1 downto 0);
+  begin
+    ridso := axixso_reg.r.id & axiso_reg.r.id;
+    ridmi := (others => '0');
+    if idwidth > 0 then
+      -- remove unused IDs
+      ridmi(idwidth-1 downto 0) := ridso(idwidth-1 downto 0);
+    end if;
+    rmi <= (others => axiso_reg.r);
+    axisi_reg.r.ready <= '0';
     for i in 0 to nsubports-1 loop
-      if i = unsigned(wsel) then
-        m_axi_wdata     <= s_axi_wdata((i+1)*dwidth-1 downto i*dwidth);
-        m_axi_wstrb     <= s_axi_wstrb((i+1)*dwidth/8-1 downto i*dwidth/8);
-        m_axi_wlast     <= s_axi_wlast(i);
-        m_axi_wuser     <= s_axi_wuser((i+1)*wuserwidth-1 downto i*wuserwidth);
-        m_axi_wvalid    <= s_axi_wvalid(i) and not wempty;
-
-        s_axi_wready(i) <= m_axi_wready and not wempty;
-
-        wpop            <= s_axi_wvalid(i) and m_axi_wready and s_axi_wlast(i) and not wempty;
+      rmi(i).valid <= '0';
+      rmi(i).id    <= ridmi(AXI_ID_WIDTH-1 downto 0);
+      rxmi(i).id   <= ridmi(2*AXI_ID_WIDTH-1 downto AXI_ID_WIDTH);
+      if notx(ridso(selrange)) and i = unsigned(ridso(selrange)) then
+        rmi(i).valid      <= axiso_reg.r.valid;
+        axisi_reg.r.ready <= rmo(i).ready;
       end if;
     end loop;
   end process;
 
-  bdemux : process(s_axi_bready, m_axi_bvalid, m_axi_bid)
-  begin
-    s_axi_bvalid <= (others => '0');
-    m_axi_bready <= '0';
-    for i in 0 to nsubports-1 loop
-      if i = unsigned(m_axi_bid(selrange)) then
-        s_axi_bvalid(i) <= m_axi_bvalid;
-        m_axi_bready    <= s_axi_bready(i);
-      end if;
-    end loop;
-  end process;
-
-  ararbiter : arbiter_tree
+  axi_slice : axi4_register_slice
     generic map (
-      nreq      => nsubports,
-      dwidth    => axwidth,
-      arb_prio  => 2,
-      arb_lock  => 1
+      awidth      => awidth,
+      dwidth      => dwidth,
+      idwidth     => midwidth,
+      regionwidth => regionwidth,
+      awdirection => 1,
+      wdirection  => 1,
+      bdirection  => 0,
+      ardirection => 1,
+      rdirection  => 0
     )
     port map (
-      clk   => aclk,
-      rstn  => aresetn,
-      sdata => s_ar,
-      sreq  => s_axi_arvalid,
-      sgnt  => s_axi_arready,
-      msel  => m_axi_arid(selrange),
-      mdata => m_ar,
-      mreq  => m_axi_arvalid,
-      mgnt  => m_axi_arready
-    );
-  ax_unpack(m_ar, m_axi_arid(idwidth-1 downto 0), m_axi_araddr, m_axi_arlen, m_axi_arsize, m_axi_arburst, m_axi_arlock, m_axi_arcache, m_axi_arprot, m_axi_arqos, m_axi_arregion, m_axi_aruser);
+      aclk    => aclk,
+      aresetn => aresetn,
 
-  rdemux : process(s_axi_rready, m_axi_rvalid, m_axi_rid)
-  begin
-    s_axi_rvalid <= (others => '0');
-    m_axi_rready <= '0';
-    for i in 0 to nsubports-1 loop
-      if i = unsigned(m_axi_rid(selrange)) then
-        s_axi_rvalid(i) <= m_axi_rvalid;
-        m_axi_rready    <= s_axi_rready(i);
-      end if;
-    end loop;
-  end process;
+      axisi   => axisi_reg,
+      axixsi  => axixsi_reg,
+      axiso   => axiso_reg,
+      axixso  => axixso_reg,
+      aximo   => aximo,
+      axixmo  => axixmo,
+      aximi   => aximi,
+      axixmi  => axixmi
+    );
+
+
 
 end;

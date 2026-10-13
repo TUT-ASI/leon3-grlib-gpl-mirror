@@ -218,3 +218,8 @@ gen_ips:
 	vivado -mode batch -source ./vivado/$(TOP)_vivado.tcl
 
 ips: gen_ips mig_ddr4 sgmii_kcu105 cdc
+
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+
+VIVADO_LOCAL_IPS = axi_pipe.tcl mig_cdc.tcl mig.tcl sgmii.tcl sem_ultra_0.tcl
+

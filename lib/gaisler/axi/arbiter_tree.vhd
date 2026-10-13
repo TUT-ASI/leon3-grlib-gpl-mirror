@@ -121,7 +121,7 @@ begin
     end loop;
 
     req := sreq;
-    if arb_lock /= 0 then
+    if arb_lock /= 0 and nreq > 1 then
       req := sreq and r.req_lock;
     end if;
 
@@ -186,7 +186,7 @@ begin
       end loop;
     end loop;
 
-    if arb_lock /= 0 then
+    if arb_lock /= 0 and nreq > 1 then
       if tree(0).req = '1' and mgnt = '1' then
         -- Request granted, release lock
         v.req_lock := (others => '1');
@@ -196,7 +196,7 @@ begin
       end if;
     end if;
 
-    if arb_prio /= 0 then
+    if arb_prio /= 0 and nreq > 1 then
       if tree(0).req = '1' and mgnt = '1' then
       -- Update priority on granted request
         case arb_prio is
@@ -243,5 +243,330 @@ begin
       r <= rin;
     end if;
   end process;
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library grlib;
+use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
+use grlib.amba.all;
+library gaisler;
+use gaisler.axi.all;
+
+entity axi4_awarbiter is
+  generic (
+    nsub        : integer;
+    idwidth     : integer range 0 to 2*AXI_ID_WIDTH;
+    awidth      : integer range 0 to 64;
+    regionwidth : integer range 0 to 4 := 0;
+    arb_prio    : integer range 0 to 2; -- 0 -> sprio, 1 -> Rotate prio, 2 -> Round robin
+    arb_lock    : integer range 0 to 1  -- 0 -> Make arbiter decision on grant
+                                        -- 1 -> Make arbiter decision on first valid request
+  );
+  port (
+    aclk    : in  std_ulogic;
+    aresetn : in  std_ulogic;
+    --
+    prio    : in  std_logic_vector(log2x(nsub)-1 downto 0) := (others => '0');
+    -- AXI AW subordinate port
+    awsi    : in  axi4_aw_mosi_vector_type(0 to nsub-1);
+    awxsi   : in  extaxi_ax_vector_type(0 to nsub-1) := (others => extaxi_ax_none);
+    awso    : out axi_aw_somi_vector_type(0 to nsub-1);
+    -- AXI AW manager port
+    awselmo : out std_logic_vector(log2x(nsub)-1 downto 0);
+    awmo    : out axi4_aw_mosi_type;
+    awxmo   : out extaxi_ax_type;
+    awmi    : in  axi_aw_somi_type
+  );
+end;
+
+architecture rtl of axi4_awarbiter is
+
+  constant axwidth  : integer := idwidth+awidth+8+3+2+1+4+3+4+regionwidth;
+
+  signal awsiv      : std_logic_vector(nsub*axwidth-1 downto 0);
+  signal awvalidsi  : std_logic_vector(nsub-1 downto 0);
+  signal awreadyso  : std_logic_vector(nsub-1 downto 0);
+  signal awvalidmo  : std_logic;
+  signal awmov      : std_logic_vector(axwidth-1 downto 0);
+
+begin
+
+  p_serialize : process(awsi, awxsi, awreadyso)
+  begin
+    for i in 0 to nsub-1 loop
+      awsiv(i*axwidth+axwidth-1 downto i*axwidth) <= aw_pack(awsi(i), awxsi(i), awidth, idwidth, regionwidth);
+      awvalidsi(i)  <= awsi(i).valid;
+      awso(i).ready <= awreadyso(i);
+    end loop;
+  end process;
+
+  awarbiter : arbiter_tree
+    generic map (
+      nreq      => nsub,
+      dwidth    => axwidth,
+      arb_prio  => arb_prio,
+      arb_lock  => arb_lock
+    )
+    port map (
+      clk   => aclk,
+      rstn  => aresetn,
+      sprio => prio,
+      sdata => awsiv,
+      sreq  => awvalidsi,
+      sgnt  => awreadyso,
+      msel  => awselmo,
+      mdata => awmov,
+      mreq  => awvalidmo,
+      mgnt  => awmi.ready
+    );
+  aw_unpack(idwidth, awidth, regionwidth, awmov, awvalidmo, awmo, awxmo);
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library grlib;
+use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
+use grlib.amba.all;
+library gaisler;
+use gaisler.axi.all;
+
+entity axi4_ararbiter is
+  generic (
+    nsub        : integer;
+    idwidth     : integer range 0 to 2*AXI_ID_WIDTH;
+    awidth      : integer range 0 to 64;
+    regionwidth : integer range 0 to 4 := 0;
+    arb_prio    : integer range 0 to 2; -- 0 -> sprio, 1 -> Rotate prio, 2 -> Round robin
+    arb_lock    : integer range 0 to 1  -- 0 -> Make arbiter decision on grant
+                                        -- 1 -> Make arbiter decision on first valid request
+  );
+  port (
+    aclk    : in  std_ulogic;
+    aresetn : in  std_ulogic;
+    --
+    prio    : in  std_logic_vector(log2x(nsub)-1 downto 0) := (others => '0');
+    -- AXI AR subordinate port
+    arsi    : in  axi4_ar_mosi_vector_type(0 to nsub-1);
+    arxsi   : in  extaxi_ax_vector_type(0 to nsub-1) := (others => extaxi_ax_none);
+    arso    : out axi_ar_somi_vector_type(0 to nsub-1);
+    -- AXI AR manager port
+    arselmo   : out std_logic_vector(log2x(nsub)-1 downto 0);
+    armo    : out axi4_ar_mosi_type;
+    arxmo   : out extaxi_ax_type;
+    armi    : in  axi_ar_somi_type
+  );
+end;
+
+architecture rtl of axi4_ararbiter is
+
+  constant axwidth  : integer := idwidth+awidth+8+3+2+1+4+3+4+regionwidth;
+
+  signal arsiv      : std_logic_vector(nsub*axwidth-1 downto 0);
+  signal arvalidsi  : std_logic_vector(nsub-1 downto 0);
+  signal arreadyso  : std_logic_vector(nsub-1 downto 0);
+  signal arvalidmo  : std_logic;
+  signal armov      : std_logic_vector(axwidth-1 downto 0);
+
+begin
+
+  p_serialize : process(arsi, arxsi, arreadyso)
+  begin
+    for i in 0 to nsub-1 loop
+      arsiv(i*axwidth+axwidth-1 downto i*axwidth) <= ar_pack(arsi(i), arxsi(i), awidth, idwidth, regionwidth);
+      arvalidsi(i)  <= arsi(i).valid;
+      arso(i).ready <= arreadyso(i);
+    end loop;
+  end process;
+
+  ararbiter : arbiter_tree
+    generic map (
+      nreq      => nsub,
+      dwidth    => axwidth,
+      arb_prio  => arb_prio,
+      arb_lock  => arb_lock
+    )
+    port map (
+      clk   => aclk,
+      rstn  => aresetn,
+      sprio => prio,
+      sdata => arsiv,
+      sreq  => arvalidsi,
+      sgnt  => arreadyso,
+      msel  => arselmo,
+      mdata => armov,
+      mreq  => arvalidmo,
+      mgnt  => armi.ready
+    );
+  ar_unpack(idwidth, awidth, regionwidth, armov, arvalidmo, armo, arxmo);
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library grlib;
+use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
+use grlib.amba.all;
+library gaisler;
+use gaisler.axi.all;
+
+entity axi4_barbiter is
+  generic (
+    nsub      : integer;
+    idwidth   : integer;
+    arb_prio  : integer range 0 to 2; -- 0 -> sprio, 1 -> Rotate prio, 2 -> Round robin
+    arb_lock  : integer range 0 to 1  -- 0 -> Make arbiter decision on grant
+                                      -- 1 -> Make arbiter decision on first valid request
+  );
+  port (
+    aclk    : in  std_ulogic;
+    aresetn : in  std_ulogic;
+    --
+    prio    : in  std_logic_vector(log2x(nsub)-1 downto 0) := (others => '0');
+    -- AXI AR manager port
+    bmi     : in  axi_b_somi_vector_type(0 to nsub-1);
+    bxmi    : in  extaxi_x_vector_type(0 to nsub-1) := (others => extaxi_x_none);
+    bmo     : out axi_b_mosi_vector_type(0 to nsub-1);
+    -- AXI AR subordinate port
+    bselso  : out std_logic_vector(log2x(nsub)-1 downto 0);
+    bso     : out axi_b_somi_type;
+    bxso    : out extaxi_x_type;
+    bsi     : in  axi_b_mosi_type
+  );
+end;
+
+architecture rtl of axi4_barbiter is
+
+  constant bwidth  : integer := idwidth+2;
+
+  signal bmiv      : std_logic_vector(nsub*bwidth-1 downto 0);
+  signal bvalidmi  : std_logic_vector(nsub-1 downto 0);
+  signal breadymo  : std_logic_vector(nsub-1 downto 0);
+  signal bvalidso  : std_logic;
+  signal bsov      : std_logic_vector(bwidth-1 downto 0);
+
+begin
+
+  p_serialize : process(bmi, bxmi, breadymo)
+  begin
+    for i in 0 to nsub-1 loop
+      bmiv(i*bwidth+bwidth-1 downto i*bwidth) <= b_pack(bmi(i), bxmi(i), idwidth);
+      bvalidmi(i)   <= bmi(i).valid;
+      bmo(i).ready  <= breadymo(i);
+    end loop;
+  end process;
+
+  barbiter : arbiter_tree
+    generic map (
+      nreq      => nsub,
+      dwidth    => bwidth,
+      arb_prio  => arb_prio,
+      arb_lock  => arb_lock
+    )
+    port map (
+      clk   => aclk,
+      rstn  => aresetn,
+      sprio => prio,
+      sdata => bmiv,
+      sreq  => bvalidmi,
+      sgnt  => breadymo,
+      msel  => bselso,
+      mdata => bsov,
+      mreq  => bvalidso,
+      mgnt  => bsi.ready
+    );
+  b_unpack(idwidth, bsov, bvalidso, bso, bxso);
+
+end;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library grlib;
+use grlib.stdlib.all;
+use grlib.config_types.all;
+use grlib.config.all;
+use grlib.amba.all;
+library gaisler;
+use gaisler.axi.all;
+
+entity axi4_rarbiter is
+  generic (
+    nsub      : integer;
+    idwidth   : integer;
+    dwidth    : integer;
+    arb_prio  : integer range 0 to 2; -- 0 -> sprio, 1 -> Rotate prio, 2 -> Round robin
+    arb_lock  : integer range 0 to 1  -- 0 -> Make arbiter decision on grant
+                                      -- 1 -> Make arbiter decision on first valid request
+  );
+  port (
+    aclk    : in  std_ulogic;
+    aresetn : in  std_ulogic;
+    --
+    prio    : in  std_logic_vector(log2x(nsub)-1 downto 0) := (others => '0');
+    -- AXI AR manager port
+    rmi     : in  axi_r_somi_vector_type(0 to nsub-1);
+    rxmi    : in  extaxi_x_vector_type(0 to nsub-1) := (others => extaxi_x_none);
+    rmo     : out axi_r_mosi_vector_type(0 to nsub-1);
+    -- AXI AR subordinate port
+    rselso  : out std_logic_vector(log2x(nsub)-1 downto 0);
+    rso     : out axi_r_somi_type;
+    rxso    : out extaxi_x_type;
+    rsi     : in  axi_r_mosi_type
+  );
+end;
+
+architecture rtl of axi4_rarbiter is
+
+  constant rwidth  : integer := idwidth+dwidth+2+1;
+
+  signal rmiv      : std_logic_vector(nsub*rwidth-1 downto 0);
+  signal rvalidmi  : std_logic_vector(nsub-1 downto 0);
+  signal rreadymo  : std_logic_vector(nsub-1 downto 0);
+  signal rvalidso  : std_logic;
+  signal rsov      : std_logic_vector(rwidth-1 downto 0);
+
+begin
+
+  p_serialize : process(rmi, rxmi, rreadymo)
+  begin
+    for i in 0 to nsub-1 loop
+      rmiv(i*rwidth+rwidth-1 downto i*rwidth) <= r_pack(rmi(i), rxmi(i), idwidth, dwidth);
+      rvalidmi(i)   <= rmi(i).valid;
+      rmo(i).ready  <= rreadymo(i);
+    end loop;
+  end process;
+
+  barbiter : arbiter_tree
+    generic map (
+      nreq      => nsub,
+      dwidth    => rwidth,
+      arb_prio  => arb_prio,
+      arb_lock  => arb_lock
+    )
+    port map (
+      clk   => aclk,
+      rstn  => aresetn,
+      sprio => prio,
+      sdata => rmiv,
+      sreq  => rvalidmi,
+      sgnt  => rreadymo,
+      msel  => rselso,
+      mdata => rsov,
+      mreq  => rvalidso,
+      mgnt  => rsi.ready
+    );
+  r_unpack(idwidth, dwidth, rsov, rvalidso, rso, rxso);
 
 end;

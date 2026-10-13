@@ -130,6 +130,9 @@ begin
   nxus : if (tech = nexus) generate
     x0 : nexus_outpad port map (i, pad);
   end generate;
+  tsmc7 : if (tech = n7) generate
+    x0 : n7_outpad generic map (level, slew, voltage, strength) port map (pad, i);
+  end generate;  
   
 end;
 

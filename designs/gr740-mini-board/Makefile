@@ -9,15 +9,18 @@ DEVICE=$(PART)$(SPEED)$(PACKAGE)$(TEMPERATURE)
 
 GRLIB_LATTICE_RADIANT_PERFORMANCE="9_High-Performance_1.0V"
 GRLIB_LATTICE_RADIANT_SIM_DEVICE=lfcpnx 
-
+# Required by ipgen on Radiant 2024.x/2025.x+. Must match the device grade: TEMPERATURE=I above -> IND.
+GRLIB_LATTICE_RADIANT_IP_OPERATION=IND
+GRLIB_LATTICE_RADIANT_DISABLE_TMCHK=
+GRLIB_LATTICE_RADIANT_IP_EVAL=1
 
 SYNPOPT="set_option -pipe 0; set_option -retiming 0; set_option -write_apr_constraint 0"
 
 LATTICE_IP=lifcl/pll/pll_125i_50o lifcl/mpcs/serdes_channel_0 lifcl/mpcs/serdes_channel_2 \
 		   lifcl/mpcs/serdes_channel_6 lifcl/mpcs/serdes_channel_7 lifcl/sedc/cram_sedc lifcl/osc/osc_cram_sedc_50o 
 
-LATTICE_COM_IP_FOLDER?=$(HOME)/RadiantIPLocal
-LATTICE_COM_IP=latticesemi.com_ip_ddr3_mc_1.4.2/lattice_ddr3c
+# Downloaded on demand (via wget, see bin/Makefile) into ./lattice_ips/.
+LATTICE_COM_IP=latticesemi.com_ddr3_mc_1.4.2/lattice_ddr3c
 
 VHDLSYNFILES=config.vhd serdes_wrapper.vhd spacewirerouter_pads.vhd gr740_mini_board.vhd
 VHDLSIMFILES= testbench.vhd

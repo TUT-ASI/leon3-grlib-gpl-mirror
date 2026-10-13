@@ -122,3 +122,6 @@ copy-mig:
 vivado-launch: copy-mig
 vivado: copy-mig
 
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+
+VIVADO_LOCAL_IPS = mig.tcl

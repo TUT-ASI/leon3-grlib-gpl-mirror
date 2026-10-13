@@ -42,6 +42,7 @@ entity l5tscgen is
     nsync    : integer;
     nsinks   : integer;
     npipe    : integer;
+    extpipe  : integer;
     asyncset : integer
     );
   port (
@@ -167,10 +168,24 @@ begin
             v.state := s_running;
           end if;
         else
-          v.timer(7 downto 0) := "00000000";
+          -- Increment the timer lsbs but make the lsb stop at 126
+          -- That should make us ready to start very quickly once freezesync
+          -- goes low
+          v.timer := add(r.timer, 1);
+          if r.timer(7 downto 1)="1111111" then
+            v.timer(0) := '0';
+          end if;
+          -- If the user wants to set the time in async mode, we need
+          -- to restart the timer LSBs to make sure the new time gets
+          -- strobed out before restarting.
+          if (asyncset/=0 and setsync='1' and r.setack='0') then
+            v.timer(7 downto 0) := "00000000";
+          end if;
         end if;
       when s_running =>
-        if freezesync='0' then
+        -- Note: check r.tinc(0) when freezing to make sure we tick up one
+        -- cycle if we unfreeze and freeze instantly (for single stepping)
+        if freezesync='0' or r.tinc(0)='0' then
           v.timer := add(r.timer, 1);
           v.tinc(0) := '1';
           if r.timer(7)='1' and v.timer(7)='0' then v.tinc(1) := '1'; end if;
@@ -191,9 +206,9 @@ begin
       end if;
     end if;
     -- We accept set request while the timer[7:6] is 00 as we're then not in
-    -- the middle of transmitting the high bits. Because timer[7:0] is
-    -- held at zero in stopped state, the same logic also means we can write
-    -- the timer while stopped
+    -- the middle of transmitting the high bits.
+    -- For stopped state there is some special logic above to restart the
+    -- timer lsb when setting the time.
     if setsync='0' then
       v.setack := '0';
     end if;
@@ -328,3 +343,5 @@ begin
     end if;
   end process;
 end;
+
+

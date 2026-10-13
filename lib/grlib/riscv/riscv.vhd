@@ -333,6 +333,8 @@ package riscv is
   constant OP_NOELV0    : opcode_type := OP_CUSTOM0;
   constant OP_NOELV1    : opcode_type := OP_CUSTOM2;  -- RORMIXI
 
+  constant OP_SPARROW   : opcode_type := OP_CUSTOM3;  -- P-Type Format
+
   constant F7_NOELV0    : funct7_type := "0000000";   -- Diagnostics
   constant F7_NOELV1    : funct7_type := "0000001";
   constant F7_NOELV2    : funct7_type := "0000010";
@@ -710,6 +712,7 @@ package riscv is
   constant CSR_SCOUNTOVF        : csratype := x"da0";
 
   -- Supervisor Custom read/write
+  constant CSR_SNVSTATUS        : csratype := x"5c0";
 
   -- Hypervisor and VS CSRs
 
@@ -785,6 +788,7 @@ package riscv is
   constant CSR_HSTATEEN3H       : csratype := x"61f";
 
   -- Virtual Supervisor Custom read/write
+  constant CSR_VSNVSTATUS       : csratype := x"6c0";
 
   -- Machine-Level CSRs
 
@@ -1049,6 +1053,7 @@ package riscv is
   constant CSR_INTERRORH        : csratype := x"7e7";
   constant CSR_INTERROR2H       : csratype := x"7e8";
   constant CSR_INTERROR3H       : csratype := x"7e9";
+  constant CSR_MNVSTATUS        : csratype := x"7ea";
   -- Custom Read-only Registers
   constant CSR_CAPABILITY       : csratype := x"fc0";
   constant CSR_CAPABILITY2      : csratype := x"fc1";
@@ -1061,6 +1066,8 @@ package riscv is
   constant CSR_CAPABILITY4H     : csratype := x"fd3";
   constant CSR_CAPABILITY5H     : csratype := x"fd4";
   -- Custom Read/Write Unprivileged Registers
+  -- Note that Sparrow uses 0x800
+  constant CSR_SPARROW          : csratype := x"800";
 
   constant MCSRIND_PMA_BASE         : integer := 32;
 

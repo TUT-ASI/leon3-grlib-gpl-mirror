@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
--- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN 
--- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED 
--- IN ADVANCE IN WRITING. 
+-- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN
+-- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED
+-- IN ADVANCE IN WRITING.
 -----------------------------------------------------------------------------
 -- Description: SGMII wrapper
 ------------------------------------------------------------------------------
@@ -200,7 +200,6 @@ architecture top_level of sgmii_vcu118 is
       riu_rddata_2           : IN  STD_LOGIC_VECTOR(15 DOWNTO 0)
       );
   END COMPONENT;
-
 ----- component IBUFDS_GTE3 -----
   component IBUFDS_GTE3
     port (
@@ -228,24 +227,20 @@ architecture top_level of sgmii_vcu118 is
   constant REVISION : integer := 1;
 
   constant pconfig : apb_config_type := (
-    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_SGMII, 0, REVISION, pirq),
+    0 => ahb_device_reg (VENDOR_GAISLER, GAISLER_SGMII, 0, REVISION, 0),
     1 => apb_iobar(paddr, pmask));
 
   type sgmiiregs is record
-    irq                  : std_logic_vector(31 downto 0);  -- interrupt
-    mask                 : std_logic_vector(31 downto 0);  -- interrupt enable
     configuration_vector : std_logic_vector(4 downto 0);
     an_adv_config_vector : std_logic_vector(15 downto 0);
+    sgmii_reset_status   : std_logic;
   end record;
 
   -- APB and SGMII control register
   constant RESET_ALL : boolean := GRLIB_CONFIG_ARRAY(grlib_sync_reset_enable_all) = 1;
 
-  constant RES_configuration_vector : std_logic_vector(4 downto 0) := std_logic_vector(to_unsigned(autonegotiation, 1)) & "0000";
-
   constant RES : sgmiiregs :=
-    (irq                   => (others => '0'), mask => (others => '0'),
-      configuration_vector => RES_configuration_vector, an_adv_config_vector => "0001100000000001");
+    (configuration_vector => "10000", an_adv_config_vector => "1101100000000001", sgmii_reset_status => '0');
 
   type rxregs is record
     gmii_rxd     : std_logic_vector(7 downto 0);
@@ -287,8 +282,6 @@ architecture top_level of sgmii_vcu118 is
   -- clock generation signals for tranceiver
   signal gtrefclk    : std_logic;
   --signal txoutclk              : std_logic;
-  signal rxoutclk    : std_logic;
-  signal resetdone   : std_logic;
   signal mmcm_locked : std_logic;
   signal mmcm_reset  : std_logic;
   signal clkfbout    : std_logic;
@@ -297,6 +290,7 @@ architecture top_level of sgmii_vcu118 is
   signal userclk     : std_logic;
   signal userclk2    : std_logic;
   signal rxuserclk   : std_logic;
+  signal rst_125_out : std_logic;
 
   -- PMA reset generation signals for tranceiver
   signal pma_reset_pipe : std_logic_vector(3 downto 0);
@@ -347,6 +341,8 @@ architecture top_level of sgmii_vcu118 is
   signal linkup               : std_logic;
   signal signal_detect        : std_logic;
 
+  signal sgmii_rst            : std_logic;
+
   -- Route gtrefclk through an IBUFG.
   signal gtrefclk_buf_i : std_logic;
 
@@ -358,44 +354,33 @@ architecture top_level of sgmii_vcu118 is
 
   signal usr2rstn : std_logic;
 
-  -- debug signal
-  signal WMemRgmiioData : std_logic_vector(15 downto 0);
-  signal RMemRgmiioData : std_logic_vector(15 downto 0);
-  signal RMemRgmiioAddr : std_logic_vector(9 downto 0);
-  signal WMemRgmiioAddr : std_logic_vector(9 downto 0);
-  signal WMemRgmiioWrEn : std_logic;
-  signal WMemRgmiiiData : std_logic_vector(15 downto 0);
-  signal RMemRgmiiiData : std_logic_vector(15 downto 0);
-  signal RMemRgmiiiAddr : std_logic_vector(9 downto 0);
-  signal WMemRgmiiiAddr : std_logic_vector(9 downto 0);
-  signal WMemRgmiiiWrEn : std_logic;
-  signal RMemRgmiiiRead : std_logic;
-  signal RMemRgmiioRead : std_logic;
-
 begin
   -----------------------------------------------------------------------------
   -- Adopted for the vcu118 (Based on the default for the VC707)
   -----------------------------------------------------------------------------
 
-  -- Remove AN during simulation i.e. "00000"
-  configuration_vector(4) <= '1';       -- autonegotiation enable
-  --configuration_vector(4) <= '0'; -- autonegotiation enable
-  configuration_vector(3) <= '0';       -- isolate
-  configuration_vector(2) <= '0';       -- power down
-  configuration_vector(1) <= '0';       -- loopback enable
-  configuration_vector(0) <= '0';       -- unidirectional enable
+  -- -- Remove AN during simulation i.e. "00000"
+  -- configuration_vector(4) <= '1';       -- autonegotiation enable
+  -- configuration_vector(3) <= '0';       -- isolate
+  -- configuration_vector(2) <= '0';       -- power down
+  -- configuration_vector(1) <= '0';       -- loopback enable
+  -- configuration_vector(0) <= '0';       -- unidirectional enable
+  configuration_vector <= r.configuration_vector;
 
   -- Configuration for Xilinx SGMII IP. See doc for SGMII IP for more information
-  an_adv_config_vector(15)           <= '1';   -- SGMII link status
-  an_adv_config_vector(14)           <= '1';   -- SGMII Acknowledge
-  an_adv_config_vector(13 downto 12) <= "01";  -- full duplex
-  an_adv_config_vector(11 downto 10) <= "10";  -- SGMII speed
-  an_adv_config_vector(9)            <= '0';   -- reserved
-  an_adv_config_vector(8 downto 7)   <= "00";  -- pause frames - SGMII reserved
-  an_adv_config_vector(6)            <= '0';   -- reserved
-  an_adv_config_vector(5)            <= '0';   -- full duplex - SGMII reserved
-  an_adv_config_vector(4 downto 1)   <= "0000";  -- reserved
-  an_adv_config_vector(0)            <= '1';   -- SGMII
+  -- an_adv_config_vector(15)           <= '1';   -- SGMII link status
+  -- an_adv_config_vector(14)           <= '1';   -- SGMII Acknowledge
+  -- an_adv_config_vector(13 downto 12) <= "01";  -- full duplex
+  -- an_adv_config_vector(11 downto 10) <= "10";  -- SGMII speed
+  -- an_adv_config_vector(9)            <= '0';   -- reserved
+  -- an_adv_config_vector(8 downto 7)   <= "00";  -- pause frames - SGMII reserved
+  -- an_adv_config_vector(6)            <= '0';   -- reserved
+  -- an_adv_config_vector(5)            <= '0';   -- full duplex - SGMII reserved
+  -- an_adv_config_vector(4 downto 1)   <= "0000";  -- reserved
+  -- an_adv_config_vector(0)            <= '1';   -- SGMII
+  an_adv_config_vector <= r.an_adv_config_vector;
+
+  sgmii_rst <= r.sgmii_reset_status;
 
   an_restart_config <= '0';
 
@@ -428,7 +413,7 @@ begin
   gmiii.tx_clk_90 <= '0';
 
   -- GMII Ref Clocks Not Used
-  -- Note: 50Mhz clock used for 10Mb mode only  
+  -- Note: 50Mhz clock used for 10Mb mode only
   gmiii.tx_clk_100 <= '0';
   gmiii.tx_clk_50  <= '0';
   gmiii.tx_clk_25  <= '0';
@@ -573,6 +558,7 @@ begin
   -- Instantiate the Core Block (core wrapper).
   ------------------------------------------------------------------------------
 
+
   speed_is_10_100 <= not gmiio.gbit;
   speed_is_100    <= gmiio.speed;
   --speed_is_10_100 <= '0';
@@ -586,17 +572,17 @@ begin
       sgmii_clk_en_0         => sgmii_clk_en,
       clk125_out             => userclk2,
       clk312_out             => open,
-      rst_125_out            => open,
-      -- 125 MHz differential reference clock to IBUFDS 
+      rst_125_out            => rst_125_out,
+      -- 125 MHz differential reference clock to IBUFDS
       refclk625_n            => sgmiii.clkn,
       refclk625_p            => sgmiii.clkp,
-      -- SGMII   
+      -- SGMII
       txp_0                  => sgmiio.txp,
       txn_0                  => sgmiio.txn,
       rxp_0                  => sgmiii.rxp,
       rxn_0                  => sgmiii.rxn,
       --
-      reset                  => reset,  -- Synced to 125MHz
+      reset                  => sgmii_rst,  -- Synced to 125MHz
       -- GMII
       gmii_txd_0             => gmii_txd,
       gmii_rxd_0             => gmii_rxd_int,
@@ -746,210 +732,102 @@ begin
 --  -----------------------------------------------------------------------------
 --  -- Extra registers to ease CDC placement
 --  -----------------------------------------------------------------------------
---  process (apb_clk)
---  begin
---    if apb_clk'event and apb_clk = '1' then
---      status_vector_apb <= status_vector_int;
---    end if;
---  end process;
---
---  ---------------------------------------------------------------------------------------
---  -- APB Section
---  ---------------------------------------------------------------------------------------
---
---  apbo.pindex  <= pindex;
---  apbo.pconfig <= pconfig;
---
---  -- Extra registers to ease CDC placement
---  process (apb_clk)
---  begin
---    if apb_clk'event and apb_clk = '1' then
---      status_vector_apb1 <= (others => '0');
---      status_vector_apb2 <= (others => '0');
---      -- Register to detect a speed change
---      status_vector_apb1(15 downto 0) <= status_vector_apb;
---      status_vector_apb2 <= status_vector_apb1;
---    end if;
---  end process;
---
---  rgmiiapb : process(apb_rstn, r, apbi, status_vector_apb1, status_vector_apb2, RMemRgmiiiData, RMemRgmiiiRead, RMemRgmiioRead )
---    variable rdata    : std_logic_vector(31 downto 0);
---    variable paddress : std_logic_vector(7 downto 2);
---    variable v        : sgmiiregs;
---  begin
---
---    v := r;
---    paddress := (others => '0');
---    paddress(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
---    rdata := (others => '0');
---
---    -- read/write registers
---
---    if (apbi.psel(pindex) and apbi.penable and (not apbi.pwrite)) = '1' then
---      case paddress(7 downto 2) is
---        when "000000" =>
---          rdata(31 downto 0) := status_vector_apb2;
---        when "000001" =>
---          rdata(31 downto 0) := r.irq;
---          v.irq := (others => '0');  -- Interrupt is clear on read
---        when "000010" =>
---          rdata(31 downto 0) := r.mask;
---        when "000011" =>
---          rdata(4 downto 0) := r.configuration_vector;
---        when "000100" =>
---          rdata(15 downto 0) := r.an_adv_config_vector;
---        when "000101" =>
---          if (autonegotiation /= 0) then rdata(0) := '1'; else rdata(0) := '0'; end if;
---          if (debugmem /= 0)        then rdata(1) := '1'; else rdata(1) := '0'; end if;
---        when others =>
---          null;
---      end case;
---    end if;
---
---    if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
---      case paddress(7 downto 2) is
---        when "000000" =>
---          null;
---        when "000001" =>
---          null;
---        when "000010" =>
---          v.mask := apbi.pwdata(31 downto 0);
---        when "000011" =>
---          v.configuration_vector := apbi.pwdata(4 downto 0);
---        when "000100" =>
---          v.an_adv_config_vector := apbi.pwdata(15 downto 0);
---        when "000101" =>
---          null;
---        when others =>
---          null;
---      end case;
---    end if;
---
---    -- Check interrupts
---    for i in 0 to status_vector_apb2'length-1 loop
---      if  ((status_vector_apb1(i) xor status_vector_apb2(i)) and v.mask(i)) = '1' then
---        v.irq(i) :=  '1';
---      end if;
---    end loop;
---
---    -- reset operation
---    if (not RESET_ALL) and (apb_rstn = '0') then
---      v := RES;
---    end if;
---
---    -- update registers
---    rin <= v;
---
---    -- drive outputs
---    if apbi.psel(pindex) = '0' then
---      apbo.prdata  <= (others => '0');
---    elsif RMemRgmiiiRead = '1' then
---      apbo.prdata(31 downto 16)  <= (others => '0');
---      apbo.prdata(15 downto 0)   <= RMemRgmiiiData;
---    elsif RMemRgmiioRead = '1' then
---      apbo.prdata(31 downto 16)  <= (others => '0');
---      apbo.prdata(15 downto 0)   <= RMemRgmiioData;
---    else
---      apbo.prdata  <= rdata;
---    end if;
---
---    apbo.pirq <= (others => '0');
---    apbo.pirq(pirq) <=  orv(v.irq);
---
---  end process;
---
---  regs : process(apb_clk)
---  begin
---    if rising_edge(apb_clk) then
---      r <= rin;
---      if RESET_ALL and apb_rstn = '0' then
---        r <= RES;
---      end if;
---    end if;
---  end process;
---
---  ---------------------------------------------------------------------------------------
---  --  Debug Mem
---  ---------------------------------------------------------------------------------------
---
---  debugmem1 : if (debugmem /= 0) generate
---
---    -- Write GMII IN data
---    process (userclk2)
---    begin  -- process
---      if rising_edge(userclk2) then
---        WMemRgmiioData(15 downto 0) <= '0' & '0' & '0' & sgmii_clk_en & '0' & '0' & gmii_tx_er & gmii_tx_en & gmii_txd;
---        if (gmii_tx_en = '1') and ((WMemRgmiioAddr < "0111111110") or (WMemRgmiioAddr = "1111111111")) then
---          WMemRgmiioAddr <= WMemRgmiioAddr + 1;
---          WMemRgmiioWrEn <= '1';
---        else
---          if (gmii_tx_en = '0') then
---            WMemRgmiioAddr <= (others => '1');
---          else
---            WMemRgmiioAddr <= WMemRgmiioAddr;
---          end if;
---          WMemRgmiioWrEn <= '0';
---        end if;
---
---        if usr2rstn = '0' then
---          WMemRgmiioAddr <= (others => '0');
---          WMemRgmiioWrEn <= '0';
---        end if;
---
---      end if;
---    end process;
---
---    -- Read
---    RMemRgmiioRead <= apbi.paddr(10) and apbi.psel(pindex);
---    RMemRgmiioAddr <= "00" & apbi.paddr(10-1 downto 2);
---
---    gmiii0 : syncram_2p generic map (tech, 10, 16, 1, 0, 0) port map(
---      apb_clk, RMemRgmiioRead, RMemRgmiioAddr, RMemRgmiioData,
---      userclk2, WMemRgmiioWrEn, WMemRgmiioAddr(10-1 downto 0), WMemRgmiioData);
---
---    -- Write GMII IN data
---    process (userclk2)
---    begin  -- process
---      if rising_edge(userclk2) then
---
---        if (gmii_rx_dv = '1') then
---          WMemRgmiiiData(15 downto 0) <= '0' & '0' & '0' &sgmii_clk_en & "00" & gmii_rx_er & gmii_rx_dv & gmii_rxd;
---        elsif (gmii_rx_dv_int = '0') then
---          WMemRgmiiiData(15 downto 0) <= (others => '0');
---        else
---          WMemRgmiiiData <= WMemRgmiiiData;
---        end if;
---
---        if (gmii_rx_dv = '1') and ((WMemRgmiiiAddr < "0111111110") or (WMemRgmiiiAddr = "1111111111")) then
---          WMemRgmiiiAddr <= WMemRgmiiiAddr + 1;
---          WMemRgmiiiWrEn <= '1';
---        else
---          if (gmii_rx_dv_int = '0') then
---            WMemRgmiiiAddr <= (others => '1');
---            WMemRgmiiiWrEn <= '0';
---          else
---            WMemRgmiiiAddr <= WMemRgmiiiAddr;
---            WMemRgmiiiWrEn <= '0';
---          end if;
---        end if;
---
---        if usr2rstn = '0' then
---          WMemRgmiiiAddr <= (others => '0');
---          WMemRgmiiiWrEn <= '0';
---        end if;
---
---      end if;
---    end process;
---
---    -- Read
---    RMemRgmiiiRead <= apbi.paddr(11) and apbi.psel(pindex);
---    RMemRgmiiiAddr <= "00" & apbi.paddr(10-1 downto 2);
---
---    rgmiii0 : syncram_2p generic map (tech, 10, 16, 1, 0, 0) port map(
---      apb_clk, RMemRgmiiiRead, RMemRgmiiiAddr, RMemRgmiiiData,
---      userclk2, WMemRgmiiiWrEn, WMemRgmiiiAddr(10-1 downto 0), WMemRgmiiiData);
---
---  end generate;
+ process (apb_clk)
+ begin
+   if apb_clk'event and apb_clk = '1' then
+     status_vector_apb <= status_vector_int;
+   end if;
+ end process;
+
+ ---------------------------------------------------------------------------------------
+ -- APB Section
+ ---------------------------------------------------------------------------------------
+
+ apbo.pindex  <= pindex;
+ apbo.pconfig <= pconfig;
+
+ -- Extra registers to ease CDC placement
+ process (apb_clk)
+ begin
+   if apb_clk'event and apb_clk = '1' then
+     status_vector_apb1 <= (others => '0');
+     status_vector_apb2 <= (others => '0');
+     -- Register to detect a speed change
+     status_vector_apb1(15 downto 0) <= status_vector_apb;
+     status_vector_apb2 <= status_vector_apb1;
+   end if;
+ end process;
+
+ sgmiiapb : process(apb_rstn, r, apbi, status_vector_apb1, status_vector_apb2 )
+   variable rdata    : std_logic_vector(31 downto 0);
+   variable paddress : std_logic_vector(7 downto 2);
+   variable v        : sgmiiregs;
+ begin
+
+   v := r;
+   paddress := (others => '0');
+   paddress(abits-1 downto 2) := apbi.paddr(abits-1 downto 2);
+   rdata := (others => '0');
+
+   -- read/write registers
+
+   if (apbi.psel(pindex) and apbi.penable and (not apbi.pwrite)) = '1' then
+     case paddress(7 downto 2) is
+       when "000000" =>
+        rdata(31 downto 0) := status_vector_apb2;
+       when "000001" =>
+        rdata(4 downto 0) := r.configuration_vector;
+       when "000010" =>
+        rdata(15 downto 0) := r.an_adv_config_vector;
+       when "000011" =>
+        rdata(0) := r.sgmii_reset_status;
+       when others =>
+         null;
+     end case;
+   end if;
+
+   if (apbi.psel(pindex) and apbi.penable and apbi.pwrite) = '1' then
+     case paddress(7 downto 2) is
+       when "000000" =>
+          null;
+       when "000001" =>
+          v.configuration_vector := apbi.pwdata(4 downto 0);
+       when "000010" =>
+          v.an_adv_config_vector := apbi.pwdata(15 downto 0);
+       when "000011" =>
+          v.sgmii_reset_status := apbi.pwdata(0);
+       when others =>
+         null;
+     end case;
+   end if;
+
+   -- reset operation
+   if (not RESET_ALL) and (apb_rstn = '0') then
+     v := RES;
+   end if;
+
+   -- drive outputs
+   if apbi.psel(pindex) = '0' then
+     apbo.prdata  <= (others => '0');
+   else
+     apbo.prdata  <= rdata;
+   end if;
+
+
+   apbo.pirq <= (others => '0');
+   rin <= v;
+
+ end process;
+
+ regs : process(apb_clk)
+ begin
+   if rising_edge(apb_clk) then
+     r <= rin;
+     if RESET_ALL and apb_rstn = '0' then
+       r <= RES;
+     end if;
+   end if;
+ end process;
 
   clkout0o <= userclk;
   clkout1o <= rxuserclk;
@@ -958,8 +836,7 @@ begin
 -- pragma translate_off
   bootmsg : report_version
     generic map ("sgmii" & tost(pindex) &
-                 ": SGMII rev " & tost(REVISION) & ", irq " & tost(pirq));
+                 ": SGMII rev " & tost(REVISION));
 -- pragma translate_on
 
 end top_level;
-

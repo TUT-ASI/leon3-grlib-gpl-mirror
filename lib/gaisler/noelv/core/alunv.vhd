@@ -585,8 +585,8 @@ package body alunv is
         if ext_zbc or ext_zbkc then
           if funct7 = F7_MINMAXCLMUL and op = OP_REG then
             case funct3 is
-             -- R_CLMULR is not actually valid for ext_zbkc, but that does not matter here.
-             when R_CLMUL | R_CLMULR | R_CLMULH =>
+              -- R_CLMULR is not actually valid for ext_zbkc, but that does not matter here.
+              when R_CLMUL | R_CLMULR | R_CLMULH =>
                 sel   := ALU_MISC;
                 ctrl  := EXE_CLMUL;
                 ctrlx := funct3;

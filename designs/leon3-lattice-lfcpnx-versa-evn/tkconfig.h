@@ -751,6 +751,10 @@
 #define CONFIG_L2_ENABLE 0
 #endif
 
+#ifndef CONFIG_L2_LITE
+#define CONFIG_L2_LITE 0
+#endif
+
 #if defined CONFIG_L2_ASSO1
 #define CFG_L2_ASSO 1
 #elif defined CONFIG_L2_ASSO2
@@ -1022,6 +1026,21 @@
 #define CONFIG_SPIMCTRL_RECONF 0
 #endif
 
+#ifndef CONFIG_SPIMCTRL_WRITECMD
+#define CONFIG_SPIMCTRL_WRITECMD 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_WRITES
+#define CONFIG_SPIMCTRL_WRITES 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_XIPBYTE
+#define CONFIG_SPIMCTRL_XIPBYTE 0
+#endif
+
+#ifndef CONFIG_SPIMCTRL_XIPPOL
+#define CONFIG_SPIMCTRL_XIPPOL 0
+#endif
 #ifndef CONFIG_UART1_ENABLE
 #define CONFIG_UART1_ENABLE 0
 #endif

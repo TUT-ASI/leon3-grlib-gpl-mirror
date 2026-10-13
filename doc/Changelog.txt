@@ -1,3 +1,62 @@
+----------------------- Release 2026.3-b4301 ---------------------------
+
+2026-10-13	SPIMCTRL updates. Revision bumped (5 -> 6)
+		- Logic to handle minimum chip select deassertion time between
+		  accesses has been reworked. Before a static delay of two SPI
+		  clock cycles were used. Now the delay is configurable
+		  separately for both read and write accesses. Set using two
+		  8-bit register fields in the CTRL2 register.
+		  NOTE: Behavioral change, before the SPI clock would clock
+		  two times with the chip select deasserted after every
+		  access. This was needed for some, no longer supported,
+		  SD/MMC SPI devices. As far as we know it should not cause
+		  any problems with the compatibility for regular SPI memory
+		  devices to omit it. Additionally, it should be noted that
+		  the CSN wait timimg for existing designs will now have been
+		  changed compared to the old implementation. Depending on what
+		  memory is used and the system clock frequency, the default
+		  settings might need to be tweaked ('csnwait_rd' and
+		  'csnwait_wr' VHDL generics), though in almost all cases it
+		  should not be necessary.
+		- Core can now be configured to allow one external pipelining
+		  stage of the SPI signals. Both ingoing and outgoing signals
+		  needs to be pipelined if enabled. Set using new VHDL
+		  generic.
+		- Logic to drive the output-enable signals has been reworked.
+		  Functionality is the same, with the exception that a bug
+		  when doing memory writes in 1-1-4 mode has been fixed.
+
+2026-10-08	Lattice Radiant flow: several enhancements to improve support
+		for newer versions of Radiant.
+
+2026-10-08	AMD Vivado flow: added support for generation of Vivado IP
+		cores using TCL scripts instead of pregenerated XCI files.
+		This removes the dependency on specific versions of Vivado
+		when Vivado IP cores were present in a design.
+
+2026-10-05	NOEL-V updates:
+		- Added support for SPARROW SIMD from BSC. Currently only
+		  available for 64-bit HP and GP configuration.
+		- Fixed issue with snooping and LR instruction. Could miss
+		  detection write if a burst access crossed over a cache line
+		  limit.
+		- Updated AHB trace in the debug system.
+		- Disabled the internal instruction trace (trace is now
+		  located in the debug system).
+
+2026-09-22	Techmap fixes for the Lattice Nexus family:
+		- Added the missing ODDR primitive for Lattice Certus.
+		- Fixed a bug where IDDR primitive mapping for Certus devices
+		  had Q1 data incorrectly aligned to the wrong edge.
+
+2026-09-08	L2C_LITE bugfix: Adjusted synchronization between IP and
+		memory while reading data in the TAG_MATCH_1_S state.
+
+2026-08-25	Added support for NVC VHDL simulator.
+
+2026-07-13	NOEL-V: instruction fetch was not nullify when enter power-down
+		This could case processor to not leave pover-down.
+
 ----------------------- Release 2026.2-b4300 ---------------------------
 
 2026-06-30	noelv-digilent-arty-a7 design: default NOEL-V configuration

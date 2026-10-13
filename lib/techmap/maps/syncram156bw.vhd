@@ -241,6 +241,22 @@ begin
                   );
         customoutx(customoutx'high downto 3) <= (others => '0');
     end generate;
+
+    tsmc7: if tech = n7 generate
+      x0 : syncram156bw_n7
+    	generic map (abits)
+    	port map (
+    	  clk => clk,
+    	 address => address,
+    	  datain => datain,
+    	  dataout => dataoutx,
+    	  enable => xenable,
+    	  write => xwrite
+    	  );
+    -- customoutx(custombits-1 downto 0) <= (others => '0');
+    end generate;
+
+    
     xgf22: if tech = gf22 generate
       x0 : gf22fdx_syncram156bw
         generic map (abits)
@@ -334,7 +350,7 @@ begin
     end generate;                       -- chk
 -- pragma translate_on
   end generate;
-
+  
   nos156 : if has_sram156bw(tech) = 0 generate
     rx : for i in 0 to 15 generate
       x0 : syncram generic map (tech, abits, 8, testen, custombits, pipeline)

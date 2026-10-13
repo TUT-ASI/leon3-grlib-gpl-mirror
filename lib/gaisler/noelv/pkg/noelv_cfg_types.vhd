@@ -78,6 +78,7 @@ package noelv_cfg_types is
     ext_zfh       : integer;
     ext_zfhmin    : integer;
     ext_zfbfmin   : integer;
+    ext_sparrow   : integer;
     mode_s        : integer;
     mode_u        : integer;
     fpulen        : integer;

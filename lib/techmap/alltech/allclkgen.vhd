@@ -622,7 +622,7 @@ component clkmux_saed32
     o       :  out std_ulogic);
 end component;
 
-  component clkgen_saed32
+component clkgen_saed32
   port (
     clkin   : in  std_logic;
     clk     : out std_logic;			-- main clock
@@ -941,6 +941,28 @@ component clkgen_nx is
     clkb    : out std_logic;
     clkc    : out std_logic
     );
+end component;
+
+component clkinv_n7
+  port(
+    i  :  in  std_ulogic;
+    o  :  out std_ulogic);
+end component;
+
+component clkand_n7
+  port(
+    i      :  in  std_ulogic;
+    en     :  in  std_ulogic;
+    o      :  out std_ulogic;
+    tsten  :  in  std_ulogic := '0'
+  );
+end component;
+
+component clkmux_n7
+  port (
+    i0, i1  :  in  std_ulogic;
+    sel     :  in  std_ulogic;
+    o       :  out std_ulogic);
 end component;
 
 end;

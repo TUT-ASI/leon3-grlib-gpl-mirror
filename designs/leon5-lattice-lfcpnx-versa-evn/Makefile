@@ -11,7 +11,7 @@ GRLIB_CONFIG=grlib_config_leon5.vhd
 ############  Board Setup  ########################
 
 ### Device and board setup
-BOARD=lattice-lfcpnx-evn
+BOARD=lattice-lfcpnx-versa-evn
 include $(GRLIB)/boards/$(BOARD)/Makefile.inc
 DEVICE=$(PART)$(SPEED)$(PACKAGE)$(TEMPERATURE)
 
@@ -19,6 +19,10 @@ DEVICE=$(PART)$(SPEED)$(PACKAGE)$(TEMPERATURE)
 GRLIB_LATTICE_RADIANT_PERFORMANCE="9_High-Performance_1.0V"
 #GRLIB_LATTICE_RADIANT_SYNTHESIS=lse
 GRLIB_LATTICE_RADIANT_SIM_DEVICE=lfcpnx
+# Required by ipgen on Radiant 2024.x/2025.x+. Must match the device grade: TEMPERATURE=I above -> IND.
+GRLIB_LATTICE_RADIANT_IP_OPERATION=IND
+GRLIB_LATTICE_RADIANT_DISABLE_TMCHK=
+GRLIB_LATTICE_RADIANT_IP_EVAL=1
 
 ############  Project  ########################
 

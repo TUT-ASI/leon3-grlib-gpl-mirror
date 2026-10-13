@@ -139,3 +139,6 @@ cp-mig-files: scripts
 vivado-launch: cp-mig-files
 
 vivado: cp-mig-files
+
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+VIVADO_LOCAL_IPS = axi_pipe.tcl mig_cdc.tcl mig.tcl sgmii.tcl sem_ultra_0.tcl

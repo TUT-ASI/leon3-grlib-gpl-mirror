@@ -156,3 +156,6 @@ include $(GRLIB)/bin/Makefile
 
 ### Simulation ###
 #### Synthesis ###
+
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+VIVADO_LOCAL_IPS = axi_pipe.tcl mig_cdc.tcl mig.tcl sgmii.tcl sem_ultra_0.tcl

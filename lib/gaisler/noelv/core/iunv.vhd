@@ -20,10 +20,10 @@
 ---------------------------------------------------------------------------------
 -- Entity:      iunv
 -- File:        iunv.vhd
--- Author:      Andrea Merlo Cobham Gaisler AB
---              Alen Bardizbanyan Cobham Gaisler AB
---              Johan Klockars Cobham Gaisler AB
---              Nils Wessman Cobham Gaisler AB
+-- Author:      Andrea Merlo, Frontgrade Gaisler AB
+--              Alen Bardizbanyan, Frontgrade Gaisler AB
+--              Johan Klockars, Frontgrade Gaisler AB
+--              Nils Wessman, Frontgrade Gaisler AB
 -- Description: NOEL-V 7-stage integer pipeline
 ---------------------------------------------------------------------------------
 
@@ -114,7 +114,10 @@ use gaisler.noelvint.pmp_precalc_vec;
 use gaisler.noelvint.atp_type;
 use gaisler.noelvint.atp_none;
 
-
+library bsc;
+use bsc.sparrow.sprw_in_vec;
+use bsc.sparrow.sprw_out_vec;
+use bsc.sparrow.sprw_in_none;
 
 entity iunv is
   generic (
@@ -157,6 +160,7 @@ entity iunv is
     ext_diagnostics   : integer range 0  to 1;        -- NOEL-V diagnostic instructions
     ext_hwassert      : integer range 0  to 1;        -- NOEL-V Harware Asserts Enabled
     ext_noelv         : integer range 0  to 1;        -- NOEL-V Extensions (not counting the above)
+    ext_sparrow       : integer range 0  to 1;        -- Sparrow (BSC) Custom Extension
     ext_m             : integer range 0  to 1;        -- M Base Extension Set
     ext_a             : integer range 0  to 1;        -- A Base Extension Set
     ext_c             : integer range 0  to 1;        -- C Base Extension Set
@@ -260,6 +264,8 @@ entity iunv is
     fpuia          : out fpu5_in_async_type;   -- FPU Unit In Port
     fpuo           : in  fpu5_out_type;        -- FPU Unit Out Port
     fpuoa          : in  fpu5_out_async_type;  -- FPU Unit Out Port
+    sdi            : out sprw_in_vec;          -- Sparrow Unit In Port
+    sdo            : in  sprw_out_vec;         -- Sparrow Unit Out Port
     cnt            : out nv_counter_out_type;  -- Perf event Out Port
     itracei        : out itrace_in_type;       -- Trace information
     itraceo        : in  itrace_out_type;      -- Trace control
@@ -443,6 +449,7 @@ architecture rtl of iunv is
     extension(x_diagnostics,  is_set(ext_diagnostics)) or
     extension(x_hwassert,     is_set(ext_hwassert))  or
     extension(x_noelv,        is_set(ext_noelv))     or
+    extension(x_sparrow,      is_set(ext_sparrow))   or
     extension(x_m,            is_set(ext_m))         or
     extension(x_f,            is_set(ext_f))         or
     extension(x_d,            is_set(ext_d))         or
@@ -504,8 +511,8 @@ architecture rtl of iunv is
 
   -- Supported xENVCFG extensions
   constant active_menvcfg : csr_menvcfg_const_type := gen_envcfg_const_mmask(active_extensions);
-  constant active_henvcfg : csr_henvcfg_const_type := gen_envcfg_const_hmask(active_menvcfg);
-  constant active_senvcfg : csr_senvcfg_const_type := gen_envcfg_const_smask(active_menvcfg);
+  constant active_henvcfg : csr_henvcfg_const_type := gen_envcfg_const_hmask(active_extensions, active_menvcfg);
+  constant active_senvcfg : csr_senvcfg_const_type := gen_envcfg_const_smask(active_extensions, active_menvcfg);
 
   constant lane : lane_select := (
     fpu    => fpu_lane,
@@ -544,6 +551,7 @@ architecture rtl of iunv is
 
 
   constant non_standard : std_logic := to_bit(ext_noelv +
+                                              ext_sparrow +
                                               ext_capability + ext_diagnostics + pma_readout +
                                               ext_hwassert);
   -- ISA Constants
@@ -1316,6 +1324,7 @@ architecture rtl of iunv is
     swap        : std_ulogic;                   -- Instrutions are swapped
     address     : addr_type;                    -- Address pre-computation for DCache
     address_full: wordx;                        -- Address pre-computation for DCache
+    address_raw : wordx;                        -- Raw full address before pointer masking
     lbranch     : std_ulogic;                   -- Late branch flag
     alu         : alu_pair_type;                -- Late ALUs record
     spec_ld     : std_ulogic;                   -- Speculative load operation flag
@@ -1343,6 +1352,7 @@ architecture rtl of iunv is
     swap         => '0',
     address      => (others => '0'),
     address_full => (others => '0'),
+    address_raw  => (others => '0'),
     lbranch      => '0',
     alu          => (others => alu_none),
     spec_ld      => '0',
@@ -1367,6 +1377,7 @@ architecture rtl of iunv is
     fpuflags       : word5;                        -- FPU flags
     address        : addr_type;                    -- Computed address for Data cache
     address_full   : wordx;                        -- Computed address for Data cache
+    address_raw    : wordx;                        -- Raw full address before pointer masking
     dci            : dcache_in_type;               -- Data Cache record
     rdata          : word64;                      -- Data from Load unit
     wdata          : word64;                      -- Data to Store unit
@@ -1425,6 +1436,7 @@ architecture rtl of iunv is
     fpuflags       => (others => '0'),
     address        => (others => '0'),
     address_full   => (others => '0'),
+    address_raw    => (others => '0'),
     dci            => dcache_in_none,
     rdata          => zerow64,
     wdata          => zerow64,
@@ -3548,6 +3560,9 @@ architecture rtl of iunv is
       -- Custom Registers
       when CSR_FEATURES       =>
         if ext_noelv = 1 then
+          if ext_sparrow = 1 and XLEN >= 64 then
+            csr(XLEN - 3)     := csr_file.dfeaturesen.sparrowcsr_en;
+          end if;
           if XLEN >= 64 then
             if ext_smrnmi /= 0 then
               csr((XLEN - 32) + 20 downto (XLEN - 32) + 16) := csr_file.dfeaturesen.nmi_mask;
@@ -3580,8 +3595,11 @@ architecture rtl of iunv is
         end if;
       when CSR_FEATURESH      =>
         if is_rv32 and ext_noelv = 1 then
+          if ext_sparrow = 1 and XLEN >= 64 then
+            csr(29)           := csr_file.dfeaturesen.sparrowcsr_en;
+          end if;
           if ext_smrnmi /= 0 then
-            csr(20 downto 16)   := csr_file.dfeaturesen.nmi_mask;
+            csr(20 downto 16) := csr_file.dfeaturesen.nmi_mask;
           end if;
         end if;
       when CSR_CCTRL          =>
@@ -3610,10 +3628,15 @@ architecture rtl of iunv is
           -- Bit[1] is RESERVED
           csr(0 downto 0)     := csr_file.cctrl.ics;
         end if;
+      when CSR_SPARROW =>
+        if ext_sparrow = 1 then
+          csr := sdo(1).ctrl;  -- This is the latest value written
+        end if;
       when CSR_TCMICTRL       =>
       when CSR_TCMDCTRL       =>
       when CSR_DFEATURES      =>
         if ext_noelv = 1 then
+          csr(6)            := csr_file.dfeaturesen.xs_dirty;
           csr(5)            := csr_file.dfeaturesen.x0;
           csr(4)            := csr_file.dfeaturesen.mmu_oldfence;
           csr(3)            := csr_file.dfeaturesen.fs_dirty;
@@ -4053,6 +4076,7 @@ architecture rtl of iunv is
     elsif single_issue = 0                                        and
           v_rd_eq(r, same, nlane, rfa1)                           and
           v_fusel_eq(r, same, nlane, MUL or ALU or FPU
+            or SPARROW_S
           ) and
           (slane xor swap) = '1' then
       op1       := "010";
@@ -4078,6 +4102,7 @@ architecture rtl of iunv is
     elsif single_issue = 0                                        and
           v_rd_eq(r, same, nlane, rfa2)                           and
           v_fusel_eq(r, same, nlane, MUL or ALU or FPU
+            or SPARROW_S
           ) and
           (slane xor swap) = '1' then
       op2       := "010";
@@ -4404,7 +4429,9 @@ architecture rtl of iunv is
     -- Create mux list in the same order as above.
     for i in lanes'range loop
       data(1 - i)     := ex_data_in(i);       -- Execute stage
-      if v_fusel_eq(r, m, i, MUL) then        -- Memory stage
+      if v_fusel_eq(r, m, i, MUL
+                    or SPARROW_S2
+                   ) then                     -- Memory stage
         data(3 - i)   := mul_data_in(i);
       else
         data(3 - i)   := r.m.result(i);
@@ -4546,14 +4573,18 @@ architecture rtl of iunv is
         mux_output_op1  := r.x.result(one);
       end if;
     elsif mem_forw_op1 = "10" then
-      if v_fusel_eq(r, m, 0, MUL) then
+      if v_fusel_eq(r, m, 0, MUL
+                    or SPARROW_S2
+                   ) then
         mux_output_op1  := mul_data_in(0);
       else
         mux_output_op1  := r.m.result(0);
       end if;
     elsif single_issue = 0 and
           mem_forw_op1 = "11" then
-      if v_fusel_eq(r, m, one, MUL) then
+      if v_fusel_eq(r, m, one, MUL
+                    or SPARROW_S2
+                   ) then
         mux_output_op1  := mul_data_in(one);
       else
         mux_output_op1  := r.m.result(one);
@@ -4586,7 +4617,7 @@ architecture rtl of iunv is
   procedure dcache_gen(inst_in     : in  word;
                        fusel_in    : in  fuseltype;
                        valid_in    : in  std_ulogic;
-                       elp_in      : in  std_ulogic;
+                       lpad_fail   : in  std_ulogic;
                        misaligned  : in  std_ulogic;
                        aligned     : in  std_ulogic;
                        dfeaturesen : in  csr_dfeaturesen_type;
@@ -4743,7 +4774,7 @@ architecture rtl of iunv is
     end if;
 
     -- Memmory access must not happen at bad landing pad
-    if elp_in = '1' then
+    if lpad_fail = '1' then
       dci.read      := '0';
       dci.write     := '0';
       dci.cancelled := '1';
@@ -4845,17 +4876,25 @@ architecture rtl of iunv is
     if    v_fusel_eq(r, x, 0, LD)  and v_rd_eq(r, x, 0, rfa2) then
       mdata     := r.x.rdata(wordx'range);
     elsif single_issue = 0 and
-          v_fusel_eq(r, x, one, MUL or FPU) and v_rd_eq(r, x, one, rfa2) then
+          v_fusel_eq(r, x, one, MUL or FPU
+                     or SPARROW_S2
+                    ) and v_rd_eq(r, x, one, rfa2) then
       mdata     := r.x.result(one);
-    elsif v_fusel_eq(r, x, 0, MUL or FPU) and v_rd_eq(r, x, 0, rfa2) and
+    elsif v_fusel_eq(r, x, 0, MUL or FPU
+                     or SPARROW_S2
+                    ) and v_rd_eq(r, x, 0, rfa2) and
           (single_issue = 1 or not v_rd_eq(r, x, one, rfa2)) then
       mdata     := r.x.result(0);
     -- Forward from late ALUs or late Results
     elsif single_issue = 0 and
-          (r.wb.lalu(one) = '1' or v_fusel_eq(r, wb, one, MUL or FPU)) and
+          (r.wb.lalu(one) = '1' or v_fusel_eq(r, wb, one, MUL or FPU
+                                              or SPARROW_S2
+                                             )) and
           v_rd_eq(r, wb, one, rfa2) and r.m.stforw(0) = '0' then
       mdata     := r.wb.wdata(one);
-    elsif (r.wb.lalu(0) = '1' or v_fusel_eq(r, wb, 0, MUL or LD or FPU)) and
+    elsif (r.wb.lalu(0) = '1' or v_fusel_eq(r, wb, 0, MUL or LD or FPU
+                                            or SPARROW_S2
+                                           )) and
           v_rd_eq(r, wb, 0, rfa2) and r.m.stforw(0) = '0' then
       mdata     := r.wb.wdata(0);
     else
@@ -4866,6 +4905,7 @@ architecture rtl of iunv is
     -- Forward from (non-late) ALU in same stage (swapped)
     if single_issue = 0 and
        v_fusel_eq(r, m, one, ALU
+         or SPARROW_S1
        ) and v_rd_eq(r, m, one, rfa2) and r.m.swap = '1' then
       data      := to64(r.m.result(one));
     -- Forward from something above?
@@ -6878,6 +6918,34 @@ architecture rtl of iunv is
       return false;
     end;
 
+    function toggled_custom(status : csr_nvstatus_type; wcsr : wordx) return boolean is
+      variable new_status : csr_nvstatus_type := to_mnvstatus(wcsr, csr_nvstatus_rst);
+      variable new_ext_xs : word2             := "00"
+                                                 or new_status.sparrow_xs
+                                                 ;
+      variable old_ext_xs : word2             := "00"
+                                                 or status.sparrow_xs
+                                                 ;
+      variable new_xs     : word4             := new_ext_xs & ("00"
+    );
+      variable old_xs     : word4             := old_ext_xs & ("00" 
+    );
+    begin
+      if not (ext_noelv = 1 and
+              (false 
+               or ext_sparrow = 1
+              )
+             ) then
+        return false;
+      end if;
+      -- Off to on, or vice versa?
+      if (    all_0(old_xs) and not all_0(new_xs)) or
+         (not all_0(old_xs) and     all_0(new_xs)) then
+        return true;
+      end if;
+
+      return false;
+    end;
 
     variable csra_high    : csratype      := get_hi(csra_in, csra_in'length - 4) & x"0";
     variable csra_low     : csratype      := x"00" & get_lo(csra_in, 4);
@@ -6919,6 +6987,16 @@ architecture rtl of iunv is
     -- Any changes to it will have forced a pipeline flush in the previous cycle.
     csr.fpu_enabled := not (csr_file.mstatus.fs = "00" or
                            (csr_file.v = '1' and csr_file.vsstatus.fs = "00"));
+    -- Likewise for Sparrow.
+    csr.sparrowcsr_enabled :=
+      csr_file.dfeaturesen.sparrowcsr_en = '1' and
+      check_stateen_xc(
+        stateen_bits'(csr_file.mstateen0.c, csr_file.sstateen0.c, csr_file.hstateen0.c),
+        csr_file.prv, csr_file.v = '1',
+        ext_smstateen = 1, mode_s = 1
+        ) = XC_NONE                            and
+        not (csr_file.mnvstatus.sparrow_xs = "00" or
+             (csr_file.v = '1' and csr_file.vsnvstatus.sparrow_xs = "00"));
 
     -- Pre-calculating should be fine for
     -- CFI configuration and
@@ -7835,6 +7913,9 @@ architecture rtl of iunv is
         -- Custom Read/Write Registers
         when CSR_FEATURES =>
           if ext_noelv = 1 then
+            if ext_sparrow = 1 and XLEN >= 64 then
+              csr.dfeaturesen.sparrowcsr_en         := wcsr_in(XLEN - 3);
+            end if;
             if XLEN >= 64 then
               if ext_smrnmi /= 0 then
                 csr.dfeaturesen.nmi_mask            := wcsr_in((XLEN - 32) + 20 downto (XLEN - 32) + 16);
@@ -7868,8 +7949,11 @@ architecture rtl of iunv is
 
         when CSR_FEATURESH =>
           if is_rv32 and ext_noelv = 1 then
+            if ext_sparrow = 1 and XLEN >= 64 then
+              csr.dfeaturesen.sparrowcsr_en         := wcsr_in(29);
+            end if;
             if ext_smrnmi /= 0 then
-              csr.dfeaturesen.nmi_mask := wcsr_in(20 downto 16);
+              csr.dfeaturesen.nmi_mask              := wcsr_in(20 downto 16);
             end if;
           end if;
 
@@ -7905,6 +7989,12 @@ architecture rtl of iunv is
             csr.cctrl.ics                           := wcsr_in(0 downto 0);
           end if;
 
+        when CSR_SPARROW =>
+          -- Read-only CSR!
+--          if ext_sparrow = 1 then
+--            csr.sparrow                             := wcsr_in(csr.sparrow'range);
+--          end if;
+
         when CSR_TCMICTRL =>
           if ext_noelv = 1 then
           end if;
@@ -7916,6 +8006,7 @@ architecture rtl of iunv is
 
         when CSR_DFEATURES =>
           if ext_noelv = 1 then
+            csr.dfeaturesen.xs_dirty       := wcsr_in(6);
             csr.dfeaturesen.x0             := wcsr_in(5);
             csr.dfeaturesen.mmu_oldfence   := wcsr_in(4);
             csr.dfeaturesen.fs_dirty       := wcsr_in(3);
@@ -8162,9 +8253,11 @@ architecture rtl of iunv is
     -- Late Branch due to lane dependency
     --      0                  1
     -- A    ALU,MUL,LD         BRANCH <- Rn   (no swap)
+    --      SPARROW
     -- If there is a swap it is not actually a dependency.
     if v_fusel_eq(r, a, 0, ALU or MUL or LD or FPU
-    ) then
+         or SPARROW_S
+       ) then
       if v_fusel_eq(r, a, branch_lane, BRANCH) and r.a.swap = '0' then
         if v_rd_eq(r, a, 0, r.a.rfa1(branch_lane)) or
            v_rd_eq(r, a, 0, r.a.rfa2(branch_lane)) then
@@ -8190,9 +8283,11 @@ architecture rtl of iunv is
     -- Lane 1: ALU
     --      0                  1
     -- A    ALU,LD,MUL -> Rn   ALU <- Rn   (no swap)
+    --      SPARROW
     -- If there is a swap it is not actually a dependency.
     if v_fusel_eq(r, a, 0, ALU or LD or MUL or FPU
-    )  then
+         or SPARROW_S
+       )  then
       if single_issue = 0 and
          v_fusel_eq(r, a, one, ALU) and r.a.ctrl(one).rdv = '1' and r.a.swap = '0' then
         if v_rd_eq(r, a, 0, r.a.rfa1(one)) or
@@ -8224,10 +8319,16 @@ architecture rtl of iunv is
     --      0                  1
     -- A    ALU <- Rn  or      ALU <- Rn   (unless non-dependent lane is MUL)
     -- EX   MUL -> Rn  or      MUL -> Rn
+    --      SPARROW_S2         SPARROW_S2
+    -- A multiply in the non-dependent lane cannot be made late.
     for j in lanes'range loop
-      if v_fusel_eq(r, e, j, MUL) then
+      if v_fusel_eq(r, e, j, MUL
+                    or SPARROW_S2
+                   ) then
         for i in lanes'range loop
-          if v_fusel_eq(r, a, i, ALU) and not v_fusel_eq(r, a, lanes'high - i, MUL) then
+          if v_fusel_eq(r, a, i, ALU) and not v_fusel_eq(r, a, lanes'high - i, MUL
+                                                         or SPARROW_S2
+                                                        ) then
             if v_rd_eq(r, e, j, r.a.rfa1(i)) or
                v_rd_eq(r, e, j, r.a.rfa2(i)) then
               lalu(i) := '1';
@@ -8411,15 +8512,20 @@ architecture rtl of iunv is
     -- MUL in EX followed by a dependent instruction in RA.
     -- The cases with MUL in EX followed by ALU in RA have already set lalu above
     -- (unless MUL in non-dependent lane, see above). This is for other instructions.
+    -- SPARROW_S2 is equivalent to MUL above.
     -- MUL followed by ST is not a problem since ST does not need data until later.
     for j in lanes'range loop
       -- Check dependency for instruction in execute stage
-      if v_fusel_eq(r, e, j, MUL) then
+      if v_fusel_eq(r, e, j, MUL
+                    or SPARROW_S2
+                   ) then
         for i in lanes'range loop
           if r.a.ctrl(i).valid = '1' then
             if (v_rd_eq(r, e, j, r.a.rfa1(i)) or
                 (v_rd_eq(r, e, j, r.a.rfa2(i)) and not v_fusel_eq(r, a, i, ST))) and
-               not (v_fusel_eq(r, a, i, ALU) and not v_fusel_eq(r, a, lanes'high - i, MUL)) then
+               not (v_fusel_eq(r, a, i, ALU) and not v_fusel_eq(r, a, lanes'high - i, MUL
+                                                                or SPARROW_S2
+                                                               )) then
               hold    := '1';
               reason(INFO_HOLD_RAW_MULDIV) := '1';
               hvec(4) := '1';
@@ -8428,6 +8534,28 @@ architecture rtl of iunv is
         end loop;
       end if;
     end loop;
+
+    if ext_sparrow = 1 then
+      -- SPARROW_S2 in EX followed by a dependent instruction in AR.
+      -- The cases with SPRW in EX followed by ALU in RA have already set lalu above
+      -- (unless SPRW in non-dependent lane, see above). This is for other instructions.
+      -- SPRW followed by ST is not a problem since ST does not need data until later.
+      for j in lanes'range loop
+        -- Check dependency for instruction in execute stage
+        if v_fusel_eq(r, e, j, SPARROW_S2) then 
+          for i in lanes'range loop
+            if r.a.ctrl(i).valid = '1' then
+              if (v_rd_eq(r, e, j, r.a.rfa1(i)) or
+                  (v_rd_eq(r, e, j, r.a.rfa2(i)) and not v_fusel_eq(r, a, i, ST))) and
+                 not v_fusel_eq(r, a, i, ALU) then
+                hold    := '1';
+                hvec(4) := '1';
+              end if;
+            end if;
+          end loop;
+        end if;
+      end loop;
+    end if;
 
     ---------------------------------------------------------------------------
     -- Deal with CSR writes that have dependencies.
@@ -8661,6 +8789,22 @@ architecture rtl of iunv is
       reason(INFO_HOLD_FENCE) := '1';
    end if;
 
+
+    ---------------------------------------------------------------------------
+    -- Hold Issue stage for certain CSR instructions that need the Sparrow unit
+    -- to be idle, and when there are Sparrow vs CSR dependencies.
+    ---------------------------------------------------------------------------
+    if ext_sparrow = 1 then
+      -- Some CSR accesses need to wait for any Sparrow set instruction in the pipeline.
+      if csr_ok(r, a) and csr_access_addr(r, a) = CSR_SPARROW then
+        if is_sparrow_set(active_extensions, r.e.ctrl(one).inst) or
+           is_sparrow_set(active_extensions, r.m.ctrl(one).inst) or
+           is_sparrow_set(active_extensions, r.x.ctrl(one).inst) or
+           is_sparrow_set(active_extensions, r.wb.ctrl(one).inst) then
+          hold  := '1';
+        end if;
+      end if;
+    end if;
 
     ---------------------------------------------------------------------------
     -- Hold Issue stage if an FPU store uses an address from a register that
@@ -8996,7 +9140,9 @@ architecture rtl of iunv is
       if r.m.alu(one).lalu = '0' then
         -- Do not forward directly from MUL.
         -- Handled by forwarding in a later cycle instead.
-        if not v_fusel_eq(r, m, one, MUL or FPU ) then
+        if not v_fusel_eq(r, m, one, MUL or FPU
+                          or SPARROW_S2
+                         ) then
           mem_forw_op2  := "11";
         end if;
       end if;
@@ -9005,7 +9151,9 @@ architecture rtl of iunv is
       if r.m.alu(0).lalu = '0' then
         -- Do not forward directly from cache access or MUL.
         -- Handled by forwarding in a later cycle instead.
-        if not v_fusel_eq(r, m, 0, LD or MUL or FPU ) then
+        if not v_fusel_eq(r, m, 0, LD or MUL or FPU
+                          or SPARROW_S2
+                         ) then
           mem_forw_op2  := "10";
         end if;
       end if;
@@ -9141,6 +9289,7 @@ architecture rtl of iunv is
     hold_out  := hold;
     pc_out    := pc;
   end;
+
 
   -- BHT Update Procedure
   procedure bht_update(ctrl_in  : in  pipeline_ctrl_type;
@@ -10869,6 +11018,7 @@ begin
   comb : process(r, ngr, bhto, btbo, raso, ico, dco, rfo, irqi, dbgi,
                  itraceo,
                  mulo, divo,
+                 sdo,
                  pma_addr, pma_data,
                  fpuo, fpuoa, tbo, hart, rstn, holdn, mmu_csr, perf, cap, imsico)
 
@@ -11109,6 +11259,7 @@ begin
     variable ex_address_tval    : wordx;
     variable ex_mprv            : std_ulogic;
     variable ex_events          : word64;
+    variable ex_pm_eaddress    : wordx;
 
     -- Memory Stage
     variable me_stdata          : word64;
@@ -11470,7 +11621,7 @@ begin
     -- write to lock bits in PMPCFG, write to DFEATURESEN, and write to SATP,
     -- have been steered to lane 0 like the fences, so that the same
     -- restart PC can be used.
-    wb_pipeflush := wb_fence_i or r.wb.csr_pipeflush;
+    wb_pipeflush := wb_fence_i or (r.wb.csr_pipeflush or r.x.wfimode);
     wb_addrflush := wb_fence_i or r.wb.csr_addrflush;
     wb_btbflush  := wb_pipeflush or wb_addrflush;
 
@@ -12782,6 +12933,15 @@ begin
     v.x.trigxc  := x_trigxc_out;
 
 
+    if ext_sparrow = 1 then
+      -- Replace with Sparrow results when appropriate
+      for i in lanes'range loop
+        if r.m.ctrl(i).valid = '1' and v_fusel_eq(r, m, i, SPARROW_S2) then
+          me_result(i) := sdo(i).s2bp;
+        end if;
+      end loop;
+    end if;
+
     -- To Exception Stage ------------------------------------------------
     for i in lanes'range loop
       v.x.ctrl(i).pc      := r.m.ctrl(i).pc;
@@ -12826,6 +12986,7 @@ begin
     v.x.dci               := r.m.dci;
     v.x.address           := r.m.address;
     v.x.address_full      := r.m.address_full;
+    v.x.address_raw       := r.m.address_raw;
     v.x.lbranch           := r.m.lbranch;
     v.x.alu               := r.m.alu;
     v.x.rasi              := r.m.rasi;
@@ -12863,6 +13024,7 @@ begin
     end if;
 
     -- From Data Cache ----------------------------------------------------
+    x_rdata := (others => zerow64);  -- Ensure this is not considered a latch
     if v_fusel_eq(r, m, memory_lane, LD) or not dco.mds = '1' then
       for i in 0 to dways - 1 loop
         x_rdata(i) := no_x(dco.data(i));
@@ -13174,7 +13336,7 @@ begin
       if ex_address_xc = '1' then
         ex_xc(memory_lane)       := '1';
         ex_xc_cause(memory_lane) := check_cause_update(ex_address_cause, ex_xc_cause(memory_lane));
-        ex_xc_tval(memory_lane)  := ex_address_tval;
+        --ex_xc_tval(memory_lane)  := ex_address_tval; tval value is assigned after Pointer Masking is applied
       end if;
     end if;
     if r.e.ctrl(branch_lane).xc = '0' then
@@ -13209,6 +13371,16 @@ begin
       end if;
     end if;
 
+    if ext_sparrow = 1 then
+      -- Replace with Sparrow results when appropriate
+      for i in lanes'range loop
+        if r.e.ctrl(i).valid = '1' and v_fusel_eq(r, e, i, SPARROW_S1) then
+          ex_result(i)     := sdo(i).s1bp;
+          ex_result_fwd(i) := '1';
+        end if;
+      end loop;
+    end if;
+
 
     -- To Memory Stage ----------------------------------------------------
     for i in lanes'range loop
@@ -13225,7 +13397,7 @@ begin
       v.m.ctrl(i).csrdo   := r.e.ctrl(i).csrdo;
       v.m.ctrl(i).xc      := ex_xc(i);
       v.m.ctrl(i).cause   := ex_xc_cause(i);
-      v.m.ctrl(i).tval    := ex_xc_tval(i);
+      --v.m.ctrl(i).tval    := ex_xc_tval(i);
       v.m.ctrl(i).fusel   := r.e.ctrl(i).fusel;
       v.m.ctrl(i).mexc    := r.e.ctrl(i).mexc;
       v.m.rfa1(i)         := r.e.rfa1(i);
@@ -13294,7 +13466,7 @@ begin
     dcache_gen(r.e.ctrl(memory_lane).inst,   -- in  : Instruction
                r.e.ctrl(memory_lane).fusel,  -- in  : Functional Unit
                v.m.ctrl(memory_lane).valid,  -- in  : Valid Instruction
-               r.csr.elp,                    -- in  : Landing pad now
+               ex_lpad_fail,                 -- in  : Failing landing pad now
                ex_address_xc,                -- in  : Address misaligned exception?
                ex_address_aligned,           -- in  : Address aligned?
                r.csr.dfeaturesen,            -- in  : ASI information
@@ -13312,6 +13484,27 @@ begin
                ex_dci                        -- out : Data Cache Signals
                );
 
+
+    -- Start from the raw effective address
+    ex_pm_eaddress := ex_dci_eaddress;
+
+
+    -- Fix tval for EX-stage address exceptions
+    if r.e.ctrl(memory_lane).xc = '0' then
+      if ex_address_xc = '1' then
+        -- Only assign transformed address if the cause hasn't been upgraded 
+        -- to a higher priority execution exception (like MCODEMATCH)
+        if ex_xc_cause(memory_lane) = XC_INST_LOAD_ADDR_MISALIGNED or
+           ex_xc_cause(memory_lane) = XC_INST_STORE_ADDR_MISALIGNED or
+           ex_xc_cause(memory_lane) = XC_INST_ADDR_MISALIGNED then
+          
+          ex_xc_tval(memory_lane)  := ex_pm_eaddress;
+        end if;
+      end if;
+    end if;
+    for i in lanes'range loop
+      v.m.ctrl(i).tval    := ex_xc_tval(i);
+    end loop;
 
     -- Invalid Second Instruction -----------------------------------------
     if v.m.ctrl(branch_lane).branch.mpred = '1' and r.e.swap = '1' then
@@ -13335,8 +13528,9 @@ begin
 
     -- Data Cache Signals -------------------------------------------------
     v.m.dci     := ex_dci;
-    v.m.address := to_addr(ex_dci_eaddress);
-    v.m.address_full := ex_dci_eaddress;
+    v.m.address      := to_addr(ex_pm_eaddress);
+    v.m.address_full := ex_pm_eaddress;
+    v.m.address_raw  := ex_dci_eaddress;
 
     -- To the Data Cache --------------------------------------------------
     -- Note that most of these are directly dependent on v.m.dci, and thus on ex_dci and on to
@@ -13897,10 +14091,10 @@ begin
     end if;
 
     if (de_bjump = '1' or de_btb_taken = '1') and single_issue /= 0 then
-       if de_bjump_pos(0) = '1' then
-         de_rvc_buffer_third := '0';
-         v.d.unaligned       := '0';
-       end if;
+      if de_bjump_pos(0) = '1' then
+        de_rvc_buffer_third := '0';
+        v.d.unaligned       := '0';
+      end if;
     end if;
 
     if de_rvc_buffer_first = '1' and single_issue = 0 then
@@ -14043,6 +14237,7 @@ begin
                       r.csr.fpu_enabled,
                       not fpu_illegal(active_extensions, de_inst_buff(i).d, r.csr.frm),
                       not alu_illegal(active_extensions, noelvalu_all, de_inst_buff(i).d),
+                      r.csr.sparrowcsr_enabled,
                       illegalTval0 = 1,
                       de_inst_buff(i).d,   -- in  : Instruction
                       de_cinst_buff(i),    -- in  : Compressed instruction
@@ -15193,6 +15388,16 @@ begin
         v.csr.vsstatus.fs := "11";
       end if;
     end if;
+    if v.csr.dfeaturesen.xs_dirty = '1' then
+      -- There is no need to mark an mstatus change for RVVI here,
+      -- since that is always done at the place that made .*_xs /= "00".
+      if v.csr.mnvstatus.sparrow_xs /= "00" then
+        v.csr.mnvstatus.sparrow_xs  := "11";
+      end if;
+      if v.csr.vsnvstatus.sparrow_xs /= "00" then
+        v.csr.vsnvstatus.sparrow_xs := "11";
+      end if;
+    end if;
 
     if holdn = '0' then
       -- Things that update during hold.
@@ -15605,7 +15810,7 @@ begin
     -- Only for trace
     v.x.wcsr                      := zerox;
     if v_fusel_eq(r, m, memory_lane, LD or ST) or is_cbo(r.m.ctrl(memory_lane).inst) then
-      v.x.wcsr := r.m.address_full;
+      v.x.wcsr := r.m.address_raw;
     end if;
     v.wb.fsd_hi                   := r.x.fsd_hi;
 
@@ -15836,6 +16041,35 @@ begin
     end if;
     fpui                <= vfpui;
     fpuia               <= vfpuia;
+
+    -- To the Sparrow Unit ------------------------------------------------
+    sdi <= (others => sprw_in_none);
+    if ext_sparrow = 1 then
+      for i in lanes'range loop
+        sdi(i)       <= sprw_in_none;
+        sdi(i).ra    <= ex_alu_op1(i);
+        sdi(i).rb    <= ex_alu_op2(i);
+        sdi(i).rd_zero   <= all_0(rd(r.a.ctrl(i).inst));
+        sdi(i).rs2_zero  <= all_0(rs2(r.a.ctrl(i).inst));
+        sdi(i).opx       <= funct7(r.a.ctrl(i).inst)(0);
+        sdi(i).imm       <= funct7(r.a.ctrl(i).inst)(6);
+        sdi(i).op2   <= funct3(r.a.ctrl(i).inst);
+        sdi(i).op1   <= funct7(r.a.ctrl(i).inst)(5 downto 1);
+        sdi(i).rc_we <= to_bit(v_fusel_eq(v, e, i, SPARROW_S));
+      end loop;
+      sdi(1).wb_valid <= to_bit(v_fusel_eq(r, wb, 1, SPARROW_S));
+
+      -- Sparrow set CSR instruction always in lane 1 (if it exists)
+      -- It will not still be valid unless it is allowed by various CSR settings.
+      if r.x.ctrl(one).valid = '1'                             and  -- Valid
+         is_sparrow_set(active_extensions, r.x.ctrl(one).inst) and  --   Sparrow set instruction
+         (x_xc_flush(one) or x_flush) = '0' then                    -- Not being flushed
+        v.csr.mnvstatus.sparrow_xs    := "11";
+        if r.csr.v = '1' then
+          v.csr.vsnvstatus.sparrow_xs := "11";
+        end if;
+      end if;
+    end if;
 
 
 

@@ -51,6 +51,7 @@ entity dmnvx is
     nscratch    : integer range 0  to 2         := 2;   -- Number of scratch registers
     unavailtimeout:integer range 0  to 1024     := 64;  -- Clock cycles timeout
     progbufsize : integer range 0  to 16        := 8;   -- Program Buffer Size
+    baddrw      : integer range 32 to 64        := 32;  -- Bus address width
     scantest    : integer                       := 0
     );
   port (
@@ -209,7 +210,7 @@ architecture rtl of dmnvx is
     -- System Bus Access
     sbcontrol   : sbcontrol_type;
     psberror    : std_logic_vector(2 downto 0);   -- Precalculated sberror
-    sbaddress   : std_logic_vector(31 downto 0);
+    sbaddress   : std_logic_vector(baddrw-1 downto 0);
     sbdata      : std_logic_vector(31 downto 0);  -- Transfers wider than 32 bits are not allowed
     -- From Harts to Debug Module
     running     : std_logic_vector(NHARTS-1 downto 0);
@@ -280,7 +281,6 @@ begin
     variable hartinfo           : std_logic_vector(31 downto 0);
     variable abstractcs         : std_logic_vector(31 downto 0);
     variable command            : std_logic_vector(31 downto 0);
-    variable sbcs               : std_logic_vector(31 downto 0);
     variable cap                : std_logic_vector(31 downto 0);
     variable ihartselraw        : integer range 0 to (2**HARTSELLEN)-1;
     variable hartselmaskraw     : std_logic_vector((2**HARTSELLEN)-1 downto 0);
@@ -323,8 +323,10 @@ begin
     variable pbwrite            : std_ulogic;
     variable pbsel              : std_logic_vector(3 downto 0);
     -- Hatl groups
-    variable clrghaltpend        : std_logic_vector(NHARTS-1 downto 0);
-    variable clrgresumepend      : std_logic_vector(NHARTS-1 downto 0);
+    variable clrghaltpend       : std_logic_vector(NHARTS-1 downto 0);
+    variable clrgresumepend     : std_logic_vector(NHARTS-1 downto 0);
+    -- SBA
+    constant isSbaddress1       : integer := conv_integer(conv_std_logic(baddrw>32));
 
 
 
@@ -550,7 +552,7 @@ begin
               vrd(16)           := r.sbcontrol.sbautoincrement; 
               vrd(15)           := r.sbcontrol.sbreadondata; 
               vrd(14 downto 12) := r.sbcontrol.sberror;       
-              vrd(11 downto  5) := "0100000";                   -- sbasize (32)
+              vrd(11 downto  5) := conv_std_logic_vector(baddrw, 7);  -- sbasize (32)
               vrd( 2 downto  0) := "111";                       -- sbaccess32, sbaccess16, sbaccess8
               -- Write
               if wr = '1' then
@@ -566,15 +568,15 @@ begin
                 end if;
               end if;
 
-            when "1001" => -- System Bus Address (31 downto 0)  (0x39)
+            when "1001" => -- System Bus Address 0  (0x39)
               -- Read
-              vrd := r.sbaddress;     
+              vrd := r.sbaddress(31 downto 0);     
               -- Write
               if wr = '1' then
                 if r.sbcontrol.sbbusy = '1' then
                   v.sbcontrol.sbbusyerror := '1';
                 else
-                  v.sbaddress := vwd;
+                  v.sbaddress(31 downto 0) := vwd;
                   if r.sbcontrol.sbbusyerror = '0' and r.sbcontrol.sbreadonaddr = '1' and r.sbcontrol.sberror = "000" then
                     -- We need to check also here for the alignment and access errors
                     -- precalculation is not ready until next cycle
@@ -593,6 +595,20 @@ begin
                     end if;
                   end if;
                 end if;
+              end if;
+
+            when "1010" => -- System Bus Address 1  (0x3a)
+              if isSbaddress1 = 1 then
+                -- Read
+                vrd(baddrw-(32*isSbaddress1)-1 downto 0) := r.sbaddress(baddrw-1 downto 32*isSbaddress1);
+                if wr = '1' then
+                  if r.sbcontrol.sbbusy = '1' then
+                    v.sbcontrol.sbbusyerror := '1';
+                  else
+                    v.sbaddress(baddrw-1 downto 32*isSbaddress1) := vwd(baddrw-(32*isSbaddress1)-1 downto 0);
+                  end if;
+                end if;
+
               end if;
 
             when "1100" => -- System Bus Data (31 downto 0)  (0x3c)
@@ -839,9 +855,6 @@ begin
 
     -- System Bus Access Control and Status (sbcs, at 0x38)
 
-    sbcs                := zero32;
-    sbcs(31 downto 29)  := "001";
-    sbcs(19 downto 17)  := "010";
 
     ---------------------------------------------------------------------------------
     -- REG Interface
@@ -898,7 +911,8 @@ begin
     v.dsubr             := r.dsubr(1 downto 0) & dsui.break;
 
     for i in 0 to NHARTS-1 loop
-      v.en(i)           := r.dsuen(2) and dbgi(i).dsu;
+      v.en(i)           := (r.dsuen(2)
+                           ) and dbgi(i).dsu;
     end loop;
     v.break             := r.dsubr(1) and not r.dsubr(2);
     if r.break = '1' then
@@ -1195,7 +1209,8 @@ begin
     end if;
 
 
-    dmo.sbaddr   <= r.sbaddress;
+    dmo.sbaddr   <= (others => '0');
+    dmo.sbaddr(baddrw-1 downto 0) <= r.sbaddress;
     dmo.sbwdata  <= std_logic_vector(shift_left(unsigned(r.sbdata), conv_integer(r.sbaddress(1 downto 0))*8)) ;
     dmo.sbaccess <= r.sbcontrol.sbaccess;
 

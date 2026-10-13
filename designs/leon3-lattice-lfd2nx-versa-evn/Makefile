@@ -10,6 +10,10 @@ DEVICE=$(PART)$(SPEED)$(PACKAGE_PART)$(TEMPERATURE)
 GRLIB_LATTICE_RADIANT_PERFORMANCE="8_High-Performance_1.0V"
 #GRLIB_LATTICE_RADIANT_SYNTHESIS=lse
 GRLIB_LATTICE_RADIANT_SIM_DEVICE=lifcl
+# Required by ipgen on Radiant 2024.x/2025.x+. Must match the device grade: TEMPERATURE=C above -> COM.
+GRLIB_LATTICE_RADIANT_IP_OPERATION=COM
+GRLIB_LATTICE_RADIANT_DISABLE_TMCHK=
+GRLIB_LATTICE_RADIANT_IP_EVAL=1
 
 
 
@@ -21,8 +25,8 @@ VHDLSYNFILES=$(GRLIB)/boards/$(BOARD)/ahb2lattice_ddr3_mc_top.vhd config.vhd leo
 VHDLSIMFILES=testbench.vhd
 SIMTOP=testbench
 LATTICE_IP=lifcl/pll/pll_100i_50o lifcl/pll/pll_125i_50o
-LATTICE_COM_IP_FOLDER?=$(HOME)/RadiantIPLocal
-LATTICE_COM_IP=latticesemi.com_ip_ddr3_mc_1.4.2/lattice_ddr3c
+# Downloaded on demand (via wget, see bin/Makefile) into ./lattice_ips/
+LATTICE_COM_IP=latticesemi.com_ddr3_mc_1.4.2/lattice_ddr3c
 #PDC=$(GRLIB)/boards/$(BOARD)/LIFCL-40-EVN.pdc
 PDC=leon3mp.pdc
 LDC=leon3mp.ldc

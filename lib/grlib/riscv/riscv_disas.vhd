@@ -18,10 +18,10 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 -----------------------------------------------------------------------------
--- Package: 	riscv_disas
--- File:	riscv_disas.vhd
--- Author:	Andrea Merlo, Gaisler Research AB
--- Description:	RISC-V disassembler according to:
+-- Package:     riscv_disas
+-- File:        riscv_disas.vhd
+-- Author:      Andrea Merlo, Gaisler Research AB
+-- Description: RISC-V disassembler according to:
 
 --              RISC-V Instruction Set Manual Volume I: User-Level ISA 2.2
 --              RISC-V Instruction Set Manual Volume II: Privileged
@@ -163,6 +163,25 @@ package body riscv_disas is
     else
       return f;
     end if;
+  end;
+
+  function cond(c : boolean; t : integer; f : integer) return integer is
+  begin
+    if c then
+      return t;
+    else
+      return f;
+    end if;
+  end;
+
+  function cond(c : std_ulogic; t : string; f : string) return string is
+  begin
+    return cond(c = '1', t, f);
+  end;
+
+  function cond(c : std_ulogic; t : integer; f : integer) return integer is
+  begin
+    return cond(c = '1', t, f);
   end;
 
   -- Return data interpreted as unsigned, as an integer.
@@ -947,6 +966,96 @@ package body riscv_disas is
     end if;
 
     return cond(index < mask'high, tost(mask(index)), "reg");
+  end;
+
+  function sparrow_s1(s1 : funct5_type) return string is
+  begin
+    case s1 is
+      when "00000" => return "nop";
+      when "00001" => return "add";
+      when "00010" => return "sub";
+      when "00011" => return "mul";
+      when "00100" => return "slra";
+      when "00101" => return "max";
+      when "00110" => return "min";
+      when "00111" => return "merge";
+      when "01000" => return "and";
+      when "01001" => return "or";
+      when "01010" => return "xor";
+      when "01011" => return "mmul";
+      when "01100" => return "free12";
+      when "01101" => return "free13";
+      when "01110" => return "free14";
+      when "01111" => return "clip";
+      when "10000" => return "unop";
+      when "10001" => return "uadd";
+      when "10010" => return "usub";
+      when "10011" => return "umul";
+      when "10100" => return "slrl";
+      when "10101" => return "umax";
+      when "10110" => return "umin";
+      when "10111" => return "umerge";
+      when "11000" => return "nand";
+      when "11001" => return "nor";
+      when "11010" => return "xnor";
+      when "11011" => return "free27";
+      when "11100" => return "free28";
+      when "11101" => return "free29";
+      when "11110" => return "free30";
+      when "11111" => return "uclip";
+      when others  => return "xxx";
+    end case;
+  end;
+
+  function sparrow_s2(s2 : funct3_type) return string is
+  begin
+    case s2 is
+      when "000"  => return "nop";
+      when "001"  => return "sum";
+      when "010"  => return "max";
+      when "011"  => return "min";
+      when "100"  => return "sat";
+      when "101"  => return "ssum";
+      when "110"  => return "xor";
+      when "111"  => return "2msk";
+      when others => return "xxx";
+    end case;
+  end;
+
+  function sparrow_imm(s1_op : funct5_type; v : funct5_type) return integer is
+    variable s1_sign : boolean := s1_op(s1_op'high) = '0';
+    variable v_low   : integer := to_integer(unsigned(v(0 downto 0)));
+    variable imm     : integer := to_integer(signed(v));
+  begin
+    case s1_op is
+      when "00100" | "10100" =>                     -- slrl slra
+        null;
+      when "01000" | "11000" | "01001" | "11001" |
+           "01010" | "11010" =>                     -- and nand or nor xor xnor
+        null;
+      when "00000" | "10000" |                      -- nop unop
+           "00001" | "10001" | "00010" | "10010" |  -- add uadd sub usub
+           "00011" | "10011" | "01011" |            -- mul umul mmul
+           "00101" | "10101" | "00110" | "10110" |  -- max umax min umin
+           "00111" | "10111" =>                     -- merge umerge
+        imm := 2 ** to_integer(unsigned(v(3 downto 1))) - v_low;
+        if v(v'high) = '1' then
+          imm := cond(s1_sign, -imm, imm + 2);
+        end if;
+        -- Due to this being 8 bit signed, there is no +128!
+        if s1_sign and (imm = 128) then
+          imm := -128;
+        end if;
+      when "01111" | "11111" =>                     -- clip uclip";
+        return 2 ** to_integer(unsigned(v(4 downto 1))) - v_low;
+      when "01100" | "01101" | "01110" | "11011" |
+           "11100" | "11101" | "11110" =>           -- free12/13/14/27/28/29/30
+        imm := to_integer(unsigned(v));
+      when others =>
+        imm := to_integer(unsigned(v));
+    end case;
+
+    return imm;
   end;
 
   function cbo2str(v : funct12_type; rd : reg_t) return string is
@@ -2222,9 +2331,23 @@ package body riscv_disas is
                           reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2), disas'length);
         end case;
 
+
       when OP_NOELV1 =>
         disas := strpad("rormixi " & reg2st(rd) & ", " & reg2st(rs1) & ", " & reg2st(rs2) & ", " &
                         tost(u2i(funct7(6 downto 1))) & ", " & rormixi2mask(funct7(0) & funct3), disas'length);
+
+      when OP_SPARROW =>
+        if funct7(0) = '0' then
+          disas := strpad(sparrow_s1(funct7(5 downto 1)) & "." & sparrow_s2(funct3) & " " &
+                          reg2st(rd) & ", " & reg2st(rs1) & ", " &
+                          cond(funct7(6), tost(sparrow_imm(funct7(5 downto 1), rs2)), reg2st(rs2)),
+                          disas'length);
+        else
+          disas := strpad("sparrow." & tost(funct7(5 downto 1)) & "." & tost(funct3) & " " &
+                          reg2st(rd) & ", " & reg2st(rs1) & ", " &
+                          cond(funct7(6), tost(sparrow_imm(funct7(5 downto 1), rs2)), reg2st(rs2)),
+                          disas'length);
+        end if;
 
       when others =>
         null;

@@ -367,6 +367,7 @@ architecture hier of noelvsys is
                                         DBLTRP  => DBLTRP_SUPPORT,
                                         ZICFISS => ZICFISS_SUPPORT,
                                         ZICFILP => ZICFILP_SUPPORT,
+                                        SPARROW => SPARROW_SUPPORT,
                                         RV64    => boolean'pos(gaisler.noelv.XLEN = 64)
                                       );
   constant H_EN : integer := cfg_c.ext_h;
@@ -551,6 +552,7 @@ begin
     -- Trace
     tbits     => 30,
     itentr    => 64,
+    tentr     => 128,
     --
     scantest  => 0,
     -- Pipelining

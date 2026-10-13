@@ -60,6 +60,7 @@ entity dmnv is
     -- trace
     tbits     : integer;
     itentr    : integer;
+    tentr     : integer;
     --
     scantest  : integer;
     -- Pipelining
@@ -88,6 +89,9 @@ entity dmnv is
 end;
 
 architecture rtl of dmnv is
+  constant ntrace : integer := 1
+  ;
+
   signal dmmi : ahb_mst_in_type;
   signal dmmo : ahb_mst_out_type;
   signal dmsi : ahb_slv_in_type;
@@ -104,10 +108,18 @@ architecture rtl of dmnv is
   
   signal dbgmiv : ahb_mst_in_vector_type(ndbgmst downto 0);
   signal dbgmov : ahb_mst_out_vector_type(ndbgmst downto 0);
+  signal extaddrs : ahb_mst_extaddr_vector(ndbgmst downto 0);
+
+  signal cb_slvo : ahbstripe_slv_out_slice;
+  signal cb_slvi : ahbstripe_slv_in_slice;
+
 
   signal it_di : itracebuf_in_type5_array(0 to ncpu-1);
   signal it_do : itracebuf_out_type5_array(0 to ncpu-1);
+  signal reg_tracei : dmstr_trace_m2s_array_type(0 to ntrace-1);
+  signal reg_traceo : dmstr_trace_s2m_array_type(0 to ntrace-1);
 
+  signal ldsui   : nv_dm_in_type;
   signal hartsel : std_logic_vector(19 downto 0);
 
   -- Time Stamp
@@ -119,6 +131,7 @@ begin
   -- the debug module (dmnv_ahbs)
   dbgmi <= dbgmiv(ndbgmst-1 downto 0);
   dbgmov(ndbgmst-1 downto 0) <= dbgmo;
+  extaddrs(ndbgmst-1 downto 0) <= (others => (others => '0')); -- Bus width extended to 64 bits
 
   intercnct : dmnv_ic
     generic map (
@@ -141,6 +154,7 @@ begin
       -- Debug-link interface
       dmami   => dbgmiv,
       dmamo   => dbgmov,
+      extaddrs => extaddrs,
       -- Conventional AHB bus interface
       cbmi    => cbmi,
       cbmo    => cbmo,
@@ -175,7 +189,8 @@ begin
       hindex   => 0,
       hmindex  => ndbgmst,
       haddr    => dmhaddr,
-      hmask    => dmhmask
+      hmask    => dmhmask,
+      ntrace   => ntrace
       )
     port map(
       clk     => clk,
@@ -184,12 +199,16 @@ begin
       ahbso   => dmso,
       ahbmi   => dbgmiv(ndbgmst),
       ahbmo   => dbgmov(ndbgmst),
+      extaddrs => extaddrs(ndbgmst),
       -- DM interface
       dmi2    => dmi,
       dmo2    => dmo,
       -- Trace interface
       tri     => tri,
       tro     => tro,
+      -- Striped traces master ports
+      traceo  => reg_tracei,
+      tracei  => reg_traceo,
       -- itrace buffer
       l5iti   => iti,
       l5ito   => ito);
@@ -212,7 +231,7 @@ begin
       pbo    => pbo,
       dbgi   => dbgi,
       dbgo   => dbgo,
-      dsui   => dsui,
+      dsui   => ldsui,
       dsuo   => dsuo,
       hartsel => hartsel
     );
@@ -248,25 +267,50 @@ begin
       timer     => timer
       );
 
-  bus_trace : dmnv_trace
-    generic map(
-      fabtech   => fabtech,
-      memtech   => memtech,
-      cbusw     => AHBDW,
-      addrbits  => 6,
-      ahbwp     => 2,
-      tbits     => tbits,
-      scantest  => scantest)
-    port map(
-      clk         => clk,
-      rstn        => rstn,
-      tri         => tri,
-      tro         => tro,
-      cbmi        => cbmi,
-      cbsi        => cbsi,
-      rsten       => '0',
-      timer       => timer(tbits-1 downto 0)
-    );
+  atgen : if tentr /= 0 generate
+    atrace0 : dmstr_trace
+      generic map(
+        memtech                 => memtech,
+        buffer_depth            => tentr,
+        striped_bus_data_width  => AHBDW,
+        scantest                => scantest,
+        dbg_master_trace_reset  => cbmidx
+      )
+      port map(
+        clk               => clk,
+        rstn              => rstn,
+        timer             => timer,
+        -- Register interface
+        reg_slvi          => reg_tracei(ntrace-1),
+        reg_slvo          => reg_traceo(ntrace-1),
+        testin            => cbmi.testin,
+        -- Striped bus to be traced
+        sb_slvo           => cb_slvo,
+        sb_slvi           => cb_slvi,
+        sb_endian         => '1'
+      );
+      -- Convert regular AHB slaves into stripes.
+      cb_slvi <= ahbsi_to_stripe(cbsi);
+      cb_slvo.hready <= cbmi.hready;
+      cb_slvo.hresp  <= cbmi.hresp;
+      cb_slvo.hrdata <= hdata_sizeconv(cbmi.hrdata, 128);
+      cb_slvo.hsplit <= (others => '0');
+  
+    
+    gen_trac_wp : process(dsui, reg_traceo)
+      variable vtrace_bp : std_logic;
+    begin
+      vtrace_bp := '0';
+      ldsui     <= dsui;
+      for i in reg_traceo'range loop
+        vtrace_bp := vtrace_bp or reg_traceo(i).breakpoint_hit;
+      end loop;
+      ldsui.break <= dsui.break xor vtrace_bp;
+    end process;
+  end generate;
+  no_atgen : if tentr = 0 generate
+    ldsui <= dsui;
+  end generate;
 
   itgen: if itentr /= 0 generate
     itc0: entity work.itctrlnv

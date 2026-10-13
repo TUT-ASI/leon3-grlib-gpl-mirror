@@ -101,12 +101,10 @@ proc eof_nanoxplore_nanoxmap {} {
     append vc "\n"
     append vc "\n# Set project options"	
     append vc "\nproject.setOption('ManageUnconnectedOutputs', 'Ground')"
-    append vc "\nproject.setOption('ManageUnconnectedSignals', 'Ground')"	
+    append vc "\nproject.setOption('ManageUndrivenSignals', 'Ground')"
     append vc "\nproject.setOption('DefaultRAMMapping', 'RAM')"	
     append vc "\nproject.setOption('DefaultROMMapping', 'LUT')"	
-    append vc "\nproject.setOption('DisableROMFullLutRecognition', 'Yes')"	
     append vc "\nproject.setOption('MappingEffort', '$MAPPING_EFFORT\') "
-    append vc "\nproject.setOption('ManageAsynchronousReadPort', 'Yes')"
 
     append vc "\n"
     set fexist [file exist $NXCONSTRAINTS]

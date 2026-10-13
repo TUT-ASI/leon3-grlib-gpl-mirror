@@ -98,6 +98,11 @@ begin
       clkgate : clkand_saed32 port map(i => i, en => eni, o => oi, tsten => tsten);
     end generate;
 
+    tsmc7 : if (tech = n7) generate
+      clkgate : clkand_n7 port map(i => i, en => eni, o => oi, tsten => tsten);
+    end generate;
+
+
     rhs : if (tech = rhs65) generate
       clkgate : clkand_rhs65 port map(i => i, en => eni, o => oi, tsten => '0');
     end generate;

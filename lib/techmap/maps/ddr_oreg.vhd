@@ -1,22 +1,10 @@
 ------------------------------------------------------------------------------
 --  This file is a part of the GRLIB VHDL IP LIBRARY
---  Copyright (C) 2003 - 2008, Gaisler Research
---  Copyright (C) 2008 - 2014, Aeroflex Gaisler
---  Copyright (C) 2015 - 2023, Cobham Gaisler
---  Copyright (C) 2023 - 2026, Frontgrade Gaisler
+--  Copyright (C) 2024, Frontgrade Gaisler AB - all rights reserved.
 --
---  This program is free software; you can redistribute it and/or modify
---  it under the terms of the GNU General Public License as published by
---  the Free Software Foundation; version 2.
---
---  This program is distributed in the hope that it will be useful,
---  but WITHOUT ANY WARRANTY; without even the implied warranty of
---  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---  GNU General Public License for more details.
---
---  You should have received a copy of the GNU General Public License
---  along with this program; if not, write to the Free Software
---  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+-- ANY USE OR REDISTRIBUTION IN PART OR IN WHOLE MUST BE HANDLED IN 
+-- ACCORDANCE WITH THE GAISLER LICENSE AGREEMENT AND MUST BE APPROVED 
+-- IN ADVANCE IN WRITING. 
 -----------------------------------------------------------------------------
 -- Entity:      ddr_oreg
 -- File:        ddr_oreg.vhd
@@ -47,9 +35,9 @@ architecture rtl of ddr_oreg is
 begin
 
   inf : if not ((tech = lattice) or (is_unisim(tech) = 1) or
-                (tech = axcel) or (tech = axdsp) or (tech = apa3) or
+                (tech = axcel) or (tech = axdsp) or (tech = apa3) or (tech = nexus) or
 		(tech = apa3e) or (tech = apa3l) or (tech = igloo2) or
-                (tech = rtg4)) generate
+                (tech = rtg4)) generate --  or (tech = nexus)
     inf0 : gen_oddr_reg generic map (scantest,0) port map (Q, C1, C2, CE, D1, D2, R, S, testen, testrst);
   end generate;
 
@@ -81,6 +69,10 @@ begin
     xil0 : unisim_oddr_reg generic map (tech, arch)
 	port map (Q, C1, C2, CE, D1, D2, R, S);
   end generate;
+
+ nxus: if (tech = nexus) generate
+   nxus0: nexus_oddrx1_reg port map (Q, C1, C2, CE, D1, D2, R, S);
+ end generate;
 
 --pragma translate_off
   assert (tech /= easic45) and (tech /= easic90)

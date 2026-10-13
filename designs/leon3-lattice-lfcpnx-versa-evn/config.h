@@ -202,7 +202,8 @@
 /*
  * L2 Cache
  */
-#define CONFIG_L2_ENABLE 1
+#undef  CONFIG_L2_ENABLE
+#undef  CONFIG_L2_LITE
 #define CONFIG_L2_ASSO1 1
 #undef  CONFIG_L2_ASSO2
 #undef  CONFIG_L2_ASSO3
@@ -234,7 +235,7 @@
  * Debug Link           
  */
 #define CONFIG_DSU_UART 1
-#undef  CONFIG_DSU_JTAG
+#define CONFIG_DSU_JTAG 1
 /*
  * Peripherals             
  */
@@ -305,6 +306,10 @@
 #define CONFIG_SPIMCTRL_SCALER (3)
 #define CONFIG_SPIMCTRL_ASCALER (8)
 #undef  CONFIG_SPIMCTRL_RECONF
+#define CONFIG_SPIMCTRL_WRITECMD 02
+#undef  CONFIG_SPIMCTRL_WRITES
+#undef  CONFIG_SPIMCTRL_XIPBYTE
+#define CONFIG_SPIMCTRL_XIPPOL (1)
 /*
  * UART, timer, I/O port and interrupt controller
  */

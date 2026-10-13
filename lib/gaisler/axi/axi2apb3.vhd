@@ -104,7 +104,7 @@ architecture rtl of axi2apb3 is
     -- AXI
     xid         : std_logic_vector(idwidth-1 downto 0);
     wready      : std_ulogic;
-    xerror      : std_ulogic;
+    xerror      : std_logic_vector(1 downto 0);
     bvalid      : std_ulogic;
     w           : axi4_w_mosi_type;
     w_spill     : axi4_w_mosi_type;
@@ -129,7 +129,7 @@ architecture rtl of axi2apb3 is
   constant RST : reg_type := (
     -- AXI
     xid       => (others => '0'),
-    xerror    => '0',
+    xerror    => "00",
     wready    => '0',
     bvalid    => '0',
     w         => (data => (others => '0'),
@@ -190,8 +190,8 @@ architecture rtl of axi2apb3 is
 
 begin
 
-  s_ax <= aw_pack(axisi.aw, axixsi.aw, 20, idwidth) &
-          ar_pack(axisi.ar, axixsi.ar, 20, idwidth);
+  s_ax <= aw_pack(axisi.aw, axixsi.aw, 20, idwidth, 0) &
+          ar_pack(axisi.ar, axixsi.ar, 20, idwidth, 0);
   s_axvalid <= axisi.aw.valid & axisi.ar.valid;
   axiso.ar.ready <= s_axready(0);
   axiso.aw.ready <= s_axready(1);
@@ -233,7 +233,7 @@ begin
     m_xready  => axiso_r.aw.ready
   );
   axwrite <= m_ax(axwidth);
-  aw_unpack(idwidth, 20, m_ax(axwidth-1 downto 0), m_axvalid, axisi_r.aw, axixsi_r.aw);
+  aw_unpack(idwidth, 20, 0, m_ax(axwidth-1 downto 0), m_axvalid, axisi_r.aw, axixsi_r.aw);
 
   -- W
   -- Slice is handled internally
@@ -332,19 +332,13 @@ begin
       v.bvalid := '0';
     end if;
 
-    if r.w.valid = '1' and r.wready = '1' and r.w.last = '1' then
-      -- Drain of W completed
-      v.wready := '0';
-      v.bvalid := '1';
-    end if;
-
     -- AXI read response handling
     if r.rvalid = '1' and vrready = '1' then
-      v.rvalid := r.xerror;
+      v.rvalid := r.xerror(1);
       if r.rlast = '1' then
         v.rvalid  := '0';
         v.rlast   := '0';
-      elsif r.xerror = '1' then
+      elsif r.xerror(1) = '1' then
         v.plen := r.plen - 1;
         if r.plen = 1 then
           v.rlast := '1';
@@ -390,7 +384,7 @@ begin
     if r.pactive = '1' then
       if r.psel = '1' and r.penable = '1' then
         if vpready = '1' then
-          v.xerror  := r.xerror or vpslverr;
+          v.xerror(1)  := r.xerror(1) or vpslverr;
           v.wready  := '0';
           v.penable := '0';
           if r.pwrite = '0' then
@@ -414,7 +408,7 @@ begin
             end if;
           end if;
           if (r.psublen = 0 or (r.pwrite = '1' and vplast = '1')) and
-             (r.plen = 0 or r.xerror = '1' or vpslverr = '1') then
+             (r.plen = 0 or r.xerror(1) = '1' or vpslverr = '1') then
             -- All done or slave error received
             v.pactive := '0';
             v.psel    := '0';
@@ -438,11 +432,20 @@ begin
         if r.psublen = 0 or (r.pwrite = '1' and vplast = '1' and r.plen = 0) then
           v.wready  := r.psel and r.pwrite;
         end if;
+        if r.pmask = (0 to nslaves-1 => '0') then
+          v.xerror := "11"; -- Decode error
+        end if;
       end if;
     end if;
 
     -- W slice
     vwready := r.wready and (not r.pactive or vpready);
+
+    if r.w.valid = '1' and vwready = '1' and r.w.last = '1' then
+      -- Drain of W completed
+      v.wready := '0';
+      v.bvalid := '1';
+    end if;
 
     if axisi_r.w.valid = '1' and r.w_spill.valid = '0' and r.w.valid = '1' and vwready = '0' then
       v.w_spill.valid := '1';
@@ -484,7 +487,7 @@ begin
 
     if vaxready = '1' then
       v.xid     := vaxid;
-      v.xerror  := '0';
+      v.xerror  := "00";
       v.pwrite  := axwrite;
       v.paddr   := (others => '0');
       v.plen    := unsigned(axisi_r.aw.len);
@@ -515,7 +518,7 @@ begin
         else
           -- Deny
           -- Write is the wrong burst type or an invalid size
-          v.xerror := '1';
+          v.xerror(1) := '1';
           -- Drain write buffer
           v.wready := '1';
         end if;
@@ -529,7 +532,8 @@ begin
           v.psel    := '1';
         else
           -- Deny
-          v.xerror  := '1';
+          v.xerror(1) := '1';
+          -- Return all read responses
           v.rvalid  := '1';
         end if;
       end if;
@@ -544,9 +548,6 @@ begin
         v.w_spill.valid := RST.w_spill.valid;
         v.bvalid        := RST.bvalid;
         v.rvalid        := RST.rvalid;
--- pragma translate_off
-        v.rdata         := RST.rdata;
--- pragma translate_on
         v.rlast         := RST.rlast;
         v.pactive       := RST.pactive;
         v.penable       := RST.penable;
@@ -561,12 +562,12 @@ begin
       aw  => (ready => vaxready),
       w   => (ready => not r.w_spill.valid),
       b   => (id    => vxid(AXI_ID_WIDTH-1 downto 0),
-              resp  => (r.xerror & '0'),
+              resp  => r.xerror,
               valid => r.bvalid),
       ar  => (ready => '0'), -- unused
       r   => (id    => vxid(AXI_ID_WIDTH-1 downto 0),
               data  => r.rdata,
-              resp  => (r.xerror & '0'),
+              resp  => r.xerror,
               last  => r.rlast,
               valid => r.rvalid)
     );
@@ -609,9 +610,6 @@ begin
         r.w_spill.valid <= RST.w_spill.valid;
         r.bvalid        <= RST.bvalid;
         r.rvalid        <= RST.rvalid;
--- pragma translate_off
-        r.rdata         <= RST.rdata;
--- pragma translate_on
         r.rlast         <= RST.rlast;
         r.pactive       <= RST.pactive;
         r.penable       <= RST.penable;

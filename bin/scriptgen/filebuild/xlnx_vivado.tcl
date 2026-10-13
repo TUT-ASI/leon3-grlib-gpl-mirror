@@ -146,11 +146,7 @@ proc eof_xlnx_vivado {} {
 	append vc "\nset_property top_arch rtl \[current_fileset\]"
 	append vc "\nset_property top $TOP \[current_fileset\]"
 	if {![string equal $PROTOBOARD ""]} {
-		append vc "\nif {\[regexp -nocase {\.\*board_part\.\*} \[list_property \[current_project\]\]\]} {"
-		append vc "\n  set_property board_part $PROTOBOARD \[current_project\]"
-		append vc "\n} else {"
-		append vc "\n  set_property board $PROTOBOARD \[current_project\]"
-		append vc "\n}"
+		append vc "\nif {\[regexp -nocase {\.\*board_part\.\*} \[list_property \[current_project\]\]\]} { set _pb_want {$PROTOBOARD} ; set _pb_base \[join \[lrange \[split \$_pb_want {:}\] 0 2\] {:}\] ; set _pb_pattern \$_pb_base ; append _pb_pattern {:*} ; set _pb_match \[get_board_parts -quiet \$_pb_pattern\] ; if {\[llength \$_pb_match\] > 0 && \[lsearch -exact \$_pb_match \$_pb_want\] < 0} { set _pb_fallback \[lindex \$_pb_match end\] ; if {!\[string equal \$_pb_fallback \$_pb_want\]} { puts \"#####################################################################################\" ; puts \"WARNING: hardcoded board_part \$_pb_want not found in this Vivado installation; falling back to \$_pb_fallback\" ; puts \"#####################################################################################\" ; set _pb_want \$_pb_fallback } } ; set_property board_part \$_pb_want \[current_project\] } else { set_property board $PROTOBOARD \[current_project\] }"
 	}
 	if {[string equal $CONFIG_MIG_7SERIES "y"]} {
 		if {[string equal $BOARD "digilent-nexys4ddr-xc7a100t"]} {
@@ -261,6 +257,7 @@ proc eof_xlnx_vivado {} {
 	append vc "\nset_msg_config -suppress -id {Drc 23-20}"
 	append vc "\nlaunch_runs impl_1 -to_step write_bitstream"
 	append vc "\nwait_on_run -timeout 360 impl_1"
+	append vc "\nif {\[file exists ./vivado/$DESIGN/$DESIGN.runs/impl_1/$TOP.bit\]} { file copy -force ./vivado/$DESIGN/$DESIGN.runs/impl_1/$TOP.bit ./$TOP.bit ; file copy -force ./vivado/$DESIGN/$DESIGN.runs/impl_1/$TOP.msk ./$TOP.msk }"
 	append vc "\n#report_timing_summary -delay_type min_max -path_type full_clock_expanded -report_unconstrained -check_timing_verbose -max_paths 10 -nworst 1 -significant_digits 3 -input_pins -name timing_1 -file ./vivado/$TOP\_post_timing.rpt"
 	append vc "\n#report_drc -file $TOP\_drc_route.rpt"
 

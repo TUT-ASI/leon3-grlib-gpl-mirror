@@ -56,6 +56,7 @@ entity dmnv_ic is
     -- Debug-link interface
     dmami   : out ahb_mst_in_vector_type(ndmamst-1 downto 0);
     dmamo   : in  ahb_mst_out_vector_type(ndmamst-1 downto 0);
+    extaddrs : in ahb_mst_extaddr_vector(ndmamst-1 downto 0);
     -- Conventional AHB bus interface
     cbmi    : in  ahb_mst_in_type;
     cbmo    : out ahb_mst_out_type;
@@ -94,6 +95,7 @@ begin
       -- Debug-link interface
       dmami   => dmami   ,
       dmamo   => dmamo   ,
+      extaddrs => extaddrs,
       -- Conventional AHB bus interface
       cbmi    => cbmi    ,
       cbmo    => cbmo    ,

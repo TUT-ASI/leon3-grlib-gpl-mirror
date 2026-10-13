@@ -169,6 +169,10 @@ vivado-launch: cp-ip-files
 
 vivado: cp-ip-files
 
+### Local (scripted) IP generation - migrates away from packaged .xci ###
+
+VIVADO_LOCAL_IPS = axi_pipe.tcl mig_cdc.tcl mig.tcl sgmii.tcl
+
 ### Programming FPGA ###
 prog-fpga:
 	vivado -mode batch -source doprog.tcl 

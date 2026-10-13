@@ -20,7 +20,7 @@
 -----------------------------------------------------------------------------
 -- Entity:      nvsupport
 -- File:        nvsupport.vhd
--- Author:      Johan Klockars, Cobham Gaisler AB
+-- Author:      Johan Klockars, Frontgrade Gaisler AB
 -- Description: NOEL-V type/constants/functions that could be broken out of the pipeline.
 --              Not everything here can be synthesized!
 ------------------------------------------------------------------------------
@@ -60,6 +60,7 @@ use gaisler.utilnv.all_0;
 use gaisler.utilnv.all_1;
 use gaisler.utilnv.single_1;
 use gaisler.utilnv.minimum;
+use gaisler.utilnv.maximum;
 use gaisler.utilnv.fit0ext;
 use gaisler.utilnv.lo_h;
 use gaisler.utilnv.hi_h;
@@ -83,6 +84,9 @@ use gaisler.noelvint.nv_ras_in_type;
 use gaisler.noelvint.nv_ras_in_none;
 use gaisler.noelvint.nv_ras_out_type;
 use gaisler.noelvint.nv_ras_out_none;
+library bsc;
+use bsc.sparrow.sprw_ctrl_reg_word_res;
+use bsc.sparrow.imm_sprw;
 
 package nvsupport is
 
@@ -126,7 +130,7 @@ package nvsupport is
   constant hw_assert_halt_rst : hw_assert_vec_type := (others => '0');
 
 
-  constant FUSELBITS   : integer := 14;
+  constant FUSELBITS   : integer := 18;
   subtype  fuseltype  is std_logic_vector(FUSELBITS - 1 downto 0);
 
   subtype  hold_category_t is word16;
@@ -352,6 +356,7 @@ package nvsupport is
     );
 
   type csr_dfeaturesen_type is record
+    sparrowcsr_en : std_ulogic;  -- Enable Sparrow CSR (and therefore state)
     nostream     : std_ulogic;   -- Do not make use of stream buffer for instruction fetch
     h_ade        : std_ulogic;   -- Take exception on hPT access/modify (disregarding menvcfg.adue).
     mmu_sptfault : std_ulogic;   -- Take page fault on any sPT walk.
@@ -377,6 +382,7 @@ package nvsupport is
     -- HPM Counters dependencies
     hpmc_mode    : std_ulogic;   -- 0: Better performance; 1: Better accuracy
     smpmpmt_en   : std_ulogic;   -- Activate (unratified) Smpmpmt extension
+    xs_dirty     : std_ulogic;   -- Always mark extension state as dirty, if extension is enabled.
     time_xtrace  : std_ulogic;   -- Extended timestamp in trace FPU result spot
     info_xtrace  : std_ulogic;   -- Extended information in trace FPU result spot
     pwrdn_dis    : std_ulogic;   -- Power down mode disable. When active wfi=nop
@@ -386,6 +392,7 @@ package nvsupport is
   end record;
 
   constant csr_dfeaturesen_rst : csr_dfeaturesen_type := (
+    sparrowcsr_en => '0',
     nostream     => '0',
     h_ade        => '0',
     mmu_sptfault => '0',
@@ -405,6 +412,7 @@ package nvsupport is
     dm_trace     => '0',
     hpmc_mode    => '0',
     smpmpmt_en   => '0',
+    xs_dirty     => '0',
     time_xtrace  => '0',
     info_xtrace  => '0',
     pwrdn_dis    => '0',
@@ -694,6 +702,12 @@ package nvsupport is
   end record;
   constant select_none : select_t := ('0', (others => '0'));
 
+  type csr_nvstatus_type is record
+    sparrow_xs : word2;
+  end record;
+  constant csr_nvstatus_rst : csr_nvstatus_type := (
+    sparrow_xs => "00"
+  );
 
   type csr_reg_type is record
     -- Machine ISA (needs to be configured before use!)
@@ -704,6 +718,8 @@ package nvsupport is
     v           : std_ulogic;
     -- FPU enabled (pre-calculated)
     fpu_enabled : boolean;
+    -- Sparrow CSR  enabled (pre-calculated)
+    sparrowcsr_enabled : boolean;
     -- Envcfg (pre-calculated)
     envcfg      : csr_menvcfg_type;
     -- CFI state (pre-calculated)
@@ -846,6 +862,9 @@ package nvsupport is
     mcountinhibit : word;
     -- Custom Read/Write Unprivileged Registers
     trace       : trace_type;
+    mnvstatus   : csr_nvstatus_type;
+    vsnvstatus  : csr_nvstatus_type;
+    sparrow     : wordx;
     -- Custom Read/Write Registers
     dfeaturesen : csr_dfeaturesen_type;
     cctrl       : csr_out_cctrl_type;
@@ -861,6 +880,7 @@ package nvsupport is
     prv         => PRIV_LVL_M,
     v           => '0',
     fpu_enabled => false,
+    sparrowcsr_enabled => false,
     envcfg      => csr_envcfg_rst,
     cfi_en      => (false, false),
     elp         => '0',
@@ -969,6 +989,10 @@ package nvsupport is
     mcountinhibit => zerow,
     cctrl       => csr_out_cctrl_rst,
     trace       => trace_rst,
+    mnvstatus   => csr_nvstatus_rst,
+    vsnvstatus  => csr_nvstatus_rst,
+    -- Currently only supported for RV64
+    sparrow     => fit0ext(sprw_ctrl_reg_word_res, XLEN),
     dfeaturesen => csr_dfeaturesen_rst,
     ssp         => zerox,
     interrnmi   => hw_assert_rnmi_rst,
@@ -1012,6 +1036,10 @@ package nvsupport is
   constant ALU_SPECIAL  : fuseltype;  -- Only for early ALU in lane 0!
   constant DIAG         : fuseltype;  -- Diagnostic cache load/store
   constant CFI          : fuseltype;  -- CFI
+  constant SPARROW_S1   : fuseltype;  -- Sparrow parallel stage
+  constant SPARROW_S2   : fuseltype;  -- Sparrow reduction stage
+  constant SPARROW_NOP  : fuseltype;  -- Sparrow NOP (not quite!)
+  constant SPARROW_S    : fuseltype;  -- Sparrow instruction
   constant NOT_LATE     : fuseltype;  -- All except ALU and Branch Unit
 
 
@@ -1118,6 +1146,7 @@ package nvsupport is
   constant CAT_HOLD_ON_IND_HPM_READ : integer;
   constant CAT_HOLD_DUE_TO_RAW_WAW  : integer;
   constant CAT_HOLD_IN_EXC_ON_W     : integer;
+  constant CAT_HOLD_BEFORE_INSTR    : integer;
 
   constant CAT_RAW_STATUS           : integer;
   constant CAT_RAW_AIA              : integer;
@@ -1145,6 +1174,7 @@ package nvsupport is
                             fpu_en    : in  boolean;
                             fpu_ok    : in  boolean;
                             alu_ok    : in  boolean;
+                            sparrowcsr_en : in  boolean;
                             tval_ill0 : in  boolean;
                             inst_in   : in  word;
                             cinst_in  : in  word16;
@@ -1244,6 +1274,11 @@ package nvsupport is
                         perf_cnts     : integer;
                         trigger       : integer
                        ) return xc_type;
+  function check_stateen_xc(bits          : stateen_bits;
+                            priv          : priv_lvl_type;
+                            v_mode        : boolean;
+                            ext_smstateen : boolean;
+                            mode_s        : boolean) return xc_type;
   procedure csr_write_flush(csra_in       : in  csratype;
                             active        : in  extension_type;
                             pipeflush_out : out std_ulogic;
@@ -1287,6 +1322,7 @@ package nvsupport is
   function is_fpu_flags_only(inst : word) return boolean;
   function is_fpu_modify(inst : word) return boolean;
 
+  function needs_instrhold(active : extension_type; inst : word32) return boolean;
 
 
   function tie_status(active : extension_type;
@@ -1299,6 +1335,11 @@ package nvsupport is
                      perf_cnts     : integer range 0 to 29;
                      perf_bits     : integer range 0 to 64;
                      csr           : inout csr_reg_type);
+
+  function is_sparrow_special(active : extension_type;
+                              inst   : word) return boolean;
+  function is_sparrow_set(active : extension_type;
+                          inst   : word) return boolean;
 
   function data_addr_misaligned(addr : std_logic_vector;
                                 size : word2) return boolean;
@@ -1829,6 +1870,16 @@ package nvsupport is
                        active   : extension_type;
                        misa     : wordx) return csr_mnstatus_type;
 
+  function to_mnvstatus(wdata       : wordx;
+                        nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type;
+  function to_mnvstatus(nvstatus : csr_nvstatus_type) return wordx;
+  function to_snvstatus(wdata       : wordx;
+                        nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type;
+  function to_snvstatus(nvstatus : csr_nvstatus_type) return wordx;
+  function to_vsnvstatus(wdata       : wordx;
+                         nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type;
+  function to_vsnvstatus(nvstatus : csr_nvstatus_type) return wordx;
+  function get_xs(nvstatus : csr_nvstatus_type) return word2;
 
   function to_hvictl(hvictl : csr_hvictl_type) return wordx;
   function to_hvictl(wdata : wordx) return csr_hvictl_type;
@@ -1905,8 +1956,10 @@ package nvsupport is
                       mask    : csr_envcfg_type) return csr_envcfg_type;
   function envcfg_mask(envcfg : csr_envcfg_type; mask : csr_envcfg_type) return csr_envcfg_type;
   function gen_envcfg_const_mmask(active : extension_type) return csr_menvcfg_const_type;
-  function gen_envcfg_const_hmask(menvcfg_mask : csr_menvcfg_const_type) return csr_henvcfg_const_type;
-  function gen_envcfg_const_smask(menvcfg_mask : csr_menvcfg_const_type) return csr_senvcfg_const_type;
+  function gen_envcfg_const_hmask(active : extension_type;
+                                  menvcfg_mask : csr_menvcfg_const_type)return csr_henvcfg_const_type;
+  function gen_envcfg_const_smask(active : extension_type;
+                                  menvcfg_mask : csr_menvcfg_const_type) return csr_senvcfg_const_type;
   function calc_henvcfg_write_val(wcsr_in       : wordx;
                                   active_henvcfg : csr_henvcfg_const_type;
                                   csr_file       : csr_reg_type) return csr_henvcfg_type;
@@ -2340,7 +2393,12 @@ package body nvsupport is
       cap(32 + 15) := to_bit(is_enabled(active, x_fpu_debug));
       cap(32 + 18) := to_bit(is_enabled(active, x_hwassert));
 
-      cap(32 + 24 downto 32 + 21) := x"0";  -- 0 - Non-specific configuration
+      if is_enabled(active, x_sparrow) then
+        -- This is temporary!
+          cap(32 + 24 downto 32 + 21) := x"2";  -- 2 - Sparrow
+      else
+        cap(32 + 24 downto 32 + 21) := x"0";  -- 0 - Non-specific configuration
+      end if;
       cap(32 + 25) := to_bit(is_enabled(active, x_pmp_mmuu_test));
       cap(32 + 26) := to_bit(is_enabled(active, x_pma_mmuu_test));
       cap(32 + 27) := to_bit(is_enabled(active, x_tlb_valid_r));
@@ -2366,9 +2424,6 @@ package body nvsupport is
       cap(14) := '1';  -- Zihpm
 
       -- Standard PMP, MMU etc extensions
-      cap(21) := '0';  -- Smmpm
-      cap(22) := '0';  -- Smnpm
-      cap(23) := '0';  -- Ssnpm
       cap(24) := to_bit(is_enabled(active, x_smepmp));
       cap(25) := to_bit(is_enabled(active, x_svpbmt));
       cap(26) := to_bit(is_enabled(active, x_smpmpmt));
@@ -2455,9 +2510,15 @@ package body nvsupport is
   constant FPU          : fuseltype := fusel(8);     -- From FPU
   constant ALU_SPECIAL  : fuseltype := fusel(9);     -- Only for early ALU in lane 0!
   constant DIAG         : fuseltype := fusel(10);    -- Diagnostic cache load/store
-  constant UNKNOWN      : fuseltype := fusel(11);    -- Unknown (regarding fusel) instruction
-  constant CFI          : fuseltype := fusel(12);    -- CFI
+  constant UNKNOWN      : fuseltype := fusel(12);    -- Unknown (regarding fusel) instruction
+  constant CFI          : fuseltype := fusel(13);    -- CFI
   constant NOT_LATE     : fuseltype := not (ALU or BRANCH);  -- All except ALU and Branch Unit
+  constant SPARROW_S1   : fuseltype := fusel(15);    -- Sparrow parallel stage
+  constant SPARROW_S2   : fuseltype := fusel(16);    -- Sparrow reduction stage
+  constant SPARROW_NOP  : fuseltype := fusel(17);    -- Sparrow NOP (not quite!)
+  constant SPARROW_S    : fuseltype := SPARROW_S1 or -- Sparrow instruction
+                                       SPARROW_S2 or
+                                       SPARROW_NOP;
 
   -- Shortens addresses to the size that is actually needed (see addr_type).
   -- If an address is "sign extended" above the useable part, the two bits
@@ -5037,6 +5098,7 @@ package body nvsupport is
                     valid_out : out std_ulogic;
                     imm_out   : out wordx;
                     bj_imm    : out wordx) is
+    variable ext_sparrow : boolean := is_enabled(active, x_sparrow);
     variable op      : opcode_type := opcode(inst_in);
     variable funct5  : funct5_type := funct5(inst_in);
     variable funct3  : funct3_type := funct3(inst_in);
@@ -5050,6 +5112,7 @@ package body nvsupport is
     variable u_imm   : wordx       := (others => inst_in(31));
     variable j_imm   : wordx       := (others => inst_in(31));
     variable si_imm  : wordx       := (others => '0');
+    variable sp_imm  : wordx       := (others => '0');  -- Sparrow P-Type
   begin
     -- Instruction Type Immediate --------------------------------------------
     -- I-Type
@@ -5064,6 +5127,9 @@ package body nvsupport is
     j_imm(20 downto 0) := inst_in(31) & inst_in(19 downto 12) & inst_in(20) & inst_in(30 downto 21) & '0';
     -- SI-Type (shift amount)
     si_imm(5 downto 0) := inst_in(25 downto 20);
+    -- P-Type (Sparrow)
+    -- Currently only supported for RV64
+    sp_imm(wordx'range) := fit0ext(imm_sprw(inst_in(30 downto 26), inst_in(24 downto 20)), XLEN);
 
     case op is
       when LUI | AUIPC =>
@@ -5095,6 +5161,11 @@ package body nvsupport is
           imm := si_imm;
         end if;
         vimm  := '1';
+      when OP_SPARROW =>
+        if ext_sparrow then
+          imm  := sp_imm;
+          vimm := inst_in(31);
+        end if;
       when others =>
     end case;
 
@@ -5715,6 +5786,45 @@ package body nvsupport is
     end case;
   end;
 
+  function is_sparrow(active : extension_type;
+                      inst   : word) return boolean is
+    variable op : opcode_type := opcode(inst);
+  begin
+    return op = OP_SPARROW;
+  end;
+
+  function is_sparrow_special(active : extension_type;
+                              inst   : word) return boolean is
+    variable op          : opcode_type := opcode(inst);
+  begin
+    -- Nothing here yet.
+    return false;
+  end;
+
+  function is_sparrow_set(active : extension_type;
+                          inst   : word) return boolean is
+    variable op          : opcode_type := opcode(inst);
+    variable rd          : reg_t        := rd(inst);
+    variable funct3      : funct3_type  := funct3(inst);
+    variable funct7      : funct7_type  := funct7(inst);
+  begin
+    return op = OP_SPARROW and all_0(funct7(5 downto 0) & funct3 & rd);
+  end;
+
+  function needs_instrhold(active : extension_type; inst : word32) return boolean is
+    variable ext_sparrow : boolean := is_enabled(active, x_sparrow);
+    variable op     : opcode_type  := opcode(inst);
+    variable funct3 : funct3_type  := funct3(inst);
+    variable funct7 : funct7_type  := funct7(inst);
+  begin
+
+    -- Sparrow instructions depend on SPARROW CSR
+    if ext_sparrow and is_sparrow(active, inst) then
+      return true;
+    end if;
+
+    return false;
+  end;
 
 
   -- Rd register validity check
@@ -5723,6 +5833,11 @@ package body nvsupport is
                   cfi_en : cfi_t;
                   nv_rd  : std_logic;
                   inst   : word) return std_ulogic is
+    variable ext_sparrow : boolean := is_enabled(active, x_sparrow);
+    variable funct3      : funct3_type  := funct3(inst);
+    variable funct7      : funct7_type  := funct7(inst);
+    variable functSP1    : funct5_type  := funct7(5 downto 1);  -- Offset by 1
+    variable functSP2    : funct3_type  := funct3;
     variable op     : opcode_type := opcode(inst);
     variable funct5 : funct5_type := funct5(inst);
     variable rd     : reg_t       := rd(inst);
@@ -5749,6 +5864,19 @@ package body nvsupport is
           when others =>
             wreg := '0';
         end case;
+
+      when OP_SPARROW =>
+        -- The Sparrow [u]nop.nop instruction does not have a destination.
+        if ext_sparrow then
+          if    functSP2(1 downto 0) /= "00" then
+            -- Not .nop / .sat
+          elsif functSP1(3 downto 0) /= "0000" then
+            -- Not [u]nop.nop / [u]nop.sat
+          else
+            -- The [u]nop.nop / [u]nop.sat instructions do not have a destination!
+            wreg := '0';
+          end if;
+        end if;
 
       when OP_SYSTEM =>
         -- Among SYSTEM instructions, rd use is limited to
@@ -5881,6 +6009,7 @@ package body nvsupport is
                    inst   : word) return reg_t is
     variable is_rv64 : boolean     := is_enabled(active, x_rv64);
     variable is_rv32 : boolean     := not is_rv64;
+    variable ext_sparrow : boolean := is_enabled(active, x_sparrow);
     variable ext_zfa : boolean     := is_enabled(active, x_zfa);
     variable op      : opcode_type := opcode(inst);
     variable funct3  : funct3_type := funct3(inst);
@@ -5894,6 +6023,17 @@ package body nvsupport is
     case op is
       when OP_REG | OP_BRANCH | OP_STORE | OP_32 =>
         -- All of these do have an rs2.
+
+      when OP_SPARROW =>
+        -- The non-immediate value Sparrow instructions do have an rs2.
+        if ext_sparrow then
+          -- Immediate?
+          if get_hi(funct7) = '1' then
+            vreg := '0';
+          end if;
+        else
+          vreg := '0';
+        end if;
 
       when OP_SYSTEM =>
         -- Among SYSTEM instructions, rs2 use is limited to
@@ -6028,6 +6168,10 @@ package body nvsupport is
       return true;
     end if;
 
+    if is_lpad(active, cfi_en, inst) then
+      return true;
+    end if;
+
     -- While floating point load/store need to be in lane 0, and are taken
     -- care of above, the other FPU instructions may also be forced here.
     if lane.fpu = 0 and is_fpu(inst) then
@@ -6038,6 +6182,10 @@ package body nvsupport is
     -- R_CLMULR is not actually valid for ext_zbkc, but that does not matter here.
     if (ext_zbc or ext_zbkc) and op = OP_REG and funct7 = F7_MINMAXCLMUL and
       (funct3 = R_CLMUL or funct3 = R_CLMULH or funct3 = R_CLMULR) then
+      return true;
+    end if;
+
+    if is_sparrow_special(active, inst) then
       return true;
     end if;
 
@@ -6058,6 +6206,10 @@ package body nvsupport is
     -- While floating point load/store need to be in lane 0, the other
     -- FPU instructions may be forced here instead.
     if lane.fpu = 1 and is_fpu(inst) then
+      return true;
+    end if;
+
+    if is_sparrow_set(active, inst) then
       return true;
     end if;
 
@@ -6090,6 +6242,7 @@ package body nvsupport is
   constant CAT_HOLD_ON_IND_HPM_READ : integer := 7;
   constant CAT_HOLD_DUE_TO_RAW_WAW  : integer := 8;
   constant CAT_HOLD_IN_EXC_ON_W     : integer := 9;
+  constant CAT_HOLD_BEFORE_INSTR    : integer := 10;
 
   -- Some CSR accesses have some side effects. This function sets a vector
   -- with flags for each action, as above.
@@ -6145,6 +6298,7 @@ package body nvsupport is
            CSR_HSTATEEN0H | CSR_HSTATEEN1H  | CSR_HSTATEEN2H | CSR_HSTATEEN3H  |
            CSR_FEATURES   | CSR_FEATURESH   | CSR_CCTRL      |
            CSR_DFEATURES  | CSR_DFEATURESH  |
+           CSR_MNVSTATUS  | CSR_SNVSTATUS   | CSR_VSNVSTATUS |
            -- Triggers CSRs affect firing/not firing in the following instructions
            CSR_TDATA1     | CSR_MCONTEXT   | CSR_SCONTEXT   | CSR_HCONTEXT =>
         category(CAT_HOLD_DUE_TO_FLUSH) := '1';
@@ -6342,6 +6496,12 @@ package body nvsupport is
         null;
     end case;
 
+    -- Some CSR writes require a delay so that they can update before
+    -- a following instruction utilizing their value is executed.
+    case addr is
+      when others =>
+        null;
+    end case;
 
     return category;
   end;
@@ -6432,6 +6592,8 @@ package body nvsupport is
       when CSR_FFLAGS  | CSR_FRM     | CSR_FCSR |
            -- A write to one of the above may cause xSTATUS.FS to be set to dirty.
            CSR_MSTATUS | CSR_SSTATUS | CSR_VSSTATUS =>
+        category(CAT_RAW_FPU) := '1';
+      when CSR_SPARROW =>
         category(CAT_RAW_FPU) := '1';
       when others =>
     end case;
@@ -6582,6 +6744,7 @@ package body nvsupport is
 
   function csr_addr(active : extension_type; inst : word) return csratype is
     variable ext_zicfiss : boolean      := is_enabled(active, x_zicfiss);
+    variable ext_sparrow : boolean      := is_enabled(active, x_sparrow);
     variable funct7      : funct7_type  := funct7(inst);
     variable funct12     : funct12_type := funct12(inst);
   begin
@@ -6819,6 +6982,13 @@ package body nvsupport is
       -- when CSR_SRMCFG =>
       --   return stateen_bits'(mstateen0.p1p14, '1', '1');
 
+      -- Sparrow
+      when CSR_SPARROW =>
+        return stateen_bits'(mstateen0.c, sstateen0.c, hstateen0.c);
+
+      when CSR_SNVSTATUS | CSR_VSNVSTATUS =>
+        return stateen_bits'(mstateen0.c, sstateen0.c, hstateen0.c);
+
 
       when others =>
         return stateen_bits'('1','1','1');
@@ -7036,13 +7206,13 @@ package body nvsupport is
           return XC_VIRT;
         else --is_imsic(sel)=ture
           if not imsic or
-            not vgein_legal(u2i(csr_file.hstatus.vgein)) then
+             not vgein_legal(u2i(csr_file.hstatus.vgein)) then
             return XC_VIRT;
           end if;
         end if;
       else -- Not V mode
         if not imsic or
-        (csr_file.mvien(IRQ_S_EXTERNAL) = '1' and csr_file.prv = PRIV_LVL_S) then
+           (csr_file.mvien(IRQ_S_EXTERNAL) = '1' and csr_file.prv = PRIV_LVL_S) then
           return xc_type'(xc => true, xc_v => vu_mode);
         end if;
       end if;
@@ -7522,6 +7692,7 @@ package body nvsupport is
     variable ext_zicfiss   : boolean    := is_enabled(active, x_zicfiss);
     variable ext_zicfilp   : boolean    := is_enabled(active, x_zicfilp);
     variable ext_f         : boolean    := is_enabled(active, x_f);
+    variable ext_sparrow   : boolean    := is_enabled(active, x_sparrow);
     variable ext_smaia     : boolean    := is_enabled(active, x_smaia);
     variable ext_ssaia     : boolean    := is_enabled(active, x_ssaia);
     variable ext_smstateen : boolean    := is_enabled(active, x_smstateen);
@@ -7858,7 +8029,8 @@ package body nvsupport is
           return XC_ILLEGAL;
         end if;
       when CSR_MSECCFGH       =>
-        if not (ext_zicfilp or ext_smepmp) then
+        if not (ext_zicfilp or 
+                ext_smepmp) then
           return XC_ILLEGAL;
         end if;
       -- Machine Protection and Translation
@@ -7884,6 +8056,20 @@ package body nvsupport is
         assert (csra_in(9 downto 8) = PRIV_LVL_M) report "Stateen needs to be checked" severity failure;
         if not ext_noelv or not x_en then
           return XC_ILLEGAL;
+        end if;
+      when CSR_SPARROW =>
+        if not ext_sparrow or not x_en then
+          return XC_ILLEGAL;
+        end if;
+        if csr_file.dfeaturesen.sparrowcsr_en = '0' then
+          return XC_ILLEGAL;
+        end if;
+        -- Sparrow CSR not enabled
+        if csr_file.mnvstatus.sparrow_xs = "00" or (v_mode and csr_file.vsnvstatus.sparrow_xs = "00") then
+          return XC_ILLEGAL;
+        end if;
+        if stateen_xc.xc then
+          return stateen_xc;
         end if;
       when CSR_DFEATURES | CSR_DFEATURESH =>
         if not ext_noelv or not x_en then
@@ -8107,6 +8293,7 @@ package body nvsupport is
     variable ext_zbkc         : boolean  := is_enabled(active, x_zbkc);
     variable ext_f            : boolean  := is_enabled(active, x_f);
     variable ext_h            : boolean  := is_enabled(active, x_h);
+    variable ext_sparrow      : boolean  := is_enabled(active, x_sparrow);
     variable single_issue     : boolean  := is_enabled(active, x_single_issue);
     variable late_alu         : boolean  := is_enabled(active, x_late_alu);
     variable late_branch      : boolean  := is_enabled(active, x_late_branch);
@@ -8173,6 +8360,15 @@ package body nvsupport is
         if for_lane0(active, cfi_en, lane, inst_in(one)) then
           conflict := '1';
           reason(INFO_CONFLICT_MEM_VS_LANE) := '1';
+        end if;
+
+      when AUIPC =>
+        -- LPAD can never pair with anything that needs to be in lane 0
+        if is_lpad(active, cfi_en, inst_in(0)) then
+          if for_lane0(active, cfi_en, lane, inst_in(one)) then
+            conflict := '1';
+            reason(INFO_CONFLICT_LPAD_LANE) := '1';
+          end if;
         end if;
 
       when OP_NOELV0 =>
@@ -8273,6 +8469,13 @@ package body nvsupport is
             conflict := '1';
             reason(INFO_CONFLICT_FPU) := '1';
           end if;
+          -- Some CSR writes require a delay before some instructions, and
+          -- thus cannot be paired before such.
+          if is_csr_access(inst_in(0)) and hold_cat_0(CAT_HOLD_BEFORE_INSTR) = '1' and
+             needs_instrhold(active, inst_in(one)) then
+            conflict := '1';
+            reason(INFO_CONFLICT_CSR) := '1';
+          end if;
           -- CSR accesses use the same pipeline as some other things.
           -- (These checks include other CSR accesses.)
           if for_lane0(active, cfi_en, lane, inst_in(one)) then
@@ -8350,6 +8553,33 @@ package body nvsupport is
         end if;
 
       when OP_IMM =>
+
+      -- Some Sparrow instructions are only available in one of the lanes.
+      -- For now, assume first lane for any special operations.
+      -- State setting is in the second lane (folling Sparrow instruction may depend on it).  
+      when OP_SPARROW =>
+        -- Sparrow specials only in lane 0.
+        if is_sparrow_special(active, inst_in(0)) and for_lane0(active,
+                                                                cfi_en,
+                                                                lane, inst_in(one)) then
+          conflict := '1';
+        end if;
+        -- Sparrow set only in lane 1.
+        if is_sparrow_set(active, inst_in(0)) and for_lane1(active,
+                                                            cfi_en,
+                                                            lane, inst_in(one)) then
+          conflict := '1';
+        end if;
+        -- Cannot allow a Sparrow instruction to swap past a Sparrow set.
+        if is_sparrow_set(active, inst_in(0)) and opcode(one) = OP_SPARROW then
+          conflict := '1';
+        end if;
+        -- Cannot allow a Sparrow set to pair with a CSR instruction.
+        -- Definitely a problem if it is a Sparrow CSR read, but avoid complications.
+        if is_sparrow_set(active, inst_in(0)) and is_csr_access(inst_in(one)) then
+          conflict := '1';
+        end if;
+
       when others =>
     end case; -- opcode(0)
 
@@ -8463,7 +8693,10 @@ package body nvsupport is
             end if;
 
             -- Right now it is assumed that multiplier is always 2 stage
-            if (opcode(0) = OP_REG or opcode(0) = OP_32) and funct7(0) = F7_MUL then
+            -- Also checks for all two cycle Sparrow instructions.
+            if ((opcode(0) = OP_REG or opcode(0) = OP_32) and funct7(0) = F7_MUL)
+               or (ext_sparrow and v_fusel_eq(fusel_gen(active, inst_in(0)), SPARROW_S2))
+               then
               if rd(0) = rfa2(one) then
                 conflict := '1';
                 reason(INFO_CONFLICT_RAW) := '1';
@@ -8500,6 +8733,12 @@ package body nvsupport is
             if (opcode(one) = OP_REG or opcode(one) = OP_32) and funct7(one) = F7_MUL then
               conflict := '1';
               reason(INFO_CONFLICT_RAW) := '1';
+            end if;
+
+          -- Sparrow in any case
+          when OP_SPARROW =>
+            if ext_sparrow then
+              conflict := '1';
             end if;
 
           when others =>
@@ -8929,6 +9168,7 @@ package body nvsupport is
     variable single_issue  : boolean := is_enabled(active, x_single_issue);
     variable pwrdown_mode  : boolean := is_enabled(active, x_pwrdown_mode);
     variable pma_masked    : boolean := is_enabled(active, x_maskpma);
+    variable ext_sparrow   : boolean := is_enabled(active, x_sparrow);
     variable ext_diagnostics  : boolean := is_enabled(active, x_diagnostics);
   begin
     csr.mstatus := tie_status(active, csr.mstatus);
@@ -9179,8 +9419,16 @@ package body nvsupport is
     end if;
 
 
+    if not ext_noelv or not ext_sparrow then
+      csr.mnvstatus.sparrow_xs  := (others => '0');
+      csr.vsnvstatus.sparrow_xs := (others => '0');
+    end if;
 
     if ext_noelv then
+      if not ext_sparrow or csr.dfeaturesen.sparrowcsr_en = '0' then
+        csr.mnvstatus.sparrow_xs  := "00";
+        csr.vsnvstatus.sparrow_xs := "00";
+      end if;
       if not ext_smpmpmt then
         csr.dfeaturesen.smpmpmt_en    := '0';
       end if;
@@ -9214,6 +9462,10 @@ package body nvsupport is
     end if;
     if not pwrdown_mode then
       csr.dfeaturesen.pwrdn_dis       := '1';
+    end if;
+    if not ext_sparrow then
+      csr.sparrow                     := (others => '0');
+      csr.dfeaturesen.sparrowcsr_en   := '0';
     end if;
 
   end;
@@ -9255,6 +9507,7 @@ package body nvsupport is
     variable ext_h       : boolean      := is_enabled(active, x_h);
     variable ext_zbc     : boolean      := is_enabled(active, x_zbc);
     variable ext_zbkc    : boolean      := is_enabled(active, x_zbkc);
+    variable ext_sparrow : boolean      := is_enabled(active, x_sparrow);
     variable ext_zimop   : boolean      := is_enabled(active, x_zimop);
     variable ext_zicfiss : boolean      := is_enabled(active, x_zicfiss);
     variable ext_zicfilp : boolean      := is_enabled(active, x_zicfilp);
@@ -9266,6 +9519,9 @@ package body nvsupport is
     variable funct5      : funct5_type  := funct5(inst);
     variable funct7      : funct7_type  := funct7(inst);
     variable funct12     : funct12_type := funct12(inst);
+    -- Sparrow
+    variable functSP1    : funct5_type  := funct7(5 downto 1);  -- Offset by 1
+    variable functSP2    : funct3_type  := funct3;
     -- Non-constant
     variable fusel       : fuseltype    := UNKNOWN;
   begin
@@ -9368,6 +9624,16 @@ package body nvsupport is
             fusel := (DIAG or ST);
           else
             fusel := (DIAG or LD);
+          end if;
+        end if;
+      when OP_SPARROW =>
+        if ext_sparrow then
+          if    functSP2(1 downto 0) /= "00" then
+            fusel := SPARROW_S2;
+          elsif functSP1(3 downto 0) /= "0000" then
+            fusel := SPARROW_S1;
+          else
+            fusel := SPARROW_NOP;
           end if;
         end if;
       when others => null;
@@ -9737,6 +10003,7 @@ package body nvsupport is
                             fpu_en    : in  boolean;
                             fpu_ok    : in  boolean;
                             alu_ok    : in  boolean;
+                            sparrowcsr_en : in  boolean;
                             tval_ill0 : in  boolean;
                             inst_in   : in  word;
                             cinst_in  : in  word16;
@@ -9762,6 +10029,7 @@ package body nvsupport is
     variable ext_diagnostics : boolean   := is_enabled(active, x_diagnostics);
     variable ext_a       : boolean       := is_enabled(active, x_a);
     variable ext_m       : boolean       := is_enabled(active, x_m);
+    variable ext_sparrow : boolean       := is_enabled(active, x_sparrow);
     variable ext_smrnmi  : boolean       := is_enabled(active, x_smrnmi);
     variable ext_zimop   : boolean       := is_enabled(active, x_zimop);
     variable ext_zicbom  : boolean       := is_enabled(active, x_zicbom);
@@ -10263,6 +10531,14 @@ package body nvsupport is
 
       when OP_NOELV1 =>
         illegal := not to_bit(alu_ok and x_en);
+
+      when OP_SPARROW =>
+        illegal := to_bit(not ext_sparrow or not x_en);
+        if ext_sparrow and is_sparrow_set(active, inst_in) then
+          if not sparrowcsr_en then
+            illegal := '1';
+          end if;
+        end if;
 
       when others =>
         illegal := '1';
@@ -10967,6 +11243,74 @@ package body nvsupport is
     return xmnstatus;
   end;
 
+  -- Return mnvstatus as a record type from an XLEN bit data
+  function to_mnvstatus(wdata       : wordx;
+                        nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type is
+    -- Non-constant
+    variable mnvstatus : csr_nvstatus_type := nvstatus_in;
+  begin
+    mnvstatus.sparrow_xs := wdata(5 downto 4);
+
+    return mnvstatus;
+  end;
+
+  -- Return mnvstatus as an XLEN bit data from the record type
+  function to_mnvstatus(nvstatus : csr_nvstatus_type) return wordx is
+    -- Non-constant
+    variable mnvstatus : word64 := zerow64;
+  begin
+    mnvstatus(5 downto 4) := nvstatus.sparrow_xs;
+
+    return mnvstatus(wordx'range);
+  end;
+
+  function to_snvstatus(wdata       : wordx;
+                        nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type is
+    -- Non-constant
+    variable snvstatus : csr_nvstatus_type := nvstatus_in;
+  begin
+    snvstatus.sparrow_xs := wdata(5 downto 4);
+
+    return snvstatus;
+  end;
+
+  -- Return mnvstatus as an XLEN bit data from the record type
+  function to_snvstatus(nvstatus : csr_nvstatus_type) return wordx is
+    -- Non-constant
+    variable snvstatus : word64 := zerow64;
+  begin
+    snvstatus(5 downto 4) := nvstatus.sparrow_xs;
+
+    return snvstatus(wordx'range);
+  end;
+
+  function to_vsnvstatus(wdata       : wordx;
+                         nvstatus_in : csr_nvstatus_type) return csr_nvstatus_type is
+    -- Non-constant
+    variable vsnvstatus : csr_nvstatus_type := nvstatus_in;
+  begin
+    vsnvstatus.sparrow_xs := wdata(5 downto 4);
+
+    return vsnvstatus;
+  end;
+
+  -- Return mnvstatus as an XLEN bit data from the record type
+  function to_vsnvstatus(nvstatus : csr_nvstatus_type) return wordx is
+    -- Non-constant
+    variable vsnvstatus : word64 := zerow64;
+  begin
+    vsnvstatus(5 downto 4) := nvstatus.sparrow_xs;
+
+    return vsnvstatus(wordx'range);
+  end;
+
+  -- Combines all extension XS bits
+  function get_xs(nvstatus : csr_nvstatus_type) return word2 is
+  begin
+    return u2vec(
+              u2i(nvstatus.sparrow_xs)
+             , 2);
+  end;
 
   -- Convert XLEN bit data into hvictl csr type
   function to_hvictl(wdata : wordx) return csr_hvictl_type is
@@ -11715,8 +12059,11 @@ package body nvsupport is
   end;
 
   -- Takes constant M mode mask with enabled extensions
-  function gen_envcfg_const_hmask(menvcfg_mask : csr_menvcfg_const_type) return csr_henvcfg_const_type is
+  function gen_envcfg_const_hmask(active : extension_type;
+                                  menvcfg_mask : csr_menvcfg_const_type)
+                                  return csr_henvcfg_const_type is
     variable xenvcfg : csr_envcfg_type := csr_envcfg_rst;
+    variable h_en    : boolean := is_enabled(active, x_h);
   begin
     -- Only cde is different
     xenvcfg.stce   := menvcfg_mask.stce;
@@ -11734,7 +12081,9 @@ package body nvsupport is
   end;
 
   -- Takes constant M mode mask with enabled extensions
-  function gen_envcfg_const_smask(menvcfg_mask : csr_menvcfg_const_type) return csr_senvcfg_const_type is
+  function gen_envcfg_const_smask(active : extension_type;
+                                  menvcfg_mask : csr_menvcfg_const_type)
+                                  return csr_senvcfg_const_type is
     variable xenvcfg : csr_envcfg_type := csr_envcfg_rst;
   begin
     xenvcfg.cbze  := menvcfg_mask.cbze;
@@ -11897,8 +12246,9 @@ package body nvsupport is
 
   function to_mseccfgh(data   : wordx;
                        seccfg : csr_seccfg_type) return csr_seccfg_type is
+    variable xseccfg : csr_seccfg_type := seccfg;
   begin
-    return seccfg;
+    return xseccfg;
   end;
 
 
@@ -12606,12 +12956,12 @@ package body nvsupport is
   begin
     for i in 0 to entries - 1 loop
       if check(precalc(i), addr, no_tor, pmp_g, msb) then
-       if no_tor = 1 then
-        hit(i) := precalc(i).valid;
-       else
-        -- Relies on code in pmp_precalc() to ensure that an invalid entry never matches.
-        hit(i) := '1';
-       end if;
+        if no_tor = 1 then
+          hit(i) := precalc(i).valid;
+        else
+          -- Relies on code in pmp_precalc() to ensure that an invalid entry never matches.
+          hit(i) := '1';
+        end if;
       end if;
     end loop;
 

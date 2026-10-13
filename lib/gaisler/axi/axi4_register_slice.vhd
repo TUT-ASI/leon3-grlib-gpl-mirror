@@ -38,13 +38,10 @@ use gaisler.axi.all;
 
 entity axi4_register_slice is
   generic (
-    awidth      : integer;
+    awidth      : integer range 1 to 64;
     dwidth      : integer;
-    idwidth     : integer;
-    axuserwidth : integer;
-    wuserwidth  : integer;
-    buserwidth  : integer;
-    ruserwidth  : integer;
+    idwidth     : integer range 0 to 2**AXI_ID_WIDTH;
+    regionwidth : integer range 0 to 4 := 0;
     awdirection : integer range 0 to 1 := 0;
     wdirection  : integer range 0 to 1 := 0;
     bdirection  : integer range 0 to 1 := 0;
@@ -57,143 +54,48 @@ entity axi4_register_slice is
     rbypass     : integer range 0 to 1 := 0
   );
   port (
-    aclk            : in  std_ulogic;
-    aresetn         : in  std_ulogic;
-
-    s_axi_awid      : in  std_logic_vector(idwidth-1 downto 0);
-    s_axi_awaddr    : in  std_logic_vector(awidth-1 downto 0);
-    s_axi_awlen     : in  std_logic_vector(8-1 downto 0);
-    s_axi_awsize    : in  std_logic_vector(3-1 downto 0);
-    s_axi_awburst   : in  std_logic_vector(2-1 downto 0);
-    s_axi_awlock    : in  std_logic;
-    s_axi_awcache   : in  std_logic_vector(4-1 downto 0);
-    s_axi_awprot    : in  std_logic_vector(3-1 downto 0);
-    s_axi_awqos     : in  std_logic_vector(4-1 downto 0);
-    s_axi_awregion  : in  std_logic_vector(4-1 downto 0);
-    s_axi_awuser    : in  std_logic_vector(axuserwidth-1 downto 0);
-    s_axi_awvalid   : in  std_logic;
-    s_axi_awready   : out std_logic;
-
-    s_axi_wdata     : in  std_logic_vector(dwidth-1 downto 0);
-    s_axi_wstrb     : in  std_logic_vector(dwidth/8-1 downto 0);
-    s_axi_wlast     : in  std_logic;
-    s_axi_wuser     : in  std_logic_vector(wuserwidth-1 downto 0);
-    s_axi_wvalid    : in  std_logic;
-    s_axi_wready    : out std_logic;
-
-    s_axi_bid       : out std_logic_vector(idwidth-1 downto 0);
-    s_axi_bresp     : out std_logic_vector(2-1 downto 0);
-    s_axi_buser     : out std_logic_vector(buserwidth-1 downto 0);
-    s_axi_bvalid    : out std_logic;
-    s_axi_bready    : in  std_logic;
-
-    s_axi_arid      : in  std_logic_vector(idwidth-1 downto 0);
-    s_axi_araddr    : in  std_logic_vector(awidth-1 downto 0);
-    s_axi_arlen     : in  std_logic_vector(8-1 downto 0);
-    s_axi_arsize    : in  std_logic_vector(3-1 downto 0);
-    s_axi_arburst   : in  std_logic_vector(2-1 downto 0);
-    s_axi_arlock    : in  std_logic;
-    s_axi_arcache   : in  std_logic_vector(4-1 downto 0);
-    s_axi_arprot    : in  std_logic_vector(3-1 downto 0);
-    s_axi_arqos     : in  std_logic_vector(4-1 downto 0);
-    s_axi_arregion  : in  std_logic_vector(4-1 downto 0);
-    s_axi_aruser    : in  std_logic_vector(axuserwidth-1 downto 0);
-    s_axi_arvalid   : in  std_logic;
-    s_axi_arready   : out std_logic;
-
-    s_axi_rid       : out std_logic_vector(idwidth-1 downto 0);
-    s_axi_rdata     : out std_logic_vector(dwidth-1 downto 0);
-    s_axi_rresp     : out std_logic_vector(2-1 downto 0);
-    s_axi_rlast     : out std_logic;
-    s_axi_ruser     : out std_logic_vector(buserwidth-1 downto 0);
-    s_axi_rvalid    : out std_logic;
-    s_axi_rready    : in  std_logic;
-
-    m_axi_awid      : out std_logic_vector(idwidth-1 downto 0);
-    m_axi_awaddr    : out std_logic_vector(awidth-1 downto 0);
-    m_axi_awlen     : out std_logic_vector(8-1 downto 0);
-    m_axi_awsize    : out std_logic_vector(3-1 downto 0);
-    m_axi_awburst   : out std_logic_vector(2-1 downto 0);
-    m_axi_awlock    : out std_logic;
-    m_axi_awcache   : out std_logic_vector(4-1 downto 0);
-    m_axi_awprot    : out std_logic_vector(3-1 downto 0);
-    m_axi_awqos     : out std_logic_vector(4-1 downto 0);
-    m_axi_awregion  : out std_logic_vector(4-1 downto 0);
-    m_axi_awuser    : out std_logic_vector(axuserwidth-1 downto 0);
-    m_axi_awvalid   : out std_logic;
-    m_axi_awready   : in  std_logic;
-
-    m_axi_wdata     : out std_logic_vector(dwidth-1 downto 0);
-    m_axi_wstrb     : out std_logic_vector(dwidth/8-1 downto 0);
-    m_axi_wlast     : out std_logic;
-    m_axi_wuser     : out std_logic_vector(wuserwidth-1 downto 0);
-    m_axi_wvalid    : out std_logic;
-    m_axi_wready    : in  std_logic;
-
-    m_axi_bid       : in  std_logic_vector(idwidth-1 downto 0);
-    m_axi_bresp     : in  std_logic_vector(2-1 downto 0);
-    m_axi_buser     : in  std_logic_vector(buserwidth-1 downto 0);
-    m_axi_bvalid    : in  std_logic;
-    m_axi_bready    : out std_logic;
-
-    m_axi_arid      : out std_logic_vector(idwidth-1 downto 0);
-    m_axi_araddr    : out std_logic_vector(awidth-1 downto 0);
-    m_axi_arlen     : out std_logic_vector(8-1 downto 0);
-    m_axi_arsize    : out std_logic_vector(3-1 downto 0);
-    m_axi_arburst   : out std_logic_vector(2-1 downto 0);
-    m_axi_arlock    : out std_logic;
-    m_axi_arcache   : out std_logic_vector(4-1 downto 0);
-    m_axi_arprot    : out std_logic_vector(3-1 downto 0);
-    m_axi_arqos     : out std_logic_vector(4-1 downto 0);
-    m_axi_arregion  : out std_logic_vector(4-1 downto 0);
-    m_axi_aruser    : out std_logic_vector(axuserwidth-1 downto 0);
-    m_axi_arvalid   : out std_logic;
-    m_axi_arready   : in  std_logic;
-
-    m_axi_rid       : in  std_logic_vector(idwidth-1 downto 0);
-    m_axi_rdata     : in  std_logic_vector(dwidth-1 downto 0);
-    m_axi_rresp     : in  std_logic_vector(2-1 downto 0);
-    m_axi_rlast     : in  std_logic;
-    m_axi_ruser     : in  std_logic_vector(ruserwidth-1 downto 0);
-    m_axi_rvalid    : in  std_logic;
-    m_axi_rready    : out std_logic
+    aclk    : in  std_ulogic;
+    aresetn : in  std_ulogic;
+    -- AXI subordinate port
+    axisi   : in  axi4_mosi_type;
+    axixsi  : in  extaxi_mosi_type := extaxi_mosi_none;
+    axiso   : out axi_somi_type;
+    axixso  : out extaxi_miso_type;
+    -- AXI manager port
+    aximo   : out axi4_mosi_type;
+    axixmo  : out extaxi_mosi_type;
+    aximi   : in  axi_somi_type;
+    axixmi  : in  extaxi_miso_type := extaxi_miso_none
   );
 end;
 
 architecture rtl of axi4_register_slice is
 
-  constant axwidth  : integer := idwidth + awidth + 8 + 3 + 2 + 1 + 4 + 3 + 4 + 4 + axuserwidth;
-  constant wwidth   : integer := dwidth + dwidth/8 + 1 + wuserwidth;
-  constant bwidth   : integer := idwidth + 2 + buserwidth;
-  constant rwidth   : integer := idwidth + dwidth + 2 + 1 + ruserwidth;
+  constant axwidth  : integer := idwidth+awidth+8+3+2+1+4+3+4+regionwidth;
+  constant wwidth   : integer := dwidth+dwidth/8+1;
+  constant bwidth   : integer := idwidth+2;
+  constant rwidth   : integer := idwidth+dwidth+2+1;
 
-  signal s_axi_aw   : std_logic_vector(axwidth-1 downto 0);
-  signal m_axi_aw   : std_logic_vector(axwidth-1 downto 0);
-  signal s_axi_w    : std_logic_vector(wwidth-1 downto 0);
-  signal m_axi_w    : std_logic_vector(wwidth-1 downto 0);
-  signal s_axi_b    : std_logic_vector(bwidth-1 downto 0);
-  signal m_axi_b    : std_logic_vector(bwidth-1 downto 0);
-  signal s_axi_ar   : std_logic_vector(axwidth-1 downto 0);
-  signal m_axi_ar   : std_logic_vector(axwidth-1 downto 0);
-  signal s_axi_r    : std_logic_vector(rwidth-1 downto 0);
-  signal m_axi_r    : std_logic_vector(rwidth-1 downto 0);
+  signal awsi     : std_logic_vector(axwidth-1 downto 0);
+  signal awmo     : std_logic_vector(axwidth-1 downto 0);
+  signal awvalid  : std_ulogic;
+  signal wsi      : std_logic_vector(wwidth-1 downto 0);
+  signal wmo      : std_logic_vector(wwidth-1 downto 0);
+  signal wvalid   : std_ulogic;
+  signal bso      : std_logic_vector(bwidth-1 downto 0);
+  signal bmi      : std_logic_vector(bwidth-1 downto 0);
+  signal bvalid   : std_ulogic;
+  signal arsi     : std_logic_vector(axwidth-1 downto 0);
+  signal armo     : std_logic_vector(axwidth-1 downto 0);
+  signal arvalid  : std_ulogic;
+  signal rso      : std_logic_vector(rwidth-1 downto 0);
+  signal rmi      : std_logic_vector(rwidth-1 downto 0);
+  signal rvalid   : std_ulogic;
 
 begin
 
   -- AW
-
-  s_axi_aw  <= ax_pack(s_axi_awid,
-                       s_axi_awaddr,
-                       s_axi_awlen,
-                       s_axi_awsize,
-                       s_axi_awburst,
-                       s_axi_awlock,
-                       s_axi_awcache,
-                       s_axi_awprot,
-                       s_axi_awqos,
-                       s_axi_awregion,
-                       s_axi_awuser);
-
+  awsi <= aw_pack(axisi.aw, axixsi.aw, awidth, idwidth, regionwidth);
   aw_slice : register_slice
   generic map (
     dwidth    => axwidth,
@@ -204,37 +106,18 @@ begin
     clk       => aclk,
     rstn      => aresetn,
 
-    s_xdata   => s_axi_aw,
-    s_xvalid  => s_axi_awvalid,
-    s_xready  => s_axi_awready,
+    s_xdata   => awsi,
+    s_xvalid  => axisi.aw.valid,
+    s_xready  => axiso.aw.ready,
 
-    m_xdata   => m_axi_aw,
-    m_xvalid  => m_axi_awvalid,
-    m_xready  => m_axi_awready
+    m_xdata   => awmo,
+    m_xvalid  => awvalid,
+    m_xready  => aximi.aw.ready
   );
-
-  ax_unpack(
-    m_axi_aw,
-    m_axi_awid,
-    m_axi_awaddr,
-    m_axi_awlen,
-    m_axi_awsize,
-    m_axi_awburst,
-    m_axi_awlock,
-    m_axi_awcache,
-    m_axi_awprot,
-    m_axi_awqos,
-    m_axi_awregion,
-    m_axi_awuser
-  );
+  aw_unpack(idwidth, awidth, regionwidth, awmo, awvalid, aximo.aw, axixmo.aw);
 
   -- W
-
-  s_axi_w <= w_pack(s_axi_wdata,
-                    s_axi_wstrb,
-                    s_axi_wlast,
-                    s_axi_wuser);
-
+  wsi <= w_pack(axisi.w, dwidth);
   w_slice : register_slice
   generic map (
     dwidth    => wwidth,
@@ -245,29 +128,19 @@ begin
     clk       => aclk,
     rstn      => aresetn,
 
-    s_xdata   => s_axi_w,
-    s_xvalid  => s_axi_wvalid,
-    s_xready  => s_axi_wready,
+    s_xdata   => wsi,
+    s_xvalid  => axisi.w.valid,
+    s_xready  => axiso.w.ready,
 
-    m_xdata   => m_axi_w,
-    m_xvalid  => m_axi_wvalid,
-    m_xready  => m_axi_wready
+    m_xdata   => wmo,
+    m_xvalid  => wvalid,
+    m_xready  => aximi.w.ready
   );
-
-  w_unpack(
-    m_axi_w,
-    m_axi_wdata,
-    m_axi_wstrb,
-    m_axi_wlast,
-    m_axi_wuser
-  );
+  w_unpack(dwidth, wmo, wvalid, aximo.w);
 
   -- B
 
-  m_axi_b <= b_pack(m_axi_bid,
-                    m_axi_bresp,
-                    m_axi_buser);
-
+  bmi <= b_pack(aximi.b, axixmi.b, idwidth);
   b_slice : register_slice
   generic map (
     dwidth    => bwidth,
@@ -278,36 +151,20 @@ begin
     clk       => aclk,
     rstn      => aresetn,
 
-    s_xdata   => m_axi_b,
-    s_xvalid  => m_axi_bvalid,
-    s_xready  => m_axi_bready,
+    s_xdata   => bmi,
+    s_xvalid  => aximi.b.valid,
+    s_xready  => aximo.b.ready,
 
-    m_xdata   => s_axi_b,
-    m_xvalid  => s_axi_bvalid,
-    m_xready  => s_axi_bready
+    m_xdata   => bso,
+    m_xvalid  => bvalid,
+    m_xready  => axisi.b.ready
   );
-
-  b_unpack(
-    s_axi_b,
-    s_axi_bid,
-    s_axi_bresp,
-    s_axi_buser
-  );
+  b_unpack(idwidth, bso, bvalid, axiso.b, axixso.b);
 
   -- AR
 
-  s_axi_ar  <= ax_pack(s_axi_arid,
-                       s_axi_araddr,
-                       s_axi_arlen,
-                       s_axi_arsize,
-                       s_axi_arburst,
-                       s_axi_arlock,
-                       s_axi_arcache,
-                       s_axi_arprot,
-                       s_axi_arqos,
-                       s_axi_arregion,
-                       s_axi_aruser);
 
+  arsi <= ar_pack(axisi.ar, axixsi.ar, awidth, idwidth, regionwidth);
   ar_slice : register_slice
   generic map (
     dwidth    => axwidth,
@@ -318,38 +175,20 @@ begin
     clk       => aclk,
     rstn      => aresetn,
 
-    s_xdata   => s_axi_ar,
-    s_xvalid  => s_axi_arvalid,
-    s_xready  => s_axi_arready,
+    s_xdata   => arsi,
+    s_xvalid  => axisi.ar.valid,
+    s_xready  => axiso.ar.ready,
 
-    m_xdata   => m_axi_ar,
-    m_xvalid  => m_axi_arvalid,
-    m_xready  => m_axi_arready
+    m_xdata   => armo,
+    m_xvalid  => arvalid,
+    m_xready  => aximi.ar.ready
   );
-
-  ax_unpack(
-    m_axi_ar,
-    m_axi_arid,
-    m_axi_araddr,
-    m_axi_arlen,
-    m_axi_arsize,
-    m_axi_arburst,
-    m_axi_arlock,
-    m_axi_arcache,
-    m_axi_arprot,
-    m_axi_arqos,
-    m_axi_arregion,
-    m_axi_aruser
-  );
+  ar_unpack(idwidth, awidth, regionwidth, armo, arvalid, aximo.ar, axixmo.ar);
 
   -- R
 
-  m_axi_r <= r_pack(m_axi_rid,
-                    m_axi_rdata,
-                    m_axi_rresp,
-                    m_axi_rlast,
-                    m_axi_ruser);
 
+  rmi <= r_pack(aximi.r, axixmi.r, idwidth, dwidth);
   r_slice : register_slice
   generic map (
     dwidth    => rwidth,
@@ -360,22 +199,14 @@ begin
     clk       => aclk,
     rstn      => aresetn,
 
-    s_xdata   => m_axi_r,
-    s_xvalid  => m_axi_rvalid,
-    s_xready  => m_axi_rready,
+    s_xdata   => rmi,
+    s_xvalid  => aximi.r.valid,
+    s_xready  => aximo.r.ready,
 
-    m_xdata   => s_axi_r,
-    m_xvalid  => s_axi_rvalid,
-    m_xready  => s_axi_rready
+    m_xdata   => rso,
+    m_xvalid  => rvalid,
+    m_xready  => axisi.r.ready
   );
-
-  r_unpack(
-    s_axi_r,
-    s_axi_rid,
-    s_axi_rdata,
-    s_axi_rresp,
-    s_axi_rlast,
-    s_axi_ruser
-  );
+  r_unpack(idwidth, dwidth, rso, rvalid, axiso.r, axixso.r);
 
 end;
